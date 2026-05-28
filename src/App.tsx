@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
+import { Baby, CirclePause, Download, Pencil, RotateCcw, Save, Trash2, Upload } from 'lucide-react'
 import { formatDuration, sumSideDurations, type SideSegment } from './domain/feedingUtils'
 import './styles.css'
 
@@ -235,7 +236,7 @@ function App() {
   return (
     <main className="app">
       <header className="top">
-        <h1>Baby Feeding Tracker</h1>
+        <h1><Baby size={20} /> Baby Feeding Tracker</h1>
         <p>Beautiful, one-hand logging designed for speed</p>
       </header>
 
@@ -246,7 +247,7 @@ function App() {
           {!session ? (<><button className="primary" onClick={() => startSession('left')}>Start Left</button><button className="primary" onClick={() => startSession('right')}>Start Right</button></>) : (
             <>
               {session.activeSide ? (<><button onClick={() => switchSide(session.activeSide === 'left' ? 'right' : 'left')}>Switch to {session.activeSide === 'left' ? 'Right' : 'Left'}</button><button onClick={pause}>Pause</button></>) : (<><button onClick={() => resume('left')}>Resume Left</button><button onClick={() => resume('right')}>Resume Right</button></>)}
-              <button className="danger" onClick={endSession}>End Feed</button>
+              <button className="danger" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> End Feed</button>
             </>
           )}
         </div>
@@ -266,13 +267,13 @@ function App() {
           <button onClick={() => setBottleQuickOz((v) => Math.max(0.5, +(v - 0.5).toFixed(1)))}>-0.5</button>
           <strong>{bottleQuickOz.toFixed(1)} oz</strong>
           <button onClick={() => setBottleQuickOz((v) => +(v + 0.5).toFixed(1))}>+0.5</button>
-          <button className="primary" onClick={logBottle}>Log bottle</button>
+          <button className="primary" aria-label="Log bottle" onClick={logBottle}><Baby size={16} /> Log bottle</button>
         </div>
       </section>
 
       <section className="card settings">
         <h2>Settings & Data</h2>
-        <div className="row"><button onClick={exportData}>Export JSON</button><button onClick={() => fileInputRef.current?.click()}>Import JSON</button><button className="danger" onClick={clearAllData}>Clear all data</button></div>
+        <div className="row"><button aria-label="Export JSON" onClick={exportData}><Download size={16} /> Export JSON</button><button aria-label="Import JSON" onClick={() => fileInputRef.current?.click()}><Upload size={16} /> Import JSON</button><button className="danger" onClick={clearAllData}><Trash2 size={16} /> Clear all data</button></div>
         <input ref={fileInputRef} className="hidden" type="file" accept="application/json" onChange={importData} />
       </section>
 
@@ -290,10 +291,10 @@ function App() {
                     <div className="edit-panel">
                       <label>Ounces<input value={editing.bottleOunces} onChange={(v) => setEditing({ ...editing, bottleOunces: v.target.value })} placeholder="e.g. 2.5" /></label>
                       <label>Note<input value={editing.note} onChange={(v) => setEditing({ ...editing, note: v.target.value })} placeholder="optional" /></label>
-                      <div className="row"><button className="primary" onClick={saveEdit}>Save</button><button onClick={() => setEditing(null)}>Cancel</button></div>
+                      <div className="row"><button className="primary" aria-label="Save entry" onClick={saveEdit}><Save size={16} /> Save</button><button onClick={() => setEditing(null)}>Cancel</button></div>
                     </div>
                   ) : (
-                    <div className="row actions"><button onClick={() => beginEdit(e)}>Edit</button><button className="danger" onClick={() => deleteEntry(e)}>Delete</button></div>
+                    <div className="row actions"><button aria-label="Edit entry" onClick={() => beginEdit(e)}><Pencil size={16} /> Edit</button><button className="danger" aria-label="Delete entry" onClick={() => deleteEntry(e)}><Trash2 size={16} /> Delete</button></div>
                   )}
                 </li>
               )
@@ -305,7 +306,7 @@ function App() {
       {(toast || undoState) && (
         <div className="toast">
           <span>{toast || 'Entry deleted'}</span>
-          {undoState && <button onClick={undoDelete}>Undo</button>}
+          {undoState && <button aria-label="Undo delete" onClick={undoDelete}><RotateCcw size={15} /> Undo</button>}
         </div>
       )}
     </main>
