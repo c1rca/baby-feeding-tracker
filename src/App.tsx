@@ -180,11 +180,11 @@ function App() {
       <header className="top">
         <h1><Baby size={20} /> Baby Feeding Tracker</h1>
         <div className="top-actions">
-          <button className="icon-btn" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
-            {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+          <button className="icon-plain" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
+            {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
           </button>
-          <button className="icon-btn" aria-label={settingsOpen ? 'Hide settings' : 'Show settings'} onClick={() => setSettingsOpen((v) => !v)}>
-            <Settings size={16} />
+          <button className="icon-plain" aria-label={settingsOpen ? 'Hide settings' : 'Show settings'} onClick={() => setSettingsOpen((v) => !v)}>
+            <Settings size={17} />
           </button>
         </div>
       </header>
