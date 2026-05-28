@@ -91,6 +91,7 @@ describe('App interactions', () => {
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /Start Left/i }))
+    expect(screen.getByRole('button', { name: /End feed/i })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /End feed/i }))
 
     expect(screen.getByText(/Feed saved/i)).toBeTruthy()

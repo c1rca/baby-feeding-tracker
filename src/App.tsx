@@ -32,6 +32,10 @@ const KEY_ENTRIES = 'baby-feeding-tracker:v1:entries'
 const KEY_SESSION = 'baby-feeding-tracker:v1:session'
 
 const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+const makeId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return crypto.randomUUID()
+  return `feed-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
+}
 
 function App() {
   const [entries, setEntries] = useState<Entry[]>(() => {
@@ -73,6 +77,7 @@ function App() {
 
   const startSession = (side: Side) => {
     const t = Date.now()
+    setNow(t)
     setSession({ startedAt: t, activeSide: side, segmentStart: t, segments: [], bottleOunces: 0 })
   }
 
@@ -100,11 +105,16 @@ function App() {
 
   const resume = (side: Side) => {
     if (!session) return
-    setSession({ ...session, activeSide: side, segmentStart: Date.now() })
+    const t = Date.now()
+    setNow(t)
+    setSession({ ...session, activeSide: side, segmentStart: t })
   }
 
   const endSession = () => {
-    if (!session) return
+    if (!session) {
+      showToast('No active feed to end')
+      return
+    }
     const t = Date.now()
     const finished: Segment[] = [...session.segments]
     if (session.activeSide && session.segmentStart) {
@@ -114,7 +124,7 @@ function App() {
     const bottle = session.bottleOunces > 0 ? session.bottleOunces : null
     const type: FeedType = bottle && left + right > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
     const entry: Entry = {
-      id: crypto.randomUUID(),
+      id: makeId(),
       type,
       startedAt: session.startedAt,
       endedAt: t,
@@ -131,7 +141,7 @@ function App() {
   const logBottle = () => {
     const t = Date.now()
     const entry: Entry = {
-      id: crypto.randomUUID(),
+      id: makeId(),
       type: 'bottle',
       startedAt: t,
       endedAt: t,
@@ -247,7 +257,7 @@ function App() {
           {!session ? (<><button className="primary" onClick={() => startSession('left')}>Start Left</button><button className="primary" onClick={() => startSession('right')}>Start Right</button></>) : (
             <>
               {session.activeSide ? (<><button onClick={() => switchSide(session.activeSide === 'left' ? 'right' : 'left')}>Switch to {session.activeSide === 'left' ? 'Right' : 'Left'}</button><button onClick={pause}>Pause</button></>) : (<><button onClick={() => resume('left')}>Resume Left</button><button onClick={() => resume('right')}>Resume Right</button></>)}
-              <button className="danger" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> End Feed</button>
+              <button className="danger end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button>
             </>
           )}
         </div>
