@@ -20,7 +20,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /show quick bottle log/i }))
+    await user.click(screen.getByRole('button', { name: /bottle/i }))
     await user.click(screen.getByRole('button', { name: /log bottle/i }))
 
     expect(screen.getByText(/Bottle feed saved/i)).toBeTruthy()

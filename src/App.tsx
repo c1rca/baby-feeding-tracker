@@ -184,9 +184,6 @@ function App() {
           <button className="icon-plain" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
             {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
           </button>
-          <button className="icon-plain" aria-label={bottleOpen ? 'Hide quick bottle log' : 'Show quick bottle log'} onClick={() => setBottleOpen((v) => !v)}>
-            <Baby size={17} />
-          </button>
           <button className="icon-plain" aria-label={settingsOpen ? 'Hide settings' : 'Show settings'} onClick={() => setSettingsOpen((v) => !v)}>
             <Settings size={17} />
           </button>
@@ -198,7 +195,7 @@ function App() {
         <p className="muted">{lastFeed ? `Last feed ${formatDistanceToNow(lastFeed.endedAt, { addSuffix: true })}` : 'No feed history yet'} · {nextDueText}</p>
         <div className="timer">{formatDuration(activeSeconds)}</div>
         <div className="row">
-          {!session ? (<><button className="primary" onClick={() => startSession('left')}>Start Left</button><button className="primary" onClick={() => startSession('right')}>Start Right</button></>) : (<>{session.activeSide ? (<><button onClick={() => switchSide(session.activeSide === 'left' ? 'right' : 'left')}>Switch to {session.activeSide === 'left' ? 'Right' : 'Left'}</button><button onClick={pause}>Pause</button></>) : (<><button onClick={() => resume('left')}>Resume Left</button><button onClick={() => resume('right')}>Resume Right</button></>)}<button className="danger end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button></>)}
+          {!session ? (<><button className="primary" onClick={() => startSession('left')}>Start Left</button><button className="primary" onClick={() => startSession('right')}>Start Right</button><button onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button></>) : (<>{session.activeSide ? (<><button onClick={() => switchSide(session.activeSide === 'left' ? 'right' : 'left')}>Switch to {session.activeSide === 'left' ? 'Right' : 'Left'}</button><button onClick={pause}>Pause</button></>) : (<><button onClick={() => resume('left')}>Resume Left</button><button onClick={() => resume('right')}>Resume Right</button></>)}<button onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="danger end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button></>)}
         </div>
         {session && <div className="edit-panel"><label>Optional note for this feed<input value={session.note} onChange={(v) => setSession({ ...session, note: v.target.value })} placeholder="optional note" /></label></div>}
       </section>
