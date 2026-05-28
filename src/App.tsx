@@ -18,6 +18,7 @@ type Entry = {
   note?: string
 }
 type Session = { startedAt: number; activeSide: Side | null; segmentStart: number | null; segments: Segment[]; bottleOunces: number; note: string }
+type LegacySession = Omit<Session, 'note' | 'bottleOunces'> & { note?: string; bottleOunces?: number }
 type UndoState = { entry: Entry; timeoutId: number }
 type EditingState = { id: string; bottleOunces: string; note: string } | null
 type Theme = 'light' | 'dark'
@@ -29,13 +30,26 @@ const API_STATE = '/api/state'
 
 const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 const makeId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `feed-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`)
+const normalizeSession = (raw: LegacySession | Session | null | undefined): Session | null => {
+  if (!raw) return null
+  return {
+    ...raw,
+    bottleOunces: typeof raw.bottleOunces === 'number' ? raw.bottleOunces : 0,
+    note: typeof raw.note === 'string' ? raw.note : '',
+  }
+}
 
 function App() {
   const [entries, setEntries] = useState<Entry[]>(() => {
     try { const saved = localStorage.getItem(KEY_ENTRIES); const parsed = saved ? (JSON.parse(saved) as Entry[]) : []; return parsed.sort((a, b) => b.endedAt - a.endedAt) } catch { return [] }
   })
   const [session, setSession] = useState<Session | null>(() => {
-    try { const saved = localStorage.getItem(KEY_SESSION); return saved ? (JSON.parse(saved) as Session) : null } catch { return null }
+    try {
+      const saved = localStorage.getItem(KEY_SESSION)
+      return saved ? normalizeSession(JSON.parse(saved) as LegacySession) : null
+    } catch {
+      return null
+    }
   })
   const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem(KEY_THEME) as Theme) || 'light')
   const [bottleQuickOz, setBottleQuickOz] = useState(2)
@@ -55,11 +69,11 @@ function App() {
       try {
         const response = await fetch(API_STATE)
         if (!response.ok) return
-        const data = (await response.json()) as { entries?: Entry[]; session?: Session | null; theme?: Theme }
+        const data = (await response.json()) as { entries?: Entry[]; session?: LegacySession | null; theme?: Theme }
         if (Array.isArray(data.entries)) {
           setEntries(data.entries.sort((a, b) => b.endedAt - a.endedAt))
         }
-        if (data.session !== undefined) setSession(data.session)
+        if (data.session !== undefined) setSession(normalizeSession(data.session))
         if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
       } catch {
         // fallback to localStorage-only mode when backend is unavailable
