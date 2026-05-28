@@ -6,8 +6,17 @@
 * { box-sizing: border-box; }
 body { margin: 0; }
 .app { max-width: 1040px; margin: 0 auto; padding: 20px; display: grid; gap: 16px; }
+.top { display:flex; justify-content:space-between; align-items:center; }
 .top h1 { margin: 0; font-size: clamp(1.4rem, 2.4vw, 2rem); display:flex; align-items:center; gap:8px; letter-spacing:-0.01em; }
-.top p { margin: 5px 0 0; color: #64748b; }
+.top-actions { display:flex; gap:8px; }
+.icon-btn {
+  min-height: 34px;
+  width: 34px;
+  padding: 0;
+  border-radius: 999px;
+  opacity: .85;
+}
+.icon-btn:hover { opacity: 1; }
 .card {
   background: rgba(255,255,255,.9);
   border: 1px solid #e2e8f0;
@@ -74,6 +83,9 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
   .grid { grid-template-columns: 1fr; }
   .app { padding:14px; gap:12px; }
   button { min-height: 46px; }
+  .preset-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .bottle-custom-row { grid-template-columns: 44px 1fr 44px; }
+  .bottle-custom-row .primary { grid-column: 1 / -1; }
 }
 [data-theme='dark'] {
   --bg: #0b1220;
@@ -93,6 +105,22 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 .trend-bar { width:18px; border-radius:8px; background: linear-gradient(180deg,#60a5fa,#4f46e5); }
 .note-chip { margin-top:8px; font-size:.85rem; color:#475569; background:#f8fafc; border:1px solid #e2e8f0; border-radius:999px; padding:4px 10px; display:inline-block; }
 .preset-row button { min-height: 36px; }
+
+.bottle-card { display: grid; gap: 12px; }
+.preset-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.preset-btn { min-height: 40px; justify-content: center; }
+.bottle-custom-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px 1.2fr;
+  gap: 8px;
+  align-items: center;
+}
+.bottle-custom-row button { justify-content: center; }
+.bottle-amount { text-align: center; font-size: 1.05rem; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
