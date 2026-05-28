@@ -6,7 +6,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; }
 .app { max-width: 1040px; margin: 0 auto; padding: 20px; display: grid; gap: 16px; }
-.top h1 { margin: 0; font-size: clamp(1.4rem, 2.4vw, 2rem); }
+.top h1 { margin: 0; font-size: clamp(1.4rem, 2.4vw, 2rem); display:flex; align-items:center; gap:8px; letter-spacing:-0.01em; }
 .top p { margin: 5px 0 0; color: #64748b; }
 .card {
   background: rgba(255,255,255,.9);
@@ -15,18 +15,26 @@ body { margin: 0; }
   padding: 16px;
   box-shadow: 0 16px 36px rgba(15, 23, 42, .08);
   backdrop-filter: blur(6px);
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
 }
+.card:hover { transform: translateY(-1px); box-shadow: 0 20px 38px rgba(15, 23, 42, .1); border-color:#cbd5e1; }
 .hero { background: linear-gradient(140deg,#eff6ff,#f0fdf4 55%,#f8fafc); }
 .hero-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.pill { border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px 10px; font-size: .8rem; background: #fff; color: #334155; }
+.pill { border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px 10px; font-size: .8rem; background: #fff; color: #334155; font-weight:600; }
 .timer { font-size: clamp(2rem, 5vw, 3rem); font-weight: 800; letter-spacing: .03em; margin: 10px 0 14px; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
 button {
   min-height: 42px; border-radius: 12px; border: 1px solid #cbd5e1;
   background: linear-gradient(#fff,#f8fafc); padding: 0 14px; font-weight: 600; cursor: pointer;
-  transition: all .18s ease;
+  transition: all .16s ease;
+  display:inline-flex; align-items:center; gap:8px;
 }
 button:hover { transform: translateY(-1px); box-shadow: 0 8px 14px rgba(15, 23, 42, .08); }
+button:active { transform: translateY(0); box-shadow: 0 3px 8px rgba(15, 23, 42, .1) inset; }
+button:focus-visible, input:focus-visible {
+  outline: 3px solid rgba(37,99,235,.3);
+  outline-offset: 2px;
+}
 button.primary { background: linear-gradient(135deg,#2563eb,#4f46e5); color: #fff; border-color: transparent; }
 button.danger { background: linear-gradient(135deg,#fff1f2,#ffe4e6); border-color: #fecdd3; color: #be123c; }
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
@@ -37,12 +45,14 @@ button.danger { background: linear-gradient(135deg,#fff1f2,#ffe4e6); border-colo
 .badge-bottle { background: #f0fdf4; color: #166534; }
 .badge-mixed { background: #f5f3ff; color: #6d28d9; }
 .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
-.timeline li { border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; background: #fff; }
+.timeline li { border: 1px solid #e2e8f0; border-radius: 14px; padding: 12px; background: #fff; transition: border-color .2s ease, box-shadow .2s ease; }
+.timeline li:hover { border-color:#cbd5e1; box-shadow:0 8px 20px rgba(15,23,42,.06); }
 .timeline-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
 .actions { margin-top: 8px; }
 .edit-panel { margin-top: 10px; display: grid; gap: 8px; }
 .edit-panel label { display: grid; gap: 4px; font-size: .86rem; color: #475569; }
-input { min-height: 40px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 10px; }
+input { min-height: 40px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 10px; transition:border-color .15s ease, box-shadow .15s ease; }
+input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.15); }
 .hidden { display: none; }
 .muted { color: #64748b; }
 .settings .row { gap: 8px; }
@@ -51,10 +61,19 @@ input { min-height: 40px; border: 1px solid #cbd5e1; border-radius: 10px; paddin
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   background: #0f172a; color: #fff; border-radius: 12px; padding: 10px 12px;
   box-shadow: 0 10px 24px rgba(2, 6, 23, .35);
+  animation: toast-in .2s ease;
 }
 .toast button { min-height: 32px; border-color: #334155; background: #1e293b; color: #fff; }
+@keyframes toast-in { from { transform: translateY(8px); opacity:0; } to { transform: translateY(0); opacity:1; } }
 @media (min-width: 900px) {
   .app { grid-template-columns: 1.1fr .9fr; }
   .top, .hero, .grid, .settings, .card:last-of-type { grid-column: 1 / -1; }
 }
-@media (max-width: 560px) { .grid { grid-template-columns: 1fr; } }
+@media (max-width: 560px) {
+  .grid { grid-template-columns: 1fr; }
+  .app { padding:14px; gap:12px; }
+  button { min-height: 46px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
