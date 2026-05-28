@@ -8,11 +8,15 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server.js",
+    "backup:db": "bash scripts/backup-db.sh"
   },
   "dependencies": {
+    "better-sqlite3": "^12.10.0",
     "clsx": "^2.1.1",
     "date-fns": "^4.3.0",
+    "express": "^5.2.1",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",

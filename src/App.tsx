@@ -25,6 +25,7 @@ type Theme = 'light' | 'dark'
 const KEY_ENTRIES = 'baby-feeding-tracker:v1:entries'
 const KEY_SESSION = 'baby-feeding-tracker:v1:session'
 const KEY_THEME = 'baby-feeding-tracker:v1:theme'
+const API_STATE = '/api/state'
 
 const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 const makeId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `feed-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`)
@@ -48,6 +49,41 @@ function App() {
   useEffect(() => localStorage.setItem(KEY_ENTRIES, JSON.stringify(entries)), [entries])
   useEffect(() => localStorage.setItem(KEY_SESSION, JSON.stringify(session)), [session])
   useEffect(() => { localStorage.setItem(KEY_THEME, theme); document.documentElement.setAttribute('data-theme', theme) }, [theme])
+
+  useEffect(() => {
+    const loadFromApi = async () => {
+      try {
+        const response = await fetch(API_STATE)
+        if (!response.ok) return
+        const data = (await response.json()) as { entries?: Entry[]; session?: Session | null; theme?: Theme }
+        if (Array.isArray(data.entries)) {
+          setEntries(data.entries.sort((a, b) => b.endedAt - a.endedAt))
+        }
+        if (data.session !== undefined) setSession(data.session)
+        if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
+      } catch {
+        // fallback to localStorage-only mode when backend is unavailable
+      }
+    }
+
+    void loadFromApi()
+  }, [])
+
+  useEffect(() => {
+    const syncToApi = async () => {
+      try {
+        await fetch(API_STATE, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entries, session, theme }),
+        })
+      } catch {
+        // keep local persistence even if backend is unreachable
+      }
+    }
+
+    void syncToApi()
+  }, [entries, session, theme])
 
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 1800) }
 
