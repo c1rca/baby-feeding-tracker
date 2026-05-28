@@ -61,7 +61,8 @@ function App() {
     }
   })
   const [theme, setTheme] = useState<Theme>(() => getCookieTheme() || (localStorage.getItem(KEY_THEME) as Theme) || 'light')
-  const [settingsOpen, setSettingsOpen] = useState(() => localStorage.getItem(KEY_SETTINGS_OPEN) === '1')
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [bottleOpen, setBottleOpen] = useState(false)
   const [bottleQuickOz, setBottleQuickOz] = useState(2)
   const [now, setNow] = useState(0)
   const [toast, setToast] = useState('')
@@ -183,6 +184,9 @@ function App() {
           <button className="icon-plain" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
             {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
           </button>
+          <button className="icon-plain" aria-label={bottleOpen ? 'Hide quick bottle log' : 'Show quick bottle log'} onClick={() => setBottleOpen((v) => !v)}>
+            <Baby size={17} />
+          </button>
           <button className="icon-plain" aria-label={settingsOpen ? 'Hide settings' : 'Show settings'} onClick={() => setSettingsOpen((v) => !v)}>
             <Settings size={17} />
           </button>
@@ -211,23 +215,29 @@ function App() {
         <div className="trend">{trend.days.map((d) => <div key={d.label} className="trend-col"><div className="trend-bar" style={{ height: `${(d.count / trend.max) * 60 + 8}px` }} /><span>{d.label}</span><small>{d.count}</small></div>)}</div>
       </section>
 
-      <section className="card bottle-card">
-        <div className="hero-top"><h2>Quick Bottle Log</h2><span className="pill">One tap</span></div>
-        <div className="preset-grid">{[2, 2.5, 3, 3.5, 4].map((oz) => <button key={oz} className="preset-btn" onClick={() => logBottle(oz)}>{oz.toFixed(1)} oz</button>)}</div>
-        <div className="bottle-custom-row">
-          <button onClick={() => setBottleQuickOz((v) => Math.max(0.5, +(v - 0.5).toFixed(1)))}>-</button>
-          <strong className="bottle-amount">{bottleQuickOz.toFixed(1)} oz</strong>
-          <button onClick={() => setBottleQuickOz((v) => +(v + 0.5).toFixed(1))}>+</button>
-          <button className="primary" aria-label="Log bottle" onClick={() => logBottle()}><Baby size={16} /> Log</button>
+      {bottleOpen ? (
+        <div className="modal-backdrop" onClick={() => setBottleOpen(false)}>
+          <section className="card bottle-card modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="hero-top"><h2>Quick Bottle Log</h2><span className="pill">One tap</span></div>
+            <div className="preset-grid">{[2, 2.5, 3, 3.5, 4].map((oz) => <button key={oz} className="preset-btn" onClick={() => { logBottle(oz); setBottleOpen(false) }}>{oz.toFixed(1)} oz</button>)}</div>
+            <div className="bottle-custom-row">
+              <button onClick={() => setBottleQuickOz((v) => Math.max(0.5, +(v - 0.5).toFixed(1)))}>-</button>
+              <strong className="bottle-amount">{bottleQuickOz.toFixed(1)} oz</strong>
+              <button onClick={() => setBottleQuickOz((v) => +(v + 0.5).toFixed(1))}>+</button>
+              <button className="primary" aria-label="Log bottle" onClick={() => { logBottle(); setBottleOpen(false) }}><Baby size={16} /> Log</button>
+            </div>
+          </section>
         </div>
-      </section>
+      ) : null}
 
       {settingsOpen ? (
-        <section className="card settings">
-          <h2>Settings & Data</h2>
-          <div className="row"><button aria-label="Export JSON" onClick={() => { const payload = { version: 1, exportedAt: new Date().toISOString(), entries }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); showToast('Data exported') }}><Download size={16} /> Export JSON</button><button aria-label="Import JSON" onClick={() => fileInputRef.current?.click()}><Upload size={16} /> Import JSON</button><button className="danger" onClick={() => { setEntries([]); setSession(null); setUndoState(null); showToast('All data cleared') }}><Trash2 size={16} /> Clear all data</button></div>
-          <input ref={fileInputRef} className="hidden" type="file" accept="application/json" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const text = await file.text(); try { const parsed = JSON.parse(text) as { entries?: Entry[] }; if (!parsed.entries) throw new Error('Invalid data'); setEntries(parsed.entries.sort((a, b) => b.endedAt - a.endedAt)); showToast('Data imported') } catch { showToast('Import failed: invalid file') } finally { event.target.value = '' } }} />
-        </section>
+        <div className="modal-backdrop" onClick={() => setSettingsOpen(false)}>
+          <section className="card settings modal-card" onClick={(e) => e.stopPropagation()}>
+            <h2>Settings & Data</h2>
+            <div className="row"><button aria-label="Export JSON" onClick={() => { const payload = { version: 1, exportedAt: new Date().toISOString(), entries }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); showToast('Data exported') }}><Download size={16} /> Export JSON</button><button aria-label="Import JSON" onClick={() => fileInputRef.current?.click()}><Upload size={16} /> Import JSON</button><button className="danger" onClick={() => { setEntries([]); setSession(null); setUndoState(null); showToast('All data cleared') }}><Trash2 size={16} /> Clear all data</button></div>
+            <input ref={fileInputRef} className="hidden" type="file" accept="application/json" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const text = await file.text(); try { const parsed = JSON.parse(text) as { entries?: Entry[] }; if (!parsed.entries) throw new Error('Invalid data'); setEntries(parsed.entries.sort((a, b) => b.endedAt - a.endedAt)); showToast('Data imported') } catch { showToast('Import failed: invalid file') } finally { event.target.value = '' } }} />
+          </section>
+        </div>
       ) : null}
 
       <section className="card"><h2>Timeline</h2>{entries.length === 0 ? <p className="muted">No feeds yet. Start with left/right or quick bottle.</p> : <ul className="timeline">{entries.map((e) => { const isEditing = editing?.id === e.id; return <li key={e.id}><div className="timeline-head"><strong>{formatTime(e.startedAt)}</strong><span className={`badge badge-${e.type}`}>{e.type}</span><span className="muted">{formatDistanceToNow(e.endedAt, { addSuffix: true })}</span></div><div className="muted">{formatDuration(e.leftSeconds + e.rightSeconds)} · L {formatDuration(e.leftSeconds)} / R {formatDuration(e.rightSeconds)} {e.bottleOunces ? `· ${e.bottleOunces.toFixed(1)} oz` : ''}</div>{e.note ? <div className="note-chip">📝 {e.note}</div> : null}{isEditing ? <div className="edit-panel"><label>Ounces<input value={editing.bottleOunces} onChange={(v) => setEditing({ ...editing, bottleOunces: v.target.value })} placeholder="e.g. 2.5" /></label><label>Note<input value={editing.note} onChange={(v) => setEditing({ ...editing, note: v.target.value })} placeholder="optional" /></label><div className="row"><button className="primary" aria-label="Save entry" onClick={() => { const nextOz = editing.bottleOunces.trim() ? Number(editing.bottleOunces) : null; setEntries((prev) => prev.map((x) => x.id === editing.id ? { ...x, bottleOunces: Number.isFinite(nextOz) && nextOz !== null ? nextOz : null, note: editing.note.trim() } : x)); setEditing(null); showToast('Entry updated') }}><Save size={16} /> Save</button><button onClick={() => setEditing(null)}>Cancel</button></div></div> : <div className="row actions"><button aria-label="Edit entry" onClick={() => setEditing({ id: e.id, bottleOunces: e.bottleOunces ? e.bottleOunces.toFixed(1) : '', note: e.note ?? '' })}><Pencil size={16} /> Edit</button><button className="danger" aria-label="Delete entry" onClick={() => { if (undoState) window.clearTimeout(undoState.timeoutId); setEntries((prev) => prev.filter((x) => x.id !== e.id)); const timeoutId = window.setTimeout(() => setUndoState(null), 5000); setUndoState({ entry: e, timeoutId }); setToast('Entry deleted') }}><Trash2 size={16} /> Delete</button></div>}</li> })}</ul>}</section>

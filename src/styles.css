@@ -131,6 +131,22 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 .bottle-custom-row button { justify-content: center; }
 .bottle-amount { text-align: center; font-size: 1.05rem; }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(2px);
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+}
+.modal-card {
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 28px);
+  overflow: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
