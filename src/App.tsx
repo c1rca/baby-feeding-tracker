@@ -1,11 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { formatDuration, sumSideDurations, type SideSegment } from './domain/feedingUtils'
 import './styles.css'
 
 type Side = 'left' | 'right'
 type FeedType = 'breast' | 'bottle' | 'mixed'
-
 type Segment = SideSegment
 type Entry = {
   id: string
@@ -15,6 +14,7 @@ type Entry = {
   leftSeconds: number
   rightSeconds: number
   bottleOunces: number | null
+  note?: string
 }
 type Session = {
   startedAt: number
@@ -23,10 +23,14 @@ type Session = {
   segments: Segment[]
   bottleOunces: number
 }
+type UndoState = { entry: Entry; timeoutId: number }
+
+type EditingState = { id: string; bottleOunces: string; note: string } | null
 
 const KEY_ENTRIES = 'baby-feeding-tracker:v1:entries'
 const KEY_SESSION = 'baby-feeding-tracker:v1:session'
 
+const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 function App() {
   const [entries, setEntries] = useState<Entry[]>(() => {
@@ -48,6 +52,10 @@ function App() {
   })
   const [bottleQuickOz, setBottleQuickOz] = useState(2)
   const [now, setNow] = useState(0)
+  const [toast, setToast] = useState('')
+  const [undoState, setUndoState] = useState<UndoState | null>(null)
+  const [editing, setEditing] = useState<EditingState>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
@@ -56,6 +64,11 @@ function App() {
 
   useEffect(() => localStorage.setItem(KEY_ENTRIES, JSON.stringify(entries)), [entries])
   useEffect(() => localStorage.setItem(KEY_SESSION, JSON.stringify(session)), [session])
+
+  const showToast = (message: string) => {
+    setToast(message)
+    window.setTimeout(() => setToast(''), 1800)
+  }
 
   const startSession = (side: Side) => {
     const t = Date.now()
@@ -107,9 +120,11 @@ function App() {
       leftSeconds: left,
       rightSeconds: right,
       bottleOunces: bottle,
+      note: '',
     }
     setEntries((prev) => [entry, ...prev])
     setSession(null)
+    showToast('Feed saved')
   }
 
   const logBottle = () => {
@@ -122,8 +137,79 @@ function App() {
       leftSeconds: 0,
       rightSeconds: 0,
       bottleOunces: bottleQuickOz,
+      note: '',
     }
     setEntries((prev) => [entry, ...prev])
+    showToast('Bottle feed saved')
+  }
+
+  const deleteEntry = (entry: Entry) => {
+    if (undoState) {
+      window.clearTimeout(undoState.timeoutId)
+    }
+    setEntries((prev) => prev.filter((e) => e.id !== entry.id))
+    const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
+    setUndoState({ entry, timeoutId })
+    setToast('Entry deleted')
+  }
+
+  const undoDelete = () => {
+    if (!undoState) return
+    window.clearTimeout(undoState.timeoutId)
+    setEntries((prev) => [undoState.entry, ...prev].sort((a, b) => b.endedAt - a.endedAt))
+    setUndoState(null)
+    showToast('Deletion undone')
+  }
+
+  const beginEdit = (entry: Entry) => {
+    setEditing({ id: entry.id, bottleOunces: entry.bottleOunces ? entry.bottleOunces.toFixed(1) : '', note: entry.note ?? '' })
+  }
+
+  const saveEdit = () => {
+    if (!editing) return
+    const nextOz = editing.bottleOunces.trim() ? Number(editing.bottleOunces) : null
+    setEntries((prev) => prev.map((e) => (e.id === editing.id ? { ...e, bottleOunces: Number.isFinite(nextOz) && nextOz !== null ? nextOz : null, note: editing.note.trim() } : e)))
+    setEditing(null)
+    showToast('Entry updated')
+  }
+
+  const exportData = () => {
+    const payload = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      entries,
+    }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+    showToast('Data exported')
+  }
+
+  const importData: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const text = await file.text()
+    try {
+      const parsed = JSON.parse(text) as { entries?: Entry[] }
+      if (!parsed.entries) throw new Error('Invalid data')
+      setEntries(parsed.entries.sort((a, b) => b.endedAt - a.endedAt))
+      showToast('Data imported')
+    } catch {
+      showToast('Import failed: invalid file')
+    } finally {
+      event.target.value = ''
+    }
+  }
+
+  const clearAllData = () => {
+    setEntries([])
+    setSession(null)
+    setUndoState(null)
+    showToast('All data cleared')
   }
 
   const activeSeconds = useMemo(() => {
@@ -146,54 +232,32 @@ function App() {
     return { count: list.length, nursing, left, right, oz }
   }, [entries])
 
-  const lastFeed = entries[0]
-
   return (
     <main className="app">
-      <header className="top"><h1>Baby Feeding Tracker</h1><p>Fast, one-hand feeding logs</p></header>
+      <header className="top">
+        <h1>Baby Feeding Tracker</h1>
+        <p>Beautiful, one-hand logging designed for speed</p>
+      </header>
 
       <section className="card hero">
-        <h2>Active Feed</h2>
+        <div className="hero-top"><h2>Active Feed</h2><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
         <div className="row">
-          {!session && (
+          {!session ? (<><button className="primary" onClick={() => startSession('left')}>Start Left</button><button className="primary" onClick={() => startSession('right')}>Start Right</button></>) : (
             <>
-              <button onClick={() => startSession('left')}>Start Left</button>
-              <button onClick={() => startSession('right')}>Start Right</button>
-            </>
-          )}
-          {session && (
-            <>
-              {session.activeSide ? (
-                <>
-                  <button onClick={() => switchSide(session.activeSide === 'left' ? 'right' : 'left')}>Switch to {session.activeSide === 'left' ? 'Right' : 'Left'}</button>
-                  <button onClick={pause}>Pause</button>
-                </>
-              ) : (
-                <>
-                  <button onClick={() => resume('left')}>Resume Left</button>
-                  <button onClick={() => resume('right')}>Resume Right</button>
-                </>
-              )}
+              {session.activeSide ? (<><button onClick={() => switchSide(session.activeSide === 'left' ? 'right' : 'left')}>Switch to {session.activeSide === 'left' ? 'Right' : 'Left'}</button><button onClick={pause}>Pause</button></>) : (<><button onClick={() => resume('left')}>Resume Left</button><button onClick={() => resume('right')}>Resume Right</button></>)}
               <button className="danger" onClick={endSession}>End Feed</button>
             </>
           )}
         </div>
-        {session && (
-          <div className="row">
-            <span>Add bottle to this feed:</span>
-            <button onClick={() => setSession({ ...session, bottleOunces: Math.max(0, +(session.bottleOunces - 0.5).toFixed(1)) })}>-0.5</button>
-            <strong>{session.bottleOunces.toFixed(1)} oz</strong>
-            <button onClick={() => setSession({ ...session, bottleOunces: +(session.bottleOunces + 0.5).toFixed(1) })}>+0.5</button>
-          </div>
-        )}
+        {session && <div className="row"><span className="muted">Bottle add-on:</span><button onClick={() => setSession({ ...session, bottleOunces: Math.max(0, +(session.bottleOunces - 0.5).toFixed(1)) })}>-0.5</button><strong>{session.bottleOunces.toFixed(1)} oz</strong><button onClick={() => setSession({ ...session, bottleOunces: +(session.bottleOunces + 0.5).toFixed(1) })}>+0.5</button></div>}
       </section>
 
       <section className="grid">
-        <div className="card"><h3>Feeds today</h3><p>{today.count}</p></div>
-        <div className="card"><h3>Nursing</h3><p>{formatDuration(today.nursing)}</p></div>
-        <div className="card"><h3>Bottle</h3><p>{today.oz.toFixed(1)} oz</p></div>
-        <div className="card"><h3>L/R split</h3><p>{formatDuration(today.left)} / {formatDuration(today.right)}</p></div>
+        <div className="card stat"><h3>Feeds today</h3><p>{today.count}</p></div>
+        <div className="card stat"><h3>Nursing</h3><p>{formatDuration(today.nursing)}</p></div>
+        <div className="card stat"><h3>Bottle</h3><p>{today.oz.toFixed(1)} oz</p></div>
+        <div className="card stat"><h3>L / R split</h3><p>{formatDuration(today.left)} / {formatDuration(today.right)}</p></div>
       </section>
 
       <section className="card">
@@ -202,24 +266,48 @@ function App() {
           <button onClick={() => setBottleQuickOz((v) => Math.max(0.5, +(v - 0.5).toFixed(1)))}>-0.5</button>
           <strong>{bottleQuickOz.toFixed(1)} oz</strong>
           <button onClick={() => setBottleQuickOz((v) => +(v + 0.5).toFixed(1))}>+0.5</button>
-          <button onClick={logBottle}>Log bottle</button>
+          <button className="primary" onClick={logBottle}>Log bottle</button>
         </div>
+      </section>
+
+      <section className="card settings">
+        <h2>Settings & Data</h2>
+        <div className="row"><button onClick={exportData}>Export JSON</button><button onClick={() => fileInputRef.current?.click()}>Import JSON</button><button className="danger" onClick={clearAllData}>Clear all data</button></div>
+        <input ref={fileInputRef} className="hidden" type="file" accept="application/json" onChange={importData} />
       </section>
 
       <section className="card">
         <h2>Timeline</h2>
-        {lastFeed && <p className="muted">Last feed {formatDistanceToNow(lastFeed.endedAt, { addSuffix: true })}</p>}
-        {entries.length === 0 ? <p className="muted">No feeds yet today. Start with Left, Right, or Bottle.</p> : (
+        {entries.length === 0 ? <p className="muted">No feeds yet. Start with left/right or quick bottle.</p> : (
           <ul className="timeline">
-            {entries.map((e) => (
-              <li key={e.id}>
-                <div><strong>{new Date(e.startedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</strong> · <span className="badge">{e.type}</span></div>
-                <div className="muted">{formatDuration(e.leftSeconds + e.rightSeconds)} · L {formatDuration(e.leftSeconds)} / R {formatDuration(e.rightSeconds)} {e.bottleOunces ? `· ${e.bottleOunces.toFixed(1)} oz` : ''}</div>
-              </li>
-            ))}
+            {entries.map((e) => {
+              const isEditing = editing?.id === e.id
+              return (
+                <li key={e.id}>
+                  <div className="timeline-head"><strong>{formatTime(e.startedAt)}</strong><span className={`badge badge-${e.type}`}>{e.type}</span><span className="muted">{formatDistanceToNow(e.endedAt, { addSuffix: true })}</span></div>
+                  <div className="muted">{formatDuration(e.leftSeconds + e.rightSeconds)} · L {formatDuration(e.leftSeconds)} / R {formatDuration(e.rightSeconds)} {e.bottleOunces ? `· ${e.bottleOunces.toFixed(1)} oz` : ''}</div>
+                  {isEditing ? (
+                    <div className="edit-panel">
+                      <label>Ounces<input value={editing.bottleOunces} onChange={(v) => setEditing({ ...editing, bottleOunces: v.target.value })} placeholder="e.g. 2.5" /></label>
+                      <label>Note<input value={editing.note} onChange={(v) => setEditing({ ...editing, note: v.target.value })} placeholder="optional" /></label>
+                      <div className="row"><button className="primary" onClick={saveEdit}>Save</button><button onClick={() => setEditing(null)}>Cancel</button></div>
+                    </div>
+                  ) : (
+                    <div className="row actions"><button onClick={() => beginEdit(e)}>Edit</button><button className="danger" onClick={() => deleteEntry(e)}>Delete</button></div>
+                  )}
+                </li>
+              )
+            })}
           </ul>
         )}
       </section>
+
+      {(toast || undoState) && (
+        <div className="toast">
+          <span>{toast || 'Entry deleted'}</span>
+          {undoState && <button onClick={undoDelete}>Undo</button>}
+        </div>
+      )}
     </main>
   )
 }
