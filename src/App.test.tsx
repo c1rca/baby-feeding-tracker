@@ -194,4 +194,15 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
     expect(screen.getByRole('button', { name: /Add bottle to this feed/i })).toBeTruthy()
   })
+
+  it('closes modal workflows with Escape', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
+    expect(screen.getByRole('dialog', { name: /Add missed feed/i })).toBeTruthy()
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: /Add missed feed/i })).toBeNull()
+  })
 })

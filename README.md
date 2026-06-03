@@ -1,68 +1,123 @@
 # Baby Feeding Tracker
 
-A simple newborn feeding tracker optimized for one-handed, low-light use.
+A tiny, polished newborn feeding tracker for one-handed, low-light use. Tracks left/right nursing time, bottle ounces, mixed feeds, notes, missed feeds, and daily trends.
 
-## Features
+## Production quick start
 
-- Breast timer with left/right side tracking, pause/resume, and side switching.
-- Suggested next side based on the last nursing feed and daily balance.
-- Live active-feed split for left, right, bottle amount, and total time.
-- Quick bottle logging with common ounce presets.
-- Timeline with edit, delete, undo, notes, import, and export.
-- SQLite persistence with localStorage fallback.
-- Docker Compose deployment with healthcheck.
+```bash
+git clone <repo-url> baby-feeding-tracker
+cd baby-feeding-tracker
+mkdir -p data backups
+docker compose up -d --build
+curl http://localhost:8080/api/health
+```
 
-## Run locally
+Open: `http://SERVER_IP:8080`
+
+## What to copy to another server
+
+Copy the repo plus one flat SQLite backup file. That is enough.
+
+```bash
+# On old server
+cd /path/to/baby-feeding-tracker
+npm ci
+npm run backup:db
+ls -lh backups/*.db
+```
+
+Move the newest `backups/feeding-tracker-YYYYMMDD-HHMMSS.db` to the new server.
+
+```bash
+# On new server
+cd /path/to/baby-feeding-tracker
+mkdir -p data backups
+cp /path/to/feeding-tracker-YYYYMMDD-HHMMSS.db backups/
+npm ci
+npm run restore:db -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
+docker compose up -d --build
+curl http://localhost:8080/api/health
+```
+
+The app stores durable state at:
+
+- `./data/feeding-tracker.db` — SQLite database mounted into Docker at `/data/feeding-tracker.db`
+- `./backups/*.db` — portable single-file backups
+
+## Docker Compose
+
+```yaml
+services:
+  feeding-tracker:
+    build: .
+    container_name: baby-feeding-tracker
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - DB_DIR=/data
+      - DB_PATH=/data/feeding-tracker.db
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+```
+
+Change the left side of `8080:8080` if another service already uses the port.
+
+## Backups
+
+Create a consistent, portable SQLite backup:
+
+```bash
+npm run backup:db
+```
+
+Recommended daily cron:
+
+```cron
+15 3 * * * cd /path/to/baby-feeding-tracker && npm run backup:db >/tmp/baby-feeding-tracker-backup.log 2>&1
+```
+
+## Restore
+
+Restore only while the app is stopped:
+
+```bash
+docker compose down
+npm run restore:db -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
+docker compose up -d
+curl http://localhost:8080/api/health
+```
+
+## Local development
 
 ```bash
 npm ci
 npm run dev
 ```
 
-## Validate
+## Validation checklist
+
+Run before shipping changes:
 
 ```bash
-npm test -- --run
+npm test
 npm run build
-```
-
-## Production deployment
-
-```bash
+npm run lint
+docker compose config
 docker compose up -d --build
 curl http://localhost:8080/api/health
 ```
 
-The app stores SQLite data under `./data/feeding-tracker.db` via the compose volume.
+## UI/UX checklist
 
-## Backups
-
-Create an on-demand backup:
-
-```bash
-npm run backup:db
-```
-
-Backups are written to `./backups/` and include WAL/SHM files when present.
-
-Recommended daily cron from this repo directory:
-
-```cron
-15 3 * * * cd /home/alex/Documents/baby-feeding-tracker && npm run backup:db >/tmp/baby-feeding-tracker-backup.log 2>&1
-```
-
-## Restore
-
-1. Stop the app:
-   ```bash
-   docker compose down
-   ```
-2. Copy the desired backup files into `./data/` as `feeding-tracker.db`, plus matching `feeding-tracker.db-wal` / `feeding-tracker.db-shm` if present.
-3. Restart:
-   ```bash
-   docker compose up -d
-   ```
+- First screen stays focused on active feed.
+- Primary action is obvious and thumb-friendly.
+- Left/right split remains visible during active feeds.
+- Bottle copy changes based on context: bottle-only vs add bottle to active feed.
+- Settings/data actions are tucked away but easy to reach.
+- Dark mode remains high-contrast for overnight use.
 
 ## Security note
 
-This app is intended for trusted LAN/private deployment. Add an auth proxy before exposing it publicly.
+Designed for trusted LAN/private deployment. Put it behind an auth proxy before exposing it publicly.
