@@ -103,6 +103,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
   button { min-height: 46px; }
   .hero-actions { display:grid; grid-template-columns:1fr; }
   .live-split { grid-template-columns:1fr; }
+  .manual-grid { grid-template-columns:1fr; }
   .preset-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .bottle-custom-row { grid-template-columns: 44px 1fr 44px; }
   .bottle-custom-row .primary { grid-column: 1 / -1; }
@@ -144,6 +145,9 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 }
 .bottle-custom-row button { justify-content: center; }
 .bottle-amount { text-align: center; font-size: 1.05rem; }
+.manual-card { display:grid; gap:12px; }
+.manual-grid { display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:10px; }
+.manual-grid label { display:grid; gap:5px; color:#475569; font-size:.86rem; font-weight:650; }
 
 .modal-backdrop {
   position: fixed;

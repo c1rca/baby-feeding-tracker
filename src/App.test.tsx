@@ -20,8 +20,8 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /bottle/i }))
-    await user.click(screen.getByRole('button', { name: /log bottle/i }))
+    await user.click(screen.getByRole('button', { name: /Log bottle-only feed/i }))
+    await user.click(screen.getByRole('button', { name: /^log bottle$/i }))
 
     expect(screen.getByText(/Bottle feed saved/i)).toBeTruthy()
     expect(screen.getByText(/Feeds today/i).nextElementSibling?.textContent).toBe('1')
@@ -164,5 +164,34 @@ describe('App interactions', () => {
     expect(confirmSpy).toHaveBeenCalled()
     expect(screen.getAllByText(/3\.0 oz/i).length).toBeGreaterThan(0)
     confirmSpy.mockRestore()
+  })
+
+  it('adds a missed manual feed with bottle and nursing details', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
+    await user.clear(screen.getByLabelText(/Manual bottle ounces/i))
+    await user.type(screen.getByLabelText(/Manual bottle ounces/i), '2.5')
+    await user.clear(screen.getByLabelText(/Manual left minutes/i))
+    await user.type(screen.getByLabelText(/Manual left minutes/i), '7')
+    await user.clear(screen.getByLabelText(/Manual right minutes/i))
+    await user.type(screen.getByLabelText(/Manual right minutes/i), '5')
+    await user.type(screen.getByLabelText(/Manual note/i), 'late log')
+    await user.click(screen.getByRole('button', { name: /Save missed feed/i }))
+
+    expect(screen.getByText(/Missed feed saved/i)).toBeTruthy()
+    expect(screen.getByText(/mixed/i)).toBeTruthy()
+    expect(screen.getAllByText(/2\.5 oz/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/late log/i)).toBeTruthy()
+  })
+
+  it('uses explicit bottle copy during active nursing sessions', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(screen.getByRole('button', { name: /Log bottle-only feed/i })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+    expect(screen.getByRole('button', { name: /Add bottle to this feed/i })).toBeTruthy()
   })
 })

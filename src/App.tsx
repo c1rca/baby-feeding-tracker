@@ -65,6 +65,8 @@ function App() {
   const [theme, setTheme] = useState<Theme>(() => getCookieTheme() || (localStorage.getItem(KEY_THEME) as Theme) || 'light')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [bottleOpen, setBottleOpen] = useState(false)
+  const [manualOpen, setManualOpen] = useState(false)
+  const [manualDraft, setManualDraft] = useState({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
   const [bottleQuickOz, setBottleQuickOz] = useState(2)
   const [now, setNow] = useState(0)
   const [toast, setToast] = useState('')
@@ -138,9 +140,29 @@ function App() {
   }
 
   const logBottle = (oz?: number) => {
+    const amount = oz ?? bottleQuickOz
+    if (session) {
+      setSession({ ...session, bottleOunces: +(session.bottleOunces + amount).toFixed(1) })
+      showToast('Bottle added to active feed')
+      return
+    }
     const t = now || new Date().getTime()
-    setEntries((prev) => [{ id: makeId(), type: 'bottle', startedAt: t, endedAt: t, leftSeconds: 0, rightSeconds: 0, bottleOunces: oz ?? bottleQuickOz, note: '' }, ...prev])
+    setEntries((prev) => [{ id: makeId(), type: 'bottle', startedAt: t, endedAt: t, leftSeconds: 0, rightSeconds: 0, bottleOunces: amount, note: '' }, ...prev])
     showToast('Bottle feed saved')
+  }
+
+  const saveManualFeed = () => {
+    const leftSeconds = Math.max(0, Math.round((Number(manualDraft.leftMinutes) || 0) * 60))
+    const rightSeconds = Math.max(0, Math.round((Number(manualDraft.rightMinutes) || 0) * 60))
+    const bottle = Number(manualDraft.bottleOunces) > 0 ? Number(manualDraft.bottleOunces) : null
+    if (leftSeconds + rightSeconds === 0 && !bottle) return showToast('Add nursing time or bottle ounces')
+    const durationMs = Math.max(0, leftSeconds + rightSeconds) * 1000
+    const endedAt = Date.now()
+    const type: FeedType = bottle && leftSeconds + rightSeconds > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
+    setEntries((prev) => [{ id: makeId(), type, startedAt: endedAt - durationMs, endedAt, leftSeconds, rightSeconds, bottleOunces: bottle, note: manualDraft.note.trim() }, ...prev])
+    setManualDraft({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
+    setManualOpen(false)
+    showToast('Missed feed saved')
   }
 
   const activeSplit = useMemo(() => {
@@ -222,7 +244,7 @@ function App() {
           </div>
         ) : null}
         <div className="row hero-actions">
-          {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button><button onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button onClick={pause}>Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="danger end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button></>)}
+          {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button><button aria-label="Log bottle-only feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button onClick={() => setManualOpen(true)}>Add missed feed</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button onClick={pause}>Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button aria-label="Add bottle to this feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="danger end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button></>)}
         </div>
         {session && <div className="edit-panel"><label>Optional note for this feed<input value={session.note} onChange={(v) => setSession({ ...session, note: v.target.value })} placeholder="optional note" /></label></div>}
       </section>
@@ -242,7 +264,7 @@ function App() {
       {bottleOpen ? (
         <div className="modal-backdrop" onClick={() => setBottleOpen(false)}>
           <section className="card bottle-card modal-card" onClick={(e) => e.stopPropagation()}>
-            <div className="hero-top"><h2>Quick Bottle Log</h2><span className="pill">One tap</span></div>
+            <div className="hero-top"><h2>{session ? 'Add Bottle to Active Feed' : 'Quick Bottle Log'}</h2><span className="pill">One tap</span></div>
             <div className="preset-grid">{[2, 2.5, 3, 3.5, 4].map((oz) => <button key={oz} className="preset-btn" onClick={() => { logBottle(oz); setBottleOpen(false) }}>{oz.toFixed(1)} oz</button>)}</div>
             <div className="bottle-custom-row">
               <button onClick={() => setBottleQuickOz((v) => Math.max(0.5, +(v - 0.5).toFixed(1)))}>-</button>
@@ -250,6 +272,21 @@ function App() {
               <button onClick={() => setBottleQuickOz((v) => +(v + 0.5).toFixed(1))}>+</button>
               <button className="primary" aria-label="Log bottle" onClick={() => { logBottle(); setBottleOpen(false) }}><Baby size={16} /> Log</button>
             </div>
+          </section>
+        </div>
+      ) : null}
+
+      {manualOpen ? (
+        <div className="modal-backdrop" onClick={() => setManualOpen(false)}>
+          <section className="card modal-card manual-card" onClick={(e) => e.stopPropagation()}>
+            <div className="hero-top"><h2>Add Missed Feed</h2><span className="pill">Manual</span></div>
+            <div className="manual-grid">
+              <label>Manual left minutes<input inputMode="decimal" value={manualDraft.leftMinutes} onChange={(e) => setManualDraft({ ...manualDraft, leftMinutes: e.target.value })} placeholder="0" /></label>
+              <label>Manual right minutes<input inputMode="decimal" value={manualDraft.rightMinutes} onChange={(e) => setManualDraft({ ...manualDraft, rightMinutes: e.target.value })} placeholder="0" /></label>
+              <label>Manual bottle ounces<input inputMode="decimal" value={manualDraft.bottleOunces} onChange={(e) => setManualDraft({ ...manualDraft, bottleOunces: e.target.value })} placeholder="0.0" /></label>
+              <label>Manual note<input value={manualDraft.note} onChange={(e) => setManualDraft({ ...manualDraft, note: e.target.value })} placeholder="optional" /></label>
+            </div>
+            <div className="row"><button className="primary" onClick={saveManualFeed}>Save missed feed</button><button onClick={() => setManualOpen(false)}>Cancel</button></div>
           </section>
         </div>
       ) : null}
