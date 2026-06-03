@@ -31,6 +31,8 @@ const API_STATE = '/api/state'
 const THEME_COOKIE = 'baby_feeding_theme'
 
 const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+const sideLabel = (side: Side) => (side === 'left' ? 'Left' : 'Right')
+const oppositeSide = (side: Side): Side => (side === 'left' ? 'right' : 'left')
 const makeId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `feed-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`)
 const normalizeSession = (raw: LegacySession | Session | null | undefined): Session | null => {
   if (!raw) return null
@@ -141,13 +143,14 @@ function App() {
     showToast('Bottle feed saved')
   }
 
-  const activeSeconds = useMemo(() => {
-    if (!session) return 0
+  const activeSplit = useMemo(() => {
+    if (!session) return { left: 0, right: 0 }
     const draft = [...session.segments]
     if (session.activeSide && session.segmentStart) draft.push({ side: session.activeSide, startedAt: session.segmentStart, endedAt: now })
-    const { left, right } = sumSideDurations(draft)
-    return left + right
+    return sumSideDurations(draft)
   }, [session, now])
+
+  const activeSeconds = activeSplit.left + activeSplit.right
 
   const today = useMemo(() => {
     const start = new Date(); start.setHours(0, 0, 0, 0)
@@ -163,7 +166,22 @@ function App() {
 
   const lastFeed = entries[0]
   const minsSinceLast = lastFeed && now ? Math.floor((now - lastFeed.endedAt) / 60000) : null
-  const nextDueText = minsSinceLast === null ? 'No previous feed yet' : minsSinceLast < 90 ? `Likely next feed in ~${90 - minsSinceLast}m` : 'Likely due now'
+  const avgGapMinutes = useMemo(() => {
+    const recent = entries.slice(0, 8).filter((entry) => entry.endedAt > 0).sort((a, b) => a.endedAt - b.endedAt)
+    if (recent.length < 2) return null
+    const gaps = recent.slice(1).map((entry, index) => Math.max(0, entry.endedAt - recent[index].endedAt))
+    return Math.round(gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length / 60000)
+  }, [entries])
+  const nextDueText = minsSinceLast === null ? 'No previous feed yet' : `Last feed: ${Math.floor(minsSinceLast / 60) > 0 ? `${Math.floor(minsSinceLast / 60)}h ` : ''}${minsSinceLast % 60}m ago${avgGapMinutes ? ` · Avg gap today: ${Math.floor(avgGapMinutes / 60) > 0 ? `${Math.floor(avgGapMinutes / 60)}h ` : ''}${avgGapMinutes % 60}m` : ''}`
+  const suggestedSide = useMemo<Side>(() => {
+    const lastNursing = entries.find((entry) => entry.leftSeconds + entry.rightSeconds > 0)
+    if (!lastNursing) return today.left <= today.right ? 'left' : 'right'
+    if (lastNursing.leftSeconds === lastNursing.rightSeconds) return today.left <= today.right ? 'left' : 'right'
+    return oppositeSide(lastNursing.leftSeconds > lastNursing.rightSeconds ? 'left' : 'right')
+  }, [entries, today.left, today.right])
+
+  const activeSide = session?.activeSide
+  const activeOppositeSide = activeSide ? oppositeSide(activeSide) : suggestedSide
 
   const trend = useMemo(() => {
     const days = Array.from({ length: 7 }).map((_, i) => {
@@ -193,9 +211,18 @@ function App() {
       <section className="card hero">
         <div className="hero-top"><h2>Active Feed</h2><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
         <p className="muted">{lastFeed ? `Last feed ${formatDistanceToNow(lastFeed.endedAt, { addSuffix: true })}` : 'No feed history yet'} · {nextDueText}</p>
+        <div className="suggestion"><span>Suggested next: {sideLabel(suggestedSide)}</span></div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
-        <div className="row">
-          {!session ? (<><button className="primary" onClick={() => startSession('left')}>Start Left</button><button className="primary" onClick={() => startSession('right')}>Start Right</button><button onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button></>) : (<>{session.activeSide ? (<><button onClick={() => switchSide(session.activeSide === 'left' ? 'right' : 'left')}>Switch to {session.activeSide === 'left' ? 'Right' : 'Left'}</button><button onClick={pause}>Pause</button></>) : (<><button onClick={() => resume('left')}>Resume Left</button><button onClick={() => resume('right')}>Resume Right</button></>)}<button onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="danger end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button></>)}
+        {session ? (
+          <div className="live-split" aria-label="Live split">
+            <div className="split-title">Live split</div>
+            <div><span>Left</span><strong>{formatDuration(activeSplit.left)}</strong></div>
+            <div><span>Right</span><strong>{formatDuration(activeSplit.right)}</strong></div>
+            <div><span>Bottle</span><strong>{session.bottleOunces.toFixed(1)} oz</strong></div>
+          </div>
+        ) : null}
+        <div className="row hero-actions">
+          {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button><button onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button onClick={pause}>Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="danger end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button></>)}
         </div>
         {session && <div className="edit-panel"><label>Optional note for this feed<input value={session.note} onChange={(v) => setSession({ ...session, note: v.target.value })} placeholder="optional note" /></label></div>}
       </section>
@@ -231,7 +258,7 @@ function App() {
         <div className="modal-backdrop" onClick={() => setSettingsOpen(false)}>
           <section className="card settings modal-card" onClick={(e) => e.stopPropagation()}>
             <h2>Settings & Data</h2>
-            <div className="row"><button aria-label="Export JSON" onClick={() => { const payload = { version: 1, exportedAt: new Date().toISOString(), entries }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); showToast('Data exported') }}><Download size={16} /> Export JSON</button><button aria-label="Import JSON" onClick={() => fileInputRef.current?.click()}><Upload size={16} /> Import JSON</button><button className="danger" onClick={() => { setEntries([]); setSession(null); setUndoState(null); showToast('All data cleared') }}><Trash2 size={16} /> Clear all data</button></div>
+            <div className="row"><button aria-label="Export JSON" onClick={() => { const payload = { version: 1, exportedAt: new Date().toISOString(), entries }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); showToast('Data exported') }}><Download size={16} /> Export JSON</button><button aria-label="Import JSON" onClick={() => fileInputRef.current?.click()}><Upload size={16} /> Import JSON</button><button className="danger" onClick={() => { if (!window.confirm('Clear all feeding data? Export a backup first if needed.')) return; setEntries([]); setSession(null); setUndoState(null); showToast('All data cleared') }}><Trash2 size={16} /> Clear all data</button></div>
             <input ref={fileInputRef} className="hidden" type="file" accept="application/json" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const text = await file.text(); try { const parsed = JSON.parse(text) as { entries?: Entry[] }; if (!parsed.entries) throw new Error('Invalid data'); setEntries(parsed.entries.sort((a, b) => b.endedAt - a.endedAt)); showToast('Data imported') } catch { showToast('Import failed: invalid file') } finally { event.target.value = '' } }} />
           </section>
         </div>

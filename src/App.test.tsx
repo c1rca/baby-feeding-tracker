@@ -1,6 +1,6 @@
 import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const STORAGE_SESSION_KEY = 'baby-feeding-tracker:v1:session'
 import App from './App'
@@ -91,7 +91,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Start Left/i }))
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
     expect(screen.getByRole('button', { name: /End feed/i })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /End feed/i }))
 
@@ -100,5 +100,69 @@ describe('App interactions', () => {
     expect(savedEntries.length).toBe(1)
     expect(savedEntries[0].id).toBeTruthy()
     expect(localStorage.getItem(STORAGE_SESSION_KEY)).toBe('null')
+  })
+
+  it('suggests the opposite side from the last nursing feed and supports one-tap start', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'entry-3',
+          type: 'breast',
+          startedAt: Date.now() - 120000,
+          endedAt: Date.now() - 60000,
+          leftSeconds: 0,
+          rightSeconds: 120,
+          bottleOunces: null,
+          note: '',
+        },
+      ]),
+    )
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(screen.getByText(/Suggested next: Left/i)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+    expect(screen.getByText(/On left/i)).toBeTruthy()
+  })
+
+  it('shows a live left-right split while a feed is active', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+
+    expect(screen.getByText(/Live split/i)).toBeTruthy()
+    expect(screen.getByText(/^Left$/i).nextElementSibling?.textContent).toMatch(/0m/)
+    expect(screen.getByText(/^Right$/i).nextElementSibling?.textContent).toMatch(/0m/)
+  })
+
+  it('requires confirmation before clearing all data', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'entry-4',
+          type: 'bottle',
+          startedAt: Date.now(),
+          endedAt: Date.now(),
+          leftSeconds: 0,
+          rightSeconds: 0,
+          bottleOunces: 3,
+          note: '',
+        },
+      ]),
+    )
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(screen.getByRole('button', { name: /Clear all data/i }))
+
+    expect(confirmSpy).toHaveBeenCalled()
+    expect(screen.getAllByText(/3\.0 oz/i).length).toBeGreaterThan(0)
+    confirmSpy.mockRestore()
   })
 })
