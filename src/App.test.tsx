@@ -140,6 +140,57 @@ describe('App interactions', () => {
     expect(screen.getByText(/^Right$/i).nextElementSibling?.textContent).toMatch(/0m/)
   })
 
+
+  it('clears an active feed without saving an entry', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+    expect(screen.getByText(/On left/i)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Clear active feed/i }))
+
+    expect(screen.getByText(/Active feed cleared/i)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /End feed/i })).toBeNull()
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')).toHaveLength(0)
+    expect(localStorage.getItem(STORAGE_SESSION_KEY)).toBe('null')
+  })
+
+  it('edits left and right nursing minutes in a timeline item', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'entry-nursing-edit',
+          type: 'breast',
+          startedAt: Date.now() - 720000,
+          endedAt: Date.now(),
+          leftSeconds: 420,
+          rightSeconds: 300,
+          bottleOunces: null,
+          note: '',
+        },
+      ]),
+    )
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    const firstItem = screen.getAllByRole('listitem')[0]
+    await user.click(within(firstItem).getByRole('button', { name: /Edit/i }))
+    await user.clear(screen.getByLabelText(/^Left minutes$/i))
+    await user.type(screen.getByLabelText(/^Left minutes$/i), '9')
+    await user.clear(screen.getByLabelText(/^Right minutes$/i))
+    await user.type(screen.getByLabelText(/^Right minutes$/i), '4')
+    await user.click(screen.getByRole('button', { name: /Save/i }))
+
+    expect(screen.getByText(/Entry updated/i)).toBeTruthy()
+    expect(screen.getByText(/L 9m 00s \/ R 4m 00s/i)).toBeTruthy()
+    const savedEntries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<{ leftSeconds: number; rightSeconds: number }>
+    expect(savedEntries[0].leftSeconds).toBe(540)
+    expect(savedEntries[0].rightSeconds).toBe(240)
+  })
+
   it('requires confirmation before clearing all data', async () => {
     localStorage.setItem(
       STORAGE_KEY,
