@@ -14,6 +14,8 @@ describe('App interactions', () => {
 
   afterEach(() => {
     cleanup()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
 
   it('logs a quick bottle entry and shows toast feedback', async () => {
@@ -204,5 +206,24 @@ describe('App interactions', () => {
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog', { name: /Add missed feed/i })).toBeNull()
+  })
+
+  it('keeps offline changes locally and syncs them on reconnect', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn().mockRejectedValue(new Error('offline'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+    expect(await screen.findByText(/Offline changes saved/i)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Log bottle-only feed/i }))
+    await user.click(screen.getByRole('button', { name: /^log bottle$/i }))
+    expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBe('1')
+
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) })
+    window.dispatchEvent(new Event('online'))
+    expect(await screen.findByText(/^Synced$/i)).toBeTruthy()
+    expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
   })
 })

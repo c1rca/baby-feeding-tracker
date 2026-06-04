@@ -4,6 +4,8 @@ A tiny, polished newborn feeding tracker for one-handed, low-light use. Tracks l
 
 ## Production quick start
 
+Full production/migration/offline runbook: [`docs/PRODUCTION.md`](docs/PRODUCTION.md).
+
 ```bash
 git clone <repo-url> baby-feeding-tracker
 cd baby-feeding-tracker
@@ -43,6 +45,7 @@ The app stores durable state at:
 
 - `./data/feeding-tracker.db` — SQLite database mounted into Docker at `/data/feeding-tracker.db`
 - `./backups/*.db` — portable single-file backups
+- `docs/PRODUCTION.md` — full production, migration, backup, restore, and offline-sync runbook
 
 ## Docker Compose
 
@@ -88,6 +91,10 @@ npm run restore:db -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
 docker compose up -d
 curl http://localhost:8080/api/health
 ```
+
+## Offline use
+
+After the first successful visit, the app caches the UI shell, saves feed changes immediately to browser `localStorage`, shows `Offline changes saved` when the server is unreachable, and automatically syncs pending changes on reconnect/focus.
 
 ## Local development
 

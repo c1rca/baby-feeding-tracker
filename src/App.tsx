@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Baby, CirclePause, Download, Moon, Pencil, RotateCcw, Save, Settings, Sun, Trash2, Upload } from 'lucide-react'
 import { formatDuration, sumSideDurations, type SideSegment } from './domain/feedingUtils'
@@ -27,6 +27,7 @@ const KEY_ENTRIES = 'baby-feeding-tracker:v1:entries'
 const KEY_SESSION = 'baby-feeding-tracker:v1:session'
 const KEY_THEME = 'baby-feeding-tracker:v1:theme'
 const KEY_SETTINGS_OPEN = 'baby-feeding-tracker:v1:settings-open'
+const KEY_PENDING_SYNC = 'baby-feeding-tracker:v1:pending-sync'
 const API_STATE = '/api/state'
 const THEME_COOKIE = 'baby_feeding_theme'
 
@@ -72,8 +73,12 @@ function App() {
   const [toast, setToast] = useState('')
   const [undoState, setUndoState] = useState<UndoState | null>(null)
   const [editing, setEditing] = useState<EditingState>(null)
+  const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'offline'>(() => (localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'synced'))
+  const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const latestPayloadRef = useRef<{ entries: Entry[]; session: Session | null; theme: Theme }>({ entries, session, theme })
 
+  useEffect(() => { latestPayloadRef.current = { entries, session, theme } }, [entries, session, theme])
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer) }, [])
   useEffect(() => localStorage.setItem(KEY_ENTRIES, JSON.stringify(entries)), [entries])
   useEffect(() => localStorage.setItem(KEY_SESSION, JSON.stringify(session)), [session])
@@ -94,40 +99,69 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme) => {
+    const payload = latestPayloadRef.current
+    const entriesToSync = nextEntries ?? payload.entries
+    const sessionToSync = nextSession ?? payload.session
+    const themeToSync = nextTheme ?? payload.theme
+    setSyncStatus('syncing')
+    try {
+      const response = await fetch(API_STATE, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries: entriesToSync, session: sessionToSync, theme: themeToSync }),
+      })
+      if (!response.ok) throw new Error('sync failed')
+      localStorage.removeItem(KEY_PENDING_SYNC)
+      setSyncStatus('synced')
+    } catch {
+      localStorage.setItem(KEY_PENDING_SYNC, '1')
+      setSyncStatus('offline')
+    }
+  }, [])
+
   useEffect(() => {
     const loadFromApi = async () => {
+      if (localStorage.getItem(KEY_PENDING_SYNC) === '1') {
+        setHasHydrated(true)
+        await syncToApi()
+        return
+      }
       try {
         const response = await fetch(API_STATE)
-        if (!response.ok) return
+        if (!response.ok) throw new Error('load failed')
         const data = (await response.json()) as { entries?: Entry[]; session?: LegacySession | null; theme?: Theme }
-        if (Array.isArray(data.entries)) {
-          setEntries(data.entries.sort((a, b) => b.endedAt - a.endedAt))
-        }
+        if (Array.isArray(data.entries)) setEntries(data.entries.sort((a, b) => b.endedAt - a.endedAt))
         if (data.session !== undefined) setSession(normalizeSession(data.session))
         if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
+        setSyncStatus('synced')
       } catch {
-        // fallback to localStorage-only mode when backend is unavailable
+        setSyncStatus('offline')
+      } finally {
+        setHasHydrated(true)
       }
     }
 
     void loadFromApi()
-  }, [])
+  }, [syncToApi])
 
   useEffect(() => {
-    const syncToApi = async () => {
-      try {
-        await fetch(API_STATE, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ entries, session, theme }),
-        })
-      } catch {
-        // keep local persistence even if backend is unreachable
-      }
-    }
+    if (!hasHydrated) return
+    localStorage.setItem(KEY_PENDING_SYNC, '1')
+    window.setTimeout(() => void syncToApi(), 0)
+  }, [entries, session, theme, hasHydrated, syncToApi])
 
-    void syncToApi()
-  }, [entries, session, theme])
+  useEffect(() => {
+    const retrySync = () => {
+      if (localStorage.getItem(KEY_PENDING_SYNC) === '1') void syncToApi()
+    }
+    window.addEventListener('online', retrySync)
+    window.addEventListener('focus', retrySync)
+    return () => {
+      window.removeEventListener('online', retrySync)
+      window.removeEventListener('focus', retrySync)
+    }
+  }, [syncToApi])
 
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 1800) }
 
@@ -231,6 +265,7 @@ function App() {
       <header className="top">
         <h1><Baby size={20} /> Baby Feeding Tracker</h1>
         <div className="top-actions">
+          <span className={`sync-pill sync-${syncStatus}`}>{syncStatus === 'synced' ? 'Synced' : syncStatus === 'syncing' ? 'Syncing…' : 'Offline changes saved'}</span>
           <button className="icon-plain" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
             {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
           </button>
