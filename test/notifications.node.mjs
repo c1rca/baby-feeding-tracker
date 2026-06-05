@@ -55,6 +55,34 @@ test('notification scheduler sends once for the current latest feed', async () =
   assert.equal(timers.length, 1)
 })
 
+test('notification scheduler retries after a transient send failure', async () => {
+  const now = new Date('2026-06-05T10:00:00Z').getTime()
+  const row = {
+    entries_json: JSON.stringify([{ id: 'feed-retry', endedAt: now - 2 * 60 * 60 * 1000 }]),
+  }
+  const timers = []
+
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => row },
+    getNotificationState: { get: () => null },
+    upsertNotificationState: { run: () => {} },
+    sendGotify: async () => { throw new Error('transient') },
+    now: () => now,
+    setTimer: (fn, delay) => {
+      timers.push({ fn, delay })
+      return timers.length
+    },
+    clearTimer: () => {},
+    logger: { warn: () => {} },
+  })
+
+  scheduler.evaluate()
+  await timers[0].fn()
+
+  assert.equal(timers.length, 2)
+  assert.equal(timers[1].delay, 0)
+})
+
 test('notification scheduler cancels timers when disabled and reschedules when enabled', () => {
   const now = new Date('2026-06-05T09:00:00Z').getTime()
   const row = {

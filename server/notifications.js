@@ -95,6 +95,7 @@ export function createNotificationScheduler({
           updated_at: new Date(now()).toISOString(),
         })
       } catch (error) {
+        scheduled = null
         logger.warn?.('Gotify notification failed', error)
       } finally {
         evaluate()
