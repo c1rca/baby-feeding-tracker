@@ -9,12 +9,17 @@ services:
       - DB_DIR=/data
       - DB_PATH=/data/feeding-tracker.db
       - NOTIFICATIONS_ENABLED=1
+      - BACKUP_ON_START=1
+      - BACKUP_DIR=/backups
+      - LOG_DIR=/logs
     env_file:
       - .env.gotify
     dns:
       - 1.1.1.1
     volumes:
       - ./data:/data
+      - ./backups:/backups
+      - ./logs:/logs
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]

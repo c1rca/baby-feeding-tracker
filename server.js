@@ -12,12 +12,17 @@ const app = express()
 const port = Number(process.env.PORT || 8080)
 const dbDir = process.env.DB_DIR || path.join(__dirname, 'data')
 const dbPath = process.env.DB_PATH || path.join(dbDir, 'feeding-tracker.db')
+const backupDir = process.env.BACKUP_DIR || path.join(dbDir, 'backups')
+const logDir = process.env.LOG_DIR || path.join(dbDir, 'logs')
+const eventLogPath = path.join(logDir, 'feeding-tracker-events.jsonl')
 const gotifyUrl = process.env.GOTIFY_URL || ''
 const gotifyToken = process.env.GOTIFY_TOKEN || ''
 const notificationsAvailable = Boolean(gotifyUrl && gotifyToken)
 const notificationsDefaultEnabled = process.env.NOTIFICATIONS_ENABLED === '1' && notificationsAvailable
 
 fs.mkdirSync(dbDir, { recursive: true })
+fs.mkdirSync(backupDir, { recursive: true })
+fs.mkdirSync(logDir, { recursive: true })
 const db = new Database(dbPath)
 db.pragma('journal_mode = WAL')
 db.exec(`
@@ -70,6 +75,47 @@ const upsertSetting = db.prepare(`
     value = excluded.value,
     updated_at = excluded.updated_at
 `)
+
+const redactError = (error) => ({
+  name: error?.name ?? 'Error',
+  message: error?.message ?? String(error),
+})
+
+const appendEventLog = (event, payload = {}) => {
+  const record = { at: new Date().toISOString(), event, ...payload }
+  try {
+    fs.appendFileSync(eventLogPath, `${JSON.stringify(record)}\n`, { encoding: 'utf8' })
+  } catch (error) {
+    console.warn('event log write failed', redactError(error))
+  }
+}
+
+const summarizeState = (entries, session, theme) => ({
+  entryCount: entries.length,
+  latestEntryId: entries[0]?.id ?? null,
+  latestEndedAt: entries[0]?.endedAt ?? null,
+  hasSession: Boolean(session),
+  sessionStartedAt: session?.startedAt ?? null,
+  theme,
+})
+
+const createStartupBackup = async () => {
+  if (process.env.BACKUP_ON_START !== '1') return null
+  const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, '').replace('T', '-')
+  const backupPath = path.join(backupDir, `feeding-tracker-startup-${timestamp}.db`)
+  try {
+    await db.backup(backupPath)
+    const size = fs.statSync(backupPath).size
+    appendEventLog('backup_created', { backupPath, size, reason: 'startup' })
+    console.log(`startup backup created: ${backupPath} (${size} bytes)`)
+    return backupPath
+  } catch (error) {
+    appendEventLog('backup_failed', { reason: 'startup', error: redactError(error) })
+    console.warn('startup backup failed', error)
+    return null
+  }
+}
+
 const readBooleanSetting = (key, fallback) => {
   const row = selectSetting.get(key)
   return row ? row.value === '1' : fallback
@@ -82,7 +128,16 @@ const notificationScheduler = notificationsAvailable
       selectState,
       getNotificationState,
       upsertNotificationState,
-      sendGotify: (payload) => sendGotifyMessage({ url: gotifyUrl, token: gotifyToken, ...payload }),
+      sendGotify: async (payload) => {
+        appendEventLog('gotify_send_attempt', { title: payload.title, message: payload.message, priority: payload.priority })
+        try {
+          await sendGotifyMessage({ url: gotifyUrl, token: gotifyToken, ...payload })
+          appendEventLog('gotify_send_success', { title: payload.title, message: payload.message, priority: payload.priority })
+        } catch (error) {
+          appendEventLog('gotify_send_failed', { title: payload.title, message: payload.message, priority: payload.priority, error: redactError(error) })
+          throw error
+        }
+      },
       enabled: gotifyRemindersEnabled,
     })
   : null
@@ -101,6 +156,7 @@ app.put('/api/notification-settings', (req, res) => {
   const enabled = Boolean(req.body?.gotifyRemindersEnabled) && notificationsAvailable
   gotifyRemindersEnabled = enabled
   writeBooleanSetting('gotify_reminders_enabled', enabled)
+  appendEventLog('settings_update', { key: 'gotify_reminders_enabled', value: enabled ? '1' : '0' })
   notificationScheduler?.setEnabled(enabled)
   res.json({ ok: true, available: notificationsAvailable, gotifyRemindersEnabled })
 })
@@ -124,13 +180,17 @@ app.put('/api/state', (req, res) => {
   const session = req.body?.session ?? null
   const theme = req.body?.theme === 'dark' ? 'dark' : 'light'
 
+  const entriesJson = JSON.stringify(entries)
+  const sessionJson = session ? JSON.stringify(session) : null
+
   upsertState.run({
-    entries_json: JSON.stringify(entries),
-    session_json: session ? JSON.stringify(session) : null,
+    entries_json: entriesJson,
+    session_json: sessionJson,
     theme,
     updated_at: new Date().toISOString(),
   })
 
+  appendEventLog('state_replace', { ...summarizeState(entries, session, theme), entries, session })
   notificationScheduler?.evaluate()
 
   res.json({ ok: true })
@@ -147,6 +207,17 @@ if (fs.existsSync(distPath)) {
 app.listen(port, () => {
   console.log(`feeding-tracker server listening on :${port}`)
   console.log(`sqlite db: ${dbPath}`)
+  void createStartupBackup()
+  const startupRow = selectState.get()
+  if (startupRow) {
+    try {
+      const entries = JSON.parse(startupRow.entries_json)
+      const session = startupRow.session_json ? JSON.parse(startupRow.session_json) : null
+      appendEventLog('startup_state_snapshot', { ...summarizeState(entries, session, startupRow.theme || 'light'), entries, session })
+    } catch (error) {
+      appendEventLog('startup_state_snapshot_failed', { error: redactError(error) })
+    }
+  }
   if (notificationsAvailable) {
     notificationScheduler.evaluate()
     console.log(`gotify reminders ${gotifyRemindersEnabled ? 'enabled' : 'disabled'}: ${gotifyUrl}`)

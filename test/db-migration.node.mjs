@@ -85,3 +85,30 @@ test('restore rejects invalid backup files', () => {
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /Invalid feeding tracker backup/)
 })
+
+test('event log replay recreates latest app state', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'feeding-replay-'))
+  const logPath = path.join(tmp, 'feeding-tracker-events.jsonl')
+  const targetPath = path.join(tmp, 'data', 'feeding-tracker.db')
+  const older = { at: '2026-01-01T00:00:00.000Z', event: 'state_replace', theme: 'light', entries: [{ id: 'old-feed' }], session: null }
+  const settings = { at: '2026-01-01T00:01:00.000Z', event: 'settings_update', key: 'gotify_reminders_enabled', value: '1' }
+  const latest = { at: '2026-01-01T00:02:00.000Z', event: 'state_replace', theme: 'dark', entries: [{ id: 'new-feed', type: 'bottle', bottleOunces: 3 }], session: { startedAt: 123, activeSide: null, segmentStart: null, segments: [], bottleOunces: 0, note: '' } }
+  fs.writeFileSync(logPath, [older, settings, latest].map((record) => JSON.stringify(record)).join('\n'))
+
+  const result = spawnSync(process.execPath, [path.join(rootDir, 'scripts', 'replay-event-log.mjs'), logPath], {
+    cwd: rootDir,
+    env: { ...process.env, DB_PATH: targetPath },
+    encoding: 'utf8',
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  const restored = new Database(targetPath, { readonly: true })
+  const row = restored.prepare('SELECT entries_json, session_json, theme FROM app_state WHERE id = 1').get()
+  const setting = restored.prepare('SELECT value FROM app_settings WHERE key = ?').get('gotify_reminders_enabled')
+  restored.close()
+  assert.equal(row.theme, 'dark')
+  assert.match(row.entries_json, /new-feed/)
+  assert.doesNotMatch(row.entries_json, /old-feed/)
+  assert.match(row.session_json, /startedAt/)
+  assert.equal(setting.value, '1')
+})

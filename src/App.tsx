@@ -185,6 +185,18 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+  useEffect(() => {
+    if (!openEntryMenuId) return
+    const onPointerDown = (event: PointerEvent) => {
+      const path = event.composedPath()
+      if (path.some((target) => target instanceof Element && target.closest('.entry-action-wrap'))) return
+      setOpenEntryMenuId(null)
+      setConfirmingDeleteEntryId(null)
+    }
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [openEntryMenuId])
+
 
   const loadGotifySettings = useCallback(async () => {
     try {

@@ -179,6 +179,35 @@ describe('App interactions', () => {
     expect(within(firstItem).getByRole('menuitem', { name: /Delete entry/i })).toBeTruthy()
   })
 
+  it('closes a timeline action menu when clicking outside it', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'entry-menu-outside-click',
+          type: 'bottle',
+          startedAt: Date.now(),
+          endedAt: Date.now(),
+          leftSeconds: 0,
+          rightSeconds: 0,
+          bottleOunces: 3,
+          note: '',
+        },
+      ]),
+    )
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    const firstItem = screen.getAllByRole('listitem')[0]
+    await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
+    expect(within(firstItem).getByRole('menuitem', { name: /Edit entry/i })).toBeTruthy()
+
+    await user.click(screen.getByRole('heading', { name: /Active Feed/i }))
+
+    expect(within(firstItem).queryByRole('menuitem', { name: /Edit entry/i })).toBeNull()
+  })
+
   it('requests notification permission from settings', async () => {
     const requestPermission = vi.fn(async () => 'granted' as NotificationPermission)
     const NotificationMock = vi.fn()
