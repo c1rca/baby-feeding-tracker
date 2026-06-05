@@ -125,6 +125,9 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 .hidden { display: none; }
 .muted { color: #64748b; }
 .settings .row { gap: 8px; }
+.notification-setting { display:flex; justify-content:space-between; align-items:center; gap:14px; padding:12px; border:1px solid #e2e8f0; border-radius:16px; background:#f8fafc; }
+.notification-setting p { margin:4px 0; }
+.notification-setting small { color:#64748b; font-weight:700; text-transform:capitalize; }
 .toast {
   position: sticky; bottom: 8px; z-index: 10;
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -173,6 +176,8 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .delete-confirm span { color:#cbd5e1; }
 [data-theme='dark'] .entry-menu .confirm-delete { background:rgba(127,29,29,.35); }
 [data-theme='dark'] input { background: #0f172a; color: #e2e8f0; border-color: var(--border); }
+[data-theme='dark'] .notification-setting { background:#0f172a; border-color:#334155; }
+[data-theme='dark'] .notification-setting small { color:#94a3b8; }
 [data-theme='dark'] .suggestion { background:rgba(30,41,59,.88); border-color:#334155; color:#bfdbfe; }
 [data-theme='dark'] .live-split > div:not(.split-title) { background:rgba(15,23,42,.78); border-color:#334155; }
 [data-theme='dark'] .start-offset-toggle { background:rgba(15,23,42,.72); color:#cbd5e1; border-color:#334155; }

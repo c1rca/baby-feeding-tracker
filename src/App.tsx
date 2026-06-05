@@ -28,7 +28,10 @@ const KEY_SESSION = 'baby-feeding-tracker:v1:session'
 const KEY_THEME = 'baby-feeding-tracker:v1:theme'
 const KEY_SETTINGS_OPEN = 'baby-feeding-tracker:v1:settings-open'
 const KEY_PENDING_SYNC = 'baby-feeding-tracker:v1:pending-sync'
+const KEY_FEEDING_NOTIFICATIONS = 'baby-feeding-tracker:v1:feeding-notifications'
 const API_STATE = '/api/state'
+const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
+const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
 const THEME_COOKIE = 'baby_feeding_theme'
 
 const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -132,6 +135,8 @@ function App() {
   const [resumeFocusTick, setResumeFocusTick] = useState(0)
   const heroRef = useRef<HTMLElement | null>(null)
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'offline'>(() => (localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'synced'))
+  const [feedingNotificationsEnabled, setFeedingNotificationsEnabled] = useState(() => localStorage.getItem(KEY_FEEDING_NOTIFICATIONS) === '1')
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => (typeof Notification === 'undefined' ? 'denied' : Notification.permission))
   const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const latestPayloadRef = useRef<{ entries: Entry[]; session: Session | null; theme: Theme }>({ entries, session, theme })
@@ -154,6 +159,7 @@ function App() {
     document.documentElement.setAttribute('data-theme', theme)
   }, [theme])
   useEffect(() => localStorage.setItem(KEY_SETTINGS_OPEN, settingsOpen ? '1' : '0'), [settingsOpen])
+  useEffect(() => localStorage.setItem(KEY_FEEDING_NOTIFICATIONS, feedingNotificationsEnabled ? '1' : '0'), [feedingNotificationsEnabled])
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
@@ -232,6 +238,18 @@ function App() {
   }, [syncToApi])
 
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 1800) }
+
+  const enableFeedingNotifications = async () => {
+    if (typeof Notification === 'undefined') return showToast('Notifications are not supported in this browser')
+    const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission
+    setNotificationPermission(permission)
+    if (permission !== 'granted') {
+      setFeedingNotificationsEnabled(false)
+      return showToast('Notification permission not granted')
+    }
+    setFeedingNotificationsEnabled(true)
+    showToast('Feeding reminders enabled')
+  }
 
   const selectedStartTime = useMemo(() => {
     const t = now
@@ -349,6 +367,26 @@ function App() {
   }, [entries])
   const nextDueText = minsSinceLast === null ? 'No previous feed yet' : `Last feed: ${Math.floor(minsSinceLast / 60) > 0 ? `${Math.floor(minsSinceLast / 60)}h ` : ''}${minsSinceLast % 60}m ago${avgGapMinutes ? ` · Avg gap today: ${Math.floor(avgGapMinutes / 60) > 0 ? `${Math.floor(avgGapMinutes / 60)}h ` : ''}${avgGapMinutes % 60}m` : ''}`
   const nextFeedWindowText = lastFeed ? `Next feeding window: ${formatTimeRange(lastFeed.endedAt + 2 * 60 * 60 * 1000, lastFeed.endedAt + 3 * 60 * 60 * 1000)}` : 'Next feeding window: after first feed'
+
+  useEffect(() => {
+    if (!feedingNotificationsEnabled || notificationPermission !== 'granted' || !lastFeed || typeof Notification === 'undefined') return
+    const timers = NEXT_FEEDING_REMINDER_OFFSETS_MS
+      .map((offsetMs) => ({ offsetMs, delayMs: lastFeed.endedAt + offsetMs - Date.now() }))
+      .filter(({ delayMs }) => delayMs > 0)
+      .map(({ offsetMs, delayMs }) => window.setTimeout(() => {
+        const hours = Math.round(offsetMs / (60 * 60 * 1000))
+        const notification = new Notification('Feeding window reminder', {
+          body: `${hours} hours since the last feed. Open Feedr to log or resume.`,
+          tag: `next-feeding-${lastFeed.id}-${hours}h`,
+          requireInteraction: hours === 3,
+        })
+        notification.onclick = () => {
+          window.open(NOTIFICATION_APP_URL, '_blank', 'noopener,noreferrer')
+          notification.close()
+        }
+      }, delayMs))
+    return () => timers.forEach((timer) => window.clearTimeout(timer))
+  }, [feedingNotificationsEnabled, lastFeed, notificationPermission])
   const suggestedSide = useMemo<Side>(() => {
     const lastNursing = entries.find((entry) => entry.leftSeconds + entry.rightSeconds > 0)
     if (!lastNursing) return today.left <= today.right ? 'left' : 'right'
@@ -472,6 +510,14 @@ function App() {
         <div className="modal-backdrop" onClick={() => setSettingsOpen(false)}>
           <section className="card settings modal-card" role="dialog" aria-modal="true" aria-label="Settings and data" onClick={(e) => e.stopPropagation()}>
             <h2>Settings & Data</h2>
+            <div className="notification-setting">
+              <div>
+                <strong>Next feeding reminders</strong>
+                <p className="muted">Browser/mobile notifications at 2 and 3 hours after each feed. Opens Feedr.</p>
+                <small>Permission: {notificationPermission}</small>
+              </div>
+              {feedingNotificationsEnabled && notificationPermission === 'granted' ? <button type="button" onClick={() => { setFeedingNotificationsEnabled(false); showToast('Feeding reminders disabled') }}>Turn off</button> : <button type="button" className="primary" onClick={enableFeedingNotifications}>Enable reminders</button>}
+            </div>
             <div className="row"><button aria-label="Export JSON" onClick={() => { const payload = { version: 1, exportedAt: new Date().toISOString(), entries }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); showToast('Data exported') }}><Download size={16} /> Export JSON</button><button aria-label="Import JSON" onClick={() => fileInputRef.current?.click()}><Upload size={16} /> Import JSON</button><button className="danger" onClick={() => { if (!window.confirm('Clear all feeding data? Export a backup first if needed.')) return; setEntries([]); setSession(null); setUndoState(null); showToast('All data cleared') }}><Trash2 size={16} /> Clear all data</button></div>
             <input ref={fileInputRef} className="hidden" type="file" accept="application/json" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const text = await file.text(); try { const parsed = JSON.parse(text) as { entries?: Entry[] }; if (!parsed.entries) throw new Error('Invalid data'); setEntries(parsed.entries.sort((a, b) => b.endedAt - a.endedAt)); showToast('Data imported') } catch { showToast('Import failed: invalid file') } finally { event.target.value = '' } }} />
           </section>
