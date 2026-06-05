@@ -268,8 +268,10 @@ describe('App interactions', () => {
     expect(within(bottleItem).queryByText(/^L /i)).toBeNull()
     expect(within(bottleItem).queryByText(/^R /i)).toBeNull()
 
+    expect(within(rightOnlyItem).getByText(/Right Breast/i)).toBeTruthy()
     expect(within(rightOnlyItem).queryByText(/2m 00s total/i)).toBeNull()
-    expect(within(rightOnlyItem).getByText(/Right: 2m 00s/i)).toBeTruthy()
+    expect(within(rightOnlyItem).getByText(/^2m 00s$/i)).toBeTruthy()
+    expect(within(rightOnlyItem).queryByText(/Right: 2m 00s/i)).toBeNull()
     expect(within(rightOnlyItem).queryByText(/^Left /i)).toBeNull()
   })
 
