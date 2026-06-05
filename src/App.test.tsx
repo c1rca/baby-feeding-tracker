@@ -168,6 +168,7 @@ describe('App interactions', () => {
     expect(within(firstItem).getByText(/R 5m 00s/i)).toBeTruthy()
     expect(within(firstItem).getByText(/2\.5 oz/i)).toBeTruthy()
     expect(within(firstItem).getByText(/sleepy feed/i)).toBeTruthy()
+    expect(within(firstItem).getByRole('button', { name: /Resume recent entry/i })).toBeTruthy()
     expect(within(firstItem).queryByRole('button', { name: /^Edit entry$/i })).toBeNull()
     expect(within(firstItem).queryByRole('button', { name: /^Delete entry$/i })).toBeNull()
 
@@ -176,6 +177,55 @@ describe('App interactions', () => {
     expect(within(firstItem).getByRole('menuitem', { name: /Resume session/i })).toBeTruthy()
     expect(within(firstItem).getByRole('menuitem', { name: /Edit entry/i })).toBeTruthy()
     expect(within(firstItem).getByRole('menuitem', { name: /Delete entry/i })).toBeTruthy()
+  })
+
+  it('shows the next feeding window two to three hours after the last feed', () => {
+    const endedAt = new Date(2026, 5, 5, 8, 0).getTime()
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'entry-window',
+          type: 'breast',
+          startedAt: endedAt - 600000,
+          endedAt,
+          leftSeconds: 300,
+          rightSeconds: 300,
+          bottleOunces: null,
+          note: '',
+        },
+      ]),
+    )
+
+    render(<App />)
+
+    expect(screen.getByText(/Next feeding window:/i).textContent).toMatch(/10:00.*11:00/)
+  })
+
+  it('shows inline resume only on the latest two timeline entries', () => {
+    const base = Date.now()
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify(
+        [0, 1, 2].map((index) => ({
+          id: `entry-inline-${index}`,
+          type: 'breast',
+          startedAt: base - index * 600000 - 300000,
+          endedAt: base - index * 600000,
+          leftSeconds: 300,
+          rightSeconds: 0,
+          bottleOunces: null,
+          note: '',
+        })),
+      ),
+    )
+
+    render(<App />)
+
+    const items = screen.getAllByRole('listitem')
+    expect(within(items[0]).getByRole('button', { name: /Resume recent entry/i })).toBeTruthy()
+    expect(within(items[1]).getByRole('button', { name: /Resume recent entry/i })).toBeTruthy()
+    expect(within(items[2]).queryByRole('button', { name: /Resume recent entry/i })).toBeNull()
   })
 
   it('edits ounces in timeline item', async () => {

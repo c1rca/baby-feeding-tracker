@@ -13,6 +13,7 @@ dist-ssr
 *.local
 
 data/
+data-dev/
 backups/
 
 # Editor directories and files
