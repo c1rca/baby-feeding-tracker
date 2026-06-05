@@ -15,6 +15,7 @@ describe('App interactions', () => {
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
+    vi.useRealTimers()
     vi.unstubAllGlobals()
   })
 
@@ -209,6 +210,39 @@ describe('App interactions', () => {
     expect(screen.getByText(/^Right$/i).nextElementSibling?.textContent).toMatch(/0m/)
   })
 
+  it('starts a session from a typed clock time and shows elapsed minutes', async () => {
+    vi.setSystemTime(new Date('2026-06-05T12:45:00'))
+    const user = userEvent.setup()
+    render(<App />)
+
+    const startTime = screen.getByLabelText(/Session start time/i) as HTMLInputElement
+    expect(startTime.value).toBe('12:45 PM')
+    await user.clear(startTime)
+    await user.type(startTime, '12:30pm')
+
+    expect(screen.getByText(/15 min ago/i)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+
+    expect(screen.getAllByText(/15m 00s/i).length).toBeGreaterThan(0)
+    const savedSession = JSON.parse(localStorage.getItem(STORAGE_SESSION_KEY) || 'null') as { startedAt: number; segmentStart: number }
+    expect(savedSession.startedAt).toBe(new Date('2026-06-05T12:30:00').getTime())
+    expect(savedSession.segmentStart).toBe(new Date('2026-06-05T12:30:00').getTime())
+  })
+
+  it('starts a session from the minutes-ago tab', async () => {
+    vi.setSystemTime(new Date('2026-06-05T12:45:00'))
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('tab', { name: /Minutes ago/i }))
+    await user.clear(screen.getByLabelText(/Start minutes ago/i))
+    await user.type(screen.getByLabelText(/Start minutes ago/i), '5')
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+
+    expect(screen.getAllByText(/5m 00s/i).length).toBeGreaterThan(0)
+    const savedSession = JSON.parse(localStorage.getItem(STORAGE_SESSION_KEY) || 'null') as { startedAt: number }
+    expect(savedSession.startedAt).toBe(new Date('2026-06-05T12:40:00').getTime())
+  })
 
   it('clears an active feed without saving an entry', async () => {
     const user = userEvent.setup()

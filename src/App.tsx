@@ -35,6 +35,30 @@ const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString
 const sideLabel = (side: Side) => (side === 'left' ? 'Left' : 'Right')
 const oppositeSide = (side: Side): Side => (side === 'left' ? 'right' : 'left')
 const makeId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `feed-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`)
+
+const formatClockInput = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+const parseClockTimeToday = (value: string, referenceTime: number) => {
+  const trimmed = value.trim().toLowerCase().replace(/\s+/g, '')
+  const match = trimmed.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/)
+  if (!match) return null
+
+  let hours = Number(match[1])
+  const minutes = match[2] ? Number(match[2]) : 0
+  const meridiem = match[3]
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || minutes > 59) return null
+  if (meridiem) {
+    if (hours < 1 || hours > 12) return null
+    hours = hours % 12 + (meridiem === 'pm' ? 12 : 0)
+  } else if (hours > 23) {
+    return null
+  }
+
+  const parsed = new Date(referenceTime)
+  parsed.setHours(hours, minutes, 0, 0)
+  if (parsed.getTime() > referenceTime) parsed.setDate(parsed.getDate() - 1)
+  return parsed.getTime()
+}
+
 const normalizeSession = (raw: LegacySession | Session | null | undefined): Session | null => {
   if (!raw) return null
   return {
@@ -94,7 +118,10 @@ function App() {
   const [manualOpen, setManualOpen] = useState(false)
   const [manualDraft, setManualDraft] = useState({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
   const [bottleQuickOz, setBottleQuickOz] = useState(2)
-  const [now, setNow] = useState(0)
+  const [startInputMode, setStartInputMode] = useState<'clock' | 'minutes'>('clock')
+  const [startClockText, setStartClockText] = useState(() => formatClockInput(Date.now()))
+  const [startMinutesAgo, setStartMinutesAgo] = useState('0')
+  const [now, setNow] = useState(() => Date.now())
   const [toast, setToast] = useState('')
   const [undoState, setUndoState] = useState<UndoState | null>(null)
   const [editing, setEditing] = useState<EditingState>(null)
@@ -190,7 +217,17 @@ function App() {
 
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 1800) }
 
-  const startSession = (side: Side) => { const t = Date.now(); setNow(t); setSession({ startedAt: t, activeSide: side, segmentStart: t, segments: [], bottleOunces: 0, note: '' }) }
+  const selectedStartTime = useMemo(() => {
+    const t = now
+    if (startInputMode === 'minutes') {
+      const minutes = Math.max(0, Number(startMinutesAgo) || 0)
+      return t - Math.round(minutes * 60000)
+    }
+    return parseClockTimeToday(startClockText, t) ?? t
+  }, [now, startClockText, startInputMode, startMinutesAgo])
+  const selectedStartMinutesAgo = Math.max(0, Math.round((now - selectedStartTime) / 60000))
+
+  const startSession = (side: Side) => { const t = Date.now(); const startedAt = Math.min(selectedStartTime, t); setNow(t); setSession({ startedAt, activeSide: side, segmentStart: startedAt, segments: [], bottleOunces: 0, note: '' }) }
   const switchSide = (side: Side) => { if (!session || !session.activeSide || !session.segmentStart) return; const t = Date.now(); setSession({ ...session, segments: [...session.segments, { side: session.activeSide, startedAt: session.segmentStart, endedAt: t }], activeSide: side, segmentStart: t }) }
   const pause = () => { if (!session || !session.activeSide || !session.segmentStart) return; const t = Date.now(); setSession({ ...session, segments: [...session.segments, { side: session.activeSide, startedAt: session.segmentStart, endedAt: t }], activeSide: null, segmentStart: null }) }
   const resume = (side: Side) => { if (!session) return; const t = Date.now(); setNow(t); setSession({ ...session, activeSide: side, segmentStart: t }) }
@@ -330,6 +367,20 @@ function App() {
             <div><span>Left</span><strong>{formatDuration(activeSplit.left)}</strong></div>
             <div><span>Right</span><strong>{formatDuration(activeSplit.right)}</strong></div>
             <div><span>Bottle</span><strong>{session.bottleOunces.toFixed(1)} oz</strong></div>
+          </div>
+        ) : null}
+        {!session ? (
+          <div className="start-offset-panel" aria-label="Session start offset">
+            <div className="start-tabs" role="tablist" aria-label="Session start input mode">
+              <button type="button" role="tab" aria-selected={startInputMode === 'clock'} className={startInputMode === 'clock' ? 'active-tab' : ''} onClick={() => setStartInputMode('clock')}>Clock time</button>
+              <button type="button" role="tab" aria-selected={startInputMode === 'minutes'} className={startInputMode === 'minutes' ? 'active-tab' : ''} onClick={() => setStartInputMode('minutes')}>Minutes ago</button>
+            </div>
+            {startInputMode === 'clock' ? (
+              <label>Session start time<input value={startClockText} onChange={(e) => setStartClockText(e.target.value)} placeholder="12:30 PM" /></label>
+            ) : (
+              <label>Start minutes ago<input inputMode="decimal" value={startMinutesAgo} onChange={(e) => setStartMinutesAgo(e.target.value)} placeholder="5" /></label>
+            )}
+            <span className="start-offset-summary">{selectedStartMinutesAgo === 0 ? 'Starting now' : `${selectedStartMinutesAgo} min ago`}</span>
           </div>
         ) : null}
         <div className="row hero-actions">

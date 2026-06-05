@@ -46,6 +46,12 @@ body { margin: 0; }
 .pill { border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px 10px; font-size: .8rem; background: #fff; color: #334155; font-weight:600; }
 .timer { font-size: clamp(2.6rem, 9vw, 5rem); font-weight: 850; letter-spacing: .03em; margin: 10px 0 14px; line-height: .95; }
 .suggestion { display:inline-flex; gap:6px; align-items:center; border:1px solid #bfdbfe; background:rgba(239,246,255,.85); color:#1e3a8a; border-radius:999px; padding:6px 12px; font-weight:650; }
+.start-offset-panel { display:grid; gap:8px; margin: 12px 0; padding: 10px; border:1px solid #dbeafe; background:rgba(255,255,255,.64); border-radius:16px; }
+.start-tabs { display:flex; gap:6px; }
+.start-tabs button { min-height:34px; font-size:.86rem; padding:0 10px; }
+.start-tabs .active-tab { background:#eff6ff; border-color:#93c5fd; color:#1d4ed8; box-shadow: inset 0 0 0 1px rgba(37,99,235,.12); }
+.start-offset-panel label { display:grid; gap:5px; color:#475569; font-size:.86rem; font-weight:650; }
+.start-offset-summary { color:#1e3a8a; font-size:.85rem; font-weight:800; }
 .hero-actions button { min-height: 52px; font-size: 1rem; }
 .hero-actions .jumbo { min-height: 64px; padding-inline: 22px; font-size: 1.12rem; box-shadow: 0 16px 30px rgba(37,99,235,.22); }
 .live-split { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px; margin: 0 0 14px; }
@@ -128,6 +134,10 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] input { background: #0f172a; color: #e2e8f0; border-color: var(--border); }
 [data-theme='dark'] .suggestion { background:rgba(30,41,59,.88); border-color:#334155; color:#bfdbfe; }
 [data-theme='dark'] .live-split > div:not(.split-title) { background:rgba(15,23,42,.78); border-color:#334155; }
+[data-theme='dark'] .start-offset-panel { background:rgba(15,23,42,.58); border-color:#334155; }
+[data-theme='dark'] .start-offset-panel label { color:#cbd5e1; }
+[data-theme='dark'] .start-offset-summary { color:#93c5fd; }
+[data-theme='dark'] .start-tabs .active-tab { background:#1e3a8a; border-color:#2563eb; color:#dbeafe; }
 [data-theme='dark'] .icon-plain { color: #e2e8f0; opacity: .96; }
 [data-theme='dark'] .sync-pill { background:rgba(15,23,42,.86); border-color:#334155; }
 [data-theme='dark'] .sync-synced { color:#86efac; border-color:#166534; }
