@@ -452,9 +452,16 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Clear active feed/i }))
 
     expect(screen.getByText(/Active feed cleared/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Undo clear active feed/i })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /End feed/i })).toBeNull()
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]')).toHaveLength(0)
     expect(localStorage.getItem(STORAGE_SESSION_KEY)).toBe('null')
+
+    await user.click(screen.getByRole('button', { name: /Undo clear active feed/i }))
+
+    expect(screen.getByText(/Active feed restored/i)).toBeTruthy()
+    expect(screen.getByText(/On left/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /End feed/i }).className).toContain('success')
   })
 
   it('edits left and right nursing minutes in a timeline item', async () => {
