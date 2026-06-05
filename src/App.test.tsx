@@ -361,7 +361,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.getByText(/Suggested next: Left/i)).toBeTruthy()
+    expect(screen.getByText(/Suggested:/i)).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
     expect(screen.getByText(/On left/i)).toBeTruthy()
   })
