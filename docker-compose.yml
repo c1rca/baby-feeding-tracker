@@ -8,6 +8,11 @@ services:
       - PORT=8080
       - DB_DIR=/data
       - DB_PATH=/data/feeding-tracker.db
+      - NOTIFICATIONS_ENABLED=1
+    env_file:
+      - .env.gotify
+    dns:
+      - 1.1.1.1
     volumes:
       - ./data:/data
     restart: unless-stopped
