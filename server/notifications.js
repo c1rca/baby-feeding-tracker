@@ -19,6 +19,15 @@ export function buildReminder(latestFeed, now = Date.now()) {
   return { entryId: latestFeed.id ?? String(latestFeed.endedAt), dueAt, windowEndAt, catchUpUntil }
 }
 
+export function hasActiveSession(row) {
+  if (!row?.session_json) return false
+  try {
+    return Boolean(JSON.parse(row.session_json))
+  } catch {
+    return Boolean(row.session_json)
+  }
+}
+
 export function createNotificationScheduler({
   selectState,
   getNotificationState,
@@ -44,6 +53,7 @@ export function createNotificationScheduler({
     if (!isEnabled) return cancel()
     const row = selectState.get()
     if (!row) return cancel()
+    if (hasActiveSession(row)) return cancel()
 
     let entries = []
     try {
@@ -68,6 +78,16 @@ export function createNotificationScheduler({
       timer = null
       const freshRow = selectState.get()
       if (!freshRow) return cancel()
+      if (hasActiveSession(freshRow)) {
+        upsertNotificationState.run({
+          entry_id: reminder.entryId,
+          due_at: new Date(reminder.dueAt).toISOString(),
+          sent_at: new Date(now()).toISOString(),
+          updated_at: new Date(now()).toISOString(),
+        })
+        scheduled = null
+        return evaluate()
+      }
 
       let freshEntries = []
       try {
@@ -78,7 +98,7 @@ export function createNotificationScheduler({
 
       const freshLatest = getLatestEndedFeed(freshEntries)
       const freshReminder = buildReminder(freshLatest, now())
-      if (!freshReminder || freshReminder.entryId !== reminder.entryId || now() > reminder.catchUpUntil) return evaluate()
+      if (!freshReminder || freshReminder.entryId !== reminder.entryId || now() > freshReminder.catchUpUntil) return evaluate()
 
       const freshNotificationState = getNotificationState.get(reminder.entryId)
       if (freshNotificationState?.sent_at) return cancel()
@@ -86,7 +106,7 @@ export function createNotificationScheduler({
       try {
         await sendGotify({
           title: 'Feeding reminder',
-          message: `Next feeding window is open (${formatTime(reminder.dueAt)}–${formatTime(reminder.windowEndAt)}).\n\n${FEEDR_URL}`,
+          message: `Next feeding window is open (${formatTime(freshReminder.dueAt)}–${formatTime(freshReminder.windowEndAt)}).\n\n${FEEDR_URL}`,
           priority: 5,
         })
         upsertNotificationState.run({
