@@ -51,7 +51,8 @@ describe('App interactions', () => {
     render(<App />)
 
     const firstItem = screen.getAllByRole('listitem')[0]
-    await user.click(within(firstItem).getByRole('button', { name: /Delete entry/i }))
+    await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
+    await user.click(within(firstItem).getByRole('menuitem', { name: /Delete entry/i }))
     expect(screen.getByText(/Entry deleted/i)).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: /Undo delete/i }))
@@ -81,7 +82,8 @@ describe('App interactions', () => {
     render(<App />)
 
     const firstItem = screen.getAllByRole('listitem')[0]
-    await user.click(within(firstItem).getByRole('button', { name: /Resume session/i }))
+    await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
+    await user.click(within(firstItem).getByRole('menuitem', { name: /Resume session/i }))
 
     expect(screen.getByText(/Session resumed/i)).toBeTruthy()
     expect(screen.getByText(/Paused/i)).toBeTruthy()
@@ -121,11 +123,48 @@ describe('App interactions', () => {
 
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
     const firstItem = screen.getAllByRole('listitem')[0]
-    await user.click(within(firstItem).getByRole('button', { name: /Resume session/i }))
+    await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
+    await user.click(within(firstItem).getByRole('menuitem', { name: /Resume session/i }))
 
     expect(screen.getByText(/Finish or clear the active feed before resuming another entry/i)).toBeTruthy()
     expect(screen.getByText(/On left/i)).toBeTruthy()
     expect(within(firstItem).getByText(/bottle/i)).toBeTruthy()
+  })
+
+  it('keeps timeline rows scan-first with actions tucked into a compact menu', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'entry-compact-actions',
+          type: 'mixed',
+          startedAt: Date.now() - 900000,
+          endedAt: Date.now(),
+          leftSeconds: 420,
+          rightSeconds: 300,
+          bottleOunces: 2.5,
+          note: 'sleepy feed',
+        },
+      ]),
+    )
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    const firstItem = screen.getAllByRole('listitem')[0]
+    expect(within(firstItem).getByText(/12m 00s total/i)).toBeTruthy()
+    expect(within(firstItem).getByText(/L 7m 00s/i)).toBeTruthy()
+    expect(within(firstItem).getByText(/R 5m 00s/i)).toBeTruthy()
+    expect(within(firstItem).getByText(/2\.5 oz/i)).toBeTruthy()
+    expect(within(firstItem).getByText(/sleepy feed/i)).toBeTruthy()
+    expect(within(firstItem).queryByRole('button', { name: /^Edit entry$/i })).toBeNull()
+    expect(within(firstItem).queryByRole('button', { name: /^Delete entry$/i })).toBeNull()
+
+    await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
+
+    expect(within(firstItem).getByRole('menuitem', { name: /Resume session/i })).toBeTruthy()
+    expect(within(firstItem).getByRole('menuitem', { name: /Edit entry/i })).toBeTruthy()
+    expect(within(firstItem).getByRole('menuitem', { name: /Delete entry/i })).toBeTruthy()
   })
 
   it('edits ounces in timeline item', async () => {
@@ -149,7 +188,8 @@ describe('App interactions', () => {
     render(<App />)
 
     const firstItem = screen.getAllByRole('listitem')[0]
-    await user.click(within(firstItem).getByRole('button', { name: /Edit/i }))
+    await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
+    await user.click(within(firstItem).getByRole('menuitem', { name: /Edit/i }))
     const ouncesInput = screen.getByPlaceholderText(/e\.g\. 2\.5/i)
     await user.clear(ouncesInput)
     await user.type(ouncesInput, '4.5')
@@ -280,7 +320,8 @@ describe('App interactions', () => {
     render(<App />)
 
     const firstItem = screen.getAllByRole('listitem')[0]
-    await user.click(within(firstItem).getByRole('button', { name: /Edit/i }))
+    await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
+    await user.click(within(firstItem).getByRole('menuitem', { name: /Edit/i }))
     await user.clear(screen.getByLabelText(/^Left minutes$/i))
     await user.type(screen.getByLabelText(/^Left minutes$/i), '9')
     await user.clear(screen.getByLabelText(/^Right minutes$/i))
@@ -288,7 +329,9 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Save/i }))
 
     expect(screen.getByText(/Entry updated/i)).toBeTruthy()
-    expect(screen.getByText(/L 9m 00s \/ R 4m 00s/i)).toBeTruthy()
+    const updatedItem = screen.getAllByRole('listitem')[0]
+    expect(within(updatedItem).getByText(/L\s+9m 00s/i)).toBeTruthy()
+    expect(within(updatedItem).getByText(/R\s+4m 00s/i)).toBeTruthy()
     const savedEntries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<{ leftSeconds: number; rightSeconds: number }>
     expect(savedEntries[0].leftSeconds).toBe(540)
     expect(savedEntries[0].rightSeconds).toBe(240)
