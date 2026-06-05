@@ -203,7 +203,7 @@ describe('App interactions', () => {
     await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
     expect(within(firstItem).getByRole('menuitem', { name: /Edit entry/i })).toBeTruthy()
 
-    await user.click(screen.getByRole('heading', { name: /Active Feed/i }))
+    await user.click(screen.getByText(/Baby Feeding Tracker/i))
 
     expect(within(firstItem).queryByRole('menuitem', { name: /Edit entry/i })).toBeNull()
   })
@@ -369,6 +369,7 @@ describe('App interactions', () => {
     const { container } = render(<App />)
     const heroText = container.querySelector('.hero')?.textContent || ''
 
+    expect(screen.queryByText(/Active Feed/i)).toBeNull()
     expect(screen.getByText(/Avg 2h 30m/i)).toBeTruthy()
     expect(screen.getByText(/Next feed/i)).toBeTruthy()
     expect(screen.getByText(/12:30.*1:30/i)).toBeTruthy()

@@ -487,8 +487,7 @@ function App() {
       </header>
 
       <section className="card hero" ref={heroRef}>
-        <div className="hero-top"><h2>Active Feed</h2><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
-        <div className="feed-cues hero-priority-cues"><span className="suggestion">Suggested: {sideLabel(suggestedSide)}</span><span className="next-window"><span>Next feed</span><strong>{nextFeedWindowText}</strong></span></div>
+        <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="suggestion">Suggested: {sideLabel(suggestedSide)}</span><span className="next-window"><span>Next feed</span><strong>{nextFeedWindowText}</strong></span></div><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
         <div className="hero-micro-meta" aria-label="Feed timing summary">
           <span>{lastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
