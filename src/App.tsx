@@ -119,6 +119,7 @@ function App() {
   const [manualDraft, setManualDraft] = useState({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
   const [bottleQuickOz, setBottleQuickOz] = useState(2)
   const [startInputMode, setStartInputMode] = useState<'clock' | 'minutes'>('clock')
+  const [startOffsetOpen, setStartOffsetOpen] = useState(false)
   const [startClockText, setStartClockText] = useState(() => formatClockInput(Date.now()))
   const [startMinutesAgo, setStartMinutesAgo] = useState('0')
   const [now, setNow] = useState(() => Date.now())
@@ -221,12 +222,13 @@ function App() {
 
   const selectedStartTime = useMemo(() => {
     const t = now
+    if (!startOffsetOpen) return now
     if (startInputMode === 'minutes') {
       const minutes = Math.max(0, Number(startMinutesAgo) || 0)
       return t - Math.round(minutes * 60000)
     }
     return parseClockTimeToday(startClockText, t) ?? t
-  }, [now, startClockText, startInputMode, startMinutesAgo])
+  }, [now, startClockText, startInputMode, startMinutesAgo, startOffsetOpen])
   const selectedStartMinutesAgo = Math.max(0, Math.round((now - selectedStartTime) / 60000))
 
   const startSession = (side: Side) => { const t = Date.now(); const startedAt = Math.min(selectedStartTime, t); setNow(t); setSession({ startedAt, activeSide: side, segmentStart: startedAt, segments: [], bottleOunces: 0, note: '' }) }
@@ -372,17 +374,25 @@ function App() {
           </div>
         ) : null}
         {!session ? (
-          <div className="start-offset-panel" aria-label="Session start offset">
-            <div className="start-tabs" role="tablist" aria-label="Session start input mode">
-              <button type="button" role="tab" aria-selected={startInputMode === 'clock'} className={startInputMode === 'clock' ? 'active-tab' : ''} onClick={() => setStartInputMode('clock')}>Clock time</button>
-              <button type="button" role="tab" aria-selected={startInputMode === 'minutes'} className={startInputMode === 'minutes' ? 'active-tab' : ''} onClick={() => setStartInputMode('minutes')}>Minutes ago</button>
-            </div>
-            {startInputMode === 'clock' ? (
-              <label>Session start time<input value={startClockText} onChange={(e) => setStartClockText(e.target.value)} placeholder="12:30 PM" /></label>
-            ) : (
-              <label>Start minutes ago<input inputMode="decimal" value={startMinutesAgo} onChange={(e) => setStartMinutesAgo(e.target.value)} placeholder="5" /></label>
-            )}
-            <span className="start-offset-summary">{selectedStartMinutesAgo === 0 ? 'Starting now' : `${selectedStartMinutesAgo} min ago`}</span>
+          <div className={`start-offset-shell ${startOffsetOpen ? 'expanded' : ''}`}>
+            <button type="button" className="start-offset-toggle" aria-label="Adjust start time" aria-expanded={startOffsetOpen} onClick={() => setStartOffsetOpen((open) => !open)}>
+              <span>Start time</span>
+              <strong>{selectedStartMinutesAgo === 0 ? 'Now' : `${selectedStartMinutesAgo} min ago`}</strong>
+            </button>
+            {startOffsetOpen ? (
+              <div className="start-offset-panel" aria-label="Session start offset">
+                <div className="start-tabs" role="tablist" aria-label="Session start input mode">
+                  <button type="button" role="tab" aria-selected={startInputMode === 'clock'} className={startInputMode === 'clock' ? 'active-tab' : ''} onClick={() => setStartInputMode('clock')}>Clock time</button>
+                  <button type="button" role="tab" aria-selected={startInputMode === 'minutes'} className={startInputMode === 'minutes' ? 'active-tab' : ''} onClick={() => setStartInputMode('minutes')}>Minutes ago</button>
+                </div>
+                {startInputMode === 'clock' ? (
+                  <label>Session start time<input value={startClockText} onChange={(e) => setStartClockText(e.target.value)} placeholder="12:30 PM" /></label>
+                ) : (
+                  <label>Start minutes ago<input inputMode="decimal" value={startMinutesAgo} onChange={(e) => setStartMinutesAgo(e.target.value)} placeholder="5" /></label>
+                )}
+                <span className="start-offset-summary">{selectedStartMinutesAgo === 0 ? 'Starting now' : `${selectedStartMinutesAgo} min ago`}</span>
+              </div>
+            ) : null}
           </div>
         ) : null}
         <div className="row hero-actions">

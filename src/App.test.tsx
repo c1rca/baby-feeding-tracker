@@ -255,12 +255,14 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
+    expect(screen.queryByLabelText(/Session start time/i)).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Adjust start time/i }))
     const startTime = screen.getByLabelText(/Session start time/i) as HTMLInputElement
     expect(startTime.value).toBe('12:45 PM')
     await user.clear(startTime)
     await user.type(startTime, '12:30pm')
 
-    expect(screen.getByText(/15 min ago/i)).toBeTruthy()
+    expect(screen.getAllByText(/15 min ago/i).length).toBeGreaterThan(0)
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
 
     expect(screen.getAllByText(/15m 00s/i).length).toBeGreaterThan(0)
@@ -274,6 +276,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
+    await user.click(screen.getByRole('button', { name: /Adjust start time/i }))
     await user.click(screen.getByRole('tab', { name: /Minutes ago/i }))
     await user.clear(screen.getByLabelText(/Start minutes ago/i))
     await user.type(screen.getByLabelText(/Start minutes ago/i), '5')
