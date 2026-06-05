@@ -19,7 +19,7 @@ type Entry = {
 }
 type Session = { startedAt: number; activeSide: Side | null; segmentStart: number | null; segments: Segment[]; bottleOunces: number; note: string }
 type LegacySession = Omit<Session, 'note' | 'bottleOunces'> & { note?: string; bottleOunces?: number }
-type UndoState = { entry: Entry; timeoutId: number }
+type UndoState = { entry: Entry; timeoutId: number; kind: 'delete' | 'resume'; previousSession?: Session | null }
 type EditingState = { id: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string } | null
 type Theme = 'light' | 'dark'
 
@@ -41,6 +41,31 @@ const normalizeSession = (raw: LegacySession | Session | null | undefined): Sess
     ...raw,
     bottleOunces: typeof raw.bottleOunces === 'number' ? raw.bottleOunces : 0,
     note: typeof raw.note === 'string' ? raw.note : '',
+  }
+}
+
+const entryToPausedSession = (entry: Entry): Session => {
+  const segments: Segment[] = []
+  let cursor = entry.startedAt
+
+  if (entry.leftSeconds > 0) {
+    const endedAt = cursor + entry.leftSeconds * 1000
+    segments.push({ side: 'left', startedAt: cursor, endedAt })
+    cursor = endedAt
+  }
+
+  if (entry.rightSeconds > 0) {
+    const endedAt = cursor + entry.rightSeconds * 1000
+    segments.push({ side: 'right', startedAt: cursor, endedAt })
+  }
+
+  return {
+    startedAt: entry.startedAt,
+    activeSide: null,
+    segmentStart: null,
+    segments,
+    bottleOunces: entry.bottleOunces ?? 0,
+    note: entry.note ?? '',
   }
 }
 
@@ -188,6 +213,18 @@ function App() {
     setEntries((prev) => [{ id: makeId(), type, startedAt: session.startedAt, endedAt: t, leftSeconds: left, rightSeconds: right, bottleOunces: bottle, note: session.note.trim() || '' }, ...prev])
     setSession(null)
     showToast('Feed saved')
+  }
+
+  const resumeEntry = (entry: Entry) => {
+    if (session) return showToast('Finish or clear the active feed before resuming another entry')
+    if (undoState) window.clearTimeout(undoState.timeoutId)
+    const previousSession = session
+    setEntries((prev) => prev.filter((x) => x.id !== entry.id))
+    setSession(entryToPausedSession(entry))
+    setEditing(null)
+    const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
+    setUndoState({ entry, timeoutId, kind: 'resume', previousSession })
+    setToast('Session resumed')
   }
 
   const logBottle = (oz?: number) => {
@@ -353,9 +390,9 @@ function App() {
         </div>
       ) : null}
 
-      <section className="card"><h2>Timeline</h2>{entries.length === 0 ? <p className="muted">No feeds yet. Start with left/right or quick bottle.</p> : <ul className="timeline">{entries.map((e) => { const isEditing = editing?.id === e.id; return <li key={e.id}><div className="timeline-head"><strong>{formatTime(e.startedAt)}</strong><span className={`badge badge-${e.type}`}>{e.type}</span><span className="muted">{formatDistanceToNow(e.endedAt, { addSuffix: true })}</span></div><div className="muted">{formatDuration(e.leftSeconds + e.rightSeconds)} · L {formatDuration(e.leftSeconds)} / R {formatDuration(e.rightSeconds)} {e.bottleOunces ? `· ${e.bottleOunces.toFixed(1)} oz` : ''}</div>{e.note ? <div className="note-chip">📝 {e.note}</div> : null}{isEditing ? <div className="edit-panel"><div className="manual-grid compact"><label>Left minutes<input inputMode="decimal" value={editing.leftMinutes} onChange={(v) => setEditing({ ...editing, leftMinutes: v.target.value })} placeholder="0" /></label><label>Right minutes<input inputMode="decimal" value={editing.rightMinutes} onChange={(v) => setEditing({ ...editing, rightMinutes: v.target.value })} placeholder="0" /></label><label>Ounces<input inputMode="decimal" value={editing.bottleOunces} onChange={(v) => setEditing({ ...editing, bottleOunces: v.target.value })} placeholder="e.g. 2.5" /></label><label>Note<input value={editing.note} onChange={(v) => setEditing({ ...editing, note: v.target.value })} placeholder="optional" /></label></div><div className="row"><button className="primary" aria-label="Save entry" onClick={() => { const nextLeft = Math.max(0, Math.round((Number(editing.leftMinutes) || 0) * 60)); const nextRight = Math.max(0, Math.round((Number(editing.rightMinutes) || 0) * 60)); const nextOz = editing.bottleOunces.trim() ? Number(editing.bottleOunces) : null; const safeOz = Number.isFinite(nextOz) && nextOz !== null && nextOz > 0 ? nextOz : null; const nextType: FeedType = safeOz && nextLeft + nextRight > 0 ? 'mixed' : safeOz ? 'bottle' : 'breast'; setEntries((prev) => prev.map((x) => x.id === editing.id ? { ...x, type: nextType, leftSeconds: nextLeft, rightSeconds: nextRight, bottleOunces: safeOz, note: editing.note.trim() } : x)); setEditing(null); showToast('Entry updated') }}><Save size={16} /> Save</button><button onClick={() => setEditing(null)}>Cancel</button></div></div> : <div className="row actions"><button aria-label="Edit entry" onClick={() => setEditing({ id: e.id, leftMinutes: String(Math.round(e.leftSeconds / 60)), rightMinutes: String(Math.round(e.rightSeconds / 60)), bottleOunces: e.bottleOunces ? e.bottleOunces.toFixed(1) : '', note: e.note ?? '' })}><Pencil size={16} /> Edit</button><button className="danger" aria-label="Delete entry" onClick={() => { if (undoState) window.clearTimeout(undoState.timeoutId); setEntries((prev) => prev.filter((x) => x.id !== e.id)); const timeoutId = window.setTimeout(() => setUndoState(null), 5000); setUndoState({ entry: e, timeoutId }); setToast('Entry deleted') }}><Trash2 size={16} /> Delete</button></div>}</li> })}</ul>}</section>
+      <section className="card"><h2>Timeline</h2>{entries.length === 0 ? <p className="muted">No feeds yet. Start with left/right or quick bottle.</p> : <ul className="timeline">{entries.map((e) => { const isEditing = editing?.id === e.id; return <li key={e.id}><div className="timeline-head"><strong>{formatTime(e.startedAt)}</strong><span className={`badge badge-${e.type}`}>{e.type}</span><span className="muted">{formatDistanceToNow(e.endedAt, { addSuffix: true })}</span></div><div className="muted">{formatDuration(e.leftSeconds + e.rightSeconds)} · L {formatDuration(e.leftSeconds)} / R {formatDuration(e.rightSeconds)} {e.bottleOunces ? `· ${e.bottleOunces.toFixed(1)} oz` : ''}</div>{e.note ? <div className="note-chip">📝 {e.note}</div> : null}{isEditing ? <div className="edit-panel"><div className="manual-grid compact"><label>Left minutes<input inputMode="decimal" value={editing.leftMinutes} onChange={(v) => setEditing({ ...editing, leftMinutes: v.target.value })} placeholder="0" /></label><label>Right minutes<input inputMode="decimal" value={editing.rightMinutes} onChange={(v) => setEditing({ ...editing, rightMinutes: v.target.value })} placeholder="0" /></label><label>Ounces<input inputMode="decimal" value={editing.bottleOunces} onChange={(v) => setEditing({ ...editing, bottleOunces: v.target.value })} placeholder="e.g. 2.5" /></label><label>Note<input value={editing.note} onChange={(v) => setEditing({ ...editing, note: v.target.value })} placeholder="optional" /></label></div><div className="row"><button className="primary" aria-label="Save entry" onClick={() => { const nextLeft = Math.max(0, Math.round((Number(editing.leftMinutes) || 0) * 60)); const nextRight = Math.max(0, Math.round((Number(editing.rightMinutes) || 0) * 60)); const nextOz = editing.bottleOunces.trim() ? Number(editing.bottleOunces) : null; const safeOz = Number.isFinite(nextOz) && nextOz !== null && nextOz > 0 ? nextOz : null; const nextType: FeedType = safeOz && nextLeft + nextRight > 0 ? 'mixed' : safeOz ? 'bottle' : 'breast'; setEntries((prev) => prev.map((x) => x.id === editing.id ? { ...x, type: nextType, leftSeconds: nextLeft, rightSeconds: nextRight, bottleOunces: safeOz, note: editing.note.trim() } : x)); setEditing(null); showToast('Entry updated') }}><Save size={16} /> Save</button><button onClick={() => setEditing(null)}>Cancel</button></div></div> : <div className="row actions"><button aria-label="Resume session" onClick={() => resumeEntry(e)}><RotateCcw size={16} /> Resume</button><button aria-label="Edit entry" onClick={() => setEditing({ id: e.id, leftMinutes: String(Math.round(e.leftSeconds / 60)), rightMinutes: String(Math.round(e.rightSeconds / 60)), bottleOunces: e.bottleOunces ? e.bottleOunces.toFixed(1) : '', note: e.note ?? '' })}><Pencil size={16} /> Edit</button><button className="danger" aria-label="Delete entry" onClick={() => { if (undoState) window.clearTimeout(undoState.timeoutId); setEntries((prev) => prev.filter((x) => x.id !== e.id)); const timeoutId = window.setTimeout(() => setUndoState(null), 5000); setUndoState({ entry: e, timeoutId, kind: 'delete' }); setToast('Entry deleted') }}><Trash2 size={16} /> Delete</button></div>}</li> })}</ul>}</section>
 
-      {(toast || undoState) && <div className="toast"><span>{toast || 'Entry deleted'}</span>{undoState && <button aria-label="Undo delete" onClick={() => { if (!undoState) return; window.clearTimeout(undoState.timeoutId); setEntries((prev) => [undoState.entry, ...prev].sort((a, b) => b.endedAt - a.endedAt)); setUndoState(null); showToast('Deletion undone') }}><RotateCcw size={15} /> Undo</button>}</div>}
+      {(toast || undoState) && <div className="toast"><span>{toast || (undoState?.kind === 'resume' ? 'Session resumed' : 'Entry deleted')}</span>{undoState && <button aria-label={undoState.kind === 'resume' ? 'Undo resume' : 'Undo delete'} onClick={() => { if (!undoState) return; window.clearTimeout(undoState.timeoutId); setEntries((prev) => [undoState.entry, ...prev].sort((a, b) => b.endedAt - a.endedAt)); if (undoState.kind === 'resume') setSession(undoState.previousSession ?? null); setUndoState(null); showToast(undoState.kind === 'resume' ? 'Resume undone' : 'Deletion undone') }}><RotateCcw size={15} /> Undo</button>}</div>}
     </main>
   )
 }

@@ -58,6 +58,75 @@ describe('App interactions', () => {
     expect(screen.getAllByText(/3\.0 oz/i).length).toBeGreaterThan(0)
   })
 
+  it('resumes a saved timeline entry as an active paused session and offers undo', async () => {
+    const endedAt = Date.now()
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'entry-resume',
+          type: 'mixed',
+          startedAt: endedAt - 900000,
+          endedAt,
+          leftSeconds: 420,
+          rightSeconds: 300,
+          bottleOunces: 2.5,
+          note: 'resume me',
+        },
+      ]),
+    )
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    const firstItem = screen.getAllByRole('listitem')[0]
+    await user.click(within(firstItem).getByRole('button', { name: /Resume session/i }))
+
+    expect(screen.getByText(/Session resumed/i)).toBeTruthy()
+    expect(screen.getByText(/Paused/i)).toBeTruthy()
+    const liveSplit = screen.getByLabelText(/Live split/i)
+    expect(within(liveSplit).getByText(/^Left$/i).nextElementSibling?.textContent).toMatch(/7m 00s/)
+    expect(within(liveSplit).getByText(/^Right$/i).nextElementSibling?.textContent).toMatch(/5m 00s/)
+    expect(within(liveSplit).getByText(/^Bottle$/i).nextElementSibling?.textContent).toBe('2.5 oz')
+    expect(screen.getByDisplayValue(/resume me/i)).toBeTruthy()
+    expect(screen.queryByText(/mixed/i)).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Undo resume/i }))
+
+    expect(screen.getByText(/Resume undone/i)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /End feed/i })).toBeNull()
+    expect(screen.getByText(/mixed/i)).toBeTruthy()
+  })
+
+  it('does not resume an entry over an active session', async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'entry-resume-blocked',
+          type: 'bottle',
+          startedAt: Date.now(),
+          endedAt: Date.now(),
+          leftSeconds: 0,
+          rightSeconds: 0,
+          bottleOunces: 3,
+          note: '',
+        },
+      ]),
+    )
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+    const firstItem = screen.getAllByRole('listitem')[0]
+    await user.click(within(firstItem).getByRole('button', { name: /Resume session/i }))
+
+    expect(screen.getByText(/Finish or clear the active feed before resuming another entry/i)).toBeTruthy()
+    expect(screen.getByText(/On left/i)).toBeTruthy()
+    expect(within(firstItem).getByText(/bottle/i)).toBeTruthy()
+  })
+
   it('edits ounces in timeline item', async () => {
     localStorage.setItem(
       STORAGE_KEY,
