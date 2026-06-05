@@ -69,6 +69,9 @@ body { margin: 0; }
 .start-offset-summary { color:#1e3a8a; font-size:.85rem; font-weight:800; }
 .hero-actions button { min-height: 52px; font-size: 1rem; }
 .hero-actions .jumbo { min-height: 64px; padding-inline: 22px; font-size: 1.12rem; box-shadow: 0 16px 30px rgba(37,99,235,.22); }
+.hero-actions .active-clear-link { min-height: auto; padding: 0; border: 0; background: transparent; box-shadow: none; color: #94a3b8; font-size: .86rem; font-weight: 700; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.hero-actions .active-clear-link:hover { transform: none; box-shadow: none; color: #be123c; background: transparent; }
+.hero-actions .active-clear-link:active { box-shadow: none; }
 .live-split { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px; margin: 0 0 14px; }
 .live-split > div:not(.split-title) { display:grid; gap:4px; border:1px solid #dbeafe; background:rgba(255,255,255,.75); border-radius:14px; padding:10px; }
 .split-title { grid-column:1/-1; font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:#64748b; font-weight:800; }
@@ -156,7 +159,9 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
   .app { padding:14px; gap:12px; }
   button { min-height: 46px; }
   .hero-actions { display:grid; grid-template-columns:1fr; }
+  .hero-actions .active-clear-link { justify-self:center; min-height: 28px; }
   .live-split { grid-template-columns:1fr; }
+  .timeline-row { grid-template-columns:1fr; }
   .manual-grid { grid-template-columns:1fr; }
   .preset-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .bottle-custom-row { grid-template-columns: 44px 1fr 44px; }
@@ -195,6 +200,8 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .next-window strong { color:#e2e8f0; }
 [data-theme='dark'] .hero-micro-meta { color:#94a3b8; }
 [data-theme='dark'] .hero-micro-meta span + span::before { background:#475569; }
+[data-theme='dark'] .hero-actions .active-clear-link { color:#94a3b8; }
+[data-theme='dark'] .hero-actions .active-clear-link:hover { color:#fda4af; }
 [data-theme='dark'] .live-split > div:not(.split-title) { background:rgba(15,23,42,.78); border-color:#334155; }
 [data-theme='dark'] .start-offset-toggle { background:rgba(15,23,42,.72); color:#cbd5e1; border-color:#334155; }
 [data-theme='dark'] .start-offset-toggle strong { color:#93c5fd; }

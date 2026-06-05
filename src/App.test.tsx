@@ -559,7 +559,11 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
     expect(screen.getByText(/On left/i)).toBeTruthy()
 
-    await user.click(screen.getByRole('button', { name: /Clear active feed/i }))
+    const clearActive = screen.getByRole('button', { name: /Clear active feed/i })
+    expect(clearActive.className).toContain('active-clear-link')
+    expect(clearActive.className).not.toContain('subtle-danger')
+
+    await user.click(clearActive)
 
     expect(screen.getByText(/Active feed cleared/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Undo clear active feed/i })).toBeTruthy()
