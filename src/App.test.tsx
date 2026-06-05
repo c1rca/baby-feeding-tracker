@@ -189,8 +189,8 @@ describe('App interactions', () => {
 
     const firstItem = screen.getAllByRole('listitem')[0]
     expect(within(firstItem).getByText(/12m 00s total/i)).toBeTruthy()
-    expect(within(firstItem).getByText(/L 7m 00s/i)).toBeTruthy()
-    expect(within(firstItem).getByText(/R 5m 00s/i)).toBeTruthy()
+    expect(within(firstItem).getByText(/Left 7m 00s/i)).toBeTruthy()
+    expect(within(firstItem).getByText(/Right 5m 00s/i)).toBeTruthy()
     expect(within(firstItem).getByText(/2\.5 oz/i)).toBeTruthy()
     expect(within(firstItem).getByText(/sleepy feed/i)).toBeTruthy()
     expect(within(firstItem).getByRole('button', { name: /Resume recent entry/i })).toBeTruthy()
@@ -233,7 +233,7 @@ describe('App interactions', () => {
     expect(within(firstItem).queryByRole('menuitem', { name: /Edit entry/i })).toBeNull()
   })
 
-  it('hides zero-valued nursing metrics in saved timeline entries', () => {
+  it('keeps saved timeline metrics compact and non-redundant', () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify([
@@ -268,9 +268,9 @@ describe('App interactions', () => {
     expect(within(bottleItem).queryByText(/^L /i)).toBeNull()
     expect(within(bottleItem).queryByText(/^R /i)).toBeNull()
 
-    expect(within(rightOnlyItem).getByText(/2m 00s total/i)).toBeTruthy()
-    expect(within(rightOnlyItem).getByText(/R 2m 00s/i)).toBeTruthy()
-    expect(within(rightOnlyItem).queryByText(/^L /i)).toBeNull()
+    expect(within(rightOnlyItem).queryByText(/2m 00s total/i)).toBeNull()
+    expect(within(rightOnlyItem).getByText(/Right 2m 00s/i)).toBeTruthy()
+    expect(within(rightOnlyItem).queryByText(/^Left /i)).toBeNull()
   })
 
   it('requests notification permission from settings', async () => {
@@ -635,8 +635,8 @@ describe('App interactions', () => {
 
     expect(screen.getByText(/Entry updated/i)).toBeTruthy()
     const updatedItem = screen.getAllByRole('listitem')[0]
-    expect(within(updatedItem).getByText(/L\s+9m 00s/i)).toBeTruthy()
-    expect(within(updatedItem).getByText(/R\s+4m 00s/i)).toBeTruthy()
+    expect(within(updatedItem).getByText(/Left\s+9m 00s/i)).toBeTruthy()
+    expect(within(updatedItem).getByText(/Right\s+4m 00s/i)).toBeTruthy()
     const savedEntries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<{ leftSeconds: number; rightSeconds: number }>
     expect(savedEntries[0].leftSeconds).toBe(540)
     expect(savedEntries[0].rightSeconds).toBe(240)
