@@ -113,7 +113,7 @@ button.end-feed { font-weight: 800; border-width: 2px; }
 .timeline-item:hover { transform:translateY(-1px); border-color:#cbd5e1; box-shadow:0 10px 24px rgba(15,23,42,.07); }
 .timeline-item.menu-open { z-index:30; }
 .timeline-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; }
-.timeline-main { min-width:0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.timeline-main { min-width:0; display:grid; gap:7px; }
 .timeline-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 0; }
 .timeline-head strong { font-size:1.02rem; letter-spacing:-.01em; }
 .timeline-metrics { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
