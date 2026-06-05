@@ -208,6 +208,46 @@ describe('App interactions', () => {
     expect(within(firstItem).queryByRole('menuitem', { name: /Edit entry/i })).toBeNull()
   })
 
+  it('hides zero-valued nursing metrics in saved timeline entries', () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'entry-bottle-only',
+          type: 'bottle',
+          startedAt: Date.now(),
+          endedAt: Date.now(),
+          leftSeconds: 0,
+          rightSeconds: 0,
+          bottleOunces: 3,
+          note: '',
+        },
+        {
+          id: 'entry-right-only',
+          type: 'breast',
+          startedAt: Date.now() - 600000,
+          endedAt: Date.now() - 480000,
+          leftSeconds: 0,
+          rightSeconds: 120,
+          bottleOunces: null,
+          note: '',
+        },
+      ]),
+    )
+
+    render(<App />)
+
+    const [bottleItem, rightOnlyItem] = screen.getAllByRole('listitem')
+    expect(within(bottleItem).getByText(/3\.0 oz/i)).toBeTruthy()
+    expect(within(bottleItem).queryByText(/0m 00s/i)).toBeNull()
+    expect(within(bottleItem).queryByText(/^L /i)).toBeNull()
+    expect(within(bottleItem).queryByText(/^R /i)).toBeNull()
+
+    expect(within(rightOnlyItem).getByText(/2m 00s total/i)).toBeTruthy()
+    expect(within(rightOnlyItem).getByText(/R 2m 00s/i)).toBeTruthy()
+    expect(within(rightOnlyItem).queryByText(/^L /i)).toBeNull()
+  })
+
   it('requests notification permission from settings', async () => {
     const requestPermission = vi.fn(async () => 'granted' as NotificationPermission)
     const NotificationMock = vi.fn()
