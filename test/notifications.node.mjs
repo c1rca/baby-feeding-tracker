@@ -54,3 +54,34 @@ test('notification scheduler sends once for the current latest feed', async () =
   assert.match(sent[0].message, /Next feeding window is open/)
   assert.equal(timers.length, 1)
 })
+
+test('notification scheduler cancels timers when disabled and reschedules when enabled', () => {
+  const now = new Date('2026-06-05T09:00:00Z').getTime()
+  const row = {
+    entries_json: JSON.stringify([{ id: 'feed-toggle', endedAt: now - 60 * 60 * 1000 }]),
+  }
+  let cleared = 0
+  const timers = []
+
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => row },
+    getNotificationState: { get: () => null },
+    upsertNotificationState: { run: () => {} },
+    sendGotify: async () => {},
+    now: () => now,
+    setTimer: (fn, delay) => {
+      timers.push({ fn, delay })
+      return timers.length
+    },
+    clearTimer: () => { cleared += 1 },
+    logger: { warn: () => {} },
+  })
+
+  scheduler.evaluate()
+  assert.equal(timers.length, 1)
+  scheduler.setEnabled(false)
+  assert.equal(cleared, 1)
+  assert.equal(scheduler.getScheduled(), null)
+  scheduler.setEnabled(true)
+  assert.equal(timers.length, 2)
+})

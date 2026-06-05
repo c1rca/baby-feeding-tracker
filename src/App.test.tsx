@@ -326,6 +326,34 @@ describe('App interactions', () => {
     expect(screen.getAllByText(/4\.5 oz/i).length).toBeGreaterThan(0)
   })
 
+  it('toggles Gotify reminders from settings', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/notification-settings' && !init) {
+        return new Response(JSON.stringify({ available: true, gotifyRemindersEnabled: false }), { status: 200 })
+      }
+      if (url === '/api/notification-settings' && init?.method === 'PUT') {
+        return new Response(JSON.stringify({ available: true, gotifyRemindersEnabled: true }), { status: 200 })
+      }
+      if (url === '/api/state') {
+        return new Response(JSON.stringify({ entries: [], session: null, theme: 'light' }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+
+    await waitFor(() => expect(screen.getByText(/Gotify reminders/i)).toBeTruthy())
+    expect(screen.getByText(/Status: off/i)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Turn on/i }))
+
+    await waitFor(() => expect(screen.getByText(/Gotify reminders enabled/i)).toBeTruthy())
+    expect(fetchMock).toHaveBeenCalledWith('/api/notification-settings', expect.objectContaining({ method: 'PUT' }))
+  })
+
   it('end feed creates entry and persists to localStorage', async () => {
     const user = userEvent.setup()
     render(<App />)

@@ -30,6 +30,7 @@ const KEY_SETTINGS_OPEN = 'baby-feeding-tracker:v1:settings-open'
 const KEY_PENDING_SYNC = 'baby-feeding-tracker:v1:pending-sync'
 const KEY_FEEDING_NOTIFICATIONS = 'baby-feeding-tracker:v1:feeding-notifications'
 const API_STATE = '/api/state'
+const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
 const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
 const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
 const THEME_COOKIE = 'baby_feeding_theme'
@@ -143,6 +144,8 @@ function App() {
   const heroRef = useRef<HTMLElement | null>(null)
   const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'offline'>(() => (localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'synced'))
   const [feedingNotificationsEnabled, setFeedingNotificationsEnabled] = useState(() => localStorage.getItem(KEY_FEEDING_NOTIFICATIONS) === '1')
+  const [gotifyAvailable, setGotifyAvailable] = useState(false)
+  const [gotifyRemindersEnabled, setGotifyRemindersEnabled] = useState(false)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => (typeof Notification === 'undefined' ? 'denied' : Notification.permission))
   const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -180,6 +183,36 @@ function App() {
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
+
+  const loadGotifySettings = useCallback(async () => {
+    try {
+      const response = await fetch(API_NOTIFICATION_SETTINGS)
+      if (!response.ok) throw new Error('settings load failed')
+      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean }
+      setGotifyAvailable(Boolean(data.available))
+      setGotifyRemindersEnabled(Boolean(data.gotifyRemindersEnabled))
+    } catch {
+      setGotifyAvailable(false)
+    }
+  }, [])
+
+  const setGotifyReminders = async (enabled: boolean) => {
+    try {
+      const response = await fetch(API_NOTIFICATION_SETTINGS, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gotifyRemindersEnabled: enabled }),
+      })
+      if (!response.ok) throw new Error('settings save failed')
+      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean }
+      setGotifyAvailable(Boolean(data.available))
+      setGotifyRemindersEnabled(Boolean(data.gotifyRemindersEnabled))
+      showToast(data.gotifyRemindersEnabled ? 'Gotify reminders enabled' : 'Gotify reminders disabled')
+    } catch {
+      showToast('Could not update Gotify reminders')
+    }
+  }
+
   const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme) => {
     const payload = latestPayloadRef.current
     const entriesToSync = nextEntries ?? payload.entries
@@ -200,6 +233,10 @@ function App() {
       setSyncStatus('offline')
     }
   }, [])
+
+  useEffect(() => {
+    window.setTimeout(() => void loadGotifySettings(), 0)
+  }, [loadGotifySettings])
 
   useEffect(() => {
     const loadFromApi = async () => {
@@ -283,7 +320,7 @@ function App() {
 
   const endSession = () => {
     if (!session) return showToast('No active feed to end')
-    const t = Date.now()
+    const t = new Date().getTime()
     const finished = [...session.segments]
     if (session.activeSide && session.segmentStart) finished.push({ side: session.activeSide, startedAt: session.segmentStart, endedAt: t })
     const { left, right } = sumSideDurations(finished)
@@ -335,7 +372,7 @@ function App() {
     const bottle = Number(manualDraft.bottleOunces) > 0 ? Number(manualDraft.bottleOunces) : null
     if (leftSeconds + rightSeconds === 0 && !bottle) return showToast('Add nursing time or bottle ounces')
     const durationMs = Math.max(0, leftSeconds + rightSeconds) * 1000
-    const endedAt = Date.now()
+    const endedAt = new Date().getTime()
     const type: FeedType = bottle && leftSeconds + rightSeconds > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
     setEntries((prev) => [{ id: makeId(), type, startedAt: endedAt - durationMs, endedAt, leftSeconds, rightSeconds, bottleOunces: bottle, note: manualDraft.note.trim() }, ...prev])
     setManualDraft({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
@@ -524,6 +561,14 @@ function App() {
                 <small>Permission: {notificationPermission}</small>
               </div>
               {feedingNotificationsEnabled && notificationPermission === 'granted' ? <button type="button" onClick={() => { setFeedingNotificationsEnabled(false); showToast('Feeding reminders disabled') }}>Turn off</button> : <button type="button" className="primary" onClick={enableFeedingNotifications}>Enable reminders</button>}
+            </div>
+            <div className="notification-setting">
+              <div>
+                <strong>Gotify reminders</strong>
+                <p className="muted">Server-side reminders that still work when this page is closed.</p>
+                <small>Status: {gotifyAvailable ? (gotifyRemindersEnabled ? 'on' : 'off') : 'not configured'}</small>
+              </div>
+              <button type="button" className={gotifyRemindersEnabled ? '' : 'primary'} disabled={!gotifyAvailable} onClick={() => void setGotifyReminders(!gotifyRemindersEnabled)}>{gotifyRemindersEnabled ? 'Turn off' : 'Turn on'}</button>
             </div>
             <div className="row"><button aria-label="Export JSON" onClick={() => { const payload = { version: 1, exportedAt: new Date().toISOString(), entries }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); showToast('Data exported') }}><Download size={16} /> Export JSON</button><button aria-label="Import JSON" onClick={() => fileInputRef.current?.click()}><Upload size={16} /> Import JSON</button><button className="danger" onClick={() => { if (!window.confirm('Clear all feeding data? Export a backup first if needed.')) return; setEntries([]); setSession(null); setUndoState(null); showToast('All data cleared') }}><Trash2 size={16} /> Clear all data</button></div>
             <input ref={fileInputRef} className="hidden" type="file" accept="application/json" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const text = await file.text(); try { const parsed = JSON.parse(text) as { entries?: Entry[] }; if (!parsed.entries) throw new Error('Invalid data'); setEntries(parsed.entries.sort((a, b) => b.endedAt - a.endedAt)); showToast('Data imported') } catch { showToast('Import failed: invalid file') } finally { event.target.value = '' } }} />

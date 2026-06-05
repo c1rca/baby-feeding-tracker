@@ -14,7 +14,8 @@ const dbDir = process.env.DB_DIR || path.join(__dirname, 'data')
 const dbPath = process.env.DB_PATH || path.join(dbDir, 'feeding-tracker.db')
 const gotifyUrl = process.env.GOTIFY_URL || ''
 const gotifyToken = process.env.GOTIFY_TOKEN || ''
-const notificationsEnabled = process.env.NOTIFICATIONS_ENABLED === '1' && Boolean(gotifyUrl && gotifyToken)
+const notificationsAvailable = Boolean(gotifyUrl && gotifyToken)
+const notificationsDefaultEnabled = process.env.NOTIFICATIONS_ENABLED === '1' && notificationsAvailable
 
 fs.mkdirSync(dbDir, { recursive: true })
 const db = new Database(dbPath)
@@ -32,6 +33,12 @@ db.exec(`
     entry_id TEXT PRIMARY KEY,
     due_at TEXT NOT NULL,
     sent_at TEXT,
+    updated_at TEXT NOT NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS app_settings (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
 `)
@@ -55,20 +62,47 @@ const upsertNotificationState = db.prepare(`
     sent_at = COALESCE(notification_state.sent_at, excluded.sent_at),
     updated_at = excluded.updated_at
 `)
+const selectSetting = db.prepare('SELECT value FROM app_settings WHERE key = ?')
+const upsertSetting = db.prepare(`
+  INSERT INTO app_settings (key, value, updated_at)
+  VALUES (@key, @value, @updated_at)
+  ON CONFLICT(key) DO UPDATE SET
+    value = excluded.value,
+    updated_at = excluded.updated_at
+`)
+const readBooleanSetting = (key, fallback) => {
+  const row = selectSetting.get(key)
+  return row ? row.value === '1' : fallback
+}
+const writeBooleanSetting = (key, value) => upsertSetting.run({ key, value: value ? '1' : '0', updated_at: new Date().toISOString() })
+let gotifyRemindersEnabled = notificationsAvailable && readBooleanSetting('gotify_reminders_enabled', notificationsDefaultEnabled)
 
-const notificationScheduler = notificationsEnabled
+const notificationScheduler = notificationsAvailable
   ? createNotificationScheduler({
       selectState,
       getNotificationState,
       upsertNotificationState,
       sendGotify: (payload) => sendGotifyMessage({ url: gotifyUrl, token: gotifyToken, ...payload }),
+      enabled: gotifyRemindersEnabled,
     })
   : null
 
 app.use(express.json({ limit: '1mb' }))
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, dbPath, notificationsEnabled })
+  res.json({ ok: true, dbPath, notificationsAvailable, gotifyRemindersEnabled })
+})
+
+app.get('/api/notification-settings', (_req, res) => {
+  res.json({ available: notificationsAvailable, gotifyRemindersEnabled })
+})
+
+app.put('/api/notification-settings', (req, res) => {
+  const enabled = Boolean(req.body?.gotifyRemindersEnabled) && notificationsAvailable
+  gotifyRemindersEnabled = enabled
+  writeBooleanSetting('gotify_reminders_enabled', enabled)
+  notificationScheduler?.setEnabled(enabled)
+  res.json({ ok: true, available: notificationsAvailable, gotifyRemindersEnabled })
 })
 
 app.get('/api/state', (_req, res) => {
@@ -113,8 +147,8 @@ if (fs.existsSync(distPath)) {
 app.listen(port, () => {
   console.log(`feeding-tracker server listening on :${port}`)
   console.log(`sqlite db: ${dbPath}`)
-  if (notificationsEnabled) {
+  if (notificationsAvailable) {
     notificationScheduler.evaluate()
-    console.log(`gotify reminders enabled: ${gotifyUrl}`)
+    console.log(`gotify reminders ${gotifyRemindersEnabled ? 'enabled' : 'disabled'}: ${gotifyUrl}`)
   }
 })

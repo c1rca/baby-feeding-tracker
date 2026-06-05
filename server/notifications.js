@@ -23,6 +23,7 @@ export function createNotificationScheduler({
   getNotificationState,
   upsertNotificationState,
   sendGotify,
+  enabled = true,
   now = () => Date.now(),
   setTimer = setTimeout,
   clearTimer = clearTimeout,
@@ -30,6 +31,7 @@ export function createNotificationScheduler({
 }) {
   let timer = null
   let scheduled = null
+  let isEnabled = enabled
 
   const cancel = () => {
     if (timer) clearTimer(timer)
@@ -38,6 +40,7 @@ export function createNotificationScheduler({
   }
 
   const evaluate = () => {
+    if (!isEnabled) return cancel()
     const row = selectState.get()
     if (!row) return cancel()
 
@@ -99,7 +102,13 @@ export function createNotificationScheduler({
     }, delay)
   }
 
-  return { evaluate, cancel, getScheduled: () => scheduled }
+  const setEnabled = (nextEnabled) => {
+    isEnabled = Boolean(nextEnabled)
+    if (isEnabled) evaluate()
+    else cancel()
+  }
+
+  return { evaluate, cancel, setEnabled, isEnabled: () => isEnabled, getScheduled: () => scheduled }
 }
 
 function formatTime(timestamp) {
