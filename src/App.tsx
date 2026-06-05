@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Baby, CirclePause, Download, MoreHorizontal, Moon, Pencil, RotateCcw, Save, Settings, Sun, Trash2, Upload, XCircle } from 'lucide-react'
+import { Baby, BarChart3, CalendarDays, CirclePause, Clock3, Download, Droplets, MoreHorizontal, Moon, Pencil, RotateCcw, Save, Settings, Sparkles, Sun, Trash2, Trophy, Upload, XCircle } from 'lucide-react'
 import { formatDuration, sumSideDurations, type SideSegment } from './domain/feedingUtils'
 import './styles.css'
 
@@ -24,6 +24,7 @@ type UndoState =
   | { session: Session; timeoutId: number; kind: 'clear-session' }
 type EditingState = { id: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string } | null
 type Theme = 'light' | 'dark'
+type View = 'track' | 'stats'
 
 const KEY_ENTRIES = 'baby-feeding-tracker:v1:entries'
 const KEY_SESSION = 'baby-feeding-tracker:v1:session'
@@ -128,6 +129,7 @@ function App() {
   })
   const [theme, setTheme] = useState<Theme>(() => getCookieTheme() || (localStorage.getItem(KEY_THEME) as Theme) || 'light')
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [view, setView] = useState<View>('track')
   const [bottleOpen, setBottleOpen] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
   const [manualDraft, setManualDraft] = useState({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
@@ -471,11 +473,39 @@ function App() {
     return { days, max }
   }, [entries])
 
+  const stats = useMemo(() => {
+    const nowDate = new Date(now)
+    const dayStart = new Date(nowDate); dayStart.setHours(0, 0, 0, 0)
+    const weekStart = dayStart.getTime() - 6 * 86400000
+    const recentEntries = entries.filter((entry) => entry.endedAt >= weekStart)
+    const totalNursing = recentEntries.reduce((sum, entry) => sum + entry.leftSeconds + entry.rightSeconds, 0)
+    const totalBottle = recentEntries.reduce((sum, entry) => sum + (entry.bottleOunces ?? 0), 0)
+    const nursingFeeds = recentEntries.filter((entry) => entry.leftSeconds + entry.rightSeconds > 0)
+    const avgNursing = nursingFeeds.length ? Math.round(totalNursing / nursingFeeds.length) : 0
+    const totalLeft = recentEntries.reduce((sum, entry) => sum + entry.leftSeconds, 0)
+    const totalRight = recentEntries.reduce((sum, entry) => sum + entry.rightSeconds, 0)
+    const balanceTotal = Math.max(1, totalLeft + totalRight)
+    const leftPercent = Math.round((totalLeft / balanceTotal) * 100)
+    const bestDay = trend.days.reduce((best, day) => (day.count > best.count ? day : best), trend.days[0] ?? { label: '—', count: 0 })
+    const sorted = recentEntries.slice().sort((a, b) => a.endedAt - b.endedAt)
+    const gaps = sorted.slice(1).map((entry, index) => Math.max(0, entry.endedAt - sorted[index].endedAt))
+    const avgGap = gaps.length ? Math.round(gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length / 1000) : 0
+    const nightFeeds = recentEntries.filter((entry) => {
+      const hour = new Date(entry.endedAt).getHours()
+      return hour < 6 || hour >= 22
+    }).length
+    return { recentEntries, totalNursing, totalBottle, avgNursing, totalLeft, totalRight, leftPercent, bestDay, avgGap, nightFeeds }
+  }, [entries, now, trend.days])
+
   return (
     <main className="app">
       <header className="top">
         <h1><Baby size={20} /> Baby Feeding Tracker</h1>
         <div className="top-actions">
+          <div className="view-switch" role="tablist" aria-label="View">
+            <button type="button" role="tab" aria-selected={view === 'track'} className={view === 'track' ? 'active-view' : ''} onClick={() => setView('track')}>Track</button>
+            <button type="button" role="tab" aria-selected={view === 'stats'} className={view === 'stats' ? 'active-view' : ''} onClick={() => setView('stats')}><BarChart3 size={15} /> Stats</button>
+          </div>
           <span className={`sync-pill sync-${syncStatus}`}>{syncStatus === 'synced' ? 'Synced' : syncStatus === 'syncing' ? 'Syncing…' : 'Offline changes saved'}</span>
           <button className="icon-plain" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
             {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
@@ -486,6 +516,8 @@ function App() {
         </div>
       </header>
 
+      {view === 'track' ? (
+      <div className="tracker-view">
       <section className="card hero" ref={heroRef}>
         <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="suggestion">Suggested: {sideLabel(suggestedSide)}</span><span className="next-window"><span>Next feed</span><strong>{nextFeedWindowText}</strong></span></div><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
@@ -540,6 +572,44 @@ function App() {
         <h2>7-Day Trend</h2>
         <div className="trend">{trend.days.map((d) => <div key={d.label} className="trend-col"><div className="trend-bar" style={{ height: `${(d.count / trend.max) * 60 + 8}px` }} /><span>{d.label}</span><small>{d.count}</small></div>)}</div>
       </section>
+      </div>) : (
+      <section className="stats-page" aria-label="Stats dashboard">
+        <div className="stats-hero card">
+          <div className="stats-hero-copy">
+            <span className="stats-kicker"><Sparkles size={16} /> 7-day family rhythm</span>
+            <h2>{stats.recentEntries.length ? `${stats.recentEntries.length} feeds, beautifully tracked` : 'A beautiful stats story starts here'}</h2>
+            <p>{stats.recentEntries.length ? `A calm snapshot of feeding cadence, balance, bottles, and those tiny overnight hero moments.` : 'Log a few feeds and this page turns into a polished readout of your baby’s feeding rhythm.'}</p>
+          </div>
+          <div className="orbital-stat" aria-label="Weekly feeds"><strong>{stats.recentEntries.length}</strong><span>feeds this week</span></div>
+        </div>
+
+        <div className="insight-grid">
+          <article className="insight-card primary-insight"><Clock3 size={19} /><span>Average spacing</span><strong>{stats.avgGap ? formatDuration(stats.avgGap) : '—'}</strong><small>between recent feeds</small></article>
+          <article className="insight-card"><Droplets size={19} /><span>Total bottle</span><strong>{stats.totalBottle.toFixed(1)} oz</strong><small>last 7 days</small></article>
+          <article className="insight-card"><Baby size={19} /><span>Avg nursing</span><strong>{stats.avgNursing ? formatDuration(stats.avgNursing) : '—'}</strong><small>per nursing feed</small></article>
+          <article className="insight-card"><Trophy size={19} /><span>Busiest day</span><strong>{stats.bestDay.label}</strong><small>{stats.bestDay.count} feeds logged</small></article>
+        </div>
+
+        <section className="card rhythm-card">
+          <div className="section-heading"><h2>Feeding rhythm</h2><span className="muted">Last 7 days</span></div>
+          <div className="rhythm-bars">{trend.days.map((day) => <div key={day.label} className="rhythm-day"><div className="rhythm-track"><div style={{ height: `${Math.max(10, (day.count / trend.max) * 100)}%` }} /></div><strong>{day.count}</strong><span>{day.label}</span></div>)}</div>
+        </section>
+
+        <section className="stats-split">
+          <article className="card balance-card">
+            <div className="section-heading"><h2>Side balance</h2><span className="muted">L / R</span></div>
+            <div className="balance-orb" style={{ '--left': `${stats.leftPercent}%` } as CSSProperties}><strong>{stats.leftPercent}%</strong><span>left</span></div>
+            <div className="balance-labels"><span>L {formatDuration(stats.totalLeft)}</span><span>R {formatDuration(stats.totalRight)}</span></div>
+          </article>
+          <article className="card night-card">
+            <CalendarDays size={22} />
+            <h2>Night watch</h2>
+            <strong>{stats.nightFeeds}</strong>
+            <p>feeds logged between 10 PM and 6 AM this week.</p>
+          </article>
+        </section>
+      </section>
+      )}
 
       {bottleOpen ? (
         <div className="modal-backdrop" onClick={() => setBottleOpen(false)}>
@@ -597,7 +667,7 @@ function App() {
         </div>
       ) : null}
 
-      <section className="card timeline-card"><div className="section-heading"><h2>Timeline</h2><span className="muted">Latest first</span></div>{entries.length === 0 ? <p className="muted">No feeds yet. Start with left/right or quick bottle.</p> : <ul className="timeline">{entries.map((e, index) => { const showInlineResume = index < 2; const isEditing = editing?.id === e.id; const total = e.leftSeconds + e.rightSeconds; const hasBottle = Boolean(e.bottleOunces); const menuOpen = openEntryMenuId === e.id; const confirmingDelete = confirmingDeleteEntryId === e.id; return <li key={e.id} className={`timeline-item timeline-${e.type} ${menuOpen ? 'menu-open' : ''}`}><div className="timeline-row"><div className="timeline-main"><div className="timeline-head"><strong>{formatTime(e.startedAt)}</strong><span className={`badge badge-${e.type}`}>{e.type}</span><span className="muted">{formatDistanceToNow(e.endedAt, { addSuffix: true })}</span></div><div className="timeline-metrics" aria-label="Feed details">{total > 0 ? <span className="metric primary-metric">{formatDuration(total)} total</span> : null}{e.leftSeconds > 0 ? <span className="metric">L {formatDuration(e.leftSeconds)}</span> : null}{e.rightSeconds > 0 ? <span className="metric">R {formatDuration(e.rightSeconds)}</span> : null}{hasBottle ? <span className="metric bottle-metric">{e.bottleOunces?.toFixed(1)} oz</span> : null}</div>{e.note ? <div className="note-chip">📝 {e.note}</div> : null}</div>{!isEditing ? <div className="entry-action-wrap">{showInlineResume ? <button type="button" className="inline-resume" aria-label="Resume recent entry" onClick={() => resumeEntry(e)}><RotateCcw size={14} /> Resume</button> : null}<button className="entry-action-trigger" aria-label="Entry actions" aria-expanded={menuOpen} onClick={() => { setConfirmingDeleteEntryId(null); setOpenEntryMenuId(menuOpen ? null : e.id) }}><MoreHorizontal size={17} /></button>{menuOpen ? <div className="entry-menu" role="menu"><button role="menuitem" aria-label="Resume session" onClick={() => { setOpenEntryMenuId(null); resumeEntry(e) }}><RotateCcw size={15} /> Resume</button><button role="menuitem" aria-label="Edit entry" onClick={() => { setOpenEntryMenuId(null); setEditing({ id: e.id, leftMinutes: String(Math.round(e.leftSeconds / 60)), rightMinutes: String(Math.round(e.rightSeconds / 60)), bottleOunces: e.bottleOunces ? e.bottleOunces.toFixed(1) : '', note: e.note ?? '' }) }}><Pencil size={15} /> Edit</button>{confirmingDelete ? <div className="delete-confirm"><span>Are you sure?</span><button role="menuitem" className="danger-menu confirm-delete" aria-label="Confirm delete entry" onClick={() => deleteEntry(e)}><Trash2 size={15} /> Delete</button><button role="menuitem" aria-label="Cancel delete" onClick={() => setConfirmingDeleteEntryId(null)}>Cancel</button></div> : <button role="menuitem" className="danger-menu" aria-label="Delete entry" onClick={() => setConfirmingDeleteEntryId(e.id)}><Trash2 size={15} /> Delete</button>}</div> : null}</div> : null}</div>{isEditing ? <div className="edit-panel"><div className="manual-grid compact"><label>Left minutes<input inputMode="decimal" value={editing.leftMinutes} onChange={(v) => setEditing({ ...editing, leftMinutes: v.target.value })} placeholder="0" /></label><label>Right minutes<input inputMode="decimal" value={editing.rightMinutes} onChange={(v) => setEditing({ ...editing, rightMinutes: v.target.value })} placeholder="0" /></label><label>Ounces<input inputMode="decimal" value={editing.bottleOunces} onChange={(v) => setEditing({ ...editing, bottleOunces: v.target.value })} placeholder="e.g. 2.5" /></label><label>Note<input value={editing.note} onChange={(v) => setEditing({ ...editing, note: v.target.value })} placeholder="optional" /></label></div><div className="row"><button className="primary" aria-label="Save entry" onClick={() => { const nextLeft = Math.max(0, Math.round((Number(editing.leftMinutes) || 0) * 60)); const nextRight = Math.max(0, Math.round((Number(editing.rightMinutes) || 0) * 60)); const nextOz = editing.bottleOunces.trim() ? Number(editing.bottleOunces) : null; const safeOz = Number.isFinite(nextOz) && nextOz !== null && nextOz > 0 ? nextOz : null; const nextType: FeedType = safeOz && nextLeft + nextRight > 0 ? 'mixed' : safeOz ? 'bottle' : 'breast'; setEntries((prev) => prev.map((x) => x.id === editing.id ? { ...x, type: nextType, leftSeconds: nextLeft, rightSeconds: nextRight, bottleOunces: safeOz, note: editing.note.trim() } : x)); setEditing(null); showToast('Entry updated') }}><Save size={16} /> Save</button><button onClick={() => setEditing(null)}>Cancel</button></div></div> : null}</li> })}</ul>}</section>
+      {view === 'track' ? <section className="card timeline-card"><div className="section-heading"><h2>Timeline</h2><span className="muted">Latest first</span></div>{entries.length === 0 ? <p className="muted">No feeds yet. Start with left/right or quick bottle.</p> : <ul className="timeline">{entries.map((e, index) => { const showInlineResume = index < 2; const isEditing = editing?.id === e.id; const total = e.leftSeconds + e.rightSeconds; const hasBottle = Boolean(e.bottleOunces); const menuOpen = openEntryMenuId === e.id; const confirmingDelete = confirmingDeleteEntryId === e.id; return <li key={e.id} className={`timeline-item timeline-${e.type} ${menuOpen ? 'menu-open' : ''}`}><div className="timeline-row"><div className="timeline-main"><div className="timeline-head"><strong>{formatTime(e.startedAt)}</strong><span className={`badge badge-${e.type}`}>{e.type}</span><span className="muted">{formatDistanceToNow(e.endedAt, { addSuffix: true })}</span></div><div className="timeline-metrics" aria-label="Feed details">{total > 0 ? <span className="metric primary-metric">{formatDuration(total)} total</span> : null}{e.leftSeconds > 0 ? <span className="metric">L {formatDuration(e.leftSeconds)}</span> : null}{e.rightSeconds > 0 ? <span className="metric">R {formatDuration(e.rightSeconds)}</span> : null}{hasBottle ? <span className="metric bottle-metric">{e.bottleOunces?.toFixed(1)} oz</span> : null}</div>{e.note ? <div className="note-chip">📝 {e.note}</div> : null}</div>{!isEditing ? <div className="entry-action-wrap">{showInlineResume ? <button type="button" className="inline-resume" aria-label="Resume recent entry" onClick={() => resumeEntry(e)}><RotateCcw size={14} /> Resume</button> : null}<button className="entry-action-trigger" aria-label="Entry actions" aria-expanded={menuOpen} onClick={() => { setConfirmingDeleteEntryId(null); setOpenEntryMenuId(menuOpen ? null : e.id) }}><MoreHorizontal size={17} /></button>{menuOpen ? <div className="entry-menu" role="menu"><button role="menuitem" aria-label="Resume session" onClick={() => { setOpenEntryMenuId(null); resumeEntry(e) }}><RotateCcw size={15} /> Resume</button><button role="menuitem" aria-label="Edit entry" onClick={() => { setOpenEntryMenuId(null); setEditing({ id: e.id, leftMinutes: String(Math.round(e.leftSeconds / 60)), rightMinutes: String(Math.round(e.rightSeconds / 60)), bottleOunces: e.bottleOunces ? e.bottleOunces.toFixed(1) : '', note: e.note ?? '' }) }}><Pencil size={15} /> Edit</button>{confirmingDelete ? <div className="delete-confirm"><span>Are you sure?</span><button role="menuitem" className="danger-menu confirm-delete" aria-label="Confirm delete entry" onClick={() => deleteEntry(e)}><Trash2 size={15} /> Delete</button><button role="menuitem" aria-label="Cancel delete" onClick={() => setConfirmingDeleteEntryId(null)}>Cancel</button></div> : <button role="menuitem" className="danger-menu" aria-label="Delete entry" onClick={() => setConfirmingDeleteEntryId(e.id)}><Trash2 size={15} /> Delete</button>}</div> : null}</div> : null}</div>{isEditing ? <div className="edit-panel"><div className="manual-grid compact"><label>Left minutes<input inputMode="decimal" value={editing.leftMinutes} onChange={(v) => setEditing({ ...editing, leftMinutes: v.target.value })} placeholder="0" /></label><label>Right minutes<input inputMode="decimal" value={editing.rightMinutes} onChange={(v) => setEditing({ ...editing, rightMinutes: v.target.value })} placeholder="0" /></label><label>Ounces<input inputMode="decimal" value={editing.bottleOunces} onChange={(v) => setEditing({ ...editing, bottleOunces: v.target.value })} placeholder="e.g. 2.5" /></label><label>Note<input value={editing.note} onChange={(v) => setEditing({ ...editing, note: v.target.value })} placeholder="optional" /></label></div><div className="row"><button className="primary" aria-label="Save entry" onClick={() => { const nextLeft = Math.max(0, Math.round((Number(editing.leftMinutes) || 0) * 60)); const nextRight = Math.max(0, Math.round((Number(editing.rightMinutes) || 0) * 60)); const nextOz = editing.bottleOunces.trim() ? Number(editing.bottleOunces) : null; const safeOz = Number.isFinite(nextOz) && nextOz !== null && nextOz > 0 ? nextOz : null; const nextType: FeedType = safeOz && nextLeft + nextRight > 0 ? 'mixed' : safeOz ? 'bottle' : 'breast'; setEntries((prev) => prev.map((x) => x.id === editing.id ? { ...x, type: nextType, leftSeconds: nextLeft, rightSeconds: nextRight, bottleOunces: safeOz, note: editing.note.trim() } : x)); setEditing(null); showToast('Entry updated') }}><Save size={16} /> Save</button><button onClick={() => setEditing(null)}>Cancel</button></div></div> : null}</li> })}</ul>}</section> : null}
 
       {(toast || undoState) && <div className="toast"><span>{toast || (undoState?.kind === 'resume' ? 'Session resumed' : undoState?.kind === 'clear-session' ? 'Active feed cleared' : 'Entry deleted')}</span>{undoState && <button aria-label={undoState.kind === 'resume' ? 'Undo resume' : undoState.kind === 'clear-session' ? 'Undo clear active feed' : 'Undo delete'} onClick={() => { if (!undoState) return; window.clearTimeout(undoState.timeoutId); if (undoState.kind === 'clear-session') { setSession(undoState.session); showToast('Active feed restored') } else { setEntries((prev) => [undoState.entry, ...prev].sort((a, b) => b.endedAt - a.endedAt)); if (undoState.kind === 'resume') setSession(undoState.previousSession ?? null); showToast(undoState.kind === 'resume' ? 'Resume undone' : 'Deletion undone') } setUndoState(null) }}><RotateCcw size={15} /> Undo</button>}</div>}
     </main>
