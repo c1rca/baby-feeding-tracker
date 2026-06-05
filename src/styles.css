@@ -161,7 +161,6 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
   .hero-actions { display:grid; grid-template-columns:1fr; }
   .hero-actions .active-clear-link { justify-self:center; min-height: 28px; }
   .live-split { grid-template-columns:1fr; }
-  .timeline-row { grid-template-columns:1fr; }
   .manual-grid { grid-template-columns:1fr; }
   .preset-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .bottle-custom-row { grid-template-columns: 44px 1fr 44px; }
