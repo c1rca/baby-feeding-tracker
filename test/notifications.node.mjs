@@ -52,6 +52,7 @@ test('notification scheduler sends once for the current latest feed', async () =
   assert.equal(sent.length, 1)
   assert.equal(sent[0].title, 'Feeding reminder')
   assert.match(sent[0].message, /Next feeding window is open/)
+  assert.match(sent[0].message, /\n\nhttps:\/\/feedr\.kjw\.lol$/)
   assert.equal(timers.length, 1)
 })
 

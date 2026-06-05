@@ -1,6 +1,7 @@
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000
 const MAX_CATCH_UP_MS = 30 * 60 * 1000
+export const FEEDR_URL = 'https://feedr.kjw.lol'
 
 export function getLatestEndedFeed(entries) {
   if (!Array.isArray(entries)) return null
@@ -85,7 +86,7 @@ export function createNotificationScheduler({
       try {
         await sendGotify({
           title: 'Feeding reminder',
-          message: `Next feeding window is open (${formatTime(reminder.dueAt)}–${formatTime(reminder.windowEndAt)}).`,
+          message: `Next feeding window is open (${formatTime(reminder.dueAt)}–${formatTime(reminder.windowEndAt)}).\n\n${FEEDR_URL}`,
           priority: 5,
         })
         upsertNotificationState.run({
