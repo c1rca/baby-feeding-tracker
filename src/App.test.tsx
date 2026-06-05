@@ -264,7 +264,8 @@ describe('App interactions', () => {
 
     render(<App />)
 
-    expect(screen.getByText(/Next feeding window:/i).textContent).toMatch(/10:00.*11:00/)
+    expect(screen.getByText(/Next feed/i)).toBeTruthy()
+    expect(screen.getByText(/10:00.*11:00/i)).toBeTruthy()
   })
 
   it('shows inline resume only on the latest two timeline entries', () => {

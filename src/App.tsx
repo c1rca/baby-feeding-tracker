@@ -35,7 +35,14 @@ const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000
 const THEME_COOKIE = 'baby_feeding_theme'
 
 const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-const formatTimeRange = (start: number, end: number) => `${formatTime(start)}–${formatTime(end)}`
+const formatShortTimeRange = (start: number, end: number) => {
+  const startText = formatTime(start)
+  const endText = formatTime(end)
+  const startParts = startText.match(/^(.*)\s([AP]M)$/i)
+  const endParts = endText.match(/^(.*)\s([AP]M)$/i)
+  if (startParts && endParts && startParts[2] === endParts[2]) return `${startParts[1]}–${endParts[1]} ${endParts[2]}`
+  return `${startText}–${endText}`
+}
 const sideLabel = (side: Side) => (side === 'left' ? 'Left' : 'Right')
 const oppositeSide = (side: Side): Side => (side === 'left' ? 'right' : 'left')
 const makeId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `feed-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`)
@@ -365,8 +372,8 @@ function App() {
     const gaps = recent.slice(1).map((entry, index) => Math.max(0, entry.endedAt - recent[index].endedAt))
     return Math.round(gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length / 60000)
   }, [entries])
-  const nextDueText = minsSinceLast === null ? 'No previous feed yet' : `Last feed: ${Math.floor(minsSinceLast / 60) > 0 ? `${Math.floor(minsSinceLast / 60)}h ` : ''}${minsSinceLast % 60}m ago${avgGapMinutes ? ` · Avg gap today: ${Math.floor(avgGapMinutes / 60) > 0 ? `${Math.floor(avgGapMinutes / 60)}h ` : ''}${avgGapMinutes % 60}m` : ''}`
-  const nextFeedWindowText = lastFeed ? `Next feeding window: ${formatTimeRange(lastFeed.endedAt + 2 * 60 * 60 * 1000, lastFeed.endedAt + 3 * 60 * 60 * 1000)}` : 'Next feeding window: after first feed'
+  const lastFeedMetaText = minsSinceLast === null ? 'No feed history yet' : `${Math.floor(minsSinceLast / 60) > 0 ? `${Math.floor(minsSinceLast / 60)}h ` : ''}${minsSinceLast % 60}m ago${avgGapMinutes ? ` · avg ${Math.floor(avgGapMinutes / 60) > 0 ? `${Math.floor(avgGapMinutes / 60)}h ` : ''}${avgGapMinutes % 60}m` : ''}`
+  const nextFeedWindowText = lastFeed ? formatShortTimeRange(lastFeed.endedAt + 2 * 60 * 60 * 1000, lastFeed.endedAt + 3 * 60 * 60 * 1000) : 'After first feed'
 
   useEffect(() => {
     if (!feedingNotificationsEnabled || notificationPermission !== 'granted' || !lastFeed || typeof Notification === 'undefined') return
@@ -425,8 +432,8 @@ function App() {
 
       <section className="card hero" ref={heroRef}>
         <div className="hero-top"><h2>Active Feed</h2><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
-        <p className="muted">{lastFeed ? `Last feed ${formatDistanceToNow(lastFeed.endedAt, { addSuffix: true })}` : 'No feed history yet'} · {nextDueText}</p>
-        <div className="suggestion"><span>Suggested next: {sideLabel(suggestedSide)}</span><span>{nextFeedWindowText}</span></div>
+        <p className="muted">{lastFeed ? `Last feed ${lastFeedMetaText}` : lastFeedMetaText}</p>
+        <div className="feed-cues"><span className="suggestion">Suggested: {sideLabel(suggestedSide)}</span><span className="next-window"><span>Next feed</span><strong>{nextFeedWindowText}</strong></span></div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
         {session ? (
           <div className="live-split" aria-label="Live split">

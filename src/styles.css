@@ -45,8 +45,11 @@ body { margin: 0; }
 .hero-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .pill { border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px 10px; font-size: .8rem; background: #fff; color: #334155; font-weight:600; }
 .timer { font-size: clamp(2.6rem, 9vw, 5rem); font-weight: 850; letter-spacing: .03em; margin: 10px 0 14px; line-height: .95; }
-.suggestion { display:inline-flex; gap:8px; align-items:center; flex-wrap:wrap; border:1px solid #bfdbfe; background:rgba(239,246,255,.85); color:#1e3a8a; border-radius:999px; padding:6px 12px; font-weight:650; }
-.suggestion span + span { color:#2563eb; font-weight:800; }
+.feed-cues { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:4px 0 4px; }
+.suggestion { display:inline-flex; align-items:center; border:1px solid #bfdbfe; background:rgba(239,246,255,.85); color:#1e3a8a; border-radius:999px; padding:6px 12px; font-weight:800; line-height:1; }
+.next-window { display:inline-flex; align-items:baseline; gap:6px; color:#64748b; font-size:.92rem; }
+.next-window span { font-weight:650; }
+.next-window strong { color:#0f172a; font-size:1rem; font-weight:850; letter-spacing:-.01em; }
 .start-offset-shell { display:grid; justify-items:start; gap:8px; margin: 8px 0 12px; }
 .start-offset-toggle { min-height:34px; gap:8px; padding:0 10px; border-radius:999px; background:rgba(248,250,252,.72); color:#475569; font-size:.86rem; box-shadow:none; }
 .start-offset-toggle strong { color:#1d4ed8; font-weight:850; }
@@ -179,6 +182,8 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .notification-setting { background:#0f172a; border-color:#334155; }
 [data-theme='dark'] .notification-setting small { color:#94a3b8; }
 [data-theme='dark'] .suggestion { background:rgba(30,41,59,.88); border-color:#334155; color:#bfdbfe; }
+[data-theme='dark'] .next-window { color:#94a3b8; }
+[data-theme='dark'] .next-window strong { color:#e2e8f0; }
 [data-theme='dark'] .live-split > div:not(.split-title) { background:rgba(15,23,42,.78); border-color:#334155; }
 [data-theme='dark'] .start-offset-toggle { background:rgba(15,23,42,.72); color:#cbd5e1; border-color:#334155; }
 [data-theme='dark'] .start-offset-toggle strong { color:#93c5fd; }
