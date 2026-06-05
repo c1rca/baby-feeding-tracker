@@ -427,7 +427,8 @@ function App() {
     const gaps = recent.slice(1).map((entry, index) => Math.max(0, entry.endedAt - recent[index].endedAt))
     return Math.round(gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length / 60000)
   }, [entries])
-  const lastFeedMetaText = minsSinceLast === null ? 'No feed history yet' : `${Math.floor(minsSinceLast / 60) > 0 ? `${Math.floor(minsSinceLast / 60)}h ` : ''}${minsSinceLast % 60}m ago${avgGapMinutes ? ` · avg ${Math.floor(avgGapMinutes / 60) > 0 ? `${Math.floor(avgGapMinutes / 60)}h ` : ''}${avgGapMinutes % 60}m` : ''}`
+  const lastFeedMetaText = minsSinceLast === null ? 'No feed history yet' : `${Math.floor(minsSinceLast / 60) > 0 ? `${Math.floor(minsSinceLast / 60)}h ` : ''}${minsSinceLast % 60}m ago`
+  const avgGapText = avgGapMinutes ? `Avg ${Math.floor(avgGapMinutes / 60) > 0 ? `${Math.floor(avgGapMinutes / 60)}h ` : ''}${avgGapMinutes % 60}m between feeds` : null
   const nextFeedWindowText = lastFeed ? formatShortTimeRange(lastFeed.endedAt + 2 * 60 * 60 * 1000, lastFeed.endedAt + 3 * 60 * 60 * 1000) : 'After first feed'
 
   useEffect(() => {
@@ -487,8 +488,9 @@ function App() {
 
       <section className="card hero" ref={heroRef}>
         <div className="hero-top"><h2>Active Feed</h2><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
-        <p className="muted">{lastFeed ? `Last feed ${lastFeedMetaText}` : lastFeedMetaText}</p>
+        {avgGapText ? <p className="muted hero-average">{avgGapText}</p> : null}
         <div className="feed-cues"><span className="suggestion">Suggested: {sideLabel(suggestedSide)}</span><span className="next-window"><span>Next feed</span><strong>{nextFeedWindowText}</strong></span></div>
+        <p className="muted">{lastFeed ? `Last feed ${lastFeedMetaText}` : lastFeedMetaText}</p>
         <div className="timer">{formatDuration(activeSeconds)}</div>
         {session ? (
           <div className="live-split" aria-label="Live split">

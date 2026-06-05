@@ -337,6 +337,46 @@ describe('App interactions', () => {
     expect(screen.getByText(/10:00.*11:00/i)).toBeTruthy()
   })
 
+  it('shows the next feeding cues above the last-feed text with average first', () => {
+    const firstEndedAt = new Date(2026, 5, 5, 8, 0).getTime()
+    const secondEndedAt = new Date(2026, 5, 5, 10, 30).getTime()
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'entry-latest-window',
+          type: 'breast',
+          startedAt: secondEndedAt - 600000,
+          endedAt: secondEndedAt,
+          leftSeconds: 300,
+          rightSeconds: 300,
+          bottleOunces: null,
+          note: '',
+        },
+        {
+          id: 'entry-earlier-window',
+          type: 'breast',
+          startedAt: firstEndedAt - 600000,
+          endedAt: firstEndedAt,
+          leftSeconds: 300,
+          rightSeconds: 300,
+          bottleOunces: null,
+          note: '',
+        },
+      ]),
+    )
+
+    const { container } = render(<App />)
+    const heroText = container.querySelector('.hero')?.textContent || ''
+
+    expect(screen.getByText(/Avg 2h 30m between feeds/i)).toBeTruthy()
+    expect(screen.getByText(/Next feed/i)).toBeTruthy()
+    expect(screen.getByText(/12:30.*1:30/i)).toBeTruthy()
+    expect(screen.getByText(/Last feed/i)).toBeTruthy()
+    expect(heroText.indexOf('Avg 2h 30m between feeds')).toBeLessThan(heroText.indexOf('Suggested:'))
+    expect(heroText.indexOf('Suggested:')).toBeLessThan(heroText.indexOf('Last feed'))
+  })
+
   it('shows inline resume only on the latest two timeline entries', () => {
     const base = Date.now()
     localStorage.setItem(
