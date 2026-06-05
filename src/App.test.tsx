@@ -337,7 +337,7 @@ describe('App interactions', () => {
     expect(screen.getByText(/10:00.*11:00/i)).toBeTruthy()
   })
 
-  it('shows the next feeding cues above the last-feed text with average first', () => {
+  it('puts priority feed cues above the counter with micro timing below', () => {
     const firstEndedAt = new Date(2026, 5, 5, 8, 0).getTime()
     const secondEndedAt = new Date(2026, 5, 5, 10, 30).getTime()
     localStorage.setItem(
@@ -369,12 +369,13 @@ describe('App interactions', () => {
     const { container } = render(<App />)
     const heroText = container.querySelector('.hero')?.textContent || ''
 
-    expect(screen.getByText(/Avg 2h 30m between feeds/i)).toBeTruthy()
+    expect(screen.getByText(/Avg 2h 30m/i)).toBeTruthy()
     expect(screen.getByText(/Next feed/i)).toBeTruthy()
     expect(screen.getByText(/12:30.*1:30/i)).toBeTruthy()
-    expect(screen.getByText(/Last feed/i)).toBeTruthy()
-    expect(heroText.indexOf('Avg 2h 30m between feeds')).toBeLessThan(heroText.indexOf('Suggested:'))
-    expect(heroText.indexOf('Suggested:')).toBeLessThan(heroText.indexOf('Last feed'))
+    expect(screen.getByText(/Last /i)).toBeTruthy()
+    expect(heroText.indexOf('Suggested:')).toBeLessThan(heroText.indexOf('0m 00s'))
+    expect(heroText.indexOf('0m 00s')).toBeLessThan(heroText.indexOf('Last '))
+    expect(heroText.indexOf('Last ')).toBeLessThan(heroText.indexOf('Avg 2h 30m'))
   })
 
   it('shows inline resume only on the latest two timeline entries', () => {
