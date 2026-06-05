@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -78,6 +78,12 @@ describe('App interactions', () => {
       ]),
     )
 
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() })
+    const scrollSpy = vi.spyOn(HTMLElement.prototype, 'scrollIntoView').mockImplementation(() => undefined)
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0)
+      return 1
+    })
     const user = userEvent.setup()
     render(<App />)
 
@@ -92,6 +98,8 @@ describe('App interactions', () => {
     expect(within(liveSplit).getByText(/^Right$/i).nextElementSibling?.textContent).toMatch(/5m 00s/)
     expect(within(liveSplit).getByText(/^Bottle$/i).nextElementSibling?.textContent).toBe('2.5 oz')
     expect(screen.getByDisplayValue(/resume me/i)).toBeTruthy()
+    await waitFor(() => expect(scrollSpy).toHaveBeenCalled())
+    expect(document.activeElement?.textContent).toMatch(/Resume Left/i)
     expect(screen.queryByText(/mixed/i)).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /Undo resume/i }))
