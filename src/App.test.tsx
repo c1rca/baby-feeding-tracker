@@ -53,6 +53,9 @@ describe('App interactions', () => {
     const firstItem = screen.getAllByRole('listitem')[0]
     await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
     await user.click(within(firstItem).getByRole('menuitem', { name: /Delete entry/i }))
+    expect(within(firstItem).getByText(/Are you sure/i)).toBeTruthy()
+    expect(screen.queryByText(/Entry deleted/i)).toBeNull()
+    await user.click(within(firstItem).getByRole('menuitem', { name: /Confirm delete entry/i }))
     expect(screen.getByText(/Entry deleted/i)).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: /Undo delete/i }))
