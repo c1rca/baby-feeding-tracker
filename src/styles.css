@@ -106,19 +106,20 @@ button.end-feed { font-weight: 800; border-width: 2px; }
 .badge-mixed { background: #f5f3ff; color: #6d28d9; }
 .section-heading { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:10px; }
 .section-heading h2 { margin:0; }
-.timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; isolation:isolate; }
-.timeline-item { position:relative; border: 1px solid #e2e8f0; border-radius: 16px; padding: 12px 12px 12px 14px; background: linear-gradient(180deg,#fff,#fbfdff); transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; overflow:visible; }
-.timeline-item::before { content:''; position:absolute; left:0; top:12px; bottom:12px; width:3px; border-radius:999px; background:#93c5fd; }
+.timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; isolation:isolate; }
+.timeline-item { position:relative; border: 1px solid #e2e8f0; border-radius: 18px; padding: 13px 12px 13px 16px; background: linear-gradient(180deg,#fff,#fbfdff); transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; overflow:visible; }
+.timeline-item::before { content:''; position:absolute; left:0; top:13px; bottom:13px; width:3px; border-radius:999px; background:#93c5fd; }
 .timeline-bottle::before { background:#86efac; }
 .timeline-mixed::before { background:#c4b5fd; }
-.timeline-item:hover { transform:translateY(-1px); border-color:#cbd5e1; box-shadow:0 10px 24px rgba(15,23,42,.07); }
+.timeline-item:hover { transform:translateY(-1px); border-color:#bfdbfe; box-shadow:0 12px 28px rgba(15,23,42,.08); }
 .timeline-item.menu-open { z-index:30; }
-.timeline-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center; }
-.timeline-main { min-width:0; display:grid; gap:7px; }
-.timeline-head { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 0; }
+.timeline-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; }
+.timeline-main { min-width:0; display:grid; gap:5px; }
+.timeline-head { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; margin-bottom: 0; }
 .timeline-head strong { font-size:1.02rem; letter-spacing:-.01em; }
-.timeline-metrics { display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
-.metric { border:1px solid #e2e8f0; background:#f8fafc; color:#475569; border-radius:999px; padding:4px 8px; font-size:.82rem; font-weight:800; line-height:1; white-space:nowrap; }
+.timeline-age { display:block; color:#94a3b8; font-size:.72rem; font-weight:750; letter-spacing:.01em; line-height:1.2; }
+.timeline-metrics { display:flex; gap:5px; flex-wrap:wrap; align-items:center; }
+.metric { border:1px solid #e2e8f0; background:#f8fafc; color:#475569; border-radius:999px; padding:4px 8px; font-size:.8rem; font-weight:800; line-height:1; white-space:nowrap; }
 .side-metric { background:#f8fafc; }
 .primary-metric { background:#eff6ff; border-color:#bfdbfe; color:#1d4ed8; }
 .bottle-metric { background:#f0fdf4; border-color:#bbf7d0; color:#166534; }
@@ -188,6 +189,8 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] button.subtle-danger:hover { background:rgba(127,29,29,.34); border-color:#be123c; }
 [data-theme='dark'] .pill { background:rgba(15,23,42,.74); border-color:#334155; color:#cbd5e1; box-shadow:inset 0 1px 0 rgba(255,255,255,.04); }
 [data-theme='dark'] .timeline-item { background: linear-gradient(180deg,#0f172a,#111827); border-color: var(--border); }
+[data-theme='dark'] .timeline-item:hover { border-color:#475569; box-shadow:0 14px 30px rgba(0,0,0,.32); }
+[data-theme='dark'] .timeline-age { color:#94a3b8; }
 [data-theme='dark'] .badge { background:rgba(15,23,42,.76); border-color:#334155; color:#cbd5e1; box-shadow:inset 0 1px 0 rgba(255,255,255,.04); }
 [data-theme='dark'] .badge-breast { background:rgba(30,41,59,.72); border-color:#475569; color:#dbeafe; }
 [data-theme='dark'] .badge-bottle { background:rgba(20,83,45,.24); border-color:#166534; color:#bbf7d0; }

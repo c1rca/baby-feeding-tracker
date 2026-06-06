@@ -176,6 +176,7 @@ describe('App interactions', () => {
     expect(within(firstItem).getByText(/Right: 5m 00s/i)).toBeTruthy()
     expect(within(firstItem).getByText(/2\.5 oz/i)).toBeTruthy()
     expect(within(firstItem).getByText(/sleepy feed/i)).toBeTruthy()
+    expect(within(firstItem).getByText(/ago/i).className).toContain('timeline-age')
     expect(within(firstItem).getByRole('button', { name: /Resume recent entry/i })).toBeTruthy()
     expect(within(firstItem).queryByRole('button', { name: /^Edit entry$/i })).toBeNull()
     expect(within(firstItem).queryByRole('button', { name: /^Delete entry$/i })).toBeNull()
