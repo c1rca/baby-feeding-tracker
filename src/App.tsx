@@ -18,7 +18,7 @@ type Entry = {
   note?: string
 }
 type DiaperKind = 'wet' | 'stool'
-type DiaperEvent = { id: string; kind: DiaperKind; at: number; context: 'standalone' | 'feed'; feedStartedAt?: number }
+type DiaperEvent = { id: string; kind?: DiaperKind; kinds?: DiaperKind[]; at: number; context: 'standalone' | 'feed'; feedStartedAt?: number }
 type Session = { startedAt: number; activeSide: Side | null; segmentStart: number | null; segments: Segment[]; bottleOunces: number; note: string }
 type LegacySession = Omit<Session, 'note' | 'bottleOunces'> & { note?: string; bottleOunces?: number }
 type UndoState =
@@ -52,6 +52,8 @@ const formatShortTimeRange = (start: number, end: number) => {
 }
 const sideLabel = (side: Side) => (side === 'left' ? 'Left' : 'Right')
 const diaperLabel = (kind: DiaperKind) => (kind === 'wet' ? 'Wet' : 'Stool')
+const diaperKinds = (event: DiaperEvent): DiaperKind[] => event.kinds?.length ? event.kinds : event.kind ? [event.kind] : []
+const diaperEventLabel = (event: DiaperEvent) => diaperKinds(event).map(diaperLabel).join(' + ')
 const timelineFeedLabel = (entry: Entry) => {
   if (entry.type !== 'breast') return entry.type
   if (entry.leftSeconds > 0 && entry.rightSeconds === 0) return 'L'
@@ -141,6 +143,7 @@ function App() {
   const [diapers, setDiapers] = useState<DiaperEvent[]>(() => {
     try { const saved = localStorage.getItem(KEY_DIAPERS); const parsed = saved ? (JSON.parse(saved) as DiaperEvent[]) : []; return parsed.sort((a, b) => b.at - a.at) } catch { return [] }
   })
+  const [selectedDiapers, setSelectedDiapers] = useState<DiaperKind[]>([])
   const [theme, setTheme] = useState<Theme>(() => getCookieTheme() || (localStorage.getItem(KEY_THEME) as Theme) || 'light')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [view] = useState<View>('track')
@@ -195,6 +198,7 @@ function App() {
       setBottleOpen(false)
       setManualOpen(false)
       setSettingsOpen(false)
+      setSelectedDiapers([])
       setOpenEntryMenuId(null)
       setConfirmingDeleteEntryId(null)
     }
@@ -404,11 +408,27 @@ function App() {
   }
 
 
-  const logDiaper = (kind: DiaperKind) => {
+  const loggedActiveDiaperKinds = useMemo(() => {
+    if (!session) return new Set<DiaperKind>()
+    return new Set(diapers.filter((event) => event.context === 'feed' && event.feedStartedAt === session.startedAt).flatMap(diaperKinds))
+  }, [diapers, session])
+
+  const availableSelectedDiapers = selectedDiapers.filter((kind) => !session || !loggedActiveDiaperKinds.has(kind))
+
+  const toggleDiaperSelection = (kind: DiaperKind) => {
+    if (session && loggedActiveDiaperKinds.has(kind)) return
+    setSelectedDiapers((prev) => prev.includes(kind) ? prev.filter((item) => item !== kind) : [...prev, kind])
+  }
+
+  const logSelectedDiapers = () => {
+    const kinds = availableSelectedDiapers
+    if (kinds.length === 0) return showToast(session ? 'Select an unlogged diaper' : 'Select wet, stool, or both')
     const t = Date.now()
-    const diaper: DiaperEvent = { id: makeId(), kind, at: t, context: session ? 'feed' : 'standalone', feedStartedAt: session?.startedAt }
+    const diaper: DiaperEvent = { id: makeId(), kinds, at: t, context: session ? 'feed' : 'standalone', feedStartedAt: session?.startedAt }
     setDiapers((prev) => [diaper, ...prev].sort((a, b) => b.at - a.at))
-    showToast(session ? `${diaperLabel(kind)} added to active feed` : `${diaperLabel(kind)} diaper logged`)
+    setSelectedDiapers((prev) => prev.filter((kind) => !kinds.includes(kind)))
+    const label = kinds.map(diaperLabel).join(' + ')
+    showToast(session ? `${label} added to active feed` : `${label} diaper logged`)
   }
 
   const saveManualFeed = () => {
@@ -443,8 +463,8 @@ function App() {
       left: list.reduce((a, e) => a + e.leftSeconds, 0),
       right: list.reduce((a, e) => a + e.rightSeconds, 0),
       oz: list.reduce((a, e) => a + (e.bottleOunces ?? 0), 0),
-      wet: diapers.filter((d) => d.at >= start.getTime() && d.kind === 'wet').length,
-      stool: diapers.filter((d) => d.at >= start.getTime() && d.kind === 'stool').length,
+      wet: diapers.filter((d) => d.at >= start.getTime() && diaperKinds(d).includes('wet')).length,
+      stool: diapers.filter((d) => d.at >= start.getTime() && diaperKinds(d).includes('stool')).length,
     }
   }, [entries, diapers])
 
@@ -546,6 +566,16 @@ function App() {
       <section className="card hero" ref={heroRef}>
         <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span><strong>{nextFeedWindowText}{lastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span></div><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
+        <div className="diaper-panel" role="group" aria-label="Diaper">
+          <span className="diaper-panel-label">Diaper</span>
+          {(['wet', 'stool'] as DiaperKind[]).map((kind) => {
+            const alreadyLogged = session && loggedActiveDiaperKinds.has(kind)
+            const selected = selectedDiapers.includes(kind) && !alreadyLogged
+            const label = alreadyLogged ? `${diaperLabel(kind)} already logged for this feed` : session ? `Select ${kind} during active feed` : `Select ${kind} diaper`
+            return <button key={kind} type="button" className={`diaper-chip ${selected ? 'selected' : ''}`} aria-label={label} aria-pressed={selected} disabled={Boolean(alreadyLogged)} onClick={() => toggleDiaperSelection(kind)}>{diaperLabel(kind)}</button>
+          })}
+          <button type="button" className="diaper-log-button" aria-label="Log selected diapers" disabled={availableSelectedDiapers.length === 0} onClick={logSelectedDiapers}>Log</button>
+        </div>
         <div className="hero-micro-meta" aria-label="Feed timing summary">
           <span>{lastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
           {avgGapShortText ? <span>{avgGapShortText}</span> : null}
@@ -581,7 +611,7 @@ function App() {
           </div>
         ) : null}
         <div className="row hero-actions">
-          {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button><button aria-label="Log bottle-only feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="diaper-action" aria-label="Log wet diaper" onClick={() => logDiaper('wet')}>Wet</button><button className="diaper-action" aria-label="Log stool diaper" onClick={() => logDiaper('stool')}>Stool</button><button onClick={() => setManualOpen(true)}>Add missed feed</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button onClick={pause}>Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button aria-label="Add bottle to this feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="diaper-action" aria-label="Log wet during active feed" onClick={() => logDiaper('wet')}>Wet</button><button className="diaper-action" aria-label="Log stool during active feed" onClick={() => logDiaper('stool')}>Stool</button><button className="success end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button><button className="active-clear-link" type="button" aria-label="Clear active feed" onClick={clearSession}><XCircle size={14} /> Clear active</button></>)}
+          {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button><button aria-label="Log bottle-only feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button onClick={() => setManualOpen(true)}>Add missed feed</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button onClick={pause}>Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button aria-label="Add bottle to this feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="success end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button><button className="active-clear-link" type="button" aria-label="Clear active feed" onClick={clearSession}><XCircle size={14} /> Clear active</button></>)}
         </div>
         {session && <div className="edit-panel"><label>Optional note for this feed<input value={session.note} onChange={(v) => setSession({ ...session, note: v.target.value })} placeholder="optional note" /></label></div>}
       </section>
@@ -693,13 +723,13 @@ function App() {
         </div>
       ) : null}
 
-      {view === 'track' ? <section className="card timeline-card"><div className="section-heading"><h2>Timeline</h2><span className="muted">Latest first</span></div>{entries.length === 0 && diapers.length === 0 ? <p className="muted">No feeds yet. Start with left/right, quick bottle, wet, or stool.</p> : <ul className="timeline">{[
+      {view === 'track' ? <section className="card timeline-card"><div className="section-heading"><h2>Timeline</h2><span className="muted">Latest first</span></div>{entries.length === 0 && diapers.length === 0 ? <p className="muted">No feeds yet. Start with left/right, quick bottle, or diaper log.</p> : <ul className="timeline">{[
         ...entries.map((entry) => ({ kind: 'feed' as const, time: entry.endedAt, entry })),
         ...diapers.map((diaper) => ({ kind: 'diaper' as const, time: diaper.at, diaper })),
       ].sort((a, b) => b.time - a.time).map((item, index) => {
         if (item.kind === 'diaper') {
           const diaper = item.diaper
-          return <li key={diaper.id} className={`timeline-item timeline-diaper timeline-diaper-${diaper.kind}`}><div className="timeline-row"><div className="timeline-main"><div className="timeline-head"><strong>{formatTime(diaper.at)}</strong><span className={`badge badge-diaper badge-diaper-${diaper.kind}`}>{diaperLabel(diaper.kind)}</span><div className="timeline-metrics" aria-label="Diaper details"><span className="metric diaper-metric">{diaper.context === 'feed' ? 'Attached to active feed' : 'Outside feed'}</span></div></div><span className="timeline-age">{formatDistanceToNow(diaper.at, { addSuffix: true })}</span></div></div></li>
+          return <li key={diaper.id} className={`timeline-item timeline-diaper timeline-diaper-${diaperKinds(diaper).includes('stool') ? 'stool' : 'wet'}`}><div className="timeline-row"><div className="timeline-main"><div className="timeline-head"><strong>{formatTime(diaper.at)}</strong><span className={`badge badge-diaper ${diaperKinds(diaper).includes('stool') ? 'badge-diaper-stool' : ''}`}>{diaperEventLabel(diaper)}</span><div className="timeline-metrics" aria-label="Diaper details"><span className="metric diaper-metric">{diaper.context === 'feed' ? 'Attached to active feed' : 'Outside feed'}</span></div></div><span className="timeline-age">{formatDistanceToNow(diaper.at, { addSuffix: true })}</span></div></div></li>
         }
         const e = item.entry
         const showInlineResume = index < 2

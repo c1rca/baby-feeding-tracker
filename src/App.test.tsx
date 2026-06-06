@@ -345,8 +345,11 @@ describe('App interactions', () => {
     render(<App />)
 
     expect(screen.getByText(/^Next$/i)).toBeTruthy()
-    expect(screen.getByText(/10:00.*11:00/i)).toBeTruthy()
-    expect(document.querySelector('.next-feed-side')?.textContent?.trim()).toBe('L')
+    const heroText = document.querySelector('.hero')?.textContent || ''
+    expect(heroText).toMatch(/10:00.*11:00.*AM.*L/i)
+    const nextSide = document.querySelector('.next-feed-side') as HTMLElement
+    expect(nextSide?.textContent?.trim()).toBe('L')
+    expect(nextSide?.className).toBe('next-feed-side')
   })
 
   it('puts priority feed cues above the counter with micro timing below', () => {
@@ -384,7 +387,7 @@ describe('App interactions', () => {
     expect(screen.queryByText(/Active Feed/i)).toBeNull()
     expect(screen.getByText(/Avg 2h 30m/i)).toBeTruthy()
     expect(screen.getByText(/^Next$/i)).toBeTruthy()
-    expect(screen.getByText(/12:30.*1:30/i)).toBeTruthy()
+    expect(heroText).toMatch(/12:30.*1:30.*PM.*L/i)
     expect(document.querySelector('.next-feed-side')?.textContent?.trim()).toBe('L')
     expect(screen.getByText(/Last /i)).toBeTruthy()
     expect(heroText).not.toMatch(/Suggested:/i)
@@ -679,20 +682,37 @@ describe('App interactions', () => {
     expect(screen.getByText(/late log/i)).toBeTruthy()
   })
 
-  it('logs wet and stool diapers from quick actions and active feeds', async () => {
+  it('logs wet and stool together from a diaper panel as one timeline entry', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Log wet diaper/i }))
-    expect(screen.getByText(/Wet diaper logged/i)).toBeTruthy()
+    expect(screen.getByRole('group', { name: /Diaper/i })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Select wet diaper/i }))
+    await user.click(screen.getByRole('button', { name: /Select stool diaper/i }))
+    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
+
+    expect(screen.getByText(/Wet \+ Stool diaper logged/i)).toBeTruthy()
     expect(screen.getByText(/Diapers today/i).nextElementSibling?.textContent).toContain('1 wet')
-    expect(screen.getAllByText(/Wet/i)[0]).toBeTruthy()
+    expect(screen.getByText(/Diapers today/i).nextElementSibling?.textContent).toContain('1 stool')
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+    expect(screen.getAllByText(/Wet \+ Stool/i).length).toBeGreaterThan(0)
+  })
+
+  it('allows one wet and one stool selection per active feeding', async () => {
+    const user = userEvent.setup()
+    render(<App />)
 
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
-    await user.click(screen.getByRole('button', { name: /Log stool during active feed/i }))
+    await user.click(screen.getByRole('button', { name: /Select wet during active feed/i }))
+    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
+    expect(screen.getByText(/Wet added to active feed/i)).toBeTruthy()
+    expect((screen.getByRole('button', { name: /Wet already logged for this feed/i }) as HTMLButtonElement).disabled).toBe(true)
+
+    await user.click(screen.getByRole('button', { name: /Select stool during active feed/i }))
+    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
     expect(screen.getByText(/Stool added to active feed/i)).toBeTruthy()
-    expect(screen.getByText(/Diapers today/i).nextElementSibling?.textContent).toContain('1 stool')
-    expect(screen.getByText(/Attached to active feed/i)).toBeTruthy()
+    expect((screen.getByRole('button', { name: /Stool already logged for this feed/i }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getAllByText(/Attached to active feed/i)).toHaveLength(2)
   })
 
   it('uses explicit bottle copy during active nursing sessions', async () => {
