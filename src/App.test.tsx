@@ -6,6 +6,7 @@ const STORAGE_SESSION_KEY = 'baby-feeding-tracker:v1:session'
 import App from './App'
 
 const STORAGE_KEY = 'baby-feeding-tracker:v1:entries'
+const STORAGE_DIAPERS_KEY = 'baby-feeding-tracker:v1:diapers'
 
 describe('App interactions', () => {
   beforeEach(() => {
@@ -30,12 +31,35 @@ describe('App interactions', () => {
     expect(screen.getByText(/Feeds today/i).nextElementSibling?.textContent).toBe('1')
   })
 
-  it('does not link to the stats page from the main tracking surface', () => {
+  it('opens a polished stats dashboard with deeper care insights', async () => {
+    const now = Date.now()
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        { id: 'latest-r', type: 'breast', startedAt: now - 2 * 60 * 60 * 1000, endedAt: now - 2 * 60 * 60 * 1000 + 15 * 60 * 1000, leftSeconds: 0, rightSeconds: 15 * 60, bottleOunces: null, note: '' },
+        { id: 'left-long', type: 'breast', startedAt: now - 6 * 60 * 60 * 1000, endedAt: now - 6 * 60 * 60 * 1000 + 30 * 60 * 1000, leftSeconds: 30 * 60, rightSeconds: 0, bottleOunces: null, note: '', diaperKinds: ['wet'] },
+        { id: 'mixed', type: 'mixed', startedAt: now - 26 * 60 * 60 * 1000, endedAt: now - 26 * 60 * 60 * 1000 + 20 * 60 * 1000, leftSeconds: 8 * 60, rightSeconds: 7 * 60, bottleOunces: 2.5, note: '' },
+      ]),
+    )
+    localStorage.setItem(STORAGE_DIAPERS_KEY, JSON.stringify([{ id: 'diaper-1', kinds: ['wet', 'stool'], at: now - 60 * 60 * 1000, context: 'standalone' }]))
+
+    const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.queryByRole('tab', { name: /Stats/i })).toBeNull()
-    expect(screen.queryByRole('tablist', { name: /View/i })).toBeNull()
-    expect(screen.getByRole('heading', { name: /Timeline/i })).toBeTruthy()
+    await user.click(screen.getByRole('tab', { name: /Stats/i }))
+
+    expect(screen.getByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
+    expect(screen.getByText(/24h momentum/i)).toBeTruthy()
+    expect(screen.getByText(/Longest stretch/i)).toBeTruthy()
+    expect(screen.getByText(/Longest nursing/i)).toBeTruthy()
+    expect(screen.getByText(/Next side cue/i)).toBeTruthy()
+    expect(screen.getByText(/Smart read/i)).toBeTruthy()
+    expect(screen.getByText(/Diaper signal/i)).toBeTruthy()
+    expect(screen.getAllByText('2').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('1').length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/wet/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/stool/i).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('heading', { name: /Timeline/i })).toBeNull()
   })
 
   it('deletes and restores an entry with undo', async () => {

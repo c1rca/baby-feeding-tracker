@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Baby, CalendarDays, CirclePause, Clock3, Download, Droplets, MoreHorizontal, Moon, Pencil, RotateCcw, Save, Settings, Sparkles, Sun, Trash2, Trophy, Upload, XCircle } from 'lucide-react'
+import { Activity, Baby, CalendarDays, CirclePause, Clock3, Download, Droplets, HeartPulse, MoreHorizontal, Moon, Pencil, RotateCcw, Save, Settings, Sparkles, Sun, Target, Trash2, Trophy, Upload, Waves, XCircle } from 'lucide-react'
 import { formatDuration, sumSideDurations, type SideSegment } from './domain/feedingUtils'
 import './styles.css'
 
@@ -153,7 +153,7 @@ function App() {
   const [selectedDiapers, setSelectedDiapers] = useState<DiaperKind[]>([])
   const [theme, setTheme] = useState<Theme>(() => getCookieTheme() || (localStorage.getItem(KEY_THEME) as Theme) || 'light')
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [view] = useState<View>('track')
+  const [view, setView] = useState<View>('track')
   const [bottleOpen, setBottleOpen] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
   const [manualDraft, setManualDraft] = useState({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
@@ -583,8 +583,30 @@ function App() {
       const hour = new Date(entry.endedAt).getHours()
       return hour < 6 || hour >= 22
     }).length
-    return { recentEntries, totalNursing, totalBottle, avgNursing, totalLeft, totalRight, leftPercent, bestDay, avgGap, nightFeeds }
-  }, [entries, now, trend.days])
+    const last24Start = now - 24 * 60 * 60 * 1000
+    const last24Entries = entries.filter((entry) => entry.endedAt >= last24Start)
+    const avgFeedsPerDay = recentEntries.length ? Math.round((recentEntries.length / 7) * 10) / 10 : 0
+    const longestNursing = nursingFeeds.reduce((max, entry) => Math.max(max, entry.leftSeconds + entry.rightSeconds), 0)
+    const longestGap = gaps.length ? Math.max(...gaps) : 0
+    const bottleFeeds = recentEntries.filter((entry) => (entry.bottleOunces ?? 0) > 0).length
+    const diaperWindowStart = weekStart
+    const standaloneWet = diapers.filter((diaper) => diaper.at >= diaperWindowStart && diaperKinds(diaper).includes('wet')).length
+    const standaloneStool = diapers.filter((diaper) => diaper.at >= diaperWindowStart && diaperKinds(diaper).includes('stool')).length
+    const feedWet = recentEntries.filter((entry) => entryDiaperKinds(entry).includes('wet')).length
+    const feedStool = recentEntries.filter((entry) => entryDiaperKinds(entry).includes('stool')).length
+    const wetCount = standaloneWet + feedWet
+    const stoolCount = standaloneStool + feedStool
+    const sideDelta = Math.abs(totalLeft - totalRight)
+    const balanceLabel = sideDelta < 5 * 60 ? 'Beautifully balanced' : totalLeft > totalRight ? 'Left leading' : 'Right leading'
+    const lastNursing = entries.find((entry) => entry.leftSeconds + entry.rightSeconds > 0)
+    const nextSide = !lastNursing || lastNursing.leftSeconds === lastNursing.rightSeconds
+      ? (today.left <= today.right ? 'left' : 'right')
+      : oppositeSide(lastNursing.leftSeconds > lastNursing.rightSeconds ? 'left' : 'right')
+    const nextSideLabel = sideLabel(nextSide)
+    const longestGapLabel = longestGap ? formatDuration(Math.round(longestGap / 1000)) : '—'
+    const momentumLabel = last24Entries.length >= avgFeedsPerDay ? 'Above weekly pace' : last24Entries.length ? 'Below weekly pace' : 'Quiet 24h'
+    return { recentEntries, totalNursing, totalBottle, avgNursing, totalLeft, totalRight, leftPercent, bestDay, avgGap, nightFeeds, last24Entries, avgFeedsPerDay, longestNursing, longestGap, longestGapLabel, bottleFeeds, wetCount, stoolCount, balanceLabel, nextSideLabel, momentumLabel }
+  }, [entries, diapers, now, today.left, today.right, trend.days])
 
   const undoToastText = undoState?.kind === 'resume' ? 'Session resumed' : undoState?.kind === 'clear-session' ? 'Active feed cleared' : undoState?.kind === 'diaper-log' ? 'Diaper logged' : undoState?.kind === 'diaper-delete' ? 'Diaper deleted' : 'Entry deleted'
   const undoLabel = undoState?.kind === 'resume' ? 'Undo resume' : undoState?.kind === 'clear-session' ? 'Undo clear active feed' : undoState?.kind === 'diaper-log' ? 'Undo diaper log' : undoState?.kind === 'diaper-delete' ? 'Undo diaper delete' : 'Undo delete'
@@ -614,6 +636,10 @@ function App() {
       <header className="top">
         <h1><Baby size={20} /> Baby Feeding Tracker</h1>
         <div className="top-actions">
+          <div className="view-switch" role="tablist" aria-label="View">
+            <button type="button" role="tab" aria-selected={view === 'track'} className={view === 'track' ? 'active-view' : ''} onClick={() => setView('track')}>Track</button>
+            <button type="button" role="tab" aria-selected={view === 'stats'} className={view === 'stats' ? 'active-view' : ''} onClick={() => setView('stats')}>Stats</button>
+          </div>
           {syncStatus !== 'synced' && (
             <span className={`sync-pill sync-${syncStatus}`}>{syncStatus === 'syncing' ? 'Syncing…' : 'Offline changes saved'}</span>
           )}
@@ -706,10 +732,26 @@ function App() {
 
         <div className="insight-grid">
           <article className="insight-card primary-insight"><Clock3 size={19} /><span>Average spacing</span><strong>{stats.avgGap ? formatDuration(stats.avgGap) : '—'}</strong><small>between recent feeds</small></article>
-          <article className="insight-card"><Droplets size={19} /><span>Total bottle</span><strong>{stats.totalBottle.toFixed(1)} oz</strong><small>last 7 days</small></article>
+          <article className="insight-card"><Droplets size={19} /><span>Total bottle</span><strong>{stats.totalBottle.toFixed(1)} oz</strong><small>{stats.bottleFeeds} bottle feeds this week</small></article>
           <article className="insight-card"><Baby size={19} /><span>Avg nursing</span><strong>{stats.avgNursing ? formatDuration(stats.avgNursing) : '—'}</strong><small>per nursing feed</small></article>
           <article className="insight-card"><Trophy size={19} /><span>Busiest day</span><strong>{stats.bestDay.label}</strong><small>{stats.bestDay.count} feeds logged</small></article>
+          <article className="insight-card"><Activity size={19} /><span>24h momentum</span><strong>{stats.last24Entries.length}</strong><small>{stats.momentumLabel}</small></article>
+          <article className="insight-card"><Waves size={19} /><span>Longest stretch</span><strong>{stats.longestGapLabel}</strong><small>between feeds this week</small></article>
+          <article className="insight-card"><HeartPulse size={19} /><span>Longest nursing</span><strong>{stats.longestNursing ? formatDuration(stats.longestNursing) : '—'}</strong><small>single feed stamina</small></article>
+          <article className="insight-card"><Target size={19} /><span>Next side cue</span><strong>{stats.nextSideLabel}</strong><small>{stats.balanceLabel}</small></article>
         </div>
+
+        <section className="stats-story-grid">
+          <article className="card story-card glow-story">
+            <span className="stats-kicker"><Sparkles size={15} /> Smart read</span>
+            <h2>{stats.recentEntries.length ? `${stats.avgFeedsPerDay} feeds/day cadence` : 'Cadence will appear here'}</h2>
+            <p>{stats.recentEntries.length ? `The last 24 hours logged ${stats.last24Entries.length} feeds, with the longest calm stretch at ${stats.longestGapLabel}.` : 'Once feeds are logged, this card summarizes pace, recovery windows, and the shape of the week.'}</p>
+          </article>
+          <article className="card diaper-signal-card">
+            <div><span className="muted">Diaper signal</span><div className="diaper-signal-values"><strong>{stats.wetCount}<small>wet</small></strong><strong>{stats.stoolCount}<small>stool</small></strong></div></div>
+            <p>Logged alongside feeds and standalone changes for a cleaner weekly care picture.</p>
+          </article>
+        </section>
 
         <section className="card rhythm-card">
           <div className="section-heading"><h2>Feeding rhythm</h2><span className="muted">Last 7 days</span></div>

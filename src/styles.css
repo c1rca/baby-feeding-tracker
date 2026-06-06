@@ -6,6 +6,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; }
 .app { max-width: 1040px; margin: 0 auto; padding: 20px; display: grid; gap: 16px; }
+.app:has(.stats-page) { max-width: 1280px; }
 .top { display:flex; justify-content:space-between; align-items:center; }
 .top h1 { margin: 0; font-size: clamp(1.4rem, 2.4vw, 2rem); display:flex; align-items:center; gap:8px; letter-spacing:-0.01em; }
 .top-actions { display:flex; gap:8px; align-items:center; }
@@ -334,6 +335,17 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 .insight-card strong { font-size:clamp(1.35rem, 4vw, 2.2rem); letter-spacing:-.04em; }
 .insight-card small { color:#64748b; font-weight:750; }
 .primary-insight { background:linear-gradient(135deg,#eff6ff,#f5f3ff); border-color:#bfdbfe; }
+.stats-story-grid { display:grid; grid-template-columns:1.35fr .65fr; gap:12px; }
+.story-card { position:relative; overflow:hidden; min-height:190px; display:grid; align-content:center; gap:10px; padding:20px; }
+.story-card::after { content:""; position:absolute; width:260px; height:260px; right:-110px; bottom:-140px; border-radius:999px; background:radial-gradient(circle, rgba(20,184,166,.2), transparent 66%); }
+.glow-story { background:radial-gradient(circle at 10% 12%, rgba(125,211,252,.32), transparent 30%), linear-gradient(135deg,#ffffff,#eef2ff 54%,#ecfeff); border-color:#bae6fd; box-shadow:0 22px 54px rgba(14,165,233,.16); }
+.story-card h2 { margin:0; max-width:620px; font-size:clamp(2rem,5vw,3.7rem); line-height:.92; letter-spacing:-.06em; }
+.story-card p { max-width:620px; margin:0; color:#475569; font-weight:750; }
+.diaper-signal-card { display:grid; align-content:center; gap:12px; min-height:190px; background:linear-gradient(145deg,#022c22,#0f766e); color:#ecfeff; border-color:rgba(153,246,228,.28); box-shadow:0 22px 46px rgba(15,118,110,.18); }
+.diaper-signal-values { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; margin-top:10px; }
+.diaper-signal-card strong { display:grid; gap:1px; padding:10px; border:1px solid rgba(204,251,241,.22); border-radius:18px; background:rgba(255,255,255,.08); font-size:clamp(1.9rem,4vw,2.9rem); line-height:.9; letter-spacing:-.05em; }
+.diaper-signal-card small { color:#ccfbf1; font-size:.72rem; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
+.diaper-signal-card p { margin:0; color:#ccfbf1; font-weight:750; }
 .rhythm-card { overflow:hidden; }
 .rhythm-bars { height:210px; display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:10px; align-items:end; padding-top:8px; }
 .rhythm-day { display:grid; grid-template-rows:1fr auto auto; gap:6px; min-width:0; text-align:center; color:#64748b; font-size:.78rem; font-weight:850; }
@@ -362,6 +374,9 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .insight-card span, [data-theme='dark'] .insight-card small, [data-theme='dark'] .balance-orb span { color:#94a3b8; }
 [data-theme='dark'] .insight-card strong, [data-theme='dark'] .rhythm-day strong, [data-theme='dark'] .balance-card { color:#e2e8f0; }
 [data-theme='dark'] .primary-insight { background:linear-gradient(135deg,#172554,#1e1b4b); border-color:#1d4ed8; }
+[data-theme='dark'] .glow-story { background:radial-gradient(circle at 10% 12%, rgba(34,211,238,.18), transparent 32%), linear-gradient(135deg,#0f172a,#172554 58%,#082f49); border-color:#1e40af; }
+[data-theme='dark'] .story-card p { color:#cbd5e1; }
+[data-theme='dark'] .diaper-signal-card { background:linear-gradient(145deg,#042f2e,#064e3b); border-color:#0f766e; }
 [data-theme='dark'] .rhythm-track { background:linear-gradient(180deg,#111827,#172554); border-color:#334155; }
 [data-theme='dark'] .balance-orb::after { background:#111827; }
 [data-theme='dark'] .balance-labels { color:#cbd5e1; }
@@ -371,6 +386,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
   .stats-hero { grid-template-columns:1fr; min-height:unset; }
   .orbital-stat { width:128px; height:128px; justify-self:end; }
   .insight-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  .stats-story-grid { grid-template-columns:1fr; }
   .stats-split { grid-template-columns:1fr; }
 }
 @media (max-width: 560px) {
