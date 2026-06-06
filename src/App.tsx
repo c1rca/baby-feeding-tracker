@@ -612,10 +612,7 @@ function App() {
   return (
     <main className="app">
       <header className="top">
-        <div className="top-brand">
-          <h1 aria-label="Baby Feeding Tracker"><Baby size={21} /></h1>
-          <span className="header-next-window next-window"><span>Next</span>{' '}<strong>{nextFeedWindowText}{lastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span>
-        </div>
+        <h1><Baby size={20} /> Baby Feeding Tracker</h1>
         <div className="top-actions">
           {syncStatus !== 'synced' && (
             <span className={`sync-pill sync-${syncStatus}`}>{syncStatus === 'syncing' ? 'Syncing…' : 'Offline changes saved'}</span>
@@ -632,7 +629,7 @@ function App() {
       {view === 'track' ? (
       <div className="tracker-view">
       <section className="card hero" ref={heroRef}>
-        <div className="hero-top"><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
+        <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span><strong>{nextFeedWindowText}{lastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span></div><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
         <div className="hero-micro-meta" aria-label="Feed timing summary">
           <span>{lastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>

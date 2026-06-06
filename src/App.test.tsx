@@ -212,7 +212,7 @@ describe('App interactions', () => {
     await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
     expect(within(firstItem).getByRole('menuitem', { name: /Edit entry/i })).toBeTruthy()
 
-    await user.click(screen.getByRole('heading', { name: /Baby Feeding Tracker/i }))
+    await user.click(screen.getByText(/Baby Feeding Tracker/i))
 
     expect(within(firstItem).queryByRole('menuitem', { name: /Edit entry/i })).toBeNull()
   })
@@ -345,9 +345,8 @@ describe('App interactions', () => {
     render(<App />)
 
     expect(screen.getByText(/^Next$/i)).toBeTruthy()
-    const headerText = document.querySelector('.top')?.textContent || ''
-    expect(headerText).toMatch(/10:00.*11:00.*AM.*L/i)
-    expect(headerText).not.toMatch(/Baby Feeding Tracker/i)
+    const heroText = document.querySelector('.hero')?.textContent || ''
+    expect(heroText).toMatch(/10:00.*11:00.*AM.*L/i)
     const nextSide = document.querySelector('.next-feed-side') as HTMLElement
     expect(nextSide?.textContent?.trim()).toBe('L')
     expect(nextSide?.className).toBe('next-feed-side')
@@ -384,20 +383,17 @@ describe('App interactions', () => {
 
     const { container } = render(<App />)
     const heroText = container.querySelector('.hero')?.textContent || ''
-    const headerText = container.querySelector('.top')?.textContent || ''
-    const pageText = container.textContent || ''
 
     expect(screen.queryByText(/Active Feed/i)).toBeNull()
     expect(screen.getByText(/Avg 2h 30m/i)).toBeTruthy()
     expect(screen.getByText(/^Next$/i)).toBeTruthy()
-    expect(headerText).toMatch(/12:30.*1:30.*PM.*L/i)
-    expect(headerText).not.toMatch(/Baby Feeding Tracker/i)
+    expect(heroText).toMatch(/12:30.*1:30.*PM.*L/i)
     expect(document.querySelector('.next-feed-side')?.textContent?.trim()).toBe('L')
     expect(screen.getByText(/Last /i)).toBeTruthy()
     expect(heroText).not.toMatch(/Suggested:/i)
-    expect(pageText.indexOf('Next')).toBeLessThan(pageText.indexOf('0m 00s'))
-    expect(pageText.indexOf('0m 00s')).toBeLessThan(pageText.indexOf('Last '))
-    expect(pageText.indexOf('Last ')).toBeLessThan(pageText.indexOf('Avg 2h 30m'))
+    expect(heroText.indexOf('Next')).toBeLessThan(heroText.indexOf('0m 00s'))
+    expect(heroText.indexOf('0m 00s')).toBeLessThan(heroText.indexOf('Last '))
+    expect(heroText.indexOf('Last ')).toBeLessThan(heroText.indexOf('Avg 2h 30m'))
   })
 
   it('shows inline resume only on the latest two timeline entries', () => {
