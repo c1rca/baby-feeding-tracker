@@ -451,7 +451,7 @@ describe('App interactions', () => {
     expect(within(items[2]).queryByRole('button', { name: /Resume recent entry/i })).toBeNull()
   })
 
-  it('edits ounces in timeline item', async () => {
+  it('edits ounces and diapers in timeline item', async () => {
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify([
@@ -477,10 +477,15 @@ describe('App interactions', () => {
     const ouncesInput = screen.getByPlaceholderText(/e\.g\. 2\.5/i)
     await user.clear(ouncesInput)
     await user.type(ouncesInput, '4.5')
+    await user.click(screen.getByRole('button', { name: /Add wet diaper from entry/i }))
+    await user.click(screen.getByRole('button', { name: /Add stool diaper from entry/i }))
     await user.click(screen.getByRole('button', { name: /Save/i }))
 
     expect(screen.getByText(/Entry updated/i)).toBeTruthy()
     expect(screen.getAllByText(/4\.5 oz/i).length).toBeGreaterThan(0)
+    expect(within(firstItem).getByText(/Wet \+ Stool/i)).toBeTruthy()
+    const savedEntries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<{ diaperKinds?: string[] }>
+    expect(savedEntries[0].diaperKinds).toEqual(['wet', 'stool'])
   })
 
   it('toggles Gotify reminders from settings', async () => {
