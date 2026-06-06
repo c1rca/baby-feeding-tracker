@@ -374,7 +374,7 @@ describe('App interactions', () => {
 
     expect(screen.getByText(/^Next$/i)).toBeTruthy()
     const heroText = document.querySelector('.hero')?.textContent || ''
-    expect(heroText).toMatch(/10:00.*11:00.*AM.*L/i)
+    expect(heroText).toMatch(/Next\s+10:00.*11:00.*AM\s+L/i)
     const nextSide = document.querySelector('.next-feed-side') as HTMLElement
     expect(nextSide?.textContent?.trim()).toBe('L')
     expect(nextSide?.className).toBe('next-feed-side')
