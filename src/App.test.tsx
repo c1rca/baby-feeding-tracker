@@ -46,7 +46,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('tab', { name: /Stats/i }))
+    await user.click(screen.getByRole('button', { name: /Show stats/i }))
 
     expect(screen.getByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
     expect(screen.getByText(/24h momentum/i)).toBeTruthy()
@@ -60,6 +60,10 @@ describe('App interactions', () => {
     expect(screen.getAllByText(/wet/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/stool/i).length).toBeGreaterThan(0)
     expect(screen.queryByRole('heading', { name: /Timeline/i })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Show tracker/i }))
+    expect(screen.getByRole('heading', { name: /Timeline/i })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: /Stats dashboard/i })).toBeNull()
   })
 
   it('deletes and restores an entry with undo', async () => {

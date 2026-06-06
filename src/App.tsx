@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Activity, Baby, CalendarDays, CirclePause, Clock3, Download, Droplets, HeartPulse, MoreHorizontal, Moon, Pencil, RotateCcw, Save, Settings, Sparkles, Sun, Target, Trash2, Trophy, Upload, Waves, XCircle } from 'lucide-react'
+import { Activity, Baby, BarChart3, CalendarDays, CirclePause, ClipboardList, Clock3, Download, Droplets, HeartPulse, MoreHorizontal, Moon, Pencil, RotateCcw, Save, Settings, Sparkles, Sun, Target, Trash2, Trophy, Upload, Waves, XCircle } from 'lucide-react'
 import { formatDuration, sumSideDurations, type SideSegment } from './domain/feedingUtils'
 import './styles.css'
 
@@ -636,10 +636,9 @@ function App() {
       <header className="top">
         <h1><Baby size={20} /> Baby Feeding Tracker</h1>
         <div className="top-actions">
-          <div className="view-switch" role="tablist" aria-label="View">
-            <button type="button" role="tab" aria-selected={view === 'track'} className={view === 'track' ? 'active-view' : ''} onClick={() => setView('track')}>Track</button>
-            <button type="button" role="tab" aria-selected={view === 'stats'} className={view === 'stats' ? 'active-view' : ''} onClick={() => setView('stats')}>Stats</button>
-          </div>
+          <button className={`icon-plain view-icon-toggle ${view === 'stats' ? 'active' : ''}`} aria-label={view === 'stats' ? 'Show tracker' : 'Show stats'} title={view === 'stats' ? 'Show tracker' : 'Show stats'} onClick={() => setView((current) => current === 'stats' ? 'track' : 'stats')}>
+            {view === 'stats' ? <ClipboardList size={18} /> : <BarChart3 size={18} />}
+          </button>
           {syncStatus !== 'synced' && (
             <span className={`sync-pill sync-${syncStatus}`}>{syncStatus === 'syncing' ? 'Syncing…' : 'Offline changes saved'}</span>
           )}
