@@ -53,7 +53,7 @@ body { margin: 0; }
 .next-window { display:inline-flex; align-items:baseline; gap:6px; color:#cbd5e1; font-size:.92rem; }
 .next-window span { font-weight:650; }
 .next-window strong { color:#fff; font-size:1rem; font-weight:850; letter-spacing:-.01em; }
-.next-window .next-feed-side { display:inline; margin-left:0; padding:0; border:0; border-radius:0; background:transparent; color:inherit; font:inherit; box-shadow:none; vertical-align:baseline; }
+.next-window .next-feed-side { display:inline-flex; align-items:center; justify-content:center; margin-left:2px; padding:1px 7px 2px; border:1px solid #06b6d4; border-radius:999px; background:rgba(6,182,212,.08); color:#06b6d4; font-size:.78em; font-weight:950; line-height:1.1; letter-spacing:.04em; box-shadow:0 0 0 1px rgba(6,182,212,.06), 0 8px 20px rgba(6,182,212,.18); vertical-align:baseline; }
 .hero-micro-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 14px; color:#64748b; font-size:.78rem; font-weight:800; letter-spacing:.01em; }
 .diaper-panel { display:flex; align-items:center; gap:10px; flex-wrap:wrap; max-width:100%; margin:16px 0 14px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
 .diaper-panel-label { padding:0 4px; color:#64748b; font-size:.78rem; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
@@ -238,7 +238,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .suggestion { background:linear-gradient(135deg,#2563eb,#6366f1); border-color:#3b82f6; color:#eff6ff; }
 [data-theme='dark'] .next-window { color:#94a3b8; }
 [data-theme='dark'] .next-window strong { color:#e2e8f0; }
-[data-theme='dark'] .next-window .next-feed-side { color:inherit; border-color:transparent; background:transparent; box-shadow:none; }
+[data-theme='dark'] .next-window .next-feed-side { color:#22d3ee; border-color:#22d3ee; background:rgba(34,211,238,.1); box-shadow:0 0 0 1px rgba(34,211,238,.08), 0 0 18px rgba(34,211,238,.22); }
 [data-theme='dark'] .hero-micro-meta { color:#94a3b8; }
 [data-theme='dark'] .diaper-panel { background:transparent; border-color:transparent; box-shadow:none; }
 [data-theme='dark'] .diaper-panel-label { color:#94a3b8; }
