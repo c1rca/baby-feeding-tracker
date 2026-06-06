@@ -50,9 +50,9 @@ const formatShortTimeRange = (start: number, end: number) => {
 const sideLabel = (side: Side) => (side === 'left' ? 'Left' : 'Right')
 const timelineFeedLabel = (entry: Entry) => {
   if (entry.type !== 'breast') return entry.type
-  if (entry.leftSeconds > 0 && entry.rightSeconds === 0) return 'Left Breast'
-  if (entry.rightSeconds > 0 && entry.leftSeconds === 0) return 'Right Breast'
-  if (entry.leftSeconds > 0 && entry.rightSeconds > 0) return 'Left/Right Breast'
+  if (entry.leftSeconds > 0 && entry.rightSeconds === 0) return 'L'
+  if (entry.rightSeconds > 0 && entry.leftSeconds === 0) return 'R'
+  if (entry.leftSeconds > 0 && entry.rightSeconds > 0) return 'L/R'
   return 'Breast'
 }
 const oppositeSide = (side: Side): Side => (side === 'left' ? 'right' : 'left')
@@ -526,7 +526,7 @@ function App() {
       {view === 'track' ? (
       <div className="tracker-view">
       <section className="card hero" ref={heroRef}>
-        <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="suggestion">Suggested: {sideLabel(suggestedSide)}</span><span className="next-window"><span>Next feed</span><strong>{nextFeedWindowText}</strong></span></div><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
+        <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next feed</span><strong>{nextFeedWindowText}</strong></span></div><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
         <div className="hero-micro-meta" aria-label="Feed timing summary">
           <span>{lastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>

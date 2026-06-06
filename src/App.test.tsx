@@ -268,7 +268,7 @@ describe('App interactions', () => {
     expect(within(bottleItem).queryByText(/^L /i)).toBeNull()
     expect(within(bottleItem).queryByText(/^R /i)).toBeNull()
 
-    expect(within(rightOnlyItem).getByText(/Right Breast/i)).toBeTruthy()
+    expect(within(rightOnlyItem).getByText(/^R$/i)).toBeTruthy()
     expect(within(rightOnlyItem).queryByText(/2m 00s total/i)).toBeNull()
     expect(within(rightOnlyItem).getByText(/^2m 00s$/i)).toBeTruthy()
     expect(within(rightOnlyItem).queryByText(/Right: 2m 00s/i)).toBeNull()
@@ -401,7 +401,8 @@ describe('App interactions', () => {
     expect(screen.getByText(/Next feed/i)).toBeTruthy()
     expect(screen.getByText(/12:30.*1:30/i)).toBeTruthy()
     expect(screen.getByText(/Last /i)).toBeTruthy()
-    expect(heroText.indexOf('Suggested:')).toBeLessThan(heroText.indexOf('0m 00s'))
+    expect(heroText).not.toMatch(/Suggested:/i)
+    expect(heroText.indexOf('Next feed')).toBeLessThan(heroText.indexOf('0m 00s'))
     expect(heroText.indexOf('0m 00s')).toBeLessThan(heroText.indexOf('Last '))
     expect(heroText.indexOf('Last ')).toBeLessThan(heroText.indexOf('Avg 2h 30m'))
   })
@@ -527,7 +528,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.getByText(/Suggested:/i)).toBeTruthy()
+    expect(screen.queryByText(/Suggested:/i)).toBeNull()
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
     expect(screen.getByText(/On left/i)).toBeTruthy()
   })
