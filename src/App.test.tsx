@@ -679,6 +679,22 @@ describe('App interactions', () => {
     expect(screen.getByText(/late log/i)).toBeTruthy()
   })
 
+  it('logs wet and stool diapers from quick actions and active feeds', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Log wet diaper/i }))
+    expect(screen.getByText(/Wet diaper logged/i)).toBeTruthy()
+    expect(screen.getByText(/Diapers today/i).nextElementSibling?.textContent).toContain('1 wet')
+    expect(screen.getAllByText(/Wet/i)[0]).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+    await user.click(screen.getByRole('button', { name: /Log stool during active feed/i }))
+    expect(screen.getByText(/Stool added to active feed/i)).toBeTruthy()
+    expect(screen.getByText(/Diapers today/i).nextElementSibling?.textContent).toContain('1 stool')
+    expect(screen.getByText(/Attached to active feed/i)).toBeTruthy()
+  })
+
   it('uses explicit bottle copy during active nursing sessions', async () => {
     const user = userEvent.setup()
     render(<App />)

@@ -17,6 +17,8 @@ type Entry = {
   bottleOunces: number | null
   note?: string
 }
+type DiaperKind = 'wet' | 'stool'
+type DiaperEvent = { id: string; kind: DiaperKind; at: number; context: 'standalone' | 'feed'; feedStartedAt?: number }
 type Session = { startedAt: number; activeSide: Side | null; segmentStart: number | null; segments: Segment[]; bottleOunces: number; note: string }
 type LegacySession = Omit<Session, 'note' | 'bottleOunces'> & { note?: string; bottleOunces?: number }
 type UndoState =
@@ -32,6 +34,7 @@ const KEY_THEME = 'baby-feeding-tracker:v1:theme'
 const KEY_SETTINGS_OPEN = 'baby-feeding-tracker:v1:settings-open'
 const KEY_PENDING_SYNC = 'baby-feeding-tracker:v1:pending-sync'
 const KEY_FEEDING_NOTIFICATIONS = 'baby-feeding-tracker:v1:feeding-notifications'
+const KEY_DIAPERS = 'baby-feeding-tracker:v1:diapers'
 const API_STATE = '/api/state'
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
 const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
@@ -48,6 +51,7 @@ const formatShortTimeRange = (start: number, end: number) => {
   return `${startText}–${endText}`
 }
 const sideLabel = (side: Side) => (side === 'left' ? 'Left' : 'Right')
+const diaperLabel = (kind: DiaperKind) => (kind === 'wet' ? 'Wet' : 'Stool')
 const timelineFeedLabel = (entry: Entry) => {
   if (entry.type !== 'breast') return entry.type
   if (entry.leftSeconds > 0 && entry.rightSeconds === 0) return 'L'
@@ -134,6 +138,9 @@ function App() {
       return null
     }
   })
+  const [diapers, setDiapers] = useState<DiaperEvent[]>(() => {
+    try { const saved = localStorage.getItem(KEY_DIAPERS); const parsed = saved ? (JSON.parse(saved) as DiaperEvent[]) : []; return parsed.sort((a, b) => b.at - a.at) } catch { return [] }
+  })
   const [theme, setTheme] = useState<Theme>(() => getCookieTheme() || (localStorage.getItem(KEY_THEME) as Theme) || 'light')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [view] = useState<View>('track')
@@ -160,9 +167,9 @@ function App() {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => (typeof Notification === 'undefined' ? 'denied' : Notification.permission))
   const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const latestPayloadRef = useRef<{ entries: Entry[]; session: Session | null; theme: Theme }>({ entries, session, theme })
+  const latestPayloadRef = useRef<{ entries: Entry[]; diapers: DiaperEvent[]; session: Session | null; theme: Theme }>({ entries, diapers, session, theme })
 
-  useEffect(() => { latestPayloadRef.current = { entries, session, theme } }, [entries, session, theme])
+  useEffect(() => { latestPayloadRef.current = { entries, diapers, session, theme } }, [entries, diapers, session, theme])
   useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer) }, [])
   useEffect(() => {
     if (!resumeFocusTick || !session) return
@@ -173,6 +180,7 @@ function App() {
     })
   }, [resumeFocusTick, session])
   useEffect(() => localStorage.setItem(KEY_ENTRIES, JSON.stringify(entries)), [entries])
+  useEffect(() => localStorage.setItem(KEY_DIAPERS, JSON.stringify(diapers)), [diapers])
   useEffect(() => localStorage.setItem(KEY_SESSION, JSON.stringify(session)), [session])
   useEffect(() => {
     localStorage.setItem(KEY_THEME, theme)
@@ -236,9 +244,10 @@ function App() {
     }
   }
 
-  const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme) => {
+  const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme, nextDiapers?: DiaperEvent[]) => {
     const payload = latestPayloadRef.current
     const entriesToSync = nextEntries ?? payload.entries
+    const diapersToSync = nextDiapers ?? payload.diapers
     const sessionToSync = nextSession ?? payload.session
     const themeToSync = nextTheme ?? payload.theme
     setSyncStatus('syncing')
@@ -246,7 +255,7 @@ function App() {
       const response = await fetch(API_STATE, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: entriesToSync, session: sessionToSync, theme: themeToSync }),
+        body: JSON.stringify({ entries: entriesToSync, diapers: diapersToSync, session: sessionToSync, theme: themeToSync }),
       })
       if (!response.ok) throw new Error('sync failed')
       localStorage.removeItem(KEY_PENDING_SYNC)
@@ -271,8 +280,9 @@ function App() {
       try {
         const response = await fetch(API_STATE)
         if (!response.ok) throw new Error('load failed')
-        const data = (await response.json()) as { entries?: Entry[]; session?: LegacySession | null; theme?: Theme }
+        const data = (await response.json()) as { entries?: Entry[]; diapers?: DiaperEvent[]; session?: LegacySession | null; theme?: Theme }
         if (Array.isArray(data.entries)) setEntries(data.entries.sort((a, b) => b.endedAt - a.endedAt))
+        if (Array.isArray(data.diapers)) setDiapers(data.diapers.sort((a, b) => b.at - a.at))
         if (data.session !== undefined) setSession(normalizeSession(data.session))
         if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
         setSyncStatus('synced')
@@ -290,7 +300,7 @@ function App() {
     if (!hasHydrated) return
     localStorage.setItem(KEY_PENDING_SYNC, '1')
     window.setTimeout(() => void syncToApi(), 0)
-  }, [entries, session, theme, hasHydrated, syncToApi])
+  }, [entries, diapers, session, theme, hasHydrated, syncToApi])
 
   useEffect(() => {
     const retrySync = () => {
@@ -393,6 +403,14 @@ function App() {
     showToast('Bottle feed saved')
   }
 
+
+  const logDiaper = (kind: DiaperKind) => {
+    const t = Date.now()
+    const diaper: DiaperEvent = { id: makeId(), kind, at: t, context: session ? 'feed' : 'standalone', feedStartedAt: session?.startedAt }
+    setDiapers((prev) => [diaper, ...prev].sort((a, b) => b.at - a.at))
+    showToast(session ? `${diaperLabel(kind)} added to active feed` : `${diaperLabel(kind)} diaper logged`)
+  }
+
   const saveManualFeed = () => {
     const leftSeconds = Math.max(0, Math.round((Number(manualDraft.leftMinutes) || 0) * 60))
     const rightSeconds = Math.max(0, Math.round((Number(manualDraft.rightMinutes) || 0) * 60))
@@ -425,8 +443,10 @@ function App() {
       left: list.reduce((a, e) => a + e.leftSeconds, 0),
       right: list.reduce((a, e) => a + e.rightSeconds, 0),
       oz: list.reduce((a, e) => a + (e.bottleOunces ?? 0), 0),
+      wet: diapers.filter((d) => d.at >= start.getTime() && d.kind === 'wet').length,
+      stool: diapers.filter((d) => d.at >= start.getTime() && d.kind === 'stool').length,
     }
-  }, [entries])
+  }, [entries, diapers])
 
   const lastFeed = entries[0]
   const minsSinceLast = lastFeed && now ? Math.floor((now - lastFeed.endedAt) / 60000) : null
@@ -561,7 +581,7 @@ function App() {
           </div>
         ) : null}
         <div className="row hero-actions">
-          {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button><button aria-label="Log bottle-only feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button onClick={() => setManualOpen(true)}>Add missed feed</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button onClick={pause}>Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button aria-label="Add bottle to this feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="success end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button><button className="active-clear-link" type="button" aria-label="Clear active feed" onClick={clearSession}><XCircle size={14} /> Clear active</button></>)}
+          {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button><button aria-label="Log bottle-only feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="diaper-action" aria-label="Log wet diaper" onClick={() => logDiaper('wet')}>Wet</button><button className="diaper-action" aria-label="Log stool diaper" onClick={() => logDiaper('stool')}>Stool</button><button onClick={() => setManualOpen(true)}>Add missed feed</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button onClick={pause}>Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button aria-label="Add bottle to this feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="diaper-action" aria-label="Log wet during active feed" onClick={() => logDiaper('wet')}>Wet</button><button className="diaper-action" aria-label="Log stool during active feed" onClick={() => logDiaper('stool')}>Stool</button><button className="success end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button><button className="active-clear-link" type="button" aria-label="Clear active feed" onClick={clearSession}><XCircle size={14} /> Clear active</button></>)}
         </div>
         {session && <div className="edit-panel"><label>Optional note for this feed<input value={session.note} onChange={(v) => setSession({ ...session, note: v.target.value })} placeholder="optional note" /></label></div>}
       </section>
@@ -571,6 +591,7 @@ function App() {
         <div className="card stat"><h3>Nursing</h3><p>{formatDuration(today.nursing)}</p></div>
         <div className="card stat"><h3>Bottle</h3><p>{today.oz.toFixed(1)} oz</p></div>
         <div className="card stat"><h3>L / R split</h3><p>{formatDuration(today.left)} / {formatDuration(today.right)}</p></div>
+        <div className="card stat diaper-stat"><h3>Diapers today</h3><p>{today.wet} wet · {today.stool} stool</p></div>
       </section>
 
       <section className="card">
@@ -666,13 +687,29 @@ function App() {
               </div>
               <button type="button" className={gotifyRemindersEnabled ? '' : 'primary'} disabled={!gotifyAvailable} onClick={() => void setGotifyReminders(!gotifyRemindersEnabled)}>{gotifyRemindersEnabled ? 'Turn off' : 'Turn on'}</button>
             </div>
-            <div className="row"><button aria-label="Export JSON" onClick={() => { const payload = { version: 1, exportedAt: new Date().toISOString(), entries }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); showToast('Data exported') }}><Download size={16} /> Export JSON</button><button aria-label="Import JSON" onClick={() => fileInputRef.current?.click()}><Upload size={16} /> Import JSON</button><button className="danger" onClick={() => { if (!window.confirm('Clear all feeding data? Export a backup first if needed.')) return; setEntries([]); setSession(null); setUndoState(null); showToast('All data cleared') }}><Trash2 size={16} /> Clear all data</button></div>
-            <input ref={fileInputRef} className="hidden" type="file" accept="application/json" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const text = await file.text(); try { const parsed = JSON.parse(text) as { entries?: Entry[] }; if (!parsed.entries) throw new Error('Invalid data'); setEntries(parsed.entries.sort((a, b) => b.endedAt - a.endedAt)); showToast('Data imported') } catch { showToast('Import failed: invalid file') } finally { event.target.value = '' } }} />
+            <div className="row"><button aria-label="Export JSON" onClick={() => { const payload = { version: 1, exportedAt: new Date().toISOString(), entries, diapers }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); showToast('Data exported') }}><Download size={16} /> Export JSON</button><button aria-label="Import JSON" onClick={() => fileInputRef.current?.click()}><Upload size={16} /> Import JSON</button><button className="danger" onClick={() => { if (!window.confirm('Clear all feeding data? Export a backup first if needed.')) return; setEntries([]); setDiapers([]); setSession(null); setUndoState(null); showToast('All data cleared') }}><Trash2 size={16} /> Clear all data</button></div>
+            <input ref={fileInputRef} className="hidden" type="file" accept="application/json" onChange={async (event) => { const file = event.target.files?.[0]; if (!file) return; const text = await file.text(); try { const parsed = JSON.parse(text) as { entries?: Entry[]; diapers?: DiaperEvent[] }; if (!parsed.entries) throw new Error('Invalid data'); setEntries(parsed.entries.sort((a, b) => b.endedAt - a.endedAt)); if (Array.isArray(parsed.diapers)) setDiapers(parsed.diapers.sort((a, b) => b.at - a.at)); showToast('Data imported') } catch { showToast('Import failed: invalid file') } finally { event.target.value = '' } }} />
           </section>
         </div>
       ) : null}
 
-      {view === 'track' ? <section className="card timeline-card"><div className="section-heading"><h2>Timeline</h2><span className="muted">Latest first</span></div>{entries.length === 0 ? <p className="muted">No feeds yet. Start with left/right or quick bottle.</p> : <ul className="timeline">{entries.map((e, index) => { const showInlineResume = index < 2; const isEditing = editing?.id === e.id; const total = e.leftSeconds + e.rightSeconds; const hasBottle = Boolean(e.bottleOunces); const menuOpen = openEntryMenuId === e.id; const confirmingDelete = confirmingDeleteEntryId === e.id; return <li key={e.id} className={`timeline-item timeline-${e.type} ${menuOpen ? 'menu-open' : ''}`}><div className="timeline-row"><div className="timeline-main"><div className="timeline-head"><strong>{formatTime(e.startedAt)}</strong><span className={`badge badge-${e.type}`}>{timelineFeedLabel(e)}</span><div className="timeline-metrics" aria-label="Feed details">{e.leftSeconds > 0 && e.rightSeconds > 0 ? <span className="metric primary-metric">{formatDuration(total)} total</span> : null}{e.leftSeconds > 0 ? <span className={`metric side-metric ${e.rightSeconds === 0 ? 'primary-metric' : ''}`}>{e.rightSeconds > 0 ? `Left: ${formatDuration(e.leftSeconds)}` : formatDuration(e.leftSeconds)}</span> : null}{e.rightSeconds > 0 ? <span className={`metric side-metric ${e.leftSeconds === 0 ? 'primary-metric' : ''}`}>{e.leftSeconds > 0 ? `Right: ${formatDuration(e.rightSeconds)}` : formatDuration(e.rightSeconds)}</span> : null}{hasBottle ? <span className={`metric bottle-metric ${total === 0 ? 'primary-metric' : ''}`}>{e.bottleOunces?.toFixed(1)} oz</span> : null}</div></div><span className="timeline-age">{formatDistanceToNow(e.endedAt, { addSuffix: true })}</span>{e.note ? <div className="note-chip">📝 {e.note}</div> : null}</div>{!isEditing ? <div className="entry-action-wrap">{showInlineResume ? <button type="button" className="inline-resume" aria-label="Resume recent entry" onClick={() => resumeEntry(e)}><RotateCcw size={14} /> Resume</button> : null}<button className="entry-action-trigger" aria-label="Entry actions" aria-expanded={menuOpen} onClick={() => { setConfirmingDeleteEntryId(null); setOpenEntryMenuId(menuOpen ? null : e.id) }}><MoreHorizontal size={17} /></button>{menuOpen ? <div className="entry-menu" role="menu"><button role="menuitem" aria-label="Resume session" onClick={() => { setOpenEntryMenuId(null); resumeEntry(e) }}><RotateCcw size={15} /> Resume</button><button role="menuitem" aria-label="Edit entry" onClick={() => { setOpenEntryMenuId(null); setEditing({ id: e.id, leftMinutes: String(Math.round(e.leftSeconds / 60)), rightMinutes: String(Math.round(e.rightSeconds / 60)), bottleOunces: e.bottleOunces ? e.bottleOunces.toFixed(1) : '', note: e.note ?? '' }) }}><Pencil size={15} /> Edit</button>{confirmingDelete ? <div className="delete-confirm"><span>Are you sure?</span><button role="menuitem" className="danger-menu confirm-delete" aria-label="Confirm delete entry" onClick={() => deleteEntry(e)}><Trash2 size={15} /> Delete</button><button role="menuitem" aria-label="Cancel delete" onClick={() => setConfirmingDeleteEntryId(null)}>Cancel</button></div> : <button role="menuitem" className="danger-menu" aria-label="Delete entry" onClick={() => setConfirmingDeleteEntryId(e.id)}><Trash2 size={15} /> Delete</button>}</div> : null}</div> : null}</div>{isEditing ? <div className="edit-panel"><div className="manual-grid compact"><label>Left minutes<input inputMode="decimal" value={editing.leftMinutes} onChange={(v) => setEditing({ ...editing, leftMinutes: v.target.value })} placeholder="0" /></label><label>Right minutes<input inputMode="decimal" value={editing.rightMinutes} onChange={(v) => setEditing({ ...editing, rightMinutes: v.target.value })} placeholder="0" /></label><label>Ounces<input inputMode="decimal" value={editing.bottleOunces} onChange={(v) => setEditing({ ...editing, bottleOunces: v.target.value })} placeholder="e.g. 2.5" /></label><label>Note<input value={editing.note} onChange={(v) => setEditing({ ...editing, note: v.target.value })} placeholder="optional" /></label></div><div className="row"><button className="primary" aria-label="Save entry" onClick={() => { const nextLeft = Math.max(0, Math.round((Number(editing.leftMinutes) || 0) * 60)); const nextRight = Math.max(0, Math.round((Number(editing.rightMinutes) || 0) * 60)); const nextOz = editing.bottleOunces.trim() ? Number(editing.bottleOunces) : null; const safeOz = Number.isFinite(nextOz) && nextOz !== null && nextOz > 0 ? nextOz : null; const nextType: FeedType = safeOz && nextLeft + nextRight > 0 ? 'mixed' : safeOz ? 'bottle' : 'breast'; setEntries((prev) => prev.map((x) => x.id === editing.id ? { ...x, type: nextType, leftSeconds: nextLeft, rightSeconds: nextRight, bottleOunces: safeOz, note: editing.note.trim() } : x)); setEditing(null); showToast('Entry updated') }}><Save size={16} /> Save</button><button onClick={() => setEditing(null)}>Cancel</button></div></div> : null}</li> })}</ul>}</section> : null}
+      {view === 'track' ? <section className="card timeline-card"><div className="section-heading"><h2>Timeline</h2><span className="muted">Latest first</span></div>{entries.length === 0 && diapers.length === 0 ? <p className="muted">No feeds yet. Start with left/right, quick bottle, wet, or stool.</p> : <ul className="timeline">{[
+        ...entries.map((entry) => ({ kind: 'feed' as const, time: entry.endedAt, entry })),
+        ...diapers.map((diaper) => ({ kind: 'diaper' as const, time: diaper.at, diaper })),
+      ].sort((a, b) => b.time - a.time).map((item, index) => {
+        if (item.kind === 'diaper') {
+          const diaper = item.diaper
+          return <li key={diaper.id} className={`timeline-item timeline-diaper timeline-diaper-${diaper.kind}`}><div className="timeline-row"><div className="timeline-main"><div className="timeline-head"><strong>{formatTime(diaper.at)}</strong><span className={`badge badge-diaper badge-diaper-${diaper.kind}`}>{diaperLabel(diaper.kind)}</span><div className="timeline-metrics" aria-label="Diaper details"><span className="metric diaper-metric">{diaper.context === 'feed' ? 'Attached to active feed' : 'Outside feed'}</span></div></div><span className="timeline-age">{formatDistanceToNow(diaper.at, { addSuffix: true })}</span></div></div></li>
+        }
+        const e = item.entry
+        const showInlineResume = index < 2
+        const isEditing = editing?.id === e.id
+        const total = e.leftSeconds + e.rightSeconds
+        const hasBottle = Boolean(e.bottleOunces)
+        const menuOpen = openEntryMenuId === e.id
+        const confirmingDelete = confirmingDeleteEntryId === e.id
+        return <li key={e.id} className={`timeline-item timeline-${e.type} ${menuOpen ? 'menu-open' : ''}`}><div className="timeline-row"><div className="timeline-main"><div className="timeline-head"><strong>{formatTime(e.startedAt)}</strong><span className={`badge badge-${e.type}`}>{timelineFeedLabel(e)}</span><div className="timeline-metrics" aria-label="Feed details">{e.leftSeconds > 0 && e.rightSeconds > 0 ? <span className="metric primary-metric">{formatDuration(total)} total</span> : null}{e.leftSeconds > 0 ? <span className={`metric side-metric ${e.rightSeconds === 0 ? 'primary-metric' : ''}`}>{e.rightSeconds > 0 ? `Left: ${formatDuration(e.leftSeconds)}` : formatDuration(e.leftSeconds)}</span> : null}{e.rightSeconds > 0 ? <span className={`metric side-metric ${e.leftSeconds === 0 ? 'primary-metric' : ''}`}>{e.leftSeconds > 0 ? `Right: ${formatDuration(e.rightSeconds)}` : formatDuration(e.rightSeconds)}</span> : null}{hasBottle ? <span className={`metric bottle-metric ${total === 0 ? 'primary-metric' : ''}`}>{e.bottleOunces?.toFixed(1)} oz</span> : null}</div></div><span className="timeline-age">{formatDistanceToNow(e.endedAt, { addSuffix: true })}</span>{e.note ? <div className="note-chip">📝 {e.note}</div> : null}</div>{!isEditing ? <div className="entry-action-wrap">{showInlineResume ? <button type="button" className="inline-resume" aria-label="Resume recent entry" onClick={() => resumeEntry(e)}>Resume</button> : null}<button type="button" className="entry-action-trigger" aria-label="Entry actions" aria-expanded={menuOpen} onClick={() => { setOpenEntryMenuId(menuOpen ? null : e.id); setConfirmingDeleteEntryId(null) }}><MoreHorizontal size={17} /></button>{menuOpen ? <div className="entry-menu" role="menu"><button type="button" role="menuitem" aria-label="Edit entry" onClick={() => { setEditing({ id: e.id, leftMinutes: String(Math.round(e.leftSeconds / 60)), rightMinutes: String(Math.round(e.rightSeconds / 60)), bottleOunces: e.bottleOunces ? String(e.bottleOunces) : '', note: e.note ?? '' }); setOpenEntryMenuId(null) }}><Pencil size={15} /> Edit</button><button type="button" role="menuitem" aria-label="Resume session" onClick={() => resumeEntry(e)}><RotateCcw size={15} /> Resume</button><button type="button" role="menuitem" aria-label="Delete entry" className="danger-menu" onClick={() => setConfirmingDeleteEntryId(e.id)}><Trash2 size={15} /> Delete</button>{confirmingDelete ? <div className="delete-confirm"><span>Are you sure?</span><button type="button" role="menuitem" aria-label="Confirm delete entry" className="confirm-delete" onClick={() => deleteEntry(e)}>Confirm delete</button></div> : null}</div> : null}</div> : null}</div>{isEditing ? <div className="edit-panel"><div className="manual-grid"><label>Left minutes<input inputMode="decimal" value={editing.leftMinutes} onChange={(event) => setEditing({ ...editing, leftMinutes: event.target.value })} /></label><label>Right minutes<input inputMode="decimal" value={editing.rightMinutes} onChange={(event) => setEditing({ ...editing, rightMinutes: event.target.value })} /></label><label>Bottle ounces<input inputMode="decimal" value={editing.bottleOunces} onChange={(event) => setEditing({ ...editing, bottleOunces: event.target.value })} placeholder="e.g. 2.5" /></label><label>Note<input value={editing.note} onChange={(event) => setEditing({ ...editing, note: event.target.value })} /></label></div><div className="row"><button className="primary" onClick={() => { const leftSeconds = Math.max(0, Math.round((Number(editing.leftMinutes) || 0) * 60)); const rightSeconds = Math.max(0, Math.round((Number(editing.rightMinutes) || 0) * 60)); const bottle = Number(editing.bottleOunces) > 0 ? Number(editing.bottleOunces) : null; const type: FeedType = bottle && leftSeconds + rightSeconds > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'; setEntries((prev) => prev.map((entry) => entry.id === e.id ? { ...entry, type, leftSeconds, rightSeconds, bottleOunces: bottle, note: editing.note.trim() } : entry).sort((a, b) => b.endedAt - a.endedAt)); setEditing(null); showToast('Entry updated') }}><Save size={15} /> Save</button><button onClick={() => setEditing(null)}>Cancel</button></div></div> : null}</li>
+      })}</ul>}</section> : null}
 
       {(toast || undoState) && <div className="toast"><span>{toast || (undoState?.kind === 'resume' ? 'Session resumed' : undoState?.kind === 'clear-session' ? 'Active feed cleared' : 'Entry deleted')}</span>{undoState && <button aria-label={undoState.kind === 'resume' ? 'Undo resume' : undoState.kind === 'clear-session' ? 'Undo clear active feed' : 'Undo delete'} onClick={() => { if (!undoState) return; window.clearTimeout(undoState.timeoutId); if (undoState.kind === 'clear-session') { setSession(undoState.session); showToast('Active feed restored') } else { setEntries((prev) => [undoState.entry, ...prev].sort((a, b) => b.endedAt - a.endedAt)); if (undoState.kind === 'resume') setSession(undoState.previousSession ?? null); showToast(undoState.kind === 'resume' ? 'Resume undone' : 'Deletion undone') } setUndoState(null) }}><RotateCcw size={15} /> Undo</button>}</div>}
     </main>
