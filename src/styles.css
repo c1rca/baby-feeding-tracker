@@ -55,9 +55,9 @@ body { margin: 0; }
 .next-window strong { color:#fff; font-size:1rem; font-weight:850; letter-spacing:-.01em; }
 .next-window .next-feed-side { display:inline; margin-left:0; padding:0; border:0; border-radius:0; background:transparent; color:inherit; font:inherit; box-shadow:none; vertical-align:baseline; }
 .hero-micro-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 14px; color:#64748b; font-size:.78rem; font-weight:800; letter-spacing:.01em; }
-.diaper-panel { display:flex; align-items:center; gap:8px; flex-wrap:wrap; width:fit-content; max-width:100%; margin:0 0 12px; padding:7px; border:1px solid #dbeafe; border-radius:16px; background:rgba(255,255,255,.64); box-shadow:0 10px 24px rgba(15,23,42,.06); }
-.diaper-panel-label { padding:0 3px 0 5px; color:#64748b; font-size:.78rem; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
-.diaper-chip, .diaper-log-button { min-height:34px; padding:0 11px; border-radius:999px; font-size:.86rem; font-weight:850; box-shadow:none; }
+.diaper-panel { display:flex; align-items:center; gap:10px; flex-wrap:wrap; max-width:100%; margin:0 0 14px; padding:12px; border:1px solid #dbeafe; border-radius:16px; background:rgba(255,255,255,.64); box-shadow:0 10px 24px rgba(15,23,42,.06); }
+.diaper-panel-label { padding:0 4px; color:#64748b; font-size:.78rem; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
+.diaper-chip, .diaper-log-button { min-height:40px; padding:0 14px; border-radius:999px; font-size:.9rem; font-weight:850; box-shadow:none; }
 .diaper-chip { background:#f8fafc; border-color:#cbd5e1; color:#475569; }
 .diaper-chip.selected { background:linear-gradient(135deg,#06b6d4,#2563eb); border-color:transparent; color:#fff; box-shadow:0 9px 18px rgba(37,99,235,.16); }
 .diaper-chip:disabled { opacity:.54; cursor:not-allowed; transform:none; box-shadow:none; }

@@ -729,6 +729,23 @@ describe('App interactions', () => {
     expect(screen.queryByText(/Outside feed/i)).toBeNull()
   })
 
+  it('includes selected active-feed diapers when saving even if Log was not pressed', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+    await user.click(screen.getByRole('button', { name: /Select wet during active feed/i }))
+    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
+    await user.click(screen.getByRole('button', { name: /Select stool during active feed/i }))
+
+    await user.click(screen.getByRole('button', { name: /End feed/i }))
+
+    const items = screen.getAllByRole('listitem')
+    expect(items).toHaveLength(1)
+    expect(within(items[0]).getByText(/Wet \+ Stool/i)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Select stool during active feed/i })).toBeNull()
+  })
+
   it('uses explicit bottle copy during active nursing sessions', async () => {
     const user = userEvent.setup()
     render(<App />)

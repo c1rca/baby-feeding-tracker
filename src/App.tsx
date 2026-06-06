@@ -372,7 +372,10 @@ function App() {
     const { left, right } = sumSideDurations(finished)
     const bottle = session.bottleOunces > 0 ? session.bottleOunces : null
     const type: FeedType = bottle && left + right > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
-    setEntries((prev) => [{ id: makeId(), type, startedAt: session.startedAt, endedAt: t, leftSeconds: left, rightSeconds: right, bottleOunces: bottle, note: session.note.trim() || '', diaperKinds: session.diaperKinds }, ...prev])
+    const selectedKinds = selectedDiapers.filter((kind) => !session.diaperKinds.includes(kind))
+    const diaperKinds = [...session.diaperKinds, ...selectedKinds]
+    setEntries((prev) => [{ id: makeId(), type, startedAt: session.startedAt, endedAt: t, leftSeconds: left, rightSeconds: right, bottleOunces: bottle, note: session.note.trim() || '', diaperKinds }, ...prev])
+    setSelectedDiapers((prev) => prev.filter((kind) => !selectedKinds.includes(kind)))
     setSession(null)
     showToast('Feed saved')
   }
