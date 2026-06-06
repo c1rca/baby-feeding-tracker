@@ -712,8 +712,8 @@ describe('App interactions', () => {
 
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) })
     window.dispatchEvent(new Event('online'))
-    expect(await screen.findByText(/^Synced$/i)).toBeTruthy()
-    expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
+    await waitFor(() => expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull())
+    expect(screen.queryByText(/^Synced$/i)).toBeNull()
     expect(fetchMock).toHaveBeenLastCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
   })
 })
