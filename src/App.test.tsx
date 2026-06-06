@@ -30,29 +30,12 @@ describe('App interactions', () => {
     expect(screen.getByText(/Feeds today/i).nextElementSibling?.textContent).toBe('1')
   })
 
-  it('shows a polished stats dashboard with weekly insights', async () => {
-    const now = new Date(2026, 5, 5, 12, 0).getTime()
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    vi.setSystemTime(now)
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify([
-        { id: 'feed-1', type: 'mixed', startedAt: now - 6 * 60 * 60 * 1000 - 600000, endedAt: now - 6 * 60 * 60 * 1000, leftSeconds: 360, rightSeconds: 240, bottleOunces: 2, note: '' },
-        { id: 'feed-2', type: 'breast', startedAt: now - 3 * 60 * 60 * 1000 - 480000, endedAt: now - 3 * 60 * 60 * 1000, leftSeconds: 240, rightSeconds: 240, bottleOunces: null, note: '' },
-        { id: 'feed-3', type: 'bottle', startedAt: now - 90 * 60 * 1000, endedAt: now - 90 * 60 * 1000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: '' },
-      ]),
-    )
-
-    const user = userEvent.setup()
+  it('does not link to the stats page from the main tracking surface', () => {
     render(<App />)
-    await user.click(screen.getByRole('tab', { name: /Stats/i }))
 
-    expect(screen.getByRole('heading', { name: /3 feeds, beautifully tracked/i })).toBeTruthy()
-    expect(screen.getByText(/Average spacing/i)).toBeTruthy()
-    expect(screen.getByText(/Total bottle/i)).toBeTruthy()
-    expect(screen.getByText(/5\.0 oz/i)).toBeTruthy()
-    expect(screen.getByText(/Side balance/i)).toBeTruthy()
-    expect(screen.getByText(/Night watch/i)).toBeTruthy()
+    expect(screen.queryByRole('tab', { name: /Stats/i })).toBeNull()
+    expect(screen.queryByRole('tablist', { name: /View/i })).toBeNull()
+    expect(screen.getByRole('heading', { name: /Timeline/i })).toBeTruthy()
   })
 
   it('deletes and restores an entry with undo', async () => {

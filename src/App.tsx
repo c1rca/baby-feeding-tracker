@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Baby, BarChart3, CalendarDays, CirclePause, Clock3, Download, Droplets, MoreHorizontal, Moon, Pencil, RotateCcw, Save, Settings, Sparkles, Sun, Trash2, Trophy, Upload, XCircle } from 'lucide-react'
+import { Baby, CalendarDays, CirclePause, Clock3, Download, Droplets, MoreHorizontal, Moon, Pencil, RotateCcw, Save, Settings, Sparkles, Sun, Trash2, Trophy, Upload, XCircle } from 'lucide-react'
 import { formatDuration, sumSideDurations, type SideSegment } from './domain/feedingUtils'
 import './styles.css'
 
@@ -136,7 +136,7 @@ function App() {
   })
   const [theme, setTheme] = useState<Theme>(() => getCookieTheme() || (localStorage.getItem(KEY_THEME) as Theme) || 'light')
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [view, setView] = useState<View>('track')
+  const [view] = useState<View>('track')
   const [bottleOpen, setBottleOpen] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
   const [manualDraft, setManualDraft] = useState({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
@@ -509,10 +509,6 @@ function App() {
       <header className="top">
         <h1><Baby size={20} /> Baby Feeding Tracker</h1>
         <div className="top-actions">
-          <div className="view-switch" role="tablist" aria-label="View">
-            <button type="button" role="tab" aria-selected={view === 'track'} className={view === 'track' ? 'active-view' : ''} onClick={() => setView('track')}>Track</button>
-            <button type="button" role="tab" aria-selected={view === 'stats'} className={view === 'stats' ? 'active-view' : ''} onClick={() => setView('stats')}><BarChart3 size={15} /> Stats</button>
-          </div>
           <span className={`sync-pill sync-${syncStatus}`}>{syncStatus === 'synced' ? 'Synced' : syncStatus === 'syncing' ? 'Syncing…' : 'Offline changes saved'}</span>
           <button className="icon-plain" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
             {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
