@@ -682,11 +682,16 @@ describe('App interactions', () => {
     expect(screen.getByText(/late log/i)).toBeTruthy()
   })
 
-  it('logs wet and stool together from a diaper panel as one timeline entry', async () => {
+  it('places diaper logging below missed feed and logs standalone diapers without context copy', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.getByRole('group', { name: /Diaper/i })).toBeTruthy()
+    const hero = document.querySelector('.hero') as HTMLElement
+    const missedFeedButton = screen.getByRole('button', { name: /Add missed feed/i })
+    const diaperPanel = screen.getByRole('group', { name: /Diaper/i })
+    expect(hero.compareDocumentPosition(missedFeedButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(missedFeedButton.compareDocumentPosition(diaperPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+
     await user.click(screen.getByRole('button', { name: /Select wet diaper/i }))
     await user.click(screen.getByRole('button', { name: /Select stool diaper/i }))
     await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
@@ -696,23 +701,32 @@ describe('App interactions', () => {
     expect(screen.getByText(/Diapers today/i).nextElementSibling?.textContent).toContain('1 stool')
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
     expect(screen.getAllByText(/Wet \+ Stool/i).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Outside feed/i)).toBeNull()
+    expect(screen.queryByText(/Attached to active feed/i)).toBeNull()
   })
 
-  it('allows one wet and one stool selection per active feeding', async () => {
+  it('adds active-feed diaper selections to the saved feed entry only once per kind', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
     await user.click(screen.getByRole('button', { name: /Select wet during active feed/i }))
     await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
-    expect(screen.getByText(/Wet added to active feed/i)).toBeTruthy()
+    expect(screen.getByText(/Wet added to this feed/i)).toBeTruthy()
     expect((screen.getByRole('button', { name: /Wet already logged for this feed/i }) as HTMLButtonElement).disabled).toBe(true)
 
     await user.click(screen.getByRole('button', { name: /Select stool during active feed/i }))
     await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
-    expect(screen.getByText(/Stool added to active feed/i)).toBeTruthy()
+    expect(screen.getByText(/Stool added to this feed/i)).toBeTruthy()
     expect((screen.getByRole('button', { name: /Stool already logged for this feed/i }) as HTMLButtonElement).disabled).toBe(true)
-    expect(screen.getAllByText(/Attached to active feed/i)).toHaveLength(2)
+    expect(screen.queryByRole('listitem')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /End feed/i }))
+    const items = screen.getAllByRole('listitem')
+    expect(items).toHaveLength(1)
+    expect(within(items[0]).getByText(/Wet \+ Stool/i)).toBeTruthy()
+    expect(screen.queryByText(/Attached to active feed/i)).toBeNull()
+    expect(screen.queryByText(/Outside feed/i)).toBeNull()
   })
 
   it('uses explicit bottle copy during active nursing sessions', async () => {
