@@ -522,7 +522,7 @@ function App() {
       {view === 'track' ? (
       <div className="tracker-view">
       <section className="card hero" ref={heroRef}>
-        <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span><strong>{nextFeedWindowText}{lastFeed ? <span className="next-feed-side"> {nextFeedSideText}</span> : null}</strong></span></div><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
+        <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span><strong>{nextFeedWindowText}{lastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span></div><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
         <div className="hero-micro-meta" aria-label="Feed timing summary">
           <span>{lastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
