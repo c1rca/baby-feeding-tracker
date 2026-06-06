@@ -343,8 +343,8 @@ describe('App interactions', () => {
 
     render(<App />)
 
-    expect(screen.getByText(/Next feed/i)).toBeTruthy()
-    expect(screen.getByText(/10:00.*11:00/i)).toBeTruthy()
+    expect(screen.getByText(/^Next$/i)).toBeTruthy()
+    expect(screen.getByText(/10:00.*11:00.*L/i)).toBeTruthy()
   })
 
   it('puts priority feed cues above the counter with micro timing below', () => {
@@ -381,11 +381,11 @@ describe('App interactions', () => {
 
     expect(screen.queryByText(/Active Feed/i)).toBeNull()
     expect(screen.getByText(/Avg 2h 30m/i)).toBeTruthy()
-    expect(screen.getByText(/Next feed/i)).toBeTruthy()
-    expect(screen.getByText(/12:30.*1:30/i)).toBeTruthy()
+    expect(screen.getByText(/^Next$/i)).toBeTruthy()
+    expect(screen.getByText(/12:30.*1:30.*L/i)).toBeTruthy()
     expect(screen.getByText(/Last /i)).toBeTruthy()
     expect(heroText).not.toMatch(/Suggested:/i)
-    expect(heroText.indexOf('Next feed')).toBeLessThan(heroText.indexOf('0m 00s'))
+    expect(heroText.indexOf('Next')).toBeLessThan(heroText.indexOf('0m 00s'))
     expect(heroText.indexOf('0m 00s')).toBeLessThan(heroText.indexOf('Last '))
     expect(heroText.indexOf('Last ')).toBeLessThan(heroText.indexOf('Avg 2h 30m'))
   })

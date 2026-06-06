@@ -48,7 +48,7 @@ body { margin: 0; }
 .pill { border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px 10px; font-size: .8rem; background: #fff; color: #334155; font-weight:600; }
 .timer { font-size: clamp(3.1rem, 11vw, 5.8rem); font-weight: 900; letter-spacing: .015em; margin: 12px 0 6px; line-height: .88; font-variant-numeric: tabular-nums; }
 .feed-cues { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:4px 0 4px; }
-.hero-priority-cues { margin: 0; padding: 8px 12px; width: fit-content; max-width: 100%; border:1px solid #334155; border-radius:999px; background:linear-gradient(135deg,#0f172a,#1e293b); box-shadow:0 10px 24px rgba(15,23,42,.18); }
+.hero-priority-cues { margin: 0; padding: 0; width: fit-content; max-width: 100%; border:0; border-radius:0; background:transparent; box-shadow:none; }
 .suggestion { display:inline-flex; align-items:center; border:1px solid #bfdbfe; background:linear-gradient(135deg,#2563eb,#4f46e5); color:#fff; border-radius:999px; padding:7px 12px; font-weight:850; line-height:1; box-shadow:0 8px 18px rgba(37,99,235,.18); }
 .next-window { display:inline-flex; align-items:baseline; gap:6px; color:#cbd5e1; font-size:.92rem; }
 .next-window span { font-weight:650; }
@@ -194,7 +194,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .notification-setting { background:#0f172a; border-color:#334155; }
 [data-theme='dark'] .notification-setting small { color:#94a3b8; }
 [data-theme='dark'] .hero::before { background: radial-gradient(circle at 82% 12%, rgba(96,165,250,.16), transparent 34%); }
-[data-theme='dark'] .hero-priority-cues { background:rgba(15,23,42,.68); border-color:#334155; box-shadow:0 12px 26px rgba(0,0,0,.24); }
+[data-theme='dark'] .hero-priority-cues { background:transparent; border-color:transparent; box-shadow:none; }
 [data-theme='dark'] .suggestion { background:linear-gradient(135deg,#2563eb,#6366f1); border-color:#3b82f6; color:#eff6ff; }
 [data-theme='dark'] .next-window { color:#94a3b8; }
 [data-theme='dark'] .next-window strong { color:#e2e8f0; }

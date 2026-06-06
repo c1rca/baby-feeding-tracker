@@ -438,7 +438,13 @@ function App() {
   }, [entries])
   const lastFeedMetaText = minsSinceLast === null ? 'No feed history yet' : `${Math.floor(minsSinceLast / 60) > 0 ? `${Math.floor(minsSinceLast / 60)}h ` : ''}${minsSinceLast % 60}m ago`
   const avgGapShortText = avgGapMinutes ? `Avg ${Math.floor(avgGapMinutes / 60) > 0 ? `${Math.floor(avgGapMinutes / 60)}h ` : ''}${avgGapMinutes % 60}m` : null
-  const nextFeedWindowText = lastFeed ? formatShortTimeRange(lastFeed.endedAt + 2 * 60 * 60 * 1000, lastFeed.endedAt + 3 * 60 * 60 * 1000) : 'After first feed'
+  const suggestedSide = useMemo<Side>(() => {
+    const lastNursing = entries.find((entry) => entry.leftSeconds + entry.rightSeconds > 0)
+    if (!lastNursing) return today.left <= today.right ? 'left' : 'right'
+    if (lastNursing.leftSeconds === lastNursing.rightSeconds) return today.left <= today.right ? 'left' : 'right'
+    return oppositeSide(lastNursing.leftSeconds > lastNursing.rightSeconds ? 'left' : 'right')
+  }, [entries, today.left, today.right])
+  const nextFeedWindowText = lastFeed ? `${formatShortTimeRange(lastFeed.endedAt + 2 * 60 * 60 * 1000, lastFeed.endedAt + 3 * 60 * 60 * 1000)} ${suggestedSide[0].toUpperCase()}` : 'After first feed'
 
   useEffect(() => {
     if (!feedingNotificationsEnabled || notificationPermission !== 'granted' || !lastFeed || typeof Notification === 'undefined') return
@@ -459,13 +465,6 @@ function App() {
       }, delayMs))
     return () => timers.forEach((timer) => window.clearTimeout(timer))
   }, [feedingNotificationsEnabled, lastFeed, notificationPermission])
-  const suggestedSide = useMemo<Side>(() => {
-    const lastNursing = entries.find((entry) => entry.leftSeconds + entry.rightSeconds > 0)
-    if (!lastNursing) return today.left <= today.right ? 'left' : 'right'
-    if (lastNursing.leftSeconds === lastNursing.rightSeconds) return today.left <= today.right ? 'left' : 'right'
-    return oppositeSide(lastNursing.leftSeconds > lastNursing.rightSeconds ? 'left' : 'right')
-  }, [entries, today.left, today.right])
-
   const activeSide = session?.activeSide
   const activeOppositeSide = activeSide ? oppositeSide(activeSide) : suggestedSide
 
@@ -522,7 +521,7 @@ function App() {
       {view === 'track' ? (
       <div className="tracker-view">
       <section className="card hero" ref={heroRef}>
-        <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next feed</span><strong>{nextFeedWindowText}</strong></span></div><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
+        <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span><strong>{nextFeedWindowText}</strong></span></div><span className="pill">{session?.activeSide ? `On ${session.activeSide}` : session ? 'Paused' : 'Ready'}</span></div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
         <div className="hero-micro-meta" aria-label="Feed timing summary">
           <span>{lastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
