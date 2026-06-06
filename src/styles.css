@@ -55,7 +55,7 @@ body { margin: 0; }
 .next-window strong { color:#fff; font-size:1rem; font-weight:850; letter-spacing:-.01em; }
 .next-window .next-feed-side { display:inline; margin-left:0; padding:0; border:0; border-radius:0; background:transparent; color:inherit; font:inherit; box-shadow:none; vertical-align:baseline; }
 .hero-micro-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 14px; color:#64748b; font-size:.78rem; font-weight:800; letter-spacing:.01em; }
-.diaper-panel { display:flex; align-items:center; gap:10px; flex-wrap:wrap; max-width:100%; margin:0 0 14px; padding:12px; border:1px solid #dbeafe; border-radius:16px; background:rgba(255,255,255,.64); box-shadow:0 10px 24px rgba(15,23,42,.06); }
+.diaper-panel { display:flex; align-items:center; gap:10px; flex-wrap:wrap; max-width:100%; margin:16px 0 14px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
 .diaper-panel-label { padding:0 4px; color:#64748b; font-size:.78rem; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
 .diaper-chip, .diaper-log-button { min-height:40px; padding:0 14px; border-radius:999px; font-size:.9rem; font-weight:850; box-shadow:none; }
 .diaper-chip { background:#f8fafc; border-color:#cbd5e1; color:#475569; }
@@ -151,6 +151,7 @@ button.end-feed { font-weight: 800; border-width: 2px; }
 .delete-confirm span { color:#64748b; font-size:.78rem; font-weight:800; padding:2px 4px 0; }
 .entry-menu .confirm-delete { background:#fff1f2; }
 .edit-panel { margin-top: 10px; display: grid; gap: 8px; }
+.diaper-edit-panel { display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
 .edit-panel label { display: grid; gap: 4px; font-size: .86rem; color: #475569; }
 input { min-height: 40px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 0 10px; transition:border-color .15s ease, box-shadow .15s ease; }
 input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.15); }
@@ -239,7 +240,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .next-window strong { color:#e2e8f0; }
 [data-theme='dark'] .next-window .next-feed-side { color:inherit; border-color:transparent; background:transparent; box-shadow:none; }
 [data-theme='dark'] .hero-micro-meta { color:#94a3b8; }
-[data-theme='dark'] .diaper-panel { background:rgba(15,23,42,.58); border-color:#334155; box-shadow:0 12px 24px rgba(0,0,0,.18); }
+[data-theme='dark'] .diaper-panel { background:transparent; border-color:transparent; box-shadow:none; }
 [data-theme='dark'] .diaper-panel-label { color:#94a3b8; }
 [data-theme='dark'] .diaper-chip { background:#111827; border-color:#334155; color:#cbd5e1; }
 [data-theme='dark'] .diaper-chip.selected { background:linear-gradient(135deg,#0891b2,#2563eb); border-color:transparent; color:#eff6ff; }

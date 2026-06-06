@@ -705,6 +705,44 @@ describe('App interactions', () => {
     expect(screen.queryByText(/Attached to active feed/i)).toBeNull()
   })
 
+  it('undoes a standalone diaper log from the timeline toast', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Select wet diaper/i }))
+    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: /Undo diaper log/i }))
+
+    expect(screen.queryByRole('listitem')).toBeNull()
+    expect(screen.getByText(/Diaper log undone/i)).toBeTruthy()
+  })
+
+  it('edits and deletes standalone diaper entries from timeline actions', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Select wet diaper/i }))
+    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
+    const diaperItem = screen.getAllByRole('listitem')[0]
+
+    await user.click(within(diaperItem).getByRole('button', { name: /Diaper actions/i }))
+    await user.click(within(diaperItem).getByRole('menuitem', { name: /Edit diaper/i }))
+    await user.click(within(diaperItem).getByRole('button', { name: /Select stool diaper/i }))
+    await user.click(within(diaperItem).getByRole('button', { name: /Save diaper/i }))
+    expect(within(diaperItem).getByText(/Wet \+ Stool/i)).toBeTruthy()
+
+    await user.click(within(diaperItem).getByRole('button', { name: /Diaper actions/i }))
+    await user.click(within(diaperItem).getByRole('menuitem', { name: /Delete diaper/i }))
+    await user.click(within(diaperItem).getByRole('menuitem', { name: /Confirm delete diaper/i }))
+
+    expect(screen.queryByRole('listitem')).toBeNull()
+    expect(screen.getByText(/Diaper deleted/i)).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Undo diaper delete/i }))
+    expect(screen.getAllByRole('listitem')).toHaveLength(1)
+  })
+
   it('adds active-feed diaper selections to the saved feed entry only once per kind', async () => {
     const user = userEvent.setup()
     render(<App />)
