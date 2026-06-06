@@ -413,6 +413,7 @@ describe('App interactions', () => {
     const heroText = container.querySelector('.hero')?.textContent || ''
 
     expect(screen.queryByText(/Active Feed/i)).toBeNull()
+    expect(screen.queryByText(/^Ready$/i)).toBeNull()
     expect(screen.getByText(/Avg 2h 30m/i)).toBeTruthy()
     expect(screen.getByText(/^Next$/i)).toBeTruthy()
     expect(heroText).toMatch(/12:30.*1:30.*PM.*L/i)
