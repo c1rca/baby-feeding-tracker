@@ -31,13 +31,14 @@ test('getLatestMedicineDose uses newest Tylenol or Motrin dose', () => {
   assert.equal(latest.id, 'newer-motrin')
 })
 
-test('buildMedicineReminder is due six hours after latest Tylenol or Motrin dose', () => {
+test('buildMedicineReminder recommends the opposite medicine six hours after latest dose', () => {
   const at = new Date('2026-06-05T08:00:00Z').getTime()
   const reminder = buildMedicineReminder({ id: 'dose-1', kind: 'tylenol', at }, at)
 
   assert.equal(reminder.doseId, 'dose-1')
   assert.equal(reminder.dueAt, new Date('2026-06-05T14:00:00Z').getTime())
   assert.equal(reminder.medicineKind, 'tylenol')
+  assert.equal(reminder.recommendedKind, 'motrin')
 })
 
 test('notification scheduler sends a Gotify medication reminder after six hours', async () => {
@@ -70,7 +71,8 @@ test('notification scheduler sends a Gotify medication reminder after six hours'
 
   assert.equal(sent.length, 1)
   assert.equal(sent[0].title, 'Medicine reminder')
-  assert.match(sent[0].message, /6 hours since Motrin/i)
+  assert.match(sent[0].message, /Take Tylenol/i)
+  assert.match(sent[0].message, /Last dose was Motrin/i)
   assert.match(sent[0].message, /https:\/\/feedr\.kjw\.lol$/)
   assert.ok(notificationRows.get('medicine:dose-1').sent_at)
 })

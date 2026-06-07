@@ -27,9 +27,11 @@ type LegacySession = Omit<Session, 'note' | 'bottleOunces' | 'diaperKinds'> & { 
 type UndoState =
   | { entry: Entry; timeoutId: number; kind: 'delete' | 'resume'; previousSession?: Session | null }
   | { diaper: DiaperEvent; timeoutId: number; kind: 'diaper-log' | 'diaper-delete' }
+  | { medicine: MedicineEvent; timeoutId: number; kind: 'medicine-log' | 'medicine-delete' }
   | { session: Session; timeoutId: number; kind: 'clear-session' }
 type EditingState = { id: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string; diaperKinds: DiaperKind[] } | null
 type EditingDiaperState = { id: string; kinds: DiaperKind[] } | null
+type EditingMedicineState = { id: string; kind: MedicineKind; time: string; originalAt: number } | null
 type Theme = 'light' | 'dark'
 type View = 'track' | 'stats'
 
@@ -62,6 +64,7 @@ const diaperLabel = (kind: DiaperKind) => (kind === 'wet' ? 'Wet' : 'Stool')
 const diaperKinds = (event: DiaperEvent): DiaperKind[] => event.kinds?.length ? event.kinds : event.kind ? [event.kind] : []
 const diaperEventLabel = (event: DiaperEvent) => diaperKinds(event).map(diaperLabel).join(' + ')
 const medicineLabel = (kind: MedicineKind) => (kind === 'tylenol' ? 'Tylenol' : 'Motrin')
+const oppositeMedicine = (kind: MedicineKind): MedicineKind => (kind === 'tylenol' ? 'motrin' : 'tylenol')
 const entryDiaperKinds = (entry: Entry): DiaperKind[] => entry.diaperKinds ?? []
 const diaperKindsLabel = (kinds: DiaperKind[]) => kinds.map(diaperLabel).join(' + ')
 const timelineFeedLabel = (entry: Entry) => {
@@ -182,6 +185,8 @@ function App() {
   const [undoState, setUndoState] = useState<UndoState | null>(null)
   const [editing, setEditing] = useState<EditingState>(null)
   const [editingDiaper, setEditingDiaper] = useState<EditingDiaperState>(null)
+  const [editingMedicine, setEditingMedicine] = useState<EditingMedicineState>(null)
+  const [additionalOptionsOpen, setAdditionalOptionsOpen] = useState(false)
   const [openEntryMenuId, setOpenEntryMenuId] = useState<string | null>(null)
   const [confirmingDeleteEntryId, setConfirmingDeleteEntryId] = useState<string | null>(null)
   const [resumeFocusTick, setResumeFocusTick] = useState(0)
@@ -501,7 +506,7 @@ function App() {
 
   const latestMedicine = medicines[0]
   const medicineReminderDue = latestMedicine && now - latestMedicine.at >= MEDICINE_REMINDER_MS
-    ? { id: latestMedicine.id, label: medicineLabel(latestMedicine.kind), at: latestMedicine.at }
+    ? { id: latestMedicine.id, label: medicineLabel(latestMedicine.kind), recommendedKind: oppositeMedicine(latestMedicine.kind), recommendedLabel: medicineLabel(oppositeMedicine(latestMedicine.kind)), at: latestMedicine.at }
     : null
   const showMedicineReminder = Boolean(medicineReminderDue && dismissedMedicineReminderId !== medicineReminderDue.id)
 
@@ -510,7 +515,36 @@ function App() {
     const medicine: MedicineEvent = { id: makeId(), kind, at: t }
     setMedicines((prev) => [medicine, ...prev].sort((a, b) => b.at - a.at))
     setDismissedMedicineReminderId(null)
+    setAdditionalOptionsOpen(false)
+    if (undoState) window.clearTimeout(undoState.timeoutId)
+    const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
+    setUndoState({ medicine, timeoutId, kind: 'medicine-log' })
     showToast(`${medicineLabel(kind)} logged`)
+  }
+
+  const saveMedicineEdit = (medicine: MedicineEvent) => {
+    if (!editingMedicine) return
+    const nextAt = parseClockTimeToday(editingMedicine.time, editingMedicine.originalAt)
+    if (nextAt === null) return showToast('Enter a valid medicine time')
+    setMedicines((prev) => prev.map((item) => item.id === medicine.id ? { ...item, kind: editingMedicine.kind, at: nextAt } : item).sort((a, b) => b.at - a.at))
+    setDismissedMedicineReminderId(null)
+    setEditingMedicine(null)
+    showToast('Medicine updated')
+  }
+
+  const startMedicineEdit = (medicine: MedicineEvent) => {
+    setEditingMedicine({ id: medicine.id, kind: medicine.kind, time: formatClockInput(medicine.at), originalAt: medicine.at })
+    setOpenEntryMenuId(null)
+  }
+
+  const deleteMedicine = (medicine: MedicineEvent) => {
+    setMedicines((prev) => prev.filter((item) => item.id !== medicine.id))
+    setEditingMedicine(null)
+    setOpenEntryMenuId(null)
+    if (undoState) window.clearTimeout(undoState.timeoutId)
+    const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
+    setUndoState({ medicine, timeoutId, kind: 'medicine-delete' })
+    showToast('Medicine deleted')
   }
 
   const saveManualFeed = () => {
@@ -648,8 +682,8 @@ function App() {
     return { recentEntries, totalNursing, totalBottle, avgNursing, totalLeft, totalRight, leftPercent, bestDay, avgGap, nightFeeds, last24Entries, avgFeedsPerDay, longestNursing, longestGap, longestGapLabel, bottleFeeds, wetCount, stoolCount, balanceLabel, nextSideLabel, momentumLabel }
   }, [entries, diapers, now, today.left, today.right, trend.days])
 
-  const undoToastText = undoState?.kind === 'resume' ? 'Session resumed' : undoState?.kind === 'clear-session' ? 'Active feed cleared' : undoState?.kind === 'diaper-log' ? 'Diaper logged' : undoState?.kind === 'diaper-delete' ? 'Diaper deleted' : 'Entry deleted'
-  const undoLabel = undoState?.kind === 'resume' ? 'Undo resume' : undoState?.kind === 'clear-session' ? 'Undo clear active feed' : undoState?.kind === 'diaper-log' ? 'Undo diaper log' : undoState?.kind === 'diaper-delete' ? 'Undo diaper delete' : 'Undo delete'
+  const undoToastText = undoState?.kind === 'resume' ? 'Session resumed' : undoState?.kind === 'clear-session' ? 'Active feed cleared' : undoState?.kind === 'diaper-log' ? 'Diaper logged' : undoState?.kind === 'diaper-delete' ? 'Diaper deleted' : undoState?.kind === 'medicine-log' ? 'Medicine logged' : undoState?.kind === 'medicine-delete' ? 'Medicine deleted' : 'Entry deleted'
+  const undoLabel = undoState?.kind === 'resume' ? 'Undo resume' : undoState?.kind === 'clear-session' ? 'Undo clear active feed' : undoState?.kind === 'diaper-log' ? 'Undo diaper log' : undoState?.kind === 'diaper-delete' ? 'Undo diaper delete' : undoState?.kind === 'medicine-log' ? 'Undo medicine log' : undoState?.kind === 'medicine-delete' ? 'Undo medicine delete' : 'Undo delete'
 
   const undo = () => {
     if (!undoState) return
@@ -663,6 +697,12 @@ function App() {
     } else if (undoState.kind === 'diaper-delete') {
       setDiapers((prev) => [undoState.diaper, ...prev].sort((a, b) => b.at - a.at))
       showToast('Diaper delete undone')
+    } else if (undoState.kind === 'medicine-log') {
+      setMedicines((prev) => prev.filter((medicine) => medicine.id !== undoState.medicine.id))
+      showToast('Medicine log undone')
+    } else if (undoState.kind === 'medicine-delete') {
+      setMedicines((prev) => [undoState.medicine, ...prev].sort((a, b) => b.at - a.at))
+      showToast('Medicine delete undone')
     } else if ('entry' in undoState) {
       setEntries((prev) => [undoState.entry, ...prev].sort((a, b) => b.endedAt - a.endedAt))
       if (undoState.kind === 'resume') setSession(undoState.previousSession ?? null)
@@ -695,7 +735,7 @@ function App() {
       <div className="tracker-view">
       {showMedicineReminder && medicineReminderDue ? (
         <div className="medicine-reminder-banner" role="alert">
-          <div><strong>Medicine reminder</strong><span>6 hours since {medicineReminderDue.label}. Check whether another dose is needed.</span></div>
+          <div><strong>Medicine reminder</strong><span>Take {medicineReminderDue.recommendedLabel}. Last dose was {medicineReminderDue.label} 6+ hours ago.</span></div>
           <button type="button" className="icon-plain" aria-label="Dismiss medicine reminder" onClick={() => setDismissedMedicineReminderId(medicineReminderDue.id)}><X size={16} /></button>
         </div>
       ) : null}
@@ -749,12 +789,21 @@ function App() {
           })}
           <button type="button" className="diaper-log-button" aria-label="Log selected diapers" disabled={availableSelectedDiapers.length === 0} onClick={logSelectedDiapers}>Log</button>
         </div>
-        <div className="medicine-panel" role="group" aria-label="Medicine">
-          <span className="diaper-panel-label">Medicine</span>
-          <button type="button" className="medicine-chip" aria-label="Log Tylenol" onClick={() => logMedicine('tylenol')}><Pill size={14} /> Tylenol</button>
-          <button type="button" className="medicine-chip" aria-label="Log Motrin" onClick={() => logMedicine('motrin')}><Pill size={14} /> Motrin</button>
+        <div className="additional-options-shell">
+          <button type="button" className="additional-options-toggle" aria-label="Additional options" aria-expanded={additionalOptionsOpen} onClick={() => setAdditionalOptionsOpen((open) => !open)}>
+            <span>Additional options</span><strong>{additionalOptionsOpen ? 'Hide' : 'Show'}</strong>
+          </button>
+          {additionalOptionsOpen ? (
+            <div className="additional-options-panel">
+              <div className="medicine-panel" role="group" aria-label="Medicine">
+                <span className="diaper-panel-label">Medicine</span>
+                <button type="button" className="medicine-chip" aria-label="Log Tylenol" onClick={() => logMedicine('tylenol')}><Pill size={14} /> Tylenol</button>
+                <button type="button" className="medicine-chip" aria-label="Log Motrin" onClick={() => logMedicine('motrin')}><Pill size={14} /> Motrin</button>
+              </div>
+              {session ? <div className="edit-panel"><label>Optional note for this feed<input value={session.note} onChange={(v) => setSession({ ...session, note: v.target.value })} placeholder="optional note" /></label></div> : null}
+            </div>
+          ) : null}
         </div>
-        {session && <div className="edit-panel"><label>Optional note for this feed<input value={session.note} onChange={(v) => setSession({ ...session, note: v.target.value })} placeholder="optional note" /></label></div>}
       </section>
 
       <section className="grid">
@@ -887,7 +936,10 @@ function App() {
       ].sort((a, b) => b.time - a.time).map((item, index) => {
         if (item.kind === 'medicine') {
           const medicine = item.medicine
-          return <li key={medicine.id} className={`timeline-item timeline-medicine timeline-medicine-${medicine.kind}`}><div className="timeline-row"><div className="timeline-main"><div className="timeline-head"><strong>{formatTime(medicine.at)}</strong><span className={`badge badge-medicine badge-medicine-${medicine.kind}`}><Pill size={13} /> {medicineLabel(medicine.kind)}</span></div><span className="timeline-age">{formatDistanceToNow(medicine.at, { addSuffix: true })}</span></div></div></li>
+          const isEditingMedicine = editingMedicine?.id === medicine.id
+          const menuOpen = openEntryMenuId === medicine.id
+          const confirmingDelete = confirmingDeleteEntryId === medicine.id
+          return <li key={medicine.id} className={`timeline-item timeline-medicine timeline-medicine-${medicine.kind} ${menuOpen ? 'menu-open' : ''}`}><div className="timeline-row"><div className="timeline-main"><div className="timeline-head"><strong>{formatTime(medicine.at)}</strong><span className={`badge badge-medicine badge-medicine-${medicine.kind}`}><Pill size={13} /> {medicineLabel(medicine.kind)}</span></div><span className="timeline-age">{formatDistanceToNow(medicine.at, { addSuffix: true })}</span></div>{!isEditingMedicine ? <div className="entry-action-wrap"><button type="button" className="entry-action-trigger" aria-label="Medicine actions" aria-expanded={menuOpen} onClick={() => { setOpenEntryMenuId(menuOpen ? null : medicine.id); setConfirmingDeleteEntryId(null) }}><MoreHorizontal size={17} /></button>{menuOpen ? <div className="entry-menu" role="menu"><button type="button" role="menuitem" aria-label="Edit medicine" onClick={() => startMedicineEdit(medicine)}><Pencil size={15} /> Edit</button><button type="button" role="menuitem" aria-label="Delete medicine" className="danger-menu" onClick={() => setConfirmingDeleteEntryId(medicine.id)}><Trash2 size={15} /> Delete</button>{confirmingDelete ? <div className="delete-confirm"><span>Are you sure?</span><button type="button" role="menuitem" aria-label="Confirm delete medicine" className="confirm-delete" onClick={() => deleteMedicine(medicine)}>Confirm delete</button></div> : null}</div> : null}</div> : null}</div>{isEditingMedicine ? <div className="edit-panel"><div className="diaper-edit-panel" role="group" aria-label="Edit medicine kind">{(['tylenol', 'motrin'] as MedicineKind[]).map((kind) => { const selected = editingMedicine.kind === kind; return <button key={kind} type="button" className={`medicine-chip ${selected ? 'selected' : ''}`} aria-label={`Select ${medicineLabel(kind)}`} aria-pressed={selected} onClick={() => setEditingMedicine({ ...editingMedicine, kind })}><Pill size={14} /> {medicineLabel(kind)}</button> })}</div><label>Medicine time<input aria-label="Medicine time" value={editingMedicine.time} onChange={(event) => setEditingMedicine({ ...editingMedicine, time: event.target.value })} placeholder="9:15 AM" /></label><div className="row"><button className="primary" aria-label="Save medicine" onClick={() => saveMedicineEdit(medicine)}><Save size={15} /> Save</button><button onClick={() => setEditingMedicine(null)}>Cancel</button></div></div> : null}</li>
         }
         if (item.kind === 'diaper') {
           const diaper = item.diaper

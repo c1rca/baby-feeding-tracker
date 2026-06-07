@@ -32,7 +32,7 @@ export function buildMedicineReminder(latestDose, now = Date.now()) {
   const dueAt = latestDose.at + SIX_HOURS_MS
   const catchUpUntil = dueAt + MAX_CATCH_UP_MS
   if (dueAt <= now - MAX_CATCH_UP_MS) return null
-  return { kind: 'medicine', doseId: latestDose.id ?? String(latestDose.at), medicineKind: latestDose.kind, dueAt, catchUpUntil }
+  return { kind: 'medicine', doseId: latestDose.id ?? String(latestDose.at), medicineKind: latestDose.kind, recommendedKind: oppositeMedication(latestDose.kind), dueAt, catchUpUntil }
 }
 
 export function hasActiveSession(row) {
@@ -55,6 +55,10 @@ function parseJsonArray(value) {
 
 function medicationLabel(kind) {
   return kind === 'motrin' ? 'Motrin' : 'Tylenol'
+}
+
+function oppositeMedication(kind) {
+  return kind === 'motrin' ? 'tylenol' : 'motrin'
 }
 
 export function createNotificationScheduler({
@@ -137,7 +141,7 @@ export function createNotificationScheduler({
         if (freshReminder.kind === 'medicine') {
           await sendGotify({
             title: 'Medicine reminder',
-            message: `6 hours since ${medicationLabel(freshReminder.medicineKind)}. Check whether another dose is needed.\n\n${FEEDR_URL}`,
+            message: `Take ${medicationLabel(freshReminder.recommendedKind)}. Last dose was ${medicationLabel(freshReminder.medicineKind)} 6+ hours ago.\n\n${FEEDR_URL}`,
             priority: 5,
           })
         } else {

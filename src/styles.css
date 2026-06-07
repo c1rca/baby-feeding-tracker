@@ -64,8 +64,13 @@ body { margin: 0; }
 .diaper-chip:disabled { opacity:.54; cursor:not-allowed; transform:none; box-shadow:none; }
 .diaper-log-button { background:linear-gradient(135deg,#0f172a,#334155); border-color:transparent; color:#fff; }
 .diaper-log-button:disabled { opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
-.medicine-panel { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 14px; }
-.medicine-chip { background:linear-gradient(135deg,#fff7ed,#ffedd5); border-color:#fed7aa; color:#9a3412; }
+.medicine-panel { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0; }
+.medicine-chip { background:linear-gradient(135deg,#0f172a,#334155); border-color:transparent; color:#fff; }
+.medicine-chip.selected { background:linear-gradient(135deg,#ea580c,#dc2626); border-color:transparent; color:#fff; box-shadow:0 9px 18px rgba(220,38,38,.16); }
+.additional-options-shell { display:grid; gap:10px; margin:0 0 14px; }
+.additional-options-toggle { width:100%; justify-content:space-between; background:linear-gradient(135deg,#0f172a,#334155); border-color:transparent; color:#fff; }
+.additional-options-toggle strong { font-size:.82rem; opacity:.78; }
+.additional-options-panel { display:grid; gap:10px; padding:12px; border:1px solid #e2e8f0; border-radius:16px; background:rgba(248,250,252,.84); animation:panel-in .16s ease; }
 .medicine-reminder-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid #fed7aa; border-radius:18px; background:linear-gradient(135deg,#fff7ed,#fffbeb); color:#7c2d12; box-shadow:0 14px 28px rgba(154,52,18,.10); }
 .medicine-reminder-banner div { display:grid; gap:2px; }
 .medicine-reminder-banner span { color:#9a3412; font-size:.9rem; font-weight:650; }
@@ -256,7 +261,10 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .diaper-panel-label { color:#94a3b8; }
 [data-theme='dark'] .diaper-chip { background:#111827; border-color:#334155; color:#cbd5e1; }
 [data-theme='dark'] .diaper-chip.selected { background:linear-gradient(135deg,#0891b2,#2563eb); border-color:transparent; color:#eff6ff; }
-[data-theme='dark'] .medicine-chip { background:linear-gradient(135deg,#431407,#1f2937); border-color:#9a3412; color:#fed7aa; }
+[data-theme='dark'] .medicine-chip { background:linear-gradient(135deg,#0f172a,#334155); border-color:#475569; color:#e2e8f0; }
+[data-theme='dark'] .medicine-chip.selected { background:linear-gradient(135deg,#ea580c,#dc2626); border-color:transparent; color:#fff; }
+[data-theme='dark'] .additional-options-panel { background:rgba(15,23,42,.72); border-color:#334155; }
+[data-theme='dark'] .additional-options-toggle { background:linear-gradient(135deg,#0f172a,#334155); color:#f8fafc; }
 [data-theme='dark'] .medicine-reminder-banner { background:linear-gradient(135deg,#431407,#1f2937); border-color:#9a3412; color:#ffedd5; box-shadow:0 14px 28px rgba(0,0,0,.22); }
 [data-theme='dark'] .medicine-reminder-banner span { color:#fed7aa; }
 [data-theme='dark'] .icon-plain { color:#cbd5e1; }

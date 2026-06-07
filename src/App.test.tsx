@@ -67,7 +67,7 @@ describe('App interactions', () => {
     expect(screen.queryByRole('region', { name: /Stats dashboard/i })).toBeNull()
   })
 
-  it('logs Tylenol and Motrin under diaper controls and shows a dismissible six-hour medicine banner', async () => {
+  it('keeps medicine controls collapsed, alternates reminders, and undoes a new medicine log', async () => {
     const now = new Date('2026-06-05T14:00:00Z').getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(now)
@@ -79,18 +79,44 @@ describe('App interactions', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
 
-    expect(screen.getByRole('alert').textContent).toMatch(/6 hours since Tylenol/i)
+    expect(screen.getByRole('alert').textContent).toMatch(/Take Motrin/i)
+    expect(screen.queryByRole('button', { name: /Log Tylenol/i })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    expect(screen.getByRole('button', { name: /Log Tylenol/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Log Motrin/i })).toBeTruthy()
+
     await user.click(screen.getByRole('button', { name: /Dismiss medicine reminder/i }))
     expect(screen.queryByRole('alert')).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /Log Tylenol/i }))
     expect(screen.getByText(/Tylenol logged/i)).toBeTruthy()
-    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getByRole('button', { name: /Additional options/i }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('button', { name: /Log Tylenol/i })).toBeNull()
     expect(screen.getAllByText(/^Tylenol$/i).length).toBeGreaterThan(0)
 
-    await user.click(screen.getByRole('button', { name: /Log Motrin/i }))
-    expect(screen.getByText(/Motrin logged/i)).toBeTruthy()
-    expect(screen.getAllByText(/^Motrin$/i).length).toBeGreaterThan(0)
+    await user.click(screen.getByRole('button', { name: /Undo medicine log/i }))
+    expect(screen.getByText(/Medicine log undone/i)).toBeTruthy()
+    expect(screen.queryAllByText(/^Tylenol$/i).length).toBe(1)
+  })
+
+  it('edits a medicine timeline entry kind and time', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'dose-1', kind: 'tylenol', at: now }]))
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    const firstItem = screen.getAllByRole('listitem')[0]
+    await user.click(within(firstItem).getByRole('button', { name: /Medicine actions/i }))
+    await user.click(within(firstItem).getByRole('menuitem', { name: /Edit medicine/i }))
+    await user.click(within(firstItem).getByRole('button', { name: /Select Motrin/i }))
+    await user.clear(within(firstItem).getByLabelText(/Medicine time/i))
+    await user.type(within(firstItem).getByLabelText(/Medicine time/i), '9:15 AM')
+    await user.click(within(firstItem).getByRole('button', { name: /Save medicine/i }))
+
+    expect(screen.getByText(/Medicine updated/i)).toBeTruthy()
+    expect(within(firstItem).getAllByText(/^Motrin$/i).length).toBeGreaterThan(0)
+    expect(within(firstItem).getByText(/9:15 AM/i)).toBeTruthy()
   })
 
   it('deletes and restores an entry with undo', async () => {
@@ -166,9 +192,11 @@ describe('App interactions', () => {
     expect(within(liveSplit).getByText(/^Left$/i).nextElementSibling?.textContent).toMatch(/7m 00s/)
     expect(within(liveSplit).getByText(/^Right$/i).nextElementSibling?.textContent).toMatch(/5m 00s/)
     expect(within(liveSplit).getByText(/^Bottle$/i).nextElementSibling?.textContent).toBe('2.5 oz')
-    expect(screen.getByDisplayValue(/resume me/i)).toBeTruthy()
+    expect(screen.queryByDisplayValue(/resume me/i)).toBeNull()
     await waitFor(() => expect(scrollSpy).toHaveBeenCalled())
     expect(document.activeElement?.textContent).toMatch(/Switch to Left/i)
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    expect(screen.getByDisplayValue(/resume me/i)).toBeTruthy()
     expect(screen.queryByText(/mixed/i)).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /Undo resume/i }))
