@@ -48,8 +48,8 @@ test('normalizeTextEmailRecipients supports comma-separated addresses', () => {
   )
 })
 
-test('notification scheduler sends Gotify and text-email medication reminders after six hours', async () => {
-  const now = new Date('2026-06-05T14:00:00Z').getTime()
+test('notification scheduler sends Gotify and text-email medication reminders once per missed dose window', async () => {
+  let now = new Date('2026-06-05T14:00:00Z').getTime()
   const row = {
     entries_json: JSON.stringify([]),
     medicines_json: JSON.stringify([{ id: 'dose-1', kind: 'motrin', at: now - 6 * 60 * 60 * 1000 }]),
@@ -77,6 +77,7 @@ test('notification scheduler sends Gotify and text-email medication reminders af
   scheduler.evaluate()
   assert.equal(timers[0].delay, 0)
   await timers[0].fn()
+  scheduler.evaluate()
 
   assert.equal(sent.length, 1)
   assert.equal(sent[0].title, 'Medicine reminder')
@@ -88,6 +89,55 @@ test('notification scheduler sends Gotify and text-email medication reminders af
   assert.match(textEmails[0].message, /Take Tylenol/i)
   assert.match(textEmails[0].message, /Last dose was Motrin/i)
   assert.ok(notificationRows.get('medicine:dose-1').sent_at)
+  assert.equal(timers.length, 1)
+
+  now += 7 * 60 * 60 * 1000
+  row.medicines_json = JSON.stringify([
+    { id: 'dose-2', kind: 'tylenol', at: now - 6 * 60 * 60 * 1000 },
+    { id: 'dose-1', kind: 'motrin', at: new Date('2026-06-05T08:00:00Z').getTime() },
+  ])
+  scheduler.evaluate()
+  assert.equal(timers[1].delay, 0)
+  await timers[1].fn()
+
+  assert.equal(sent.length, 2)
+  assert.match(sent[1].message, /Take Motrin/i)
+  assert.equal(textEmails.length, 2)
+  assert.ok(notificationRows.get('medicine:dose-2').sent_at)
+})
+
+test('notification scheduler does not re-trigger a medicine reminder after one channel fails', async () => {
+  const now = new Date('2026-06-05T14:00:00Z').getTime()
+  const row = {
+    entries_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([{ id: 'dose-partial', kind: 'tylenol', at: now - 6 * 60 * 60 * 1000 }]),
+  }
+  const sent = []
+  const notificationRows = new Map()
+  const timers = []
+
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => row },
+    getNotificationState: { get: (id) => notificationRows.get(id) },
+    upsertNotificationState: { run: (state) => notificationRows.set(state.entry_id, state) },
+    sendGotify: async (payload) => sent.push(payload),
+    sendTextEmail: async () => { throw new Error('sms gateway unavailable') },
+    now: () => now,
+    setTimer: (fn, delay) => {
+      timers.push({ fn, delay })
+      return timers.length
+    },
+    clearTimer: () => {},
+    logger: { warn: () => {} },
+  })
+
+  scheduler.evaluate()
+  await timers[0].fn()
+  scheduler.evaluate()
+
+  assert.equal(sent.length, 1)
+  assert.ok(notificationRows.get('medicine:dose-partial').sent_at)
+  assert.equal(timers.length, 1)
 })
 
 test('notification scheduler prefers the next due item when feed and medicine reminders coexist', () => {

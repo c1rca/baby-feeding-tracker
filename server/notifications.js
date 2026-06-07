@@ -151,8 +151,13 @@ export function createNotificationScheduler({
             message: `Take ${medicationLabel(freshReminder.recommendedKind)}. Last dose was ${medicationLabel(freshReminder.medicineKind)} 6+ hours ago.\n\n${FEEDR_URL}`,
             priority: 5,
           }
-          if (sendGotify) await sendGotify(medicinePayload)
-          if (sendTextEmail) await sendTextEmail(medicinePayload)
+          markHandled(freshReminder)
+          const results = await Promise.allSettled([
+            sendGotify ? sendGotify(medicinePayload) : Promise.resolve(),
+            sendTextEmail ? sendTextEmail(medicinePayload) : Promise.resolve(),
+          ])
+          const failed = results.find((result) => result.status === 'rejected')
+          if (failed) logger.warn?.('Medicine notification channel failed', failed.reason)
         } else {
           await sendGotify({
             title: 'Feeding reminder',
