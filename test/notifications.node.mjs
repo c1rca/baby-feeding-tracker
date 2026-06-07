@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildReminder, createNotificationScheduler, getLatestEndedFeed, hasActiveSession } from '../server/notifications.js'
+import { buildMedicineReminder, buildReminder, createNotificationScheduler, getLatestEndedFeed, getLatestMedicineDose, hasActiveSession } from '../server/notifications.js'
 
 test('buildReminder schedules the next feeding window two to three hours after latest feed', () => {
   const endedAt = new Date('2026-06-05T08:00:00Z').getTime()
@@ -19,6 +19,88 @@ test('getLatestEndedFeed ignores invalid entries and uses newest endedAt', () =>
   ])
 
   assert.equal(latest.id, 'newer')
+})
+
+test('getLatestMedicineDose uses newest Tylenol or Motrin dose', () => {
+  const latest = getLatestMedicineDose([
+    { id: 'older-tylenol', kind: 'tylenol', at: 10 },
+    { id: 'bad', kind: 'vitamin', at: 30 },
+    { id: 'newer-motrin', kind: 'motrin', at: 20 },
+  ])
+
+  assert.equal(latest.id, 'newer-motrin')
+})
+
+test('buildMedicineReminder is due six hours after latest Tylenol or Motrin dose', () => {
+  const at = new Date('2026-06-05T08:00:00Z').getTime()
+  const reminder = buildMedicineReminder({ id: 'dose-1', kind: 'tylenol', at }, at)
+
+  assert.equal(reminder.doseId, 'dose-1')
+  assert.equal(reminder.dueAt, new Date('2026-06-05T14:00:00Z').getTime())
+  assert.equal(reminder.medicineKind, 'tylenol')
+})
+
+test('notification scheduler sends a Gotify medication reminder after six hours', async () => {
+  const now = new Date('2026-06-05T14:00:00Z').getTime()
+  const row = {
+    entries_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([{ id: 'dose-1', kind: 'motrin', at: now - 6 * 60 * 60 * 1000 }]),
+  }
+  const sent = []
+  const notificationRows = new Map()
+  const timers = []
+
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => row },
+    getNotificationState: { get: (id) => notificationRows.get(id) },
+    upsertNotificationState: { run: (state) => notificationRows.set(state.entry_id, state) },
+    sendGotify: async (payload) => sent.push(payload),
+    now: () => now,
+    setTimer: (fn, delay) => {
+      timers.push({ fn, delay })
+      return timers.length
+    },
+    clearTimer: () => {},
+    logger: { warn: () => {} },
+  })
+
+  scheduler.evaluate()
+  assert.equal(timers[0].delay, 0)
+  await timers[0].fn()
+
+  assert.equal(sent.length, 1)
+  assert.equal(sent[0].title, 'Medicine reminder')
+  assert.match(sent[0].message, /6 hours since Motrin/i)
+  assert.match(sent[0].message, /https:\/\/feedr\.kjw\.lol$/)
+  assert.ok(notificationRows.get('medicine:dose-1').sent_at)
+})
+
+test('notification scheduler prefers the next due item when feed and medicine reminders coexist', () => {
+  const now = new Date('2026-06-05T09:00:00Z').getTime()
+  const row = {
+    entries_json: JSON.stringify([{ id: 'feed-1', endedAt: now - 90 * 60 * 1000 }]),
+    medicines_json: JSON.stringify([{ id: 'dose-1', kind: 'tylenol', at: now - 5 * 60 * 60 * 1000 }]),
+  }
+  const timers = []
+
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => row },
+    getNotificationState: { get: () => null },
+    upsertNotificationState: { run: () => {} },
+    sendGotify: async () => {},
+    now: () => now,
+    setTimer: (fn, delay) => {
+      timers.push({ fn, delay })
+      return timers.length
+    },
+    clearTimer: () => {},
+    logger: { warn: () => {} },
+  })
+
+  scheduler.evaluate()
+
+  assert.equal(timers[0].delay, 30 * 60 * 1000)
+  assert.equal(scheduler.getScheduled().kind, 'feeding')
 })
 
 test('notification scheduler sends once for the current latest feed', async () => {

@@ -27,6 +27,8 @@ for (const [index, line] of lines.entries()) {
   if ((record.event === 'state_replace' || record.event === 'startup_state_snapshot') && Array.isArray(record.entries)) {
     latestState = {
       entries: record.entries,
+      diapers: Array.isArray(record.diapers) ? record.diapers : [],
+      medicines: Array.isArray(record.medicines) ? record.medicines : [],
       session: record.session ?? null,
       theme: record.theme === 'dark' ? 'dark' : 'light',
       updatedAt: record.at,
@@ -57,6 +59,8 @@ try {
       entries_json TEXT NOT NULL,
       session_json TEXT,
       theme TEXT NOT NULL DEFAULT 'light',
+      diapers_json TEXT NOT NULL DEFAULT '[]',
+      medicines_json TEXT NOT NULL DEFAULT '[]',
       updated_at TEXT NOT NULL
     );
 
@@ -74,11 +78,13 @@ try {
     );
   `)
   db.prepare(`
-    INSERT INTO app_state (id, entries_json, session_json, theme, updated_at)
-    VALUES (1, @entries_json, @session_json, @theme, @updated_at)
+    INSERT INTO app_state (id, entries_json, session_json, theme, diapers_json, medicines_json, updated_at)
+    VALUES (1, @entries_json, @session_json, @theme, @diapers_json, @medicines_json, @updated_at)
   `).run({
     entries_json: JSON.stringify(latestState.entries),
     session_json: latestState.session ? JSON.stringify(latestState.session) : null,
+    diapers_json: JSON.stringify(latestState.diapers),
+    medicines_json: JSON.stringify(latestState.medicines),
     theme: latestState.theme,
     updated_at: latestState.updatedAt,
   })
@@ -92,3 +98,5 @@ try {
 console.log(`Replayed event log: ${source}`)
 console.log(`Recreated database: ${dbPath}`)
 console.log(`Entries: ${latestState.entries.length}`)
+console.log(`Diapers: ${latestState.diapers.length}`)
+console.log(`Medicines: ${latestState.medicines.length}`)

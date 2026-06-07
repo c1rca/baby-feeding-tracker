@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatDistanceToNow } from 'date-fns'
-import { Activity, Baby, BarChart3, CalendarDays, CirclePause, ClipboardList, Clock3, Download, Droplets, HeartPulse, MoreHorizontal, Moon, Pencil, RotateCcw, Save, Settings, Sparkles, Sun, Target, Trash2, Trophy, Upload, Waves, XCircle } from 'lucide-react'
+import { Activity, Baby, BarChart3, CalendarDays, CirclePause, ClipboardList, Clock3, Download, Droplets, HeartPulse, MoreHorizontal, Moon, Pencil, Pill, RotateCcw, Save, Settings, Sparkles, Sun, Target, Trash2, Trophy, Upload, Waves, X, XCircle } from 'lucide-react'
 import { formatDuration, sumSideDurations, type SideSegment } from './domain/feedingUtils'
 import './styles.css'
 
@@ -19,7 +19,9 @@ type Entry = {
   diaperKinds?: DiaperKind[]
 }
 type DiaperKind = 'wet' | 'stool'
+type MedicineKind = 'tylenol' | 'motrin'
 type DiaperEvent = { id: string; kind?: DiaperKind; kinds?: DiaperKind[]; at: number; context: 'standalone' | 'feed'; feedStartedAt?: number }
+type MedicineEvent = { id: string; kind: MedicineKind; at: number }
 type Session = { startedAt: number; activeSide: Side | null; segmentStart: number | null; segments: Segment[]; bottleOunces: number; note: string; diaperKinds: DiaperKind[] }
 type LegacySession = Omit<Session, 'note' | 'bottleOunces' | 'diaperKinds'> & { note?: string; bottleOunces?: number; diaperKinds?: DiaperKind[] }
 type UndoState =
@@ -38,10 +40,12 @@ const KEY_SETTINGS_OPEN = 'baby-feeding-tracker:v1:settings-open'
 const KEY_PENDING_SYNC = 'baby-feeding-tracker:v1:pending-sync'
 const KEY_FEEDING_NOTIFICATIONS = 'baby-feeding-tracker:v1:feeding-notifications'
 const KEY_DIAPERS = 'baby-feeding-tracker:v1:diapers'
+const KEY_MEDICINES = 'baby-feeding-tracker:v1:medicines'
 const API_STATE = '/api/state'
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
 const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
 const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
+const MEDICINE_REMINDER_MS = 6 * 60 * 60 * 1000
 const THEME_COOKIE = 'baby_feeding_theme'
 
 const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -57,6 +61,7 @@ const sideLabel = (side: Side) => (side === 'left' ? 'Left' : 'Right')
 const diaperLabel = (kind: DiaperKind) => (kind === 'wet' ? 'Wet' : 'Stool')
 const diaperKinds = (event: DiaperEvent): DiaperKind[] => event.kinds?.length ? event.kinds : event.kind ? [event.kind] : []
 const diaperEventLabel = (event: DiaperEvent) => diaperKinds(event).map(diaperLabel).join(' + ')
+const medicineLabel = (kind: MedicineKind) => (kind === 'tylenol' ? 'Tylenol' : 'Motrin')
 const entryDiaperKinds = (entry: Entry): DiaperKind[] => entry.diaperKinds ?? []
 const diaperKindsLabel = (kinds: DiaperKind[]) => kinds.map(diaperLabel).join(' + ')
 const timelineFeedLabel = (entry: Entry) => {
@@ -67,7 +72,7 @@ const timelineFeedLabel = (entry: Entry) => {
   return 'Breast'
 }
 const oppositeSide = (side: Side): Side => (side === 'left' ? 'right' : 'left')
-const makeId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `feed-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`)
+const makeId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `feed-${new Date().getTime()}-${Math.random().toString(36).slice(2, 10)}`)
 
 const formatClockInput = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 const parseClockTimeToday = (value: string, referenceTime: number) => {
@@ -157,6 +162,10 @@ function App() {
     try { const saved = localStorage.getItem(KEY_DIAPERS); const parsed = saved ? (JSON.parse(saved) as DiaperEvent[]) : []; return parsed.sort((a, b) => b.at - a.at) } catch { return [] }
   })
   const [selectedDiapers, setSelectedDiapers] = useState<DiaperKind[]>([])
+  const [medicines, setMedicines] = useState<MedicineEvent[]>(() => {
+    try { const saved = localStorage.getItem(KEY_MEDICINES); const parsed = saved ? (JSON.parse(saved) as MedicineEvent[]) : []; return parsed.sort((a, b) => b.at - a.at) } catch { return [] }
+  })
+  const [dismissedMedicineReminderId, setDismissedMedicineReminderId] = useState<string | null>(null)
   const [theme, setTheme] = useState<Theme>(() => getCookieTheme() || (localStorage.getItem(KEY_THEME) as Theme) || 'light')
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [view, setView] = useState<View>('track')
@@ -166,9 +175,9 @@ function App() {
   const [bottleQuickOz, setBottleQuickOz] = useState(2)
   const [startInputMode, setStartInputMode] = useState<'clock' | 'minutes'>('clock')
   const [startOffsetOpen, setStartOffsetOpen] = useState(false)
-  const [startClockText, setStartClockText] = useState(() => formatClockInput(Date.now()))
+  const [startClockText, setStartClockText] = useState(() => formatClockInput(new Date().getTime()))
   const [startMinutesAgo, setStartMinutesAgo] = useState('0')
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(() => new Date().getTime())
   const [toast, setToast] = useState('')
   const [undoState, setUndoState] = useState<UndoState | null>(null)
   const [editing, setEditing] = useState<EditingState>(null)
@@ -184,10 +193,10 @@ function App() {
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => (typeof Notification === 'undefined' ? 'denied' : Notification.permission))
   const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const latestPayloadRef = useRef<{ entries: Entry[]; diapers: DiaperEvent[]; session: Session | null; theme: Theme }>({ entries, diapers, session, theme })
+  const latestPayloadRef = useRef<{ entries: Entry[]; diapers: DiaperEvent[]; medicines: MedicineEvent[]; session: Session | null; theme: Theme }>({ entries, diapers, medicines, session, theme })
 
-  useEffect(() => { latestPayloadRef.current = { entries, diapers, session, theme } }, [entries, diapers, session, theme])
-  useEffect(() => { const timer = window.setInterval(() => setNow(Date.now()), 1000); return () => window.clearInterval(timer) }, [])
+  useEffect(() => { latestPayloadRef.current = { entries, diapers, medicines, session, theme } }, [entries, diapers, medicines, session, theme])
+  useEffect(() => { const timer = window.setInterval(() => setNow(new Date().getTime()), 1000); return () => window.clearInterval(timer) }, [])
   useEffect(() => {
     if (!resumeFocusTick || !session) return
     window.requestAnimationFrame(() => {
@@ -198,6 +207,7 @@ function App() {
   }, [resumeFocusTick, session])
   useEffect(() => localStorage.setItem(KEY_ENTRIES, JSON.stringify(entries)), [entries])
   useEffect(() => localStorage.setItem(KEY_DIAPERS, JSON.stringify(diapers)), [diapers])
+  useEffect(() => localStorage.setItem(KEY_MEDICINES, JSON.stringify(medicines)), [medicines])
   useEffect(() => localStorage.setItem(KEY_SESSION, JSON.stringify(session)), [session])
   useEffect(() => {
     localStorage.setItem(KEY_THEME, theme)
@@ -263,10 +273,11 @@ function App() {
     }
   }
 
-  const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme, nextDiapers?: DiaperEvent[]) => {
+  const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme, nextDiapers?: DiaperEvent[], nextMedicines?: MedicineEvent[]) => {
     const payload = latestPayloadRef.current
     const entriesToSync = nextEntries ?? payload.entries
     const diapersToSync = nextDiapers ?? payload.diapers
+    const medicinesToSync = nextMedicines ?? payload.medicines
     const sessionToSync = nextSession ?? payload.session
     const themeToSync = nextTheme ?? payload.theme
     setSyncStatus('syncing')
@@ -274,7 +285,7 @@ function App() {
       const response = await fetch(API_STATE, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: entriesToSync, diapers: diapersToSync, session: sessionToSync, theme: themeToSync }),
+        body: JSON.stringify({ entries: entriesToSync, diapers: diapersToSync, medicines: medicinesToSync, session: sessionToSync, theme: themeToSync }),
       })
       if (!response.ok) throw new Error('sync failed')
       localStorage.removeItem(KEY_PENDING_SYNC)
@@ -299,9 +310,10 @@ function App() {
       try {
         const response = await fetch(API_STATE)
         if (!response.ok) throw new Error('load failed')
-        const data = (await response.json()) as { entries?: Entry[]; diapers?: DiaperEvent[]; session?: LegacySession | null; theme?: Theme }
+        const data = (await response.json()) as { entries?: Entry[]; diapers?: DiaperEvent[]; medicines?: MedicineEvent[]; session?: LegacySession | null; theme?: Theme }
         if (Array.isArray(data.entries)) setEntries(data.entries.sort((a, b) => b.endedAt - a.endedAt))
         if (Array.isArray(data.diapers)) setDiapers(data.diapers.sort((a, b) => b.at - a.at))
+        if (Array.isArray(data.medicines)) setMedicines(data.medicines.sort((a, b) => b.at - a.at))
         if (data.session !== undefined) setSession(normalizeSession(data.session))
         if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
         setSyncStatus('synced')
@@ -319,7 +331,7 @@ function App() {
     if (!hasHydrated) return
     localStorage.setItem(KEY_PENDING_SYNC, '1')
     window.setTimeout(() => void syncToApi(), 0)
-  }, [entries, diapers, session, theme, hasHydrated, syncToApi])
+  }, [entries, diapers, medicines, session, theme, hasHydrated, syncToApi])
 
   useEffect(() => {
     const retrySync = () => {
@@ -358,10 +370,10 @@ function App() {
   }, [now, startClockText, startInputMode, startMinutesAgo, startOffsetOpen])
   const selectedStartMinutesAgo = Math.max(0, Math.round((now - selectedStartTime) / 60000))
 
-  const startSession = (side: Side) => { const t = Date.now(); const startedAt = Math.min(selectedStartTime, t); setNow(t); setSession({ startedAt, activeSide: side, segmentStart: startedAt, segments: [], bottleOunces: 0, note: '', diaperKinds: [] }) }
-  const switchSide = (side: Side) => { if (!session || !session.activeSide || !session.segmentStart) return; const t = Date.now(); setSession({ ...session, segments: [...session.segments, { side: session.activeSide, startedAt: session.segmentStart, endedAt: t }], activeSide: side, segmentStart: t }) }
-  const pause = () => { if (!session || !session.activeSide || !session.segmentStart) return; const t = Date.now(); setSession({ ...session, segments: [...session.segments, { side: session.activeSide, startedAt: session.segmentStart, endedAt: t }], activeSide: null, segmentStart: null }) }
-  const resume = (side: Side) => { if (!session) return; const t = Date.now(); setNow(t); setSession({ ...session, activeSide: side, segmentStart: t }) }
+  const startSession = (side: Side) => { const t = new Date().getTime(); const startedAt = Math.min(selectedStartTime, t); setNow(t); setSession({ startedAt, activeSide: side, segmentStart: startedAt, segments: [], bottleOunces: 0, note: '', diaperKinds: [] }) }
+  const switchSide = (side: Side) => { if (!session || !session.activeSide || !session.segmentStart) return; const t = new Date().getTime(); setSession({ ...session, segments: [...session.segments, { side: session.activeSide, startedAt: session.segmentStart, endedAt: t }], activeSide: side, segmentStart: t }) }
+  const pause = () => { if (!session || !session.activeSide || !session.segmentStart) return; const t = new Date().getTime(); setSession({ ...session, segments: [...session.segments, { side: session.activeSide, startedAt: session.segmentStart, endedAt: t }], activeSide: null, segmentStart: null }) }
+  const resume = (side: Side) => { if (!session) return; const t = new Date().getTime(); setNow(t); setSession({ ...session, activeSide: side, segmentStart: t }) }
 
   const clearSession = () => {
     if (!session) return showToast('No active feed to clear')
@@ -434,7 +446,7 @@ function App() {
     if (session) return showToast('Finish or clear the active feed before resuming another entry')
     if (undoState) window.clearTimeout(undoState.timeoutId)
     const previousSession = session
-    const t = Date.now()
+    const t = new Date().getTime()
     setNow(t)
     setEntries((prev) => prev.filter((x) => x.id !== entry.id))
     setSession(entryToResumedSession(entry, t))
@@ -477,7 +489,7 @@ function App() {
       showToast(`${label} added to this feed`)
       return
     }
-    const t = Date.now()
+    const t = new Date().getTime()
     const diaper: DiaperEvent = { id: makeId(), kinds, at: t, context: 'standalone' }
     setDiapers((prev) => [diaper, ...prev].sort((a, b) => b.at - a.at))
     setSelectedDiapers((prev) => prev.filter((kind) => !kinds.includes(kind)))
@@ -485,6 +497,20 @@ function App() {
     const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
     setUndoState({ diaper, timeoutId, kind: 'diaper-log' })
     showToast(`${label} diaper logged`)
+  }
+
+  const latestMedicine = medicines[0]
+  const medicineReminderDue = latestMedicine && now - latestMedicine.at >= MEDICINE_REMINDER_MS
+    ? { id: latestMedicine.id, label: medicineLabel(latestMedicine.kind), at: latestMedicine.at }
+    : null
+  const showMedicineReminder = Boolean(medicineReminderDue && dismissedMedicineReminderId !== medicineReminderDue.id)
+
+  const logMedicine = (kind: MedicineKind) => {
+    const t = new Date().getTime()
+    const medicine: MedicineEvent = { id: makeId(), kind, at: t }
+    setMedicines((prev) => [medicine, ...prev].sort((a, b) => b.at - a.at))
+    setDismissedMedicineReminderId(null)
+    showToast(`${medicineLabel(kind)} logged`)
   }
 
   const saveManualFeed = () => {
@@ -546,7 +572,7 @@ function App() {
   useEffect(() => {
     if (!feedingNotificationsEnabled || notificationPermission !== 'granted' || !lastFeed || typeof Notification === 'undefined') return
     const timers = NEXT_FEEDING_REMINDER_OFFSETS_MS
-      .map((offsetMs) => ({ offsetMs, delayMs: lastFeed.endedAt + offsetMs - Date.now() }))
+      .map((offsetMs) => ({ offsetMs, delayMs: lastFeed.endedAt + offsetMs - new Date().getTime() }))
       .filter(({ delayMs }) => delayMs > 0)
       .map(({ offsetMs, delayMs }) => window.setTimeout(() => {
         const hours = Math.round(offsetMs / (60 * 60 * 1000))
@@ -667,6 +693,12 @@ function App() {
 
       {view === 'track' ? (
       <div className="tracker-view">
+      {showMedicineReminder && medicineReminderDue ? (
+        <div className="medicine-reminder-banner" role="alert">
+          <div><strong>Medicine reminder</strong><span>6 hours since {medicineReminderDue.label}. Check whether another dose is needed.</span></div>
+          <button type="button" className="icon-plain" aria-label="Dismiss medicine reminder" onClick={() => setDismissedMedicineReminderId(medicineReminderDue.id)}><X size={16} /></button>
+        </div>
+      ) : null}
       <section className="card hero" ref={heroRef}>
         <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span>{' '}<strong>{nextFeedWindowText}{lastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span></div>{session ? <span className="pill">{session.activeSide ? `On ${session.activeSide}` : 'Paused'}</span> : null}</div>
         <div className="timer">{formatDuration(activeSeconds)}</div>
@@ -716,6 +748,11 @@ function App() {
             return <button key={kind} type="button" className={`diaper-chip ${selected ? 'selected' : ''}`} aria-label={label} aria-pressed={selected} disabled={Boolean(alreadyLogged)} onClick={() => toggleDiaperSelection(kind)}>{diaperLabel(kind)}</button>
           })}
           <button type="button" className="diaper-log-button" aria-label="Log selected diapers" disabled={availableSelectedDiapers.length === 0} onClick={logSelectedDiapers}>Log</button>
+        </div>
+        <div className="medicine-panel" role="group" aria-label="Medicine">
+          <span className="diaper-panel-label">Medicine</span>
+          <button type="button" className="medicine-chip" aria-label="Log Tylenol" onClick={() => logMedicine('tylenol')}><Pill size={14} /> Tylenol</button>
+          <button type="button" className="medicine-chip" aria-label="Log Motrin" onClick={() => logMedicine('motrin')}><Pill size={14} /> Motrin</button>
         </div>
         {session && <div className="edit-panel"><label>Optional note for this feed<input value={session.note} onChange={(v) => setSession({ ...session, note: v.target.value })} placeholder="optional note" /></label></div>}
       </section>
@@ -843,10 +880,15 @@ function App() {
         </div>
       ) : null}
 
-      {view === 'track' ? <section className="card timeline-card"><div className="section-heading"><h2>Timeline</h2><span className="muted">Latest first</span></div>{entries.length === 0 && diapers.length === 0 ? <p className="muted">No feeds yet. Start with left/right, quick bottle, or diaper log.</p> : <ul className="timeline">{[
+      {view === 'track' ? <section className="card timeline-card"><div className="section-heading"><h2>Timeline</h2><span className="muted">Latest first</span></div>{entries.length === 0 && diapers.length === 0 && medicines.length === 0 ? <p className="muted">No feeds yet. Start with left/right, quick bottle, diaper, or medicine log.</p> : <ul className="timeline">{[
         ...entries.map((entry) => ({ kind: 'feed' as const, time: entry.endedAt, entry })),
         ...diapers.map((diaper) => ({ kind: 'diaper' as const, time: diaper.at, diaper })),
+        ...medicines.map((medicine) => ({ kind: 'medicine' as const, time: medicine.at, medicine })),
       ].sort((a, b) => b.time - a.time).map((item, index) => {
+        if (item.kind === 'medicine') {
+          const medicine = item.medicine
+          return <li key={medicine.id} className={`timeline-item timeline-medicine timeline-medicine-${medicine.kind}`}><div className="timeline-row"><div className="timeline-main"><div className="timeline-head"><strong>{formatTime(medicine.at)}</strong><span className={`badge badge-medicine badge-medicine-${medicine.kind}`}><Pill size={13} /> {medicineLabel(medicine.kind)}</span></div><span className="timeline-age">{formatDistanceToNow(medicine.at, { addSuffix: true })}</span></div></div></li>
+        }
         if (item.kind === 'diaper') {
           const diaper = item.diaper
           const kinds = diaperKinds(diaper)

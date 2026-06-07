@@ -7,6 +7,7 @@ import App from './App'
 
 const STORAGE_KEY = 'baby-feeding-tracker:v1:entries'
 const STORAGE_DIAPERS_KEY = 'baby-feeding-tracker:v1:diapers'
+const STORAGE_MEDICINES_KEY = 'baby-feeding-tracker:v1:medicines'
 
 describe('App interactions', () => {
   beforeEach(() => {
@@ -64,6 +65,32 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Show tracker/i }))
     expect(screen.getByRole('heading', { name: /Timeline/i })).toBeTruthy()
     expect(screen.queryByRole('region', { name: /Stats dashboard/i })).toBeNull()
+  })
+
+  it('logs Tylenol and Motrin under diaper controls and shows a dismissible six-hour medicine banner', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(
+      STORAGE_MEDICINES_KEY,
+      JSON.stringify([{ id: 'dose-old', kind: 'tylenol', at: now - 6 * 60 * 60 * 1000 - 1 }]),
+    )
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+
+    expect(screen.getByRole('alert').textContent).toMatch(/6 hours since Tylenol/i)
+    await user.click(screen.getByRole('button', { name: /Dismiss medicine reminder/i }))
+    expect(screen.queryByRole('alert')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Log Tylenol/i }))
+    expect(screen.getByText(/Tylenol logged/i)).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+    expect(screen.getAllByText(/^Tylenol$/i).length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: /Log Motrin/i }))
+    expect(screen.getByText(/Motrin logged/i)).toBeTruthy()
+    expect(screen.getAllByText(/^Motrin$/i).length).toBeGreaterThan(0)
   })
 
   it('deletes and restores an entry with undo', async () => {

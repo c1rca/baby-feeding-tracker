@@ -32,6 +32,7 @@ db.exec(`
     session_json TEXT,
     theme TEXT NOT NULL DEFAULT 'light',
     diapers_json TEXT NOT NULL DEFAULT '[]',
+    medicines_json TEXT NOT NULL DEFAULT '[]',
     updated_at TEXT NOT NULL
   );
 
@@ -51,14 +52,17 @@ db.exec(`
 
 const hasDiapersColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'diapers_json'").get().count > 0
 if (!hasDiapersColumn) db.exec("ALTER TABLE app_state ADD COLUMN diapers_json TEXT NOT NULL DEFAULT '[]'")
+const hasMedicinesColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'medicines_json'").get().count > 0
+if (!hasMedicinesColumn) db.exec("ALTER TABLE app_state ADD COLUMN medicines_json TEXT NOT NULL DEFAULT '[]'")
 
-const selectState = db.prepare('SELECT entries_json, diapers_json, session_json, theme, updated_at FROM app_state WHERE id = 1')
+const selectState = db.prepare('SELECT entries_json, diapers_json, medicines_json, session_json, theme, updated_at FROM app_state WHERE id = 1')
 const upsertState = db.prepare(`
-  INSERT INTO app_state (id, entries_json, diapers_json, session_json, theme, updated_at)
-  VALUES (1, @entries_json, @diapers_json, @session_json, @theme, @updated_at)
+  INSERT INTO app_state (id, entries_json, diapers_json, medicines_json, session_json, theme, updated_at)
+  VALUES (1, @entries_json, @diapers_json, @medicines_json, @session_json, @theme, @updated_at)
   ON CONFLICT(id) DO UPDATE SET
     entries_json = excluded.entries_json,
     diapers_json = excluded.diapers_json,
+    medicines_json = excluded.medicines_json,
     session_json = excluded.session_json,
     theme = excluded.theme,
     updated_at = excluded.updated_at
@@ -95,9 +99,10 @@ const appendEventLog = (event, payload = {}) => {
   }
 }
 
-const summarizeState = (entries, session, theme, diapers = []) => ({
+const summarizeState = (entries, session, theme, diapers = [], medicines = []) => ({
   entryCount: entries.length,
   diaperCount: diapers.length,
+  medicineCount: medicines.length,
   latestEntryId: entries[0]?.id ?? null,
   latestEndedAt: entries[0]?.endedAt ?? null,
   hasSession: Boolean(session),
@@ -170,12 +175,13 @@ app.put('/api/notification-settings', (req, res) => {
 app.get('/api/state', (_req, res) => {
   const row = selectState.get()
   if (!row) {
-    return res.json({ entries: [], diapers: [], session: null, theme: 'light', updatedAt: null })
+    return res.json({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: null })
   }
 
   res.json({
     entries: JSON.parse(row.entries_json),
     diapers: JSON.parse(row.diapers_json || '[]'),
+    medicines: JSON.parse(row.medicines_json || '[]'),
     session: row.session_json ? JSON.parse(row.session_json) : null,
     theme: row.theme || 'light',
     updatedAt: row.updated_at,
@@ -185,22 +191,25 @@ app.get('/api/state', (_req, res) => {
 app.put('/api/state', (req, res) => {
   const entries = Array.isArray(req.body?.entries) ? req.body.entries : []
   const diapers = Array.isArray(req.body?.diapers) ? req.body.diapers : []
+  const medicines = Array.isArray(req.body?.medicines) ? req.body.medicines : []
   const session = req.body?.session ?? null
   const theme = req.body?.theme === 'dark' ? 'dark' : 'light'
 
   const entriesJson = JSON.stringify(entries)
   const diapersJson = JSON.stringify(diapers)
+  const medicinesJson = JSON.stringify(medicines)
   const sessionJson = session ? JSON.stringify(session) : null
 
   upsertState.run({
     entries_json: entriesJson,
     diapers_json: diapersJson,
+    medicines_json: medicinesJson,
     session_json: sessionJson,
     theme,
     updated_at: new Date().toISOString(),
   })
 
-  appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers), entries, diapers, session })
+  appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines), entries, diapers, medicines, session })
   notificationScheduler?.evaluate()
 
   res.json({ ok: true })
@@ -223,8 +232,9 @@ app.listen(port, () => {
     try {
       const entries = JSON.parse(startupRow.entries_json)
       const diapers = JSON.parse(startupRow.diapers_json || '[]')
+      const medicines = JSON.parse(startupRow.medicines_json || '[]')
       const session = startupRow.session_json ? JSON.parse(startupRow.session_json) : null
-      appendEventLog('startup_state_snapshot', { ...summarizeState(entries, session, startupRow.theme || 'light', diapers), entries, diapers, session })
+      appendEventLog('startup_state_snapshot', { ...summarizeState(entries, session, startupRow.theme || 'light', diapers, medicines), entries, diapers, medicines, session })
     } catch (error) {
       appendEventLog('startup_state_snapshot_failed', { error: redactError(error) })
     }

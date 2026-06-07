@@ -56,14 +56,19 @@ body { margin: 0; }
 .next-window strong { color:#0f172a; font-size:1rem; font-weight:850; letter-spacing:-.01em; }
 .next-window .next-feed-side { display:inline-flex; align-items:center; justify-content:center; margin-left:2px; padding:1px 7px 2px; border:1px solid #0e7490; border-radius:999px; background:rgba(14,116,144,.08); color:#0e7490; font-size:.78em; font-weight:950; line-height:1.1; letter-spacing:.04em; box-shadow:0 0 0 1px rgba(14,116,144,.06), 0 8px 20px rgba(14,116,144,.16); vertical-align:baseline; }
 .hero-micro-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:0 0 14px; color:#64748b; font-size:.78rem; font-weight:800; letter-spacing:.01em; }
-.diaper-panel { display:flex; align-items:center; gap:10px; flex-wrap:wrap; max-width:100%; margin:16px 0 14px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
+.diaper-panel { display:flex; align-items:center; gap:10px; flex-wrap:wrap; max-width:100%; margin:16px 0 10px; padding:0; border:0; border-radius:0; background:transparent; box-shadow:none; }
 .diaper-panel-label { padding:0 4px; color:#64748b; font-size:.78rem; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
-.diaper-chip, .diaper-log-button { min-height:40px; padding:0 14px; border-radius:999px; font-size:.9rem; font-weight:850; box-shadow:none; }
+.diaper-chip, .diaper-log-button, .medicine-chip { min-height:40px; padding:0 14px; border-radius:999px; font-size:.9rem; font-weight:850; box-shadow:none; }
 .diaper-chip { background:#f8fafc; border-color:#cbd5e1; color:#475569; }
 .diaper-chip.selected { background:linear-gradient(135deg,#06b6d4,#2563eb); border-color:transparent; color:#fff; box-shadow:0 9px 18px rgba(37,99,235,.16); }
 .diaper-chip:disabled { opacity:.54; cursor:not-allowed; transform:none; box-shadow:none; }
 .diaper-log-button { background:linear-gradient(135deg,#0f172a,#334155); border-color:transparent; color:#fff; }
 .diaper-log-button:disabled { opacity:.45; cursor:not-allowed; transform:none; box-shadow:none; }
+.medicine-panel { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:0 0 14px; }
+.medicine-chip { background:linear-gradient(135deg,#fff7ed,#ffedd5); border-color:#fed7aa; color:#9a3412; }
+.medicine-reminder-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid #fed7aa; border-radius:18px; background:linear-gradient(135deg,#fff7ed,#fffbeb); color:#7c2d12; box-shadow:0 14px 28px rgba(154,52,18,.10); }
+.medicine-reminder-banner div { display:grid; gap:2px; }
+.medicine-reminder-banner span { color:#9a3412; font-size:.9rem; font-weight:650; }
 .hero-micro-meta span { display:inline-flex; align-items:center; gap:5px; }
 .hero-micro-meta span + span::before { content:""; width:4px; height:4px; border-radius:999px; background:#cbd5e1; margin-right:1px; }
 .start-offset-shell { display:grid; justify-items:start; gap:8px; margin: 8px 0 12px; }
@@ -115,6 +120,8 @@ button.end-feed { font-weight: 800; border-width: 2px; }
 .badge-mixed { background: #f5f3ff; color: #6d28d9; }
 .badge-diaper { background:#ecfeff; color:#0e7490; border-color:#a5f3fc; }
 .badge-diaper-stool { background:#fef3c7; color:#92400e; border-color:#fde68a; }
+.badge-medicine { background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
+.badge-medicine-motrin { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
 .diaper-action { background:linear-gradient(180deg,#ecfeff,#f0f9ff); border-color:#bae6fd; color:#0369a1; }
 .diaper-action:hover { border-color:#7dd3fc; }
 .diaper-stat { background:linear-gradient(180deg,rgba(236,254,255,.92),rgba(255,255,255,.9)); }
@@ -128,6 +135,8 @@ button.end-feed { font-weight: 800; border-width: 2px; }
 .timeline-mixed::before { background:#c4b5fd; }
 .timeline-diaper::before { background:#38bdf8; }
 .timeline-diaper-stool::before { background:#a16207; }
+.timeline-medicine::before { background:#f97316; }
+.timeline-medicine-motrin::before { background:#ef4444; }
 .timeline-item:hover { transform:translateY(-1px); border-color:#bfdbfe; box-shadow:0 12px 28px rgba(15,23,42,.08); }
 .timeline-item.menu-open { z-index:30; }
 .timeline-row { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center; }
@@ -215,6 +224,8 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .badge-mixed { background:rgba(49,46,129,.38); border-color:#4338ca; color:#ddd6fe; }
 [data-theme='dark'] .badge-diaper { background:rgba(8,47,73,.62); border-color:#0e7490; color:#a5f3fc; }
 [data-theme='dark'] .badge-diaper-stool { background:rgba(69,26,3,.62); border-color:#92400e; color:#fde68a; }
+[data-theme='dark'] .badge-medicine { background:rgba(67,20,7,.72); border-color:#9a3412; color:#fed7aa; }
+[data-theme='dark'] .badge-medicine-motrin { background:rgba(69,10,10,.72); border-color:#991b1b; color:#fecaca; }
 [data-theme='dark'] .diaper-action { background:linear-gradient(180deg,#082f49,#0f172a); border-color:#0e7490; color:#bae6fd; }
 [data-theme='dark'] .diaper-action:hover { border-color:#0891b2; }
 [data-theme='dark'] .diaper-stat { background:linear-gradient(180deg,rgba(8,47,73,.42),rgba(17,24,39,.92)); }
@@ -245,7 +256,10 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .diaper-panel-label { color:#94a3b8; }
 [data-theme='dark'] .diaper-chip { background:#111827; border-color:#334155; color:#cbd5e1; }
 [data-theme='dark'] .diaper-chip.selected { background:linear-gradient(135deg,#0891b2,#2563eb); border-color:transparent; color:#eff6ff; }
-[data-theme='dark'] .diaper-log-button { background:linear-gradient(135deg,#334155,#0f172a); color:#f8fafc; }
+[data-theme='dark'] .medicine-chip { background:linear-gradient(135deg,#431407,#1f2937); border-color:#9a3412; color:#fed7aa; }
+[data-theme='dark'] .medicine-reminder-banner { background:linear-gradient(135deg,#431407,#1f2937); border-color:#9a3412; color:#ffedd5; box-shadow:0 14px 28px rgba(0,0,0,.22); }
+[data-theme='dark'] .medicine-reminder-banner span { color:#fed7aa; }
+[data-theme='dark'] .icon-plain { color:#cbd5e1; }
 [data-theme='dark'] .hero-micro-meta span + span::before { background:#475569; }
 [data-theme='dark'] .hero-actions .active-clear-link { color:#94a3b8; background:transparent; border-color:transparent; box-shadow:none; }
 [data-theme='dark'] .hero-actions .active-clear-link:hover { color:#fda4af; }

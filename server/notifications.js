@@ -1,5 +1,6 @@
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 const MAX_CATCH_UP_MS = 30 * 60 * 1000
 export const FEEDR_URL = 'https://feedr.kjw.lol'
 
@@ -10,13 +11,28 @@ export function getLatestEndedFeed(entries) {
     .sort((a, b) => b.endedAt - a.endedAt)[0] ?? null
 }
 
+export function getLatestMedicineDose(medicines) {
+  if (!Array.isArray(medicines)) return null
+  return medicines
+    .filter((dose) => (dose?.kind === 'tylenol' || dose?.kind === 'motrin') && Number.isFinite(dose?.at) && dose.at > 0)
+    .sort((a, b) => b.at - a.at)[0] ?? null
+}
+
 export function buildReminder(latestFeed, now = Date.now()) {
   if (!latestFeed) return null
   const dueAt = latestFeed.endedAt + TWO_HOURS_MS
   const windowEndAt = latestFeed.endedAt + THREE_HOURS_MS
   const catchUpUntil = dueAt + MAX_CATCH_UP_MS
   if (windowEndAt <= now - MAX_CATCH_UP_MS) return null
-  return { entryId: latestFeed.id ?? String(latestFeed.endedAt), dueAt, windowEndAt, catchUpUntil }
+  return { kind: 'feeding', entryId: latestFeed.id ?? String(latestFeed.endedAt), dueAt, windowEndAt, catchUpUntil }
+}
+
+export function buildMedicineReminder(latestDose, now = Date.now()) {
+  if (!latestDose) return null
+  const dueAt = latestDose.at + SIX_HOURS_MS
+  const catchUpUntil = dueAt + MAX_CATCH_UP_MS
+  if (dueAt <= now - MAX_CATCH_UP_MS) return null
+  return { kind: 'medicine', doseId: latestDose.id ?? String(latestDose.at), medicineKind: latestDose.kind, dueAt, catchUpUntil }
 }
 
 export function hasActiveSession(row) {
@@ -26,6 +42,19 @@ export function hasActiveSession(row) {
   } catch {
     return Boolean(row.session_json)
   }
+}
+
+function parseJsonArray(value) {
+  try {
+    const parsed = JSON.parse(value || '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return null
+  }
+}
+
+function medicationLabel(kind) {
+  return kind === 'motrin' ? 'Motrin' : 'Tylenol'
 }
 
 export function createNotificationScheduler({
@@ -49,27 +78,43 @@ export function createNotificationScheduler({
     scheduled = null
   }
 
+  const markHandled = (reminder) => {
+    upsertNotificationState.run({
+      entry_id: reminder.notificationId,
+      due_at: new Date(reminder.dueAt).toISOString(),
+      sent_at: new Date(now()).toISOString(),
+      updated_at: new Date(now()).toISOString(),
+    })
+  }
+
+  const buildNextReminder = (row) => {
+    const entries = parseJsonArray(row.entries_json)
+    if (!entries) return null
+    const medicines = parseJsonArray(row.medicines_json || '[]')
+    if (!medicines) return null
+
+    const reminders = []
+    if (!hasActiveSession(row)) {
+      const feeding = buildReminder(getLatestEndedFeed(entries), now())
+      if (feeding) reminders.push({ ...feeding, notificationId: feeding.entryId })
+    }
+    const medicine = buildMedicineReminder(getLatestMedicineDose(medicines), now())
+    if (medicine) reminders.push({ ...medicine, notificationId: `medicine:${medicine.doseId}` })
+
+    return reminders
+      .filter((reminder) => !getNotificationState.get(reminder.notificationId)?.sent_at)
+      .sort((a, b) => a.dueAt - b.dueAt)[0] ?? null
+  }
+
   const evaluate = () => {
     if (!isEnabled) return cancel()
     const row = selectState.get()
     if (!row) return cancel()
-    if (hasActiveSession(row)) return cancel()
 
-    let entries = []
-    try {
-      entries = JSON.parse(row.entries_json)
-    } catch {
-      return cancel()
-    }
-
-    const latest = getLatestEndedFeed(entries)
-    const reminder = buildReminder(latest, now())
+    const reminder = buildNextReminder(row)
     if (!reminder) return cancel()
 
-    const notificationState = getNotificationState.get(reminder.entryId)
-    if (notificationState?.sent_at) return cancel()
-
-    if (scheduled?.entryId === reminder.entryId && scheduled?.dueAt === reminder.dueAt) return
+    if (scheduled?.notificationId === reminder.notificationId && scheduled?.dueAt === reminder.dueAt) return
     cancel()
     scheduled = reminder
 
@@ -78,43 +123,31 @@ export function createNotificationScheduler({
       timer = null
       const freshRow = selectState.get()
       if (!freshRow) return cancel()
-      if (hasActiveSession(freshRow)) {
-        upsertNotificationState.run({
-          entry_id: reminder.entryId,
-          due_at: new Date(reminder.dueAt).toISOString(),
-          sent_at: new Date(now()).toISOString(),
-          updated_at: new Date(now()).toISOString(),
-        })
+
+      if (reminder.kind === 'feeding' && hasActiveSession(freshRow)) {
+        markHandled(reminder)
         scheduled = null
         return evaluate()
       }
 
-      let freshEntries = []
-      try {
-        freshEntries = JSON.parse(freshRow.entries_json)
-      } catch {
-        return cancel()
-      }
-
-      const freshLatest = getLatestEndedFeed(freshEntries)
-      const freshReminder = buildReminder(freshLatest, now())
-      if (!freshReminder || freshReminder.entryId !== reminder.entryId || now() > freshReminder.catchUpUntil) return evaluate()
-
-      const freshNotificationState = getNotificationState.get(reminder.entryId)
-      if (freshNotificationState?.sent_at) return cancel()
+      const freshReminder = buildNextReminder(freshRow)
+      if (!freshReminder || freshReminder.notificationId !== reminder.notificationId || now() > freshReminder.catchUpUntil) return evaluate()
 
       try {
-        await sendGotify({
-          title: 'Feeding reminder',
-          message: `Next feeding window is open (${formatTime(freshReminder.dueAt)}–${formatTime(freshReminder.windowEndAt)}).\n\n${FEEDR_URL}`,
-          priority: 5,
-        })
-        upsertNotificationState.run({
-          entry_id: reminder.entryId,
-          due_at: new Date(reminder.dueAt).toISOString(),
-          sent_at: new Date(now()).toISOString(),
-          updated_at: new Date(now()).toISOString(),
-        })
+        if (freshReminder.kind === 'medicine') {
+          await sendGotify({
+            title: 'Medicine reminder',
+            message: `6 hours since ${medicationLabel(freshReminder.medicineKind)}. Check whether another dose is needed.\n\n${FEEDR_URL}`,
+            priority: 5,
+          })
+        } else {
+          await sendGotify({
+            title: 'Feeding reminder',
+            message: `Next feeding window is open (${formatTime(freshReminder.dueAt)}–${formatTime(freshReminder.windowEndAt)}).\n\n${FEEDR_URL}`,
+            priority: 5,
+          })
+        }
+        markHandled(freshReminder)
       } catch (error) {
         scheduled = null
         logger.warn?.('Gotify notification failed', error)
