@@ -21,10 +21,24 @@ describe('App interactions', () => {
     vi.unstubAllGlobals()
   })
 
+  it('keeps bottle and missed feed actions inside additional options', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(screen.queryByRole('button', { name: /Log bottle-only feed/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Add missed feed/i })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+
+    expect(screen.getByRole('button', { name: /Log bottle-only feed/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Add missed feed/i })).toBeTruthy()
+  })
+
   it('logs a quick bottle entry and shows toast feedback', async () => {
     const user = userEvent.setup()
     render(<App />)
 
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
     await user.click(screen.getByRole('button', { name: /Log bottle-only feed/i }))
     await user.click(screen.getByRole('button', { name: /^log bottle$/i }))
 
@@ -758,6 +772,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
     await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
     await user.clear(screen.getByLabelText(/Manual bottle ounces/i))
     await user.type(screen.getByLabelText(/Manual bottle ounces/i), '2.5')
@@ -774,15 +789,16 @@ describe('App interactions', () => {
     expect(screen.getByText(/late log/i)).toBeTruthy()
   })
 
-  it('places diaper logging below missed feed and logs standalone diapers without context copy', async () => {
+  it('keeps diaper logging primary while missed feed stays in additional options', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     const hero = document.querySelector('.hero') as HTMLElement
-    const missedFeedButton = screen.getByRole('button', { name: /Add missed feed/i })
     const diaperPanel = screen.getByRole('group', { name: /Diaper/i })
-    expect(hero.compareDocumentPosition(missedFeedButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(missedFeedButton.compareDocumentPosition(diaperPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(hero.compareDocumentPosition(diaperPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Add missed feed/i })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    expect(screen.getByRole('button', { name: /Add missed feed/i })).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: /Select wet diaper/i }))
     await user.click(screen.getByRole('button', { name: /Select stool diaper/i }))
@@ -880,8 +896,10 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.getByRole('button', { name: /Log bottle-only feed/i })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Log bottle-only feed/i })).toBeNull()
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+    expect(screen.queryByRole('button', { name: /Add bottle to this feed/i })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
     expect(screen.getByRole('button', { name: /Add bottle to this feed/i })).toBeTruthy()
   })
 
@@ -889,6 +907,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
     await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
     expect(screen.getByRole('dialog', { name: /Add missed feed/i })).toBeTruthy()
 
@@ -904,6 +923,7 @@ describe('App interactions', () => {
     render(<App />)
     expect(await screen.findByText(/Offline changes saved/i)).toBeTruthy()
 
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
     await user.click(screen.getByRole('button', { name: /Log bottle-only feed/i }))
     await user.click(screen.getByRole('button', { name: /^log bottle$/i }))
     expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBe('1')

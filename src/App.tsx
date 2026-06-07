@@ -777,7 +777,7 @@ function App() {
           </div>
         ) : null}
         <div className="row hero-actions">
-          {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button><button aria-label="Log bottle-only feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button onClick={() => setManualOpen(true)}>Add missed feed</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button onClick={pause}>Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button aria-label="Add bottle to this feed" onClick={() => setBottleOpen(true)}><Baby size={16} /> Bottle</button><button className="success end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button><button className="active-clear-link" type="button" aria-label="Clear active feed" onClick={clearSession}><XCircle size={14} /> Clear active</button></>)}
+          {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button onClick={pause}>Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button className="success end-feed" type="button" aria-label="End feed" onClick={endSession}><CirclePause size={16} /> Stop & Save Feed</button><button className="active-clear-link" type="button" aria-label="Clear active feed" onClick={clearSession}><XCircle size={14} /> Clear active</button></>)}
         </div>
         <div className="diaper-panel" role="group" aria-label="Diaper">
           <span className="diaper-panel-label">Diaper</span>
@@ -795,6 +795,11 @@ function App() {
           </button>
           {additionalOptionsOpen ? (
             <div className="additional-options-panel">
+              <div className="medicine-panel" role="group" aria-label="Additional feed actions">
+                <span className="diaper-panel-label">Feed</span>
+                <button type="button" className="medicine-chip" aria-label={session ? 'Add bottle to this feed' : 'Log bottle-only feed'} onClick={() => setBottleOpen(true)}><Baby size={14} /> Bottle</button>
+                {!session ? <button type="button" className="medicine-chip" onClick={() => setManualOpen(true)}>Add missed feed</button> : null}
+              </div>
               <div className="medicine-panel" role="group" aria-label="Medicine">
                 <span className="diaper-panel-label">Medicine</span>
                 <button type="button" className="medicine-chip" aria-label="Log Tylenol" onClick={() => logMedicine('tylenol')}><Pill size={14} /> Tylenol</button>
