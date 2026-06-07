@@ -102,7 +102,13 @@ const normalizeSession = (raw: LegacySession | Session | null | undefined): Sess
   }
 }
 
-const entryToPausedSession = (entry: Entry): Session => {
+const entryResumeSide = (entry: Entry): Side => {
+  if (entry.rightSeconds > 0) return 'right'
+  if (entry.leftSeconds > 0) return 'left'
+  return 'left'
+}
+
+const entryToResumedSession = (entry: Entry, resumeAt: number): Session => {
   const segments: Segment[] = []
   let cursor = entry.startedAt
 
@@ -119,8 +125,8 @@ const entryToPausedSession = (entry: Entry): Session => {
 
   return {
     startedAt: entry.startedAt,
-    activeSide: null,
-    segmentStart: null,
+    activeSide: entryResumeSide(entry),
+    segmentStart: resumeAt,
     segments,
     bottleOunces: entry.bottleOunces ?? 0,
     note: entry.note ?? '',
@@ -428,8 +434,10 @@ function App() {
     if (session) return showToast('Finish or clear the active feed before resuming another entry')
     if (undoState) window.clearTimeout(undoState.timeoutId)
     const previousSession = session
+    const t = Date.now()
+    setNow(t)
     setEntries((prev) => prev.filter((x) => x.id !== entry.id))
-    setSession(entryToPausedSession(entry))
+    setSession(entryToResumedSession(entry, t))
     setResumeFocusTick((tick) => tick + 1)
     setEditing(null)
     const timeoutId = window.setTimeout(() => setUndoState(null), 5000)

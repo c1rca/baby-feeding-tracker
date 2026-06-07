@@ -99,7 +99,7 @@ describe('App interactions', () => {
     expect(screen.getAllByText(/3\.0 oz/i).length).toBeGreaterThan(0)
   })
 
-  it('resumes a saved timeline entry as an active paused session and offers undo', async () => {
+  it('resumes a saved timeline entry immediately on its saved side and offers undo', async () => {
     const endedAt = Date.now()
     localStorage.setItem(
       STORAGE_KEY,
@@ -131,14 +131,17 @@ describe('App interactions', () => {
     await user.click(within(firstItem).getByRole('menuitem', { name: /Resume session/i }))
 
     expect(screen.getByText(/Session resumed/i)).toBeTruthy()
-    expect(screen.getByText(/Paused/i)).toBeTruthy()
+    expect(screen.getByText(/On right/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Switch to Left/i })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Resume Left/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Resume Right/i })).toBeNull()
     const liveSplit = screen.getByLabelText(/Live split/i)
     expect(within(liveSplit).getByText(/^Left$/i).nextElementSibling?.textContent).toMatch(/7m 00s/)
     expect(within(liveSplit).getByText(/^Right$/i).nextElementSibling?.textContent).toMatch(/5m 00s/)
     expect(within(liveSplit).getByText(/^Bottle$/i).nextElementSibling?.textContent).toBe('2.5 oz')
     expect(screen.getByDisplayValue(/resume me/i)).toBeTruthy()
     await waitFor(() => expect(scrollSpy).toHaveBeenCalled())
-    expect(document.activeElement?.textContent).toMatch(/Resume Left/i)
+    expect(document.activeElement?.textContent).toMatch(/Switch to Left/i)
     expect(screen.queryByText(/mixed/i)).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /Undo resume/i }))
