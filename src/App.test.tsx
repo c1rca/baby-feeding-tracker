@@ -21,7 +21,7 @@ describe('App interactions', () => {
     vi.unstubAllGlobals()
   })
 
-  it('keeps bottle and missed feed actions inside additional options', async () => {
+  it('keeps bottle and missed feed as separate actions inside additional options', async () => {
     const user = userEvent.setup()
     render(<App />)
 
@@ -30,8 +30,11 @@ describe('App interactions', () => {
 
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
 
-    expect(screen.getByRole('button', { name: /Log bottle-only feed/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Add missed feed/i })).toBeTruthy()
+    const bottleGroup = screen.getByRole('group', { name: /Bottle feed/i })
+    const missedGroup = screen.getByRole('group', { name: /Missed feed/i })
+    expect(within(bottleGroup).getByRole('button', { name: /Log bottle-only feed/i })).toBeTruthy()
+    expect(within(missedGroup).getByRole('button', { name: /Add missed feed/i })).toBeTruthy()
+    expect(within(bottleGroup).queryByRole('button', { name: /Add missed feed/i })).toBeNull()
   })
 
   it('logs a quick bottle entry and shows toast feedback', async () => {
