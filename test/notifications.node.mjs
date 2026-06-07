@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMedicineReminder, buildReminder, createNotificationScheduler, getLatestEndedFeed, getLatestMedicineDose, hasActiveSession, normalizeTextEmailRecipients } from '../server/notifications.js'
+import { buildMedicineReminder, buildReminder, createNotificationScheduler, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeTextEmailRecipients } from '../server/notifications.js'
 
 test('buildReminder schedules the next feeding window two to three hours after latest feed', () => {
   const endedAt = new Date('2026-06-05T08:00:00Z').getTime()
@@ -31,14 +31,25 @@ test('getLatestMedicineDose uses newest Tylenol or Motrin dose', () => {
   assert.equal(latest.id, 'newer-motrin')
 })
 
-test('buildMedicineReminder recommends the opposite medicine six hours after latest dose', () => {
+test('getLatestMedicineDosesByKind keeps Tylenol and Motrin schedules separate', () => {
+  const latest = getLatestMedicineDosesByKind([
+    { id: 'older-tylenol', kind: 'tylenol', at: 10 },
+    { id: 'newer-tylenol', kind: 'tylenol', at: 30 },
+    { id: 'latest-motrin', kind: 'motrin', at: 20 },
+    { id: 'bad', kind: 'vitamin', at: 40 },
+  ])
+
+  assert.deepEqual(latest.map((dose) => dose.id), ['newer-tylenol', 'latest-motrin'])
+})
+
+test('buildMedicineReminder schedules the same medicine six hours after latest dose', () => {
   const at = new Date('2026-06-05T08:00:00Z').getTime()
   const reminder = buildMedicineReminder({ id: 'dose-1', kind: 'tylenol', at }, at)
 
   assert.equal(reminder.doseId, 'dose-1')
   assert.equal(reminder.dueAt, new Date('2026-06-05T14:00:00Z').getTime())
   assert.equal(reminder.medicineKind, 'tylenol')
-  assert.equal(reminder.recommendedKind, 'motrin')
+  assert.equal(reminder.recommendedKind, 'tylenol')
 })
 
 test('normalizeTextEmailRecipients supports comma-separated addresses', () => {
@@ -81,14 +92,14 @@ test('notification scheduler sends Gotify and text-email medication reminders on
 
   assert.equal(sent.length, 1)
   assert.equal(sent[0].title, 'Medicine reminder')
-  assert.match(sent[0].message, /Take Tylenol/i)
+  assert.match(sent[0].message, /Take Motrin/i)
   assert.match(sent[0].message, /Last dose was Motrin/i)
   assert.match(sent[0].message, /https:\/\/feedr\.kjw\.lol$/)
   assert.equal(textEmails.length, 1)
   assert.equal(textEmails[0].subject, 'Medicine reminder')
-  assert.match(textEmails[0].message, /Take Tylenol/i)
+  assert.match(textEmails[0].message, /Take Motrin/i)
   assert.match(textEmails[0].message, /Last dose was Motrin/i)
-  assert.ok(notificationRows.get('medicine:dose-1').sent_at)
+  assert.ok(notificationRows.get('medicine:motrin:dose-1').sent_at)
   assert.equal(timers.length, 1)
 
   now += 7 * 60 * 60 * 1000
@@ -101,9 +112,9 @@ test('notification scheduler sends Gotify and text-email medication reminders on
   await timers[1].fn()
 
   assert.equal(sent.length, 2)
-  assert.match(sent[1].message, /Take Motrin/i)
+  assert.match(sent[1].message, /Take Tylenol/i)
   assert.equal(textEmails.length, 2)
-  assert.ok(notificationRows.get('medicine:dose-2').sent_at)
+  assert.ok(notificationRows.get('medicine:tylenol:dose-2').sent_at)
 })
 
 test('notification scheduler does not re-trigger a medicine reminder after one channel fails', async () => {
@@ -136,8 +147,59 @@ test('notification scheduler does not re-trigger a medicine reminder after one c
   scheduler.evaluate()
 
   assert.equal(sent.length, 1)
-  assert.ok(notificationRows.get('medicine:dose-partial').sent_at)
+  assert.ok(notificationRows.get('medicine:tylenol:dose-partial').sent_at)
   assert.equal(timers.length, 1)
+})
+
+test('notification scheduler sends independent six-hour reminders for Tylenol and Motrin doses', async () => {
+  let now = new Date('2026-06-05T14:00:00Z').getTime()
+  const row = {
+    entries_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([
+      { id: 'tylenol-1', kind: 'tylenol', at: new Date('2026-06-05T08:00:00Z').getTime() },
+      { id: 'motrin-1', kind: 'motrin', at: new Date('2026-06-05T10:00:00Z').getTime() },
+    ]),
+  }
+  const sent = []
+  const textEmails = []
+  const notificationRows = new Map()
+  const timers = []
+
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => row },
+    getNotificationState: { get: (id) => notificationRows.get(id) },
+    upsertNotificationState: { run: (state) => notificationRows.set(state.entry_id, state) },
+    sendGotify: async (payload) => sent.push(payload),
+    sendTextEmail: async (payload) => textEmails.push(payload),
+    now: () => now,
+    setTimer: (fn, delay) => {
+      timers.push({ fn, delay })
+      return timers.length
+    },
+    clearTimer: () => {},
+    logger: { warn: () => {} },
+  })
+
+  scheduler.evaluate()
+  assert.equal(timers[0].delay, 0)
+  await timers[0].fn()
+
+  assert.equal(sent.length, 1)
+  assert.match(sent[0].message, /Take Tylenol/i)
+  assert.ok(notificationRows.get('medicine:tylenol:tylenol-1').sent_at)
+  now = new Date('2026-06-05T16:00:00Z').getTime()
+  scheduler.evaluate()
+  assert.equal(timers[1].delay, 2 * 60 * 60 * 1000)
+  await timers[1].fn()
+
+  assert.equal(sent.length, 2)
+  assert.match(sent[1].message, /Take Motrin/i)
+  assert.ok(notificationRows.get('medicine:motrin:motrin-1').sent_at)
+  assert.equal(textEmails.length, 2)
+
+  now += 7 * 60 * 60 * 1000
+  scheduler.evaluate()
+  assert.equal(timers.length, 2)
 })
 
 test('notification scheduler prefers the next due item when feed and medicine reminders coexist', () => {

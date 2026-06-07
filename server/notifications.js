@@ -18,6 +18,15 @@ export function getLatestMedicineDose(medicines) {
     .sort((a, b) => b.at - a.at)[0] ?? null
 }
 
+export function getLatestMedicineDosesByKind(medicines) {
+  if (!Array.isArray(medicines)) return []
+  return ['tylenol', 'motrin']
+    .map((kind) => medicines
+      .filter((dose) => dose?.kind === kind && Number.isFinite(dose?.at) && dose.at > 0)
+      .sort((a, b) => b.at - a.at)[0])
+    .filter(Boolean)
+}
+
 export function buildReminder(latestFeed, now = Date.now()) {
   if (!latestFeed) return null
   const dueAt = latestFeed.endedAt + TWO_HOURS_MS
@@ -32,7 +41,7 @@ export function buildMedicineReminder(latestDose, now = Date.now()) {
   const dueAt = latestDose.at + SIX_HOURS_MS
   const catchUpUntil = dueAt + MAX_CATCH_UP_MS
   if (dueAt <= now - MAX_CATCH_UP_MS) return null
-  return { kind: 'medicine', doseId: latestDose.id ?? String(latestDose.at), medicineKind: latestDose.kind, recommendedKind: oppositeMedication(latestDose.kind), dueAt, catchUpUntil }
+  return { kind: 'medicine', doseId: latestDose.id ?? String(latestDose.at), medicineKind: latestDose.kind, recommendedKind: latestDose.kind, dueAt, catchUpUntil }
 }
 
 export function hasActiveSession(row) {
@@ -60,10 +69,6 @@ export function normalizeTextEmailRecipients(value) {
 
 function medicationLabel(kind) {
   return kind === 'motrin' ? 'Motrin' : 'Tylenol'
-}
-
-function oppositeMedication(kind) {
-  return kind === 'motrin' ? 'tylenol' : 'motrin'
 }
 
 export function createNotificationScheduler({
@@ -108,8 +113,10 @@ export function createNotificationScheduler({
       const feeding = buildReminder(getLatestEndedFeed(entries), now())
       if (feeding) reminders.push({ ...feeding, notificationId: feeding.entryId })
     }
-    const medicine = buildMedicineReminder(getLatestMedicineDose(medicines), now())
-    if (medicine) reminders.push({ ...medicine, notificationId: `medicine:${medicine.doseId}` })
+    for (const latestDose of getLatestMedicineDosesByKind(medicines)) {
+      const medicine = buildMedicineReminder(latestDose, now())
+      if (medicine) reminders.push({ ...medicine, notificationId: `medicine:${medicine.medicineKind}:${medicine.doseId}` })
+    }
 
     return reminders
       .filter((reminder) => !getNotificationState.get(reminder.notificationId)?.sent_at)
