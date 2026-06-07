@@ -53,6 +53,11 @@ function parseJsonArray(value) {
   }
 }
 
+export function normalizeTextEmailRecipients(value) {
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean)
+  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
+}
+
 function medicationLabel(kind) {
   return kind === 'motrin' ? 'Motrin' : 'Tylenol'
 }

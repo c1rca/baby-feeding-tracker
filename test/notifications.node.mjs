@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMedicineReminder, buildReminder, createNotificationScheduler, getLatestEndedFeed, getLatestMedicineDose, hasActiveSession } from '../server/notifications.js'
+import { buildMedicineReminder, buildReminder, createNotificationScheduler, getLatestEndedFeed, getLatestMedicineDose, hasActiveSession, normalizeTextEmailRecipients } from '../server/notifications.js'
 
 test('buildReminder schedules the next feeding window two to three hours after latest feed', () => {
   const endedAt = new Date('2026-06-05T08:00:00Z').getTime()
@@ -39,6 +39,13 @@ test('buildMedicineReminder recommends the opposite medicine six hours after lat
   assert.equal(reminder.dueAt, new Date('2026-06-05T14:00:00Z').getTime())
   assert.equal(reminder.medicineKind, 'tylenol')
   assert.equal(reminder.recommendedKind, 'motrin')
+})
+
+test('normalizeTextEmailRecipients supports comma-separated addresses', () => {
+  assert.deepEqual(
+    normalizeTextEmailRecipients('15551230000@vtext.com, 15551230001@tmomail.net,,15551230002@txt.att.net '),
+    ['15551230000@vtext.com', '15551230001@tmomail.net', '15551230002@txt.att.net'],
+  )
 })
 
 test('notification scheduler sends Gotify and text-email medication reminders after six hours', async () => {

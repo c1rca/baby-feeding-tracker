@@ -4,7 +4,7 @@ import nodemailer from 'nodemailer'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createNotificationScheduler, sendGotifyMessage } from './server/notifications.js'
+import { createNotificationScheduler, normalizeTextEmailRecipients, sendGotifyMessage } from './server/notifications.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -22,9 +22,9 @@ const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com'
 const smtpPort = Number(process.env.SMTP_PORT || 465)
 const smtpUser = process.env.SMTP_USER || ''
 const smtpPassword = process.env.SMTP_PASSWORD || ''
-const textEmailTo = process.env.TEXT_EMAIL_TO || ''
+const textEmailTo = normalizeTextEmailRecipients(process.env.TEXT_EMAIL_TO)
 const textEmailFrom = process.env.TEXT_EMAIL_FROM || smtpUser
-const textEmailAvailable = Boolean(smtpUser && smtpPassword && textEmailTo && textEmailFrom)
+const textEmailAvailable = Boolean(smtpUser && smtpPassword && textEmailTo.length > 0 && textEmailFrom)
 const notificationsAvailable = Boolean(gotifyUrl && gotifyToken)
 const notificationChannelsAvailable = notificationsAvailable || textEmailAvailable
 const notificationsDefaultEnabled = process.env.NOTIFICATIONS_ENABLED === '1' && notificationChannelsAvailable
