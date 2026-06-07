@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createNotificationScheduler, normalizeTextEmailRecipients, sendGotifyMessage } from './server/notifications.js'
+import { resolveIncomingState } from './server/stateMerge.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -232,30 +233,36 @@ app.get('/api/state', (_req, res) => {
 })
 
 app.put('/api/state', (req, res) => {
-  const entries = Array.isArray(req.body?.entries) ? req.body.entries : []
-  const diapers = Array.isArray(req.body?.diapers) ? req.body.diapers : []
-  const medicines = Array.isArray(req.body?.medicines) ? req.body.medicines : []
-  const session = req.body?.session ?? null
-  const theme = req.body?.theme === 'dark' ? 'dark' : 'light'
+  const existingRow = selectState.get()
+  const incoming = resolveIncomingState(existingRow, {
+    entries: Array.isArray(req.body?.entries) ? req.body.entries : [],
+    diapers: Array.isArray(req.body?.diapers) ? req.body.diapers : [],
+    medicines: Array.isArray(req.body?.medicines) ? req.body.medicines : [],
+    session: req.body?.session ?? null,
+    theme: req.body?.theme === 'dark' ? 'dark' : 'light',
+    updatedAt: req.body?.updatedAt,
+  })
+  const { entries, diapers, medicines, session, theme } = incoming
 
   const entriesJson = JSON.stringify(entries)
   const diapersJson = JSON.stringify(diapers)
   const medicinesJson = JSON.stringify(medicines)
   const sessionJson = session ? JSON.stringify(session) : null
 
+  const updatedAt = new Date().toISOString()
   upsertState.run({
     entries_json: entriesJson,
     diapers_json: diapersJson,
     medicines_json: medicinesJson,
     session_json: sessionJson,
     theme,
-    updated_at: new Date().toISOString(),
+    updated_at: updatedAt,
   })
 
-  appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines), entries, diapers, medicines, session })
+  appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines), staleWriteMerged: incoming.stale, entries, diapers, medicines, session })
   notificationScheduler?.evaluate()
 
-  res.json({ ok: true })
+  res.json({ ok: true, updatedAt, staleWriteMerged: incoming.stale })
 })
 
 const distPath = path.join(__dirname, 'dist')

@@ -199,6 +199,7 @@ function App() {
   const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const latestPayloadRef = useRef<{ entries: Entry[]; diapers: DiaperEvent[]; medicines: MedicineEvent[]; session: Session | null; theme: Theme }>({ entries, diapers, medicines, session, theme })
+  const serverUpdatedAtRef = useRef<string | null>(null)
 
   useEffect(() => { latestPayloadRef.current = { entries, diapers, medicines, session, theme } }, [entries, diapers, medicines, session, theme])
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date().getTime()), 1000); return () => window.clearInterval(timer) }, [])
@@ -290,9 +291,11 @@ function App() {
       const response = await fetch(API_STATE, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: entriesToSync, diapers: diapersToSync, medicines: medicinesToSync, session: sessionToSync, theme: themeToSync }),
+        body: JSON.stringify({ entries: entriesToSync, diapers: diapersToSync, medicines: medicinesToSync, session: sessionToSync, theme: themeToSync, updatedAt: serverUpdatedAtRef.current }),
       })
       if (!response.ok) throw new Error('sync failed')
+      const data = (await response.json()) as { updatedAt?: string }
+      if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
       localStorage.removeItem(KEY_PENDING_SYNC)
       setSyncStatus('synced')
     } catch {
@@ -315,12 +318,13 @@ function App() {
       try {
         const response = await fetch(API_STATE)
         if (!response.ok) throw new Error('load failed')
-        const data = (await response.json()) as { entries?: Entry[]; diapers?: DiaperEvent[]; medicines?: MedicineEvent[]; session?: LegacySession | null; theme?: Theme }
+        const data = (await response.json()) as { entries?: Entry[]; diapers?: DiaperEvent[]; medicines?: MedicineEvent[]; session?: LegacySession | null; theme?: Theme; updatedAt?: string }
         if (Array.isArray(data.entries)) setEntries(data.entries.sort((a, b) => b.endedAt - a.endedAt))
         if (Array.isArray(data.diapers)) setDiapers(data.diapers.sort((a, b) => b.at - a.at))
         if (Array.isArray(data.medicines)) setMedicines(data.medicines.sort((a, b) => b.at - a.at))
         if (data.session !== undefined) setSession(normalizeSession(data.session))
         if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
+        if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
         setSyncStatus('synced')
       } catch {
         setSyncStatus('offline')
