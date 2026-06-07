@@ -14,6 +14,8 @@ services:
       - LOG_DIR=/logs
     env_file:
       - .env.gotify
+      - path: .env.smtp
+        required: false
     dns:
       - 1.1.1.1
     volumes:

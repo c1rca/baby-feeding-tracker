@@ -11,6 +11,8 @@ services:
       - NOTIFICATIONS_ENABLED=1
     env_file:
       - .env.gotify
+      - path: .env.smtp
+        required: false
     volumes:
       - ./data-dev:/data
     restart: unless-stopped

@@ -66,6 +66,7 @@ export function createNotificationScheduler({
   getNotificationState,
   upsertNotificationState,
   sendGotify,
+  sendTextEmail,
   enabled = true,
   now = () => Date.now(),
   setTimer = setTimeout,
@@ -98,7 +99,7 @@ export function createNotificationScheduler({
     if (!medicines) return null
 
     const reminders = []
-    if (!hasActiveSession(row)) {
+    if (!hasActiveSession(row) && sendGotify) {
       const feeding = buildReminder(getLatestEndedFeed(entries), now())
       if (feeding) reminders.push({ ...feeding, notificationId: feeding.entryId })
     }
@@ -139,11 +140,14 @@ export function createNotificationScheduler({
 
       try {
         if (freshReminder.kind === 'medicine') {
-          await sendGotify({
+          const medicinePayload = {
             title: 'Medicine reminder',
+            subject: 'Medicine reminder',
             message: `Take ${medicationLabel(freshReminder.recommendedKind)}. Last dose was ${medicationLabel(freshReminder.medicineKind)} 6+ hours ago.\n\n${FEEDR_URL}`,
             priority: 5,
-          })
+          }
+          if (sendGotify) await sendGotify(medicinePayload)
+          if (sendTextEmail) await sendTextEmail(medicinePayload)
         } else {
           await sendGotify({
             title: 'Feeding reminder',

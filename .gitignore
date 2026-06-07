@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .env.gotify
+.env.smtp
 
 data/
 data-dev/

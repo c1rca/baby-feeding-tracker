@@ -1,5 +1,6 @@
 import express from 'express'
 import Database from 'better-sqlite3'
+import nodemailer from 'nodemailer'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -17,8 +18,16 @@ const logDir = process.env.LOG_DIR || path.join(dbDir, 'logs')
 const eventLogPath = path.join(logDir, 'feeding-tracker-events.jsonl')
 const gotifyUrl = process.env.GOTIFY_URL || ''
 const gotifyToken = process.env.GOTIFY_TOKEN || ''
+const smtpHost = process.env.SMTP_HOST || 'smtp.gmail.com'
+const smtpPort = Number(process.env.SMTP_PORT || 465)
+const smtpUser = process.env.SMTP_USER || ''
+const smtpPassword = process.env.SMTP_PASSWORD || ''
+const textEmailTo = process.env.TEXT_EMAIL_TO || ''
+const textEmailFrom = process.env.TEXT_EMAIL_FROM || smtpUser
+const textEmailAvailable = Boolean(smtpUser && smtpPassword && textEmailTo && textEmailFrom)
 const notificationsAvailable = Boolean(gotifyUrl && gotifyToken)
-const notificationsDefaultEnabled = process.env.NOTIFICATIONS_ENABLED === '1' && notificationsAvailable
+const notificationChannelsAvailable = notificationsAvailable || textEmailAvailable
+const notificationsDefaultEnabled = process.env.NOTIFICATIONS_ENABLED === '1' && notificationChannelsAvailable
 
 fs.mkdirSync(dbDir, { recursive: true })
 fs.mkdirSync(backupDir, { recursive: true })
@@ -132,23 +141,57 @@ const readBooleanSetting = (key, fallback) => {
   return row ? row.value === '1' : fallback
 }
 const writeBooleanSetting = (key, value) => upsertSetting.run({ key, value: value ? '1' : '0', updated_at: new Date().toISOString() })
-let gotifyRemindersEnabled = notificationsAvailable && readBooleanSetting('gotify_reminders_enabled', notificationsDefaultEnabled)
+let gotifyRemindersEnabled = notificationChannelsAvailable && readBooleanSetting('gotify_reminders_enabled', notificationsDefaultEnabled)
 
-const notificationScheduler = notificationsAvailable
+const smtpTransporter = textEmailAvailable
+  ? nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPassword },
+    })
+  : null
+
+const sendTextEmailMessage = smtpTransporter
+  ? async ({ subject, title, message }) => {
+      await smtpTransporter.sendMail({
+        from: textEmailFrom,
+        to: textEmailTo,
+        subject: subject || title || 'Feedr reminder',
+        text: message,
+      })
+    }
+  : null
+
+const notificationScheduler = notificationChannelsAvailable
   ? createNotificationScheduler({
       selectState,
       getNotificationState,
       upsertNotificationState,
-      sendGotify: async (payload) => {
-        appendEventLog('gotify_send_attempt', { title: payload.title, message: payload.message, priority: payload.priority })
-        try {
-          await sendGotifyMessage({ url: gotifyUrl, token: gotifyToken, ...payload })
-          appendEventLog('gotify_send_success', { title: payload.title, message: payload.message, priority: payload.priority })
-        } catch (error) {
-          appendEventLog('gotify_send_failed', { title: payload.title, message: payload.message, priority: payload.priority, error: redactError(error) })
-          throw error
-        }
-      },
+      sendGotify: notificationsAvailable
+        ? async (payload) => {
+            appendEventLog('gotify_send_attempt', { title: payload.title, message: payload.message, priority: payload.priority })
+            try {
+              await sendGotifyMessage({ url: gotifyUrl, token: gotifyToken, ...payload })
+              appendEventLog('gotify_send_success', { title: payload.title, message: payload.message, priority: payload.priority })
+            } catch (error) {
+              appendEventLog('gotify_send_failed', { title: payload.title, message: payload.message, priority: payload.priority, error: redactError(error) })
+              throw error
+            }
+          }
+        : null,
+      sendTextEmail: sendTextEmailMessage
+        ? async (payload) => {
+            appendEventLog('text_email_send_attempt', { subject: payload.subject || payload.title, to: textEmailTo })
+            try {
+              await sendTextEmailMessage(payload)
+              appendEventLog('text_email_send_success', { subject: payload.subject || payload.title, to: textEmailTo })
+            } catch (error) {
+              appendEventLog('text_email_send_failed', { subject: payload.subject || payload.title, to: textEmailTo, error: redactError(error) })
+              throw error
+            }
+          }
+        : null,
       enabled: gotifyRemindersEnabled,
     })
   : null
@@ -156,20 +199,20 @@ const notificationScheduler = notificationsAvailable
 app.use(express.json({ limit: '1mb' }))
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true, dbPath, notificationsAvailable, gotifyRemindersEnabled })
+  res.json({ ok: true, dbPath, notificationsAvailable: notificationChannelsAvailable, gotifyAvailable: notificationsAvailable, textEmailAvailable, gotifyRemindersEnabled })
 })
 
 app.get('/api/notification-settings', (_req, res) => {
-  res.json({ available: notificationsAvailable, gotifyRemindersEnabled })
+  res.json({ available: notificationChannelsAvailable, gotifyRemindersEnabled })
 })
 
 app.put('/api/notification-settings', (req, res) => {
-  const enabled = Boolean(req.body?.gotifyRemindersEnabled) && notificationsAvailable
+  const enabled = Boolean(req.body?.gotifyRemindersEnabled) && notificationChannelsAvailable
   gotifyRemindersEnabled = enabled
   writeBooleanSetting('gotify_reminders_enabled', enabled)
   appendEventLog('settings_update', { key: 'gotify_reminders_enabled', value: enabled ? '1' : '0' })
   notificationScheduler?.setEnabled(enabled)
-  res.json({ ok: true, available: notificationsAvailable, gotifyRemindersEnabled })
+  res.json({ ok: true, available: notificationChannelsAvailable, gotifyRemindersEnabled })
 })
 
 app.get('/api/state', (_req, res) => {
@@ -239,8 +282,8 @@ app.listen(port, () => {
       appendEventLog('startup_state_snapshot_failed', { error: redactError(error) })
     }
   }
-  if (notificationsAvailable) {
+  if (notificationChannelsAvailable) {
     notificationScheduler.evaluate()
-    console.log(`gotify reminders ${gotifyRemindersEnabled ? 'enabled' : 'disabled'}: ${gotifyUrl}`)
+    console.log(`reminders ${gotifyRemindersEnabled ? 'enabled' : 'disabled'}: gotify=${notificationsAvailable ? gotifyUrl : 'off'}, textEmail=${textEmailAvailable ? 'on' : 'off'}`)
   }
 })

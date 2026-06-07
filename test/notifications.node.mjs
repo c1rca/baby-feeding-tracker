@@ -41,13 +41,14 @@ test('buildMedicineReminder recommends the opposite medicine six hours after lat
   assert.equal(reminder.recommendedKind, 'motrin')
 })
 
-test('notification scheduler sends a Gotify medication reminder after six hours', async () => {
+test('notification scheduler sends Gotify and text-email medication reminders after six hours', async () => {
   const now = new Date('2026-06-05T14:00:00Z').getTime()
   const row = {
     entries_json: JSON.stringify([]),
     medicines_json: JSON.stringify([{ id: 'dose-1', kind: 'motrin', at: now - 6 * 60 * 60 * 1000 }]),
   }
   const sent = []
+  const textEmails = []
   const notificationRows = new Map()
   const timers = []
 
@@ -56,6 +57,7 @@ test('notification scheduler sends a Gotify medication reminder after six hours'
     getNotificationState: { get: (id) => notificationRows.get(id) },
     upsertNotificationState: { run: (state) => notificationRows.set(state.entry_id, state) },
     sendGotify: async (payload) => sent.push(payload),
+    sendTextEmail: async (payload) => textEmails.push(payload),
     now: () => now,
     setTimer: (fn, delay) => {
       timers.push({ fn, delay })
@@ -74,6 +76,10 @@ test('notification scheduler sends a Gotify medication reminder after six hours'
   assert.match(sent[0].message, /Take Tylenol/i)
   assert.match(sent[0].message, /Last dose was Motrin/i)
   assert.match(sent[0].message, /https:\/\/feedr\.kjw\.lol$/)
+  assert.equal(textEmails.length, 1)
+  assert.equal(textEmails[0].subject, 'Medicine reminder')
+  assert.match(textEmails[0].message, /Take Tylenol/i)
+  assert.match(textEmails[0].message, /Last dose was Motrin/i)
   assert.ok(notificationRows.get('medicine:dose-1').sent_at)
 })
 
