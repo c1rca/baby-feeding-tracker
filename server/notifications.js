@@ -2,6 +2,7 @@ const TWO_HOURS_MS = 2 * 60 * 60 * 1000
 const THREE_HOURS_MS = 3 * 60 * 60 * 1000
 const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 const MAX_CATCH_UP_MS = 30 * 60 * 1000
+const DEFAULT_TIME_ZONE = 'America/New_York'
 export const FEEDR_URL = 'https://feedr.kjw.lol'
 
 export function getLatestEndedFeed(entries) {
@@ -82,6 +83,7 @@ export function createNotificationScheduler({
   setTimer = setTimeout,
   clearTimer = clearTimeout,
   logger = console,
+  timeZone = process.env.FEEDING_TIME_ZONE || process.env.TZ || DEFAULT_TIME_ZONE,
 }) {
   let timer = null
   let scheduled = null
@@ -168,7 +170,7 @@ export function createNotificationScheduler({
         } else {
           await sendGotify({
             title: 'Feeding reminder',
-            message: `Next feeding window is open (${formatTime(freshReminder.dueAt)}–${formatTime(freshReminder.windowEndAt)}).\n\n${FEEDR_URL}`,
+            message: `Next feeding window is open (${formatTime(freshReminder.dueAt, timeZone)}–${formatTime(freshReminder.windowEndAt, timeZone)}).\n\n${FEEDR_URL}`,
             priority: 5,
           })
         }
@@ -191,8 +193,8 @@ export function createNotificationScheduler({
   return { evaluate, cancel, setEnabled, isEnabled: () => isEnabled, getScheduled: () => scheduled }
 }
 
-function formatTime(timestamp) {
-  return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+export function formatTime(timestamp, timeZone = process.env.FEEDING_TIME_ZONE || process.env.TZ || DEFAULT_TIME_ZONE) {
+  return new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit', timeZone }).format(new Date(timestamp))
 }
 
 export async function sendGotifyMessage({ url, token, title, message, priority = 5 }) {

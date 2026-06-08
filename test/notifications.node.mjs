@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMedicineReminder, buildReminder, createNotificationScheduler, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeTextEmailRecipients } from '../server/notifications.js'
+import { buildMedicineReminder, buildReminder, createNotificationScheduler, formatTime, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeTextEmailRecipients } from '../server/notifications.js'
 
 test('buildReminder schedules the next feeding window two to three hours after latest feed', () => {
   const endedAt = new Date('2026-06-05T08:00:00Z').getTime()
@@ -267,8 +267,37 @@ test('notification scheduler sends once for the current latest feed', async () =
   assert.equal(timers.length, 1)
 })
 
+test('notification scheduler formats feeding windows in configured app time zone', async () => {
+  const now = new Date('2026-06-05T14:40:00Z').getTime()
+  const row = {
+    entries_json: JSON.stringify([{ id: 'feed-eastern', endedAt: now - 2 * 60 * 60 * 1000 }]),
+  }
+  const sent = []
+  const timers = []
+
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => row },
+    getNotificationState: { get: () => null },
+    upsertNotificationState: { run: () => {} },
+    sendGotify: async (payload) => sent.push(payload),
+    now: () => now,
+    timeZone: 'America/New_York',
+    setTimer: (fn, delay) => {
+      timers.push({ fn, delay })
+      return timers.length
+    },
+    clearTimer: () => {},
+    logger: { warn: () => {} },
+  })
+
+  scheduler.evaluate()
+  await timers[0].fn()
+
+  assert.match(sent[0].message, /Next feeding window is open \(10:40 AM–11:40 AM\)\./)
+})
+
 function formatTestTime(timestamp) {
-  return new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
+  return formatTime(timestamp)
 }
 
 function escapeRegExp(value) {
