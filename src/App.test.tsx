@@ -221,6 +221,7 @@ describe('App interactions', () => {
     expect(screen.getByText(/Session resumed/i)).toBeTruthy()
     expect(screen.getByText(/On right/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Switch to Left/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /^Pause$/i }).className).toContain('pause-action')
     expect(screen.queryByRole('button', { name: /Resume Left/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /Resume Right/i })).toBeNull()
     const liveSplit = screen.getByLabelText(/Live split/i)
