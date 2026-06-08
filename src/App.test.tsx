@@ -96,7 +96,7 @@ describe('App interactions', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
 
-    expect(screen.getByRole('alert').textContent).toMatch(/Take Motrin/i)
+    expect(screen.getByRole('alert').textContent).toMatch(/Take Tylenol/i)
     expect(screen.queryByRole('button', { name: /Log Tylenol/i })).toBeNull()
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
     expect(screen.getByRole('button', { name: /Log Tylenol/i })).toBeTruthy()
@@ -114,6 +114,24 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Undo medicine log/i }))
     expect(screen.getByText(/Medicine log undone/i)).toBeTruthy()
     expect(screen.queryAllByText(/^Tylenol$/i).length).toBe(1)
+  })
+
+  it('shows a medicine reminder for a due kind even when another medicine was taken more recently', () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(
+      STORAGE_MEDICINES_KEY,
+      JSON.stringify([
+        { id: 'tylenol-recent', kind: 'tylenol', at: now - 4 * 60 * 60 * 1000 },
+        { id: 'motrin-due', kind: 'motrin', at: now - 6 * 60 * 60 * 1000 - 1 },
+      ]),
+    )
+
+    render(<App />)
+
+    expect(screen.getByRole('alert').textContent).toMatch(/Take Motrin/i)
+    expect(screen.getByRole('alert').textContent).toMatch(/Last dose was Motrin/i)
   })
 
   it('edits a medicine timeline entry kind and time', async () => {

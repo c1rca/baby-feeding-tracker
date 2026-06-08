@@ -64,7 +64,6 @@ const diaperLabel = (kind: DiaperKind) => (kind === 'wet' ? 'Wet' : 'Stool')
 const diaperKinds = (event: DiaperEvent): DiaperKind[] => event.kinds?.length ? event.kinds : event.kind ? [event.kind] : []
 const diaperEventLabel = (event: DiaperEvent) => diaperKinds(event).map(diaperLabel).join(' + ')
 const medicineLabel = (kind: MedicineKind) => (kind === 'tylenol' ? 'Tylenol' : 'Motrin')
-const oppositeMedicine = (kind: MedicineKind): MedicineKind => (kind === 'tylenol' ? 'motrin' : 'tylenol')
 const entryDiaperKinds = (entry: Entry): DiaperKind[] => entry.diaperKinds ?? []
 const diaperKindsLabel = (kinds: DiaperKind[]) => kinds.map(diaperLabel).join(' + ')
 const timelineFeedLabel = (entry: Entry) => {
@@ -508,11 +507,14 @@ function App() {
     showToast(`${label} diaper logged`)
   }
 
-  const latestMedicine = medicines[0]
-  const medicineReminderDue = latestMedicine && now - latestMedicine.at >= MEDICINE_REMINDER_MS
-    ? { id: latestMedicine.id, label: medicineLabel(latestMedicine.kind), recommendedKind: oppositeMedicine(latestMedicine.kind), recommendedLabel: medicineLabel(oppositeMedicine(latestMedicine.kind)), at: latestMedicine.at }
+  const medicineReminderDue = (['tylenol', 'motrin'] as MedicineKind[])
+    .map((kind) => medicines.find((medicine) => medicine.kind === kind))
+    .filter((medicine): medicine is MedicineEvent => Boolean(medicine && now - medicine.at >= MEDICINE_REMINDER_MS))
+    .sort((a, b) => a.at - b.at)[0]
+  const medicineReminder: { id: string; label: string; recommendedKind: MedicineKind; recommendedLabel: string; at: number } | null = medicineReminderDue
+    ? { id: medicineReminderDue.id, label: medicineLabel(medicineReminderDue.kind), recommendedKind: medicineReminderDue.kind, recommendedLabel: medicineLabel(medicineReminderDue.kind), at: medicineReminderDue.at }
     : null
-  const showMedicineReminder = Boolean(medicineReminderDue && dismissedMedicineReminderId !== medicineReminderDue.id)
+  const showMedicineReminder = Boolean(medicineReminder && dismissedMedicineReminderId !== medicineReminder.id)
 
   const logMedicine = (kind: MedicineKind) => {
     const t = new Date().getTime()
@@ -737,10 +739,10 @@ function App() {
 
       {view === 'track' ? (
       <div className="tracker-view">
-      {showMedicineReminder && medicineReminderDue ? (
+      {showMedicineReminder && medicineReminder ? (
         <div className="medicine-reminder-banner" role="alert">
-          <div><strong>Medicine reminder</strong><span>Take {medicineReminderDue.recommendedLabel}. Last dose was {medicineReminderDue.label} 6+ hours ago.</span></div>
-          <button type="button" className="icon-plain" aria-label="Dismiss medicine reminder" onClick={() => setDismissedMedicineReminderId(medicineReminderDue.id)}><X size={16} /></button>
+          <div><strong>Medicine reminder</strong><span>Take {medicineReminder.recommendedLabel}. Last dose was {medicineReminder.label} 6+ hours ago.</span></div>
+          <button type="button" className="icon-plain" aria-label="Dismiss medicine reminder" onClick={() => setDismissedMedicineReminderId(medicineReminder.id)}><X size={16} /></button>
         </div>
       ) : null}
       <section className="card hero" ref={heroRef}>
