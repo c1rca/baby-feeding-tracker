@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Baby, BarChart3, ClipboardList, Moon, RotateCcw, Settings, Sun, X } from 'lucide-react'
-import { formatDuration, sumSideDurations } from './domain/feedingUtils'
+import { RotateCcw } from 'lucide-react'
+import { sumSideDurations } from './domain/feedingUtils'
 import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, MedicineEvent, MedicineKind, Side, UndoState, View } from './types'
 import { calculateActiveSplit, calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, diaperLabel, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, makeId, medicineLabel, oppositeSide, parseClockTimeToday } from './domain/trackerDomain'
 import { useServerSync } from './sync/useServerSync'
@@ -9,6 +9,8 @@ import { Timeline } from './components/Timeline'
 import { HeroPanel } from './components/HeroPanel'
 import { StatsDashboard } from './components/StatsDashboard'
 import { TrackerModals } from './components/TrackerModals'
+import { AppHeader } from './components/AppHeader'
+import { TrackOverview } from './components/TrackOverview'
 import './styles.css'
 
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
@@ -400,32 +402,18 @@ function App() {
 
   return (
     <main className="app">
-      <header className="top">
-        <h1><Baby size={20} /> Baby Feeding Tracker</h1>
-        <div className="top-actions">
-          <button className={`icon-plain view-icon-toggle ${view === 'stats' ? 'active' : ''}`} aria-label={view === 'stats' ? 'Show tracker' : 'Show stats'} title={view === 'stats' ? 'Show tracker' : 'Show stats'} onClick={() => setView((current) => current === 'stats' ? 'track' : 'stats')}>
-            {view === 'stats' ? <ClipboardList size={18} /> : <BarChart3 size={18} />}
-          </button>
-          {syncStatus !== 'synced' && (
-            <span className={`sync-pill sync-${syncStatus}`}>{syncStatus === 'syncing' ? 'Syncing…' : 'Offline changes saved'}</span>
-          )}
-          <button className="icon-plain" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
-            {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
-          </button>
-          <button className="icon-plain" aria-label={settingsOpen ? 'Hide settings' : 'Show settings'} onClick={() => setSettingsOpen((v) => !v)}>
-            <Settings size={17} />
-          </button>
-        </div>
-      </header>
+      <AppHeader
+        view={view}
+        syncStatus={syncStatus}
+        theme={theme}
+        settingsOpen={settingsOpen}
+        setView={setView}
+        setTheme={setTheme}
+        setSettingsOpen={setSettingsOpen}
+      />
 
       {view === 'track' ? (
       <div className="tracker-view">
-      {showMedicineReminder && medicineReminder ? (
-        <div className="medicine-reminder-banner" role="alert">
-          <div><strong>Medicine reminder</strong><span>Take {medicineReminder.recommendedLabel}. Last dose was {medicineReminder.label} 6+ hours ago.</span></div>
-          <button type="button" className="icon-plain" aria-label="Dismiss medicine reminder" onClick={() => setDismissedMedicineReminderId(medicineReminder.id)}><X size={16} /></button>
-        </div>
-      ) : null}
       <HeroPanel
         ref={heroRef}
         session={session}
@@ -467,18 +455,13 @@ function App() {
         logMedicine={logMedicine}
       />
 
-      <section className="grid">
-        <div className="card stat"><h3>Feeds today</h3><p>{today.count}</p></div>
-        <div className="card stat"><h3>Nursing</h3><p>{formatDuration(today.nursing)}</p></div>
-        <div className="card stat"><h3>Bottle</h3><p>{today.oz.toFixed(1)} oz</p></div>
-        <div className="card stat"><h3>L / R split</h3><p>{formatDuration(today.left)} / {formatDuration(today.right)}</p></div>
-        <div className="card stat diaper-stat"><h3>Diapers today</h3><p>{today.wet} wet · {today.stool} stool</p></div>
-      </section>
-
-      <section className="card">
-        <h2>7-Day Trend</h2>
-        <div className="trend">{trend.days.map((d) => <div key={d.label} className="trend-col"><div className="trend-bar" style={{ height: `${(d.count / trend.max) * 60 + 8}px` }} /><span>{d.label}</span><small>{d.count}</small></div>)}</div>
-      </section>
+      <TrackOverview
+        today={today}
+        trend={trend}
+        medicineReminder={medicineReminder}
+        showMedicineReminder={showMedicineReminder}
+        dismissMedicineReminder={setDismissedMedicineReminderId}
+      />
       </div>) : (
       <StatsDashboard stats={stats} trend={trend} />
       )}
@@ -547,3 +530,4 @@ function App() {
 }
 
 export default App
+
