@@ -2,20 +2,18 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { formatDistanceToNow } from 'date-fns'
 import { Activity, Baby, BarChart3, CalendarDays, CirclePause, ClipboardList, Clock3, Download, Droplets, HeartPulse, MoreHorizontal, Moon, Pencil, Pill, RotateCcw, Save, Settings, Sparkles, Sun, Target, Trash2, Trophy, Upload, Waves, X, XCircle } from 'lucide-react'
 import { formatDuration, sumSideDurations } from './domain/feedingUtils'
-import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, LegacySession, MedicineEvent, MedicineKind, ServerState, Session, Side, Theme, UndoState, View } from './types'
+import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, LegacySession, MedicineEvent, MedicineKind, Session, Side, Theme, UndoState, View } from './types'
 import { calculateActiveSplit, calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, diaperEventLabel, diaperKinds, diaperKindsLabel, diaperLabel, entryDiaperKinds, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, formatTime, makeId, medicineLabel, normalizeSession, oppositeSide, parseClockTimeToday, sideLabel, timelineFeedLabel } from './domain/trackerDomain'
+import { useServerSync } from './sync/useServerSync'
 import './styles.css'
 
 const KEY_ENTRIES = 'baby-feeding-tracker:v1:entries'
 const KEY_SESSION = 'baby-feeding-tracker:v1:session'
 const KEY_THEME = 'baby-feeding-tracker:v1:theme'
 const KEY_SETTINGS_OPEN = 'baby-feeding-tracker:v1:settings-open'
-const KEY_PENDING_SYNC = 'baby-feeding-tracker:v1:pending-sync'
 const KEY_FEEDING_NOTIFICATIONS = 'baby-feeding-tracker:v1:feeding-notifications'
 const KEY_DIAPERS = 'baby-feeding-tracker:v1:diapers'
 const KEY_MEDICINES = 'baby-feeding-tracker:v1:medicines'
-const API_STATE = '/api/state'
-const API_STATE_EVENTS = '/api/state/events'
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
 const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
 const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
@@ -71,31 +69,12 @@ function App() {
   const [confirmingDeleteEntryId, setConfirmingDeleteEntryId] = useState<string | null>(null)
   const [resumeFocusTick, setResumeFocusTick] = useState(0)
   const heroRef = useRef<HTMLElement | null>(null)
-  const [syncStatus, setSyncStatus] = useState<'syncing' | 'synced' | 'offline'>(() => (localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'synced'))
+  const { syncStatus } = useServerSync({ entries, diapers, medicines, session, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
   const [feedingNotificationsEnabled, setFeedingNotificationsEnabled] = useState(() => localStorage.getItem(KEY_FEEDING_NOTIFICATIONS) === '1')
   const [gotifyAvailable, setGotifyAvailable] = useState(false)
   const [gotifyRemindersEnabled, setGotifyRemindersEnabled] = useState(false)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => (typeof Notification === 'undefined' ? 'denied' : Notification.permission))
-  const [hasHydrated, setHasHydrated] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const latestPayloadRef = useRef<{ entries: Entry[]; diapers: DiaperEvent[]; medicines: MedicineEvent[]; session: Session | null; theme: Theme }>({ entries, diapers, medicines, session, theme })
-  const serverUpdatedAtRef = useRef<string | null>(null)
-  const applyingRemoteStateRef = useRef(false)
-  const skipNextSyncRef = useRef(false)
-
-  const applyServerState = useCallback((data: ServerState) => {
-    applyingRemoteStateRef.current = true
-    skipNextSyncRef.current = true
-    if (Array.isArray(data.entries)) setEntries([...data.entries].sort((a, b) => b.endedAt - a.endedAt))
-    if (Array.isArray(data.diapers)) setDiapers([...data.diapers].sort((a, b) => b.at - a.at))
-    if (Array.isArray(data.medicines)) setMedicines([...data.medicines].sort((a, b) => b.at - a.at))
-    if (data.session !== undefined) setSession(normalizeSession(data.session))
-    if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
-    if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
-    window.setTimeout(() => { applyingRemoteStateRef.current = false }, 0)
-  }, [])
-
-  useEffect(() => { latestPayloadRef.current = { entries, diapers, medicines, session, theme } }, [entries, diapers, medicines, session, theme])
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date().getTime()), 1000); return () => window.clearInterval(timer) }, [])
   useEffect(() => {
     if (!resumeFocusTick || !session) return
@@ -156,6 +135,10 @@ function App() {
     }
   }, [])
 
+  useEffect(() => {
+    window.setTimeout(() => void loadGotifySettings(), 0)
+  }, [loadGotifySettings])
+
   const setGotifyReminders = async (enabled: boolean) => {
     try {
       const response = await fetch(API_NOTIFICATION_SETTINGS, {
@@ -172,102 +155,6 @@ function App() {
       showToast('Could not update Gotify reminders')
     }
   }
-
-  const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme, nextDiapers?: DiaperEvent[], nextMedicines?: MedicineEvent[]) => {
-    const payload = latestPayloadRef.current
-    const entriesToSync = nextEntries ?? payload.entries
-    const diapersToSync = nextDiapers ?? payload.diapers
-    const medicinesToSync = nextMedicines ?? payload.medicines
-    const sessionToSync = nextSession ?? payload.session
-    const themeToSync = nextTheme ?? payload.theme
-    setSyncStatus('syncing')
-    try {
-      const response = await fetch(API_STATE, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: entriesToSync, diapers: diapersToSync, medicines: medicinesToSync, session: sessionToSync, theme: themeToSync, updatedAt: serverUpdatedAtRef.current }),
-      })
-      if (!response.ok) throw new Error('sync failed')
-      const data = (await response.json()) as { updatedAt?: string; staleWriteMerged?: boolean; state?: ServerState }
-      if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
-      if (data.staleWriteMerged && data.state) applyServerState(data.state)
-      localStorage.removeItem(KEY_PENDING_SYNC)
-      setSyncStatus('synced')
-    } catch {
-      localStorage.setItem(KEY_PENDING_SYNC, '1')
-      setSyncStatus('offline')
-    }
-  }, [applyServerState])
-
-  useEffect(() => {
-    window.setTimeout(() => void loadGotifySettings(), 0)
-  }, [loadGotifySettings])
-
-  useEffect(() => {
-    const loadFromApi = async () => {
-      if (localStorage.getItem(KEY_PENDING_SYNC) === '1') {
-        setHasHydrated(true)
-        await syncToApi()
-        return
-      }
-      try {
-        const response = await fetch(API_STATE)
-        if (!response.ok) throw new Error('load failed')
-        const data = (await response.json()) as ServerState
-        applyServerState(data)
-        setSyncStatus('synced')
-      } catch {
-        setSyncStatus('offline')
-      } finally {
-        setHasHydrated(true)
-      }
-    }
-
-    void loadFromApi()
-  }, [syncToApi, applyServerState])
-
-  useEffect(() => {
-    if (!hasHydrated || typeof EventSource === 'undefined') return
-    const events = new EventSource(API_STATE_EVENTS)
-    events.onopen = () => {
-      if (localStorage.getItem(KEY_PENDING_SYNC) !== '1') setSyncStatus('synced')
-    }
-    events.addEventListener('state', (event) => {
-      try {
-        const data = JSON.parse((event as MessageEvent).data) as ServerState
-        if (data.updatedAt && data.updatedAt === serverUpdatedAtRef.current) return
-        applyServerState(data)
-        localStorage.removeItem(KEY_PENDING_SYNC)
-        setSyncStatus('synced')
-      } catch {
-        setSyncStatus('offline')
-      }
-    })
-    events.onerror = () => setSyncStatus('offline')
-    return () => events.close()
-  }, [hasHydrated, applyServerState])
-
-  useEffect(() => {
-    if (!hasHydrated || applyingRemoteStateRef.current) return
-    if (skipNextSyncRef.current) {
-      skipNextSyncRef.current = false
-      return
-    }
-    localStorage.setItem(KEY_PENDING_SYNC, '1')
-    window.setTimeout(() => void syncToApi(), 0)
-  }, [entries, diapers, medicines, session, theme, hasHydrated, syncToApi])
-
-  useEffect(() => {
-    const retrySync = () => {
-      if (localStorage.getItem(KEY_PENDING_SYNC) === '1') void syncToApi()
-    }
-    window.addEventListener('online', retrySync)
-    window.addEventListener('focus', retrySync)
-    return () => {
-      window.removeEventListener('online', retrySync)
-      window.removeEventListener('focus', retrySync)
-    }
-  }, [syncToApi])
 
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 1800) }
 
