@@ -1,40 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Activity, Baby, BarChart3, CalendarDays, CirclePause, ClipboardList, Clock3, Download, Droplets, HeartPulse, MoreHorizontal, Moon, Pencil, Pill, RotateCcw, Save, Settings, Sparkles, Sun, Target, Trash2, Trophy, Upload, Waves, X, XCircle } from 'lucide-react'
-import { formatDuration, sumSideDurations, type SideSegment } from './domain/feedingUtils'
+import { formatDuration, sumSideDurations } from './domain/feedingUtils'
+import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, LegacySession, MedicineEvent, MedicineKind, ServerState, Session, Side, Theme, UndoState, View } from './types'
+import { calculateActiveSplit, calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, diaperEventLabel, diaperKinds, diaperKindsLabel, diaperLabel, entryDiaperKinds, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, formatTime, makeId, medicineLabel, normalizeSession, oppositeSide, parseClockTimeToday, sideLabel, timelineFeedLabel } from './domain/trackerDomain'
 import './styles.css'
-
-type Side = 'left' | 'right'
-type FeedType = 'breast' | 'bottle' | 'mixed'
-type Segment = SideSegment
-type Entry = {
-  id: string
-  type: FeedType
-  startedAt: number
-  endedAt: number
-  leftSeconds: number
-  rightSeconds: number
-  bottleOunces: number | null
-  note?: string
-  diaperKinds?: DiaperKind[]
-}
-type DiaperKind = 'wet' | 'stool'
-type MedicineKind = 'tylenol' | 'motrin'
-type DiaperEvent = { id: string; kind?: DiaperKind; kinds?: DiaperKind[]; at: number; context: 'standalone' | 'feed'; feedStartedAt?: number }
-type MedicineEvent = { id: string; kind: MedicineKind; at: number }
-type Session = { startedAt: number; activeSide: Side | null; segmentStart: number | null; segments: Segment[]; bottleOunces: number; note: string; diaperKinds: DiaperKind[] }
-type LegacySession = Omit<Session, 'note' | 'bottleOunces' | 'diaperKinds'> & { note?: string; bottleOunces?: number; diaperKinds?: DiaperKind[] }
-type UndoState =
-  | { entry: Entry; timeoutId: number; kind: 'delete' | 'resume'; previousSession?: Session | null }
-  | { diaper: DiaperEvent; timeoutId: number; kind: 'diaper-log' | 'diaper-delete' }
-  | { medicine: MedicineEvent; timeoutId: number; kind: 'medicine-log' | 'medicine-delete' }
-  | { session: Session; timeoutId: number; kind: 'clear-session' }
-type EditingState = { id: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string; diaperKinds: DiaperKind[] } | null
-type EditingDiaperState = { id: string; kinds: DiaperKind[] } | null
-type EditingMedicineState = { id: string; kind: MedicineKind; time: string; originalAt: number } | null
-type Theme = 'light' | 'dark'
-type View = 'track' | 'stats'
-type ServerState = { entries?: Entry[]; diapers?: DiaperEvent[]; medicines?: MedicineEvent[]; session?: LegacySession | null; theme?: Theme; updatedAt?: string | null }
 
 const KEY_ENTRIES = 'baby-feeding-tracker:v1:entries'
 const KEY_SESSION = 'baby-feeding-tracker:v1:session'
@@ -51,97 +21,6 @@ const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
 const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
 const MEDICINE_REMINDER_MS = 6 * 60 * 60 * 1000
 const THEME_COOKIE = 'baby_feeding_theme'
-
-const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-const formatShortTimeRange = (start: number, end: number) => {
-  const startText = formatTime(start)
-  const endText = formatTime(end)
-  const startParts = startText.match(/^(.*)\s([AP]M)$/i)
-  const endParts = endText.match(/^(.*)\s([AP]M)$/i)
-  if (startParts && endParts && startParts[2] === endParts[2]) return `${startParts[1]}–${endParts[1]} ${endParts[2]}`
-  return `${startText}–${endText}`
-}
-const sideLabel = (side: Side) => (side === 'left' ? 'Left' : 'Right')
-const diaperLabel = (kind: DiaperKind) => (kind === 'wet' ? 'Wet' : 'Stool')
-const diaperKinds = (event: DiaperEvent): DiaperKind[] => event.kinds?.length ? event.kinds : event.kind ? [event.kind] : []
-const diaperEventLabel = (event: DiaperEvent) => diaperKinds(event).map(diaperLabel).join(' + ')
-const medicineLabel = (kind: MedicineKind) => (kind === 'tylenol' ? 'Tylenol' : 'Motrin')
-const entryDiaperKinds = (entry: Entry): DiaperKind[] => entry.diaperKinds ?? []
-const diaperKindsLabel = (kinds: DiaperKind[]) => kinds.map(diaperLabel).join(' + ')
-const timelineFeedLabel = (entry: Entry) => {
-  if (entry.type !== 'breast') return entry.type
-  if (entry.leftSeconds > 0 && entry.rightSeconds === 0) return 'L'
-  if (entry.rightSeconds > 0 && entry.leftSeconds === 0) return 'R'
-  if (entry.leftSeconds > 0 && entry.rightSeconds > 0) return 'L/R'
-  return 'Breast'
-}
-const oppositeSide = (side: Side): Side => (side === 'left' ? 'right' : 'left')
-const makeId = () => (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : `feed-${new Date().getTime()}-${Math.random().toString(36).slice(2, 10)}`)
-
-const formatClockInput = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-const parseClockTimeToday = (value: string, referenceTime: number) => {
-  const trimmed = value.trim().toLowerCase().replace(/\s+/g, '')
-  const match = trimmed.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/)
-  if (!match) return null
-
-  let hours = Number(match[1])
-  const minutes = match[2] ? Number(match[2]) : 0
-  const meridiem = match[3]
-  if (!Number.isInteger(hours) || !Number.isInteger(minutes) || minutes > 59) return null
-  if (meridiem) {
-    if (hours < 1 || hours > 12) return null
-    hours = hours % 12 + (meridiem === 'pm' ? 12 : 0)
-  } else if (hours > 23) {
-    return null
-  }
-
-  const parsed = new Date(referenceTime)
-  parsed.setHours(hours, minutes, 0, 0)
-  if (parsed.getTime() > referenceTime) parsed.setDate(parsed.getDate() - 1)
-  return parsed.getTime()
-}
-
-const normalizeSession = (raw: LegacySession | Session | null | undefined): Session | null => {
-  if (!raw) return null
-  return {
-    ...raw,
-    bottleOunces: typeof raw.bottleOunces === 'number' ? raw.bottleOunces : 0,
-    note: typeof raw.note === 'string' ? raw.note : '',
-    diaperKinds: Array.isArray(raw.diaperKinds) ? raw.diaperKinds.filter((kind): kind is DiaperKind => kind === 'wet' || kind === 'stool') : [],
-  }
-}
-
-const entryResumeSide = (entry: Entry): Side => {
-  if (entry.rightSeconds > 0) return 'right'
-  if (entry.leftSeconds > 0) return 'left'
-  return 'left'
-}
-
-const entryToResumedSession = (entry: Entry, resumeAt: number): Session => {
-  const segments: Segment[] = []
-  let cursor = entry.startedAt
-
-  if (entry.leftSeconds > 0) {
-    const endedAt = cursor + entry.leftSeconds * 1000
-    segments.push({ side: 'left', startedAt: cursor, endedAt })
-    cursor = endedAt
-  }
-
-  if (entry.rightSeconds > 0) {
-    const endedAt = cursor + entry.rightSeconds * 1000
-    segments.push({ side: 'right', startedAt: cursor, endedAt })
-  }
-
-  return {
-    startedAt: entry.startedAt,
-    activeSide: entryResumeSide(entry),
-    segmentStart: resumeAt,
-    segments,
-    bottleOunces: entry.bottleOunces ?? 0,
-    note: entry.note ?? '',
-    diaperKinds: entryDiaperKinds(entry),
-  }
-}
 
 const getCookieTheme = (): Theme | null => {
   const match = document.cookie.match(/(?:^|; )baby_feeding_theme=([^;]+)/)
@@ -604,45 +483,18 @@ function App() {
     showToast('Missed feed saved')
   }
 
-  const activeSplit = useMemo(() => {
-    if (!session) return { left: 0, right: 0 }
-    const draft = [...session.segments]
-    if (session.activeSide && session.segmentStart) draft.push({ side: session.activeSide, startedAt: session.segmentStart, endedAt: now })
-    return sumSideDurations(draft)
-  }, [session, now])
+  const activeSplit = useMemo(() => calculateActiveSplit(session, now), [session, now])
 
   const activeSeconds = activeSplit.left + activeSplit.right
 
-  const today = useMemo(() => {
-    const start = new Date(); start.setHours(0, 0, 0, 0)
-    const list = entries.filter((e) => e.endedAt >= start.getTime())
-    return {
-      count: list.length,
-      nursing: list.reduce((a, e) => a + e.leftSeconds + e.rightSeconds, 0),
-      left: list.reduce((a, e) => a + e.leftSeconds, 0),
-      right: list.reduce((a, e) => a + e.rightSeconds, 0),
-      oz: list.reduce((a, e) => a + (e.bottleOunces ?? 0), 0),
-      wet: diapers.filter((d) => d.at >= start.getTime() && diaperKinds(d).includes('wet')).length + list.filter((e) => entryDiaperKinds(e).includes('wet')).length,
-      stool: diapers.filter((d) => d.at >= start.getTime() && diaperKinds(d).includes('stool')).length + list.filter((e) => entryDiaperKinds(e).includes('stool')).length,
-    }
-  }, [entries, diapers])
+  const today = useMemo(() => calculateTodaySummary(entries, diapers, now), [entries, diapers, now])
 
   const lastFeed = entries[0]
   const minsSinceLast = lastFeed && now ? Math.floor((now - lastFeed.endedAt) / 60000) : null
-  const avgGapMinutes = useMemo(() => {
-    const recent = entries.slice(0, 8).filter((entry) => entry.endedAt > 0).sort((a, b) => a.endedAt - b.endedAt)
-    if (recent.length < 2) return null
-    const gaps = recent.slice(1).map((entry, index) => Math.max(0, entry.endedAt - recent[index].endedAt))
-    return Math.round(gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length / 60000)
-  }, [entries])
-  const lastFeedMetaText = minsSinceLast === null ? 'No feed history yet' : `${Math.floor(minsSinceLast / 60) > 0 ? `${Math.floor(minsSinceLast / 60)}h ` : ''}${minsSinceLast % 60}m ago`
-  const avgGapShortText = avgGapMinutes ? `Avg ${Math.floor(avgGapMinutes / 60) > 0 ? `${Math.floor(avgGapMinutes / 60)}h ` : ''}${avgGapMinutes % 60}m` : null
-  const suggestedSide = useMemo<Side>(() => {
-    const lastNursing = entries.find((entry) => entry.leftSeconds + entry.rightSeconds > 0)
-    if (!lastNursing) return today.left <= today.right ? 'left' : 'right'
-    if (lastNursing.leftSeconds === lastNursing.rightSeconds) return today.left <= today.right ? 'left' : 'right'
-    return oppositeSide(lastNursing.leftSeconds > lastNursing.rightSeconds ? 'left' : 'right')
-  }, [entries, today.left, today.right])
+  const avgGapMinutes = useMemo(() => calculateAvgGapMinutes(entries), [entries])
+  const lastFeedMetaText = minsSinceLast === null ? 'No feed history yet' : formatMinutesAgo(minsSinceLast)
+  const avgGapShortText = avgGapMinutes ? formatAvgGapShort(avgGapMinutes) : null
+  const suggestedSide = useMemo<Side>(() => calculateSuggestedSide(entries, today), [entries, today])
   const nextFeedSideText = suggestedSide[0].toUpperCase()
   const nextFeedWindowText = lastFeed ? formatShortTimeRange(lastFeed.endedAt + 2 * 60 * 60 * 1000, lastFeed.endedAt + 3 * 60 * 60 * 1000) : 'After first feed'
 
@@ -668,62 +520,9 @@ function App() {
   const activeSide = session?.activeSide
   const activeOppositeSide = activeSide ? oppositeSide(activeSide) : suggestedSide
 
-  const trend = useMemo(() => {
-    const days = Array.from({ length: 7 }).map((_, i) => {
-      const d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - (6 - i))
-      const start = d.getTime(); const end = start + 86400000
-      const dayEntries = entries.filter((e) => e.endedAt >= start && e.endedAt < end)
-      return { label: d.toLocaleDateString([], { weekday: 'short' }), count: dayEntries.length }
-    })
-    const max = Math.max(1, ...days.map((d) => d.count))
-    return { days, max }
-  }, [entries])
+  const trend = useMemo(() => calculateTrend(entries, now), [entries, now])
 
-  const stats = useMemo(() => {
-    const nowDate = new Date(now)
-    const dayStart = new Date(nowDate); dayStart.setHours(0, 0, 0, 0)
-    const weekStart = dayStart.getTime() - 6 * 86400000
-    const recentEntries = entries.filter((entry) => entry.endedAt >= weekStart)
-    const totalNursing = recentEntries.reduce((sum, entry) => sum + entry.leftSeconds + entry.rightSeconds, 0)
-    const totalBottle = recentEntries.reduce((sum, entry) => sum + (entry.bottleOunces ?? 0), 0)
-    const nursingFeeds = recentEntries.filter((entry) => entry.leftSeconds + entry.rightSeconds > 0)
-    const avgNursing = nursingFeeds.length ? Math.round(totalNursing / nursingFeeds.length) : 0
-    const totalLeft = recentEntries.reduce((sum, entry) => sum + entry.leftSeconds, 0)
-    const totalRight = recentEntries.reduce((sum, entry) => sum + entry.rightSeconds, 0)
-    const balanceTotal = Math.max(1, totalLeft + totalRight)
-    const leftPercent = Math.round((totalLeft / balanceTotal) * 100)
-    const bestDay = trend.days.reduce((best, day) => (day.count > best.count ? day : best), trend.days[0] ?? { label: '—', count: 0 })
-    const sorted = recentEntries.slice().sort((a, b) => a.endedAt - b.endedAt)
-    const gaps = sorted.slice(1).map((entry, index) => Math.max(0, entry.endedAt - sorted[index].endedAt))
-    const avgGap = gaps.length ? Math.round(gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length / 1000) : 0
-    const nightFeeds = recentEntries.filter((entry) => {
-      const hour = new Date(entry.endedAt).getHours()
-      return hour < 6 || hour >= 22
-    }).length
-    const last24Start = now - 24 * 60 * 60 * 1000
-    const last24Entries = entries.filter((entry) => entry.endedAt >= last24Start)
-    const avgFeedsPerDay = recentEntries.length ? Math.round((recentEntries.length / 7) * 10) / 10 : 0
-    const longestNursing = nursingFeeds.reduce((max, entry) => Math.max(max, entry.leftSeconds + entry.rightSeconds), 0)
-    const longestGap = gaps.length ? Math.max(...gaps) : 0
-    const bottleFeeds = recentEntries.filter((entry) => (entry.bottleOunces ?? 0) > 0).length
-    const diaperWindowStart = weekStart
-    const standaloneWet = diapers.filter((diaper) => diaper.at >= diaperWindowStart && diaperKinds(diaper).includes('wet')).length
-    const standaloneStool = diapers.filter((diaper) => diaper.at >= diaperWindowStart && diaperKinds(diaper).includes('stool')).length
-    const feedWet = recentEntries.filter((entry) => entryDiaperKinds(entry).includes('wet')).length
-    const feedStool = recentEntries.filter((entry) => entryDiaperKinds(entry).includes('stool')).length
-    const wetCount = standaloneWet + feedWet
-    const stoolCount = standaloneStool + feedStool
-    const sideDelta = Math.abs(totalLeft - totalRight)
-    const balanceLabel = sideDelta < 5 * 60 ? 'Beautifully balanced' : totalLeft > totalRight ? 'Left leading' : 'Right leading'
-    const lastNursing = entries.find((entry) => entry.leftSeconds + entry.rightSeconds > 0)
-    const nextSide = !lastNursing || lastNursing.leftSeconds === lastNursing.rightSeconds
-      ? (today.left <= today.right ? 'left' : 'right')
-      : oppositeSide(lastNursing.leftSeconds > lastNursing.rightSeconds ? 'left' : 'right')
-    const nextSideLabel = sideLabel(nextSide)
-    const longestGapLabel = longestGap ? formatDuration(Math.round(longestGap / 1000)) : '—'
-    const momentumLabel = last24Entries.length >= avgFeedsPerDay ? 'Above weekly pace' : last24Entries.length ? 'Below weekly pace' : 'Quiet 24h'
-    return { recentEntries, totalNursing, totalBottle, avgNursing, totalLeft, totalRight, leftPercent, bestDay, avgGap, nightFeeds, last24Entries, avgFeedsPerDay, longestNursing, longestGap, longestGapLabel, bottleFeeds, wetCount, stoolCount, balanceLabel, nextSideLabel, momentumLabel }
-  }, [entries, diapers, now, today.left, today.right, trend.days])
+  const stats = useMemo(() => calculateStats(entries, diapers, now, today, trend.days), [entries, diapers, now, today, trend.days])
 
   const undoToastText = undoState?.kind === 'resume' ? 'Session resumed' : undoState?.kind === 'clear-session' ? 'Active feed cleared' : undoState?.kind === 'diaper-log' ? 'Diaper logged' : undoState?.kind === 'diaper-delete' ? 'Diaper deleted' : undoState?.kind === 'medicine-log' ? 'Medicine logged' : undoState?.kind === 'medicine-delete' ? 'Medicine deleted' : 'Entry deleted'
   const undoLabel = undoState?.kind === 'resume' ? 'Undo resume' : undoState?.kind === 'clear-session' ? 'Undo clear active feed' : undoState?.kind === 'diaper-log' ? 'Undo diaper log' : undoState?.kind === 'diaper-delete' ? 'Undo diaper delete' : undoState?.kind === 'medicine-log' ? 'Undo medicine log' : undoState?.kind === 'medicine-delete' ? 'Undo medicine delete' : 'Undo delete'
