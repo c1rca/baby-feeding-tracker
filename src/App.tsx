@@ -1,7 +1,7 @@
-import { useMemo, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
-import type { DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, MedicineEvent, MedicineKind, Side, View } from './types'
-import { calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, medicineLabel } from './domain/trackerDomain'
+import type { DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, View } from './types'
+import { formatClockInput } from './domain/trackerDomain'
 import { useServerSync } from './sync/useServerSync'
 import { usePersistentTrackerState } from './state/usePersistentTrackerState'
 import { Timeline } from './components/Timeline'
@@ -17,9 +17,9 @@ import { useAuxiliaryEventActions } from './state/useAuxiliaryEventActions'
 import { useTimelineEntryActions } from './state/useTimelineEntryActions'
 import { useAppUiEffects } from './state/useAppUiEffects'
 import { useBrowserFeedNotifications } from './notifications/useBrowserFeedNotifications'
+import { useTrackerPageModel } from './state/useTrackerPageModel'
 import './styles.css'
 
-const MEDICINE_REMINDER_MS = 6 * 60 * 60 * 1000
 function App() {
   const { entries, setEntries, session, setSession, diapers, setDiapers, medicines, setMedicines, theme, setTheme, settingsOpen, setSettingsOpen, feedingNotificationsEnabled, setFeedingNotificationsEnabled } = usePersistentTrackerState()
   const [selectedDiapers, setSelectedDiapers] = useState<DiaperKind[]>([])
@@ -119,25 +119,19 @@ function App() {
     showToast,
   })
 
-  const medicineReminderDue = (['tylenol', 'motrin'] as MedicineKind[])
-    .map((kind) => medicines.find((medicine) => medicine.kind === kind))
-    .filter((medicine): medicine is MedicineEvent => Boolean(medicine && now - medicine.at >= MEDICINE_REMINDER_MS))
-    .sort((a, b) => a.at - b.at)[0]
-  const medicineReminder: { id: string; label: string; recommendedKind: MedicineKind; recommendedLabel: string; at: number } | null = medicineReminderDue
-    ? { id: medicineReminderDue.id, label: medicineLabel(medicineReminderDue.kind), recommendedKind: medicineReminderDue.kind, recommendedLabel: medicineLabel(medicineReminderDue.kind), at: medicineReminderDue.at }
-    : null
-  const showMedicineReminder = Boolean(medicineReminder && dismissedMedicineReminderId !== medicineReminder.id)
-
-  const today = useMemo(() => calculateTodaySummary(entries, diapers, now), [entries, diapers, now])
-
-  const lastFeed = entries[0]
-  const minsSinceLast = lastFeed && now ? Math.floor((now - lastFeed.endedAt) / 60000) : null
-  const avgGapMinutes = useMemo(() => calculateAvgGapMinutes(entries), [entries])
-  const lastFeedMetaText = minsSinceLast === null ? 'No feed history yet' : formatMinutesAgo(minsSinceLast)
-  const avgGapShortText = avgGapMinutes ? formatAvgGapShort(avgGapMinutes) : null
-  const suggestedSide = useMemo<Side>(() => calculateSuggestedSide(entries, today), [entries, today])
-  const nextFeedSideText = suggestedSide[0].toUpperCase()
-  const nextFeedWindowText = lastFeed ? formatShortTimeRange(lastFeed.endedAt + 2 * 60 * 60 * 1000, lastFeed.endedAt + 3 * 60 * 60 * 1000) : 'After first feed'
+  const {
+    today,
+    trend,
+    stats,
+    lastFeed,
+    lastFeedMetaText,
+    avgGapShortText,
+    suggestedSide,
+    nextFeedSideText,
+    nextFeedWindowText,
+    medicineReminder,
+    showMedicineReminder,
+  } = useTrackerPageModel({ entries, diapers, medicines, now, dismissedMedicineReminderId })
 
   const { selectedStartMinutesAgo, activeSplit, activeSeconds, activeSide, activeOppositeSide, startSession, switchSide, pause, resume, clearSession, endSession } = useActiveFeedActions({
     now,
@@ -160,11 +154,6 @@ function App() {
   })
 
   useBrowserFeedNotifications({ feedingNotificationsEnabled, notificationPermission, lastFeed })
-  const trend = useMemo(() => calculateTrend(entries, now), [entries, now])
-
-  const stats = useMemo(() => calculateStats(entries, diapers, now, today, trend.days), [entries, diapers, now, today, trend.days])
-
-
 
   return (
     <main className="app">
