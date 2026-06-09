@@ -2,53 +2,20 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties }
 import { formatDistanceToNow } from 'date-fns'
 import { Activity, Baby, BarChart3, CalendarDays, CirclePause, ClipboardList, Clock3, Download, Droplets, HeartPulse, MoreHorizontal, Moon, Pencil, Pill, RotateCcw, Save, Settings, Sparkles, Sun, Target, Trash2, Trophy, Upload, Waves, X, XCircle } from 'lucide-react'
 import { formatDuration, sumSideDurations } from './domain/feedingUtils'
-import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, LegacySession, MedicineEvent, MedicineKind, Session, Side, Theme, UndoState, View } from './types'
-import { calculateActiveSplit, calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, diaperEventLabel, diaperKinds, diaperKindsLabel, diaperLabel, entryDiaperKinds, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, formatTime, makeId, medicineLabel, normalizeSession, oppositeSide, parseClockTimeToday, sideLabel, timelineFeedLabel } from './domain/trackerDomain'
+import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, MedicineEvent, MedicineKind, Side, UndoState, View } from './types'
+import { calculateActiveSplit, calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, diaperEventLabel, diaperKinds, diaperKindsLabel, diaperLabel, entryDiaperKinds, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, formatTime, makeId, medicineLabel, oppositeSide, parseClockTimeToday, sideLabel, timelineFeedLabel } from './domain/trackerDomain'
 import { useServerSync } from './sync/useServerSync'
+import { usePersistentTrackerState } from './state/usePersistentTrackerState'
 import './styles.css'
 
-const KEY_ENTRIES = 'baby-feeding-tracker:v1:entries'
-const KEY_SESSION = 'baby-feeding-tracker:v1:session'
-const KEY_THEME = 'baby-feeding-tracker:v1:theme'
-const KEY_SETTINGS_OPEN = 'baby-feeding-tracker:v1:settings-open'
-const KEY_FEEDING_NOTIFICATIONS = 'baby-feeding-tracker:v1:feeding-notifications'
-const KEY_DIAPERS = 'baby-feeding-tracker:v1:diapers'
-const KEY_MEDICINES = 'baby-feeding-tracker:v1:medicines'
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
 const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
 const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
 const MEDICINE_REMINDER_MS = 6 * 60 * 60 * 1000
-const THEME_COOKIE = 'baby_feeding_theme'
-
-const getCookieTheme = (): Theme | null => {
-  const match = document.cookie.match(/(?:^|; )baby_feeding_theme=([^;]+)/)
-  if (!match) return null
-  const value = decodeURIComponent(match[1])
-  return value === 'dark' || value === 'light' ? value : null
-}
-
 function App() {
-  const [entries, setEntries] = useState<Entry[]>(() => {
-    try { const saved = localStorage.getItem(KEY_ENTRIES); const parsed = saved ? (JSON.parse(saved) as Entry[]) : []; return parsed.sort((a, b) => b.endedAt - a.endedAt) } catch { return [] }
-  })
-  const [session, setSession] = useState<Session | null>(() => {
-    try {
-      const saved = localStorage.getItem(KEY_SESSION)
-      return saved ? normalizeSession(JSON.parse(saved) as LegacySession) : null
-    } catch {
-      return null
-    }
-  })
-  const [diapers, setDiapers] = useState<DiaperEvent[]>(() => {
-    try { const saved = localStorage.getItem(KEY_DIAPERS); const parsed = saved ? (JSON.parse(saved) as DiaperEvent[]) : []; return parsed.sort((a, b) => b.at - a.at) } catch { return [] }
-  })
+  const { entries, setEntries, session, setSession, diapers, setDiapers, medicines, setMedicines, theme, setTheme, settingsOpen, setSettingsOpen, feedingNotificationsEnabled, setFeedingNotificationsEnabled } = usePersistentTrackerState()
   const [selectedDiapers, setSelectedDiapers] = useState<DiaperKind[]>([])
-  const [medicines, setMedicines] = useState<MedicineEvent[]>(() => {
-    try { const saved = localStorage.getItem(KEY_MEDICINES); const parsed = saved ? (JSON.parse(saved) as MedicineEvent[]) : []; return parsed.sort((a, b) => b.at - a.at) } catch { return [] }
-  })
   const [dismissedMedicineReminderId, setDismissedMedicineReminderId] = useState<string | null>(null)
-  const [theme, setTheme] = useState<Theme>(() => getCookieTheme() || (localStorage.getItem(KEY_THEME) as Theme) || 'light')
-  const [settingsOpen, setSettingsOpen] = useState(false)
   const [view, setView] = useState<View>('track')
   const [bottleOpen, setBottleOpen] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
@@ -70,7 +37,6 @@ function App() {
   const [resumeFocusTick, setResumeFocusTick] = useState(0)
   const heroRef = useRef<HTMLElement | null>(null)
   const { syncStatus } = useServerSync({ entries, diapers, medicines, session, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
-  const [feedingNotificationsEnabled, setFeedingNotificationsEnabled] = useState(() => localStorage.getItem(KEY_FEEDING_NOTIFICATIONS) === '1')
   const [gotifyAvailable, setGotifyAvailable] = useState(false)
   const [gotifyRemindersEnabled, setGotifyRemindersEnabled] = useState(false)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => (typeof Notification === 'undefined' ? 'denied' : Notification.permission))
@@ -84,17 +50,6 @@ function App() {
       primaryControl?.focus({ preventScroll: true })
     })
   }, [resumeFocusTick, session])
-  useEffect(() => localStorage.setItem(KEY_ENTRIES, JSON.stringify(entries)), [entries])
-  useEffect(() => localStorage.setItem(KEY_DIAPERS, JSON.stringify(diapers)), [diapers])
-  useEffect(() => localStorage.setItem(KEY_MEDICINES, JSON.stringify(medicines)), [medicines])
-  useEffect(() => localStorage.setItem(KEY_SESSION, JSON.stringify(session)), [session])
-  useEffect(() => {
-    localStorage.setItem(KEY_THEME, theme)
-    document.cookie = `${THEME_COOKIE}=${encodeURIComponent(theme)}; path=/; max-age=31536000; samesite=lax`
-    document.documentElement.setAttribute('data-theme', theme)
-  }, [theme])
-  useEffect(() => localStorage.setItem(KEY_SETTINGS_OPEN, settingsOpen ? '1' : '0'), [settingsOpen])
-  useEffect(() => localStorage.setItem(KEY_FEEDING_NOTIFICATIONS, feedingNotificationsEnabled ? '1' : '0'), [feedingNotificationsEnabled])
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return
@@ -108,7 +63,7 @@ function App() {
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [])
+  }, [setSettingsOpen])
 
   useEffect(() => {
     if (!openEntryMenuId) return
