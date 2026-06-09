@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { sumSideDurations } from './domain/feedingUtils'
 import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, MedicineEvent, MedicineKind, Side, UndoState, View } from './types'
@@ -11,9 +11,9 @@ import { StatsDashboard } from './components/StatsDashboard'
 import { TrackerModals } from './components/TrackerModals'
 import { AppHeader } from './components/AppHeader'
 import { TrackOverview } from './components/TrackOverview'
+import { useNotificationSettings } from './notifications/useNotificationSettings'
 import './styles.css'
 
-const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
 const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
 const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
 const MEDICINE_REMINDER_MS = 6 * 60 * 60 * 1000
@@ -42,9 +42,6 @@ function App() {
   const [resumeFocusTick, setResumeFocusTick] = useState(0)
   const heroRef = useRef<HTMLElement | null>(null)
   const { syncStatus } = useServerSync({ entries, diapers, medicines, session, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
-  const [gotifyAvailable, setGotifyAvailable] = useState(false)
-  const [gotifyRemindersEnabled, setGotifyRemindersEnabled] = useState(false)
-  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => (typeof Notification === 'undefined' ? 'denied' : Notification.permission))
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date().getTime()), 1000); return () => window.clearInterval(timer) }, [])
   useEffect(() => {
@@ -83,52 +80,8 @@ function App() {
   }, [openEntryMenuId])
 
 
-  const loadGotifySettings = useCallback(async () => {
-    try {
-      const response = await fetch(API_NOTIFICATION_SETTINGS)
-      if (!response.ok) throw new Error('settings load failed')
-      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean }
-      setGotifyAvailable(Boolean(data.available))
-      setGotifyRemindersEnabled(Boolean(data.gotifyRemindersEnabled))
-    } catch {
-      setGotifyAvailable(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    window.setTimeout(() => void loadGotifySettings(), 0)
-  }, [loadGotifySettings])
-
-  const setGotifyReminders = async (enabled: boolean) => {
-    try {
-      const response = await fetch(API_NOTIFICATION_SETTINGS, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gotifyRemindersEnabled: enabled }),
-      })
-      if (!response.ok) throw new Error('settings save failed')
-      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean }
-      setGotifyAvailable(Boolean(data.available))
-      setGotifyRemindersEnabled(Boolean(data.gotifyRemindersEnabled))
-      showToast(data.gotifyRemindersEnabled ? 'Gotify reminders enabled' : 'Gotify reminders disabled')
-    } catch {
-      showToast('Could not update Gotify reminders')
-    }
-  }
-
   const showToast = (message: string) => { setToast(message); window.setTimeout(() => setToast(''), 1800) }
-
-  const enableFeedingNotifications = async () => {
-    if (typeof Notification === 'undefined') return showToast('Notifications are not supported in this browser')
-    const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission
-    setNotificationPermission(permission)
-    if (permission !== 'granted') {
-      setFeedingNotificationsEnabled(false)
-      return showToast('Notification permission not granted')
-    }
-    setFeedingNotificationsEnabled(true)
-    showToast('Feeding reminders enabled')
-  }
+  const { gotifyAvailable, gotifyRemindersEnabled, notificationPermission, setGotifyReminders, enableFeedingNotifications } = useNotificationSettings({ setFeedingNotificationsEnabled, showToast })
 
   const selectedStartTime = useMemo(() => {
     const t = now
@@ -530,4 +483,5 @@ function App() {
 }
 
 export default App
+
 
