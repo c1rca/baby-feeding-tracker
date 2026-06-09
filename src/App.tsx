@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
-import { sumSideDurations } from './domain/feedingUtils'
 import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, MedicineEvent, MedicineKind, Side, View } from './types'
-import { calculateActiveSplit, calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, diaperLabel, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, makeId, medicineLabel, oppositeSide, parseClockTimeToday } from './domain/trackerDomain'
+import { calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, diaperLabel, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, makeId, medicineLabel, parseClockTimeToday } from './domain/trackerDomain'
 import { useServerSync } from './sync/useServerSync'
 import { usePersistentTrackerState } from './state/usePersistentTrackerState'
 import { Timeline } from './components/Timeline'
@@ -13,6 +12,7 @@ import { AppHeader } from './components/AppHeader'
 import { TrackOverview } from './components/TrackOverview'
 import { useNotificationSettings } from './notifications/useNotificationSettings'
 import { useUndoToast } from './state/useUndoToast'
+import { useActiveFeedActions } from './state/useActiveFeedActions'
 import './styles.css'
 
 const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
@@ -81,49 +81,6 @@ function App() {
 
 
   const { gotifyAvailable, gotifyRemindersEnabled, notificationPermission, setGotifyReminders, enableFeedingNotifications } = useNotificationSettings({ setFeedingNotificationsEnabled, showToast })
-
-  const selectedStartTime = useMemo(() => {
-    const t = now
-    if (!startOffsetOpen) return now
-    if (startInputMode === 'minutes') {
-      const minutes = Math.max(0, Number(startMinutesAgo) || 0)
-      return t - Math.round(minutes * 60000)
-    }
-    return parseClockTimeToday(startClockText, t) ?? t
-  }, [now, startClockText, startInputMode, startMinutesAgo, startOffsetOpen])
-  const selectedStartMinutesAgo = Math.max(0, Math.round((now - selectedStartTime) / 60000))
-
-  const startSession = (side: Side) => { const t = new Date().getTime(); const startedAt = Math.min(selectedStartTime, t); setNow(t); setSession({ startedAt, activeSide: side, segmentStart: startedAt, segments: [], bottleOunces: 0, note: '', diaperKinds: [] }) }
-  const switchSide = (side: Side) => { if (!session || !session.activeSide || !session.segmentStart) return; const t = new Date().getTime(); setSession({ ...session, segments: [...session.segments, { side: session.activeSide, startedAt: session.segmentStart, endedAt: t }], activeSide: side, segmentStart: t }) }
-  const pause = () => { if (!session || !session.activeSide || !session.segmentStart) return; const t = new Date().getTime(); setSession({ ...session, segments: [...session.segments, { side: session.activeSide, startedAt: session.segmentStart, endedAt: t }], activeSide: null, segmentStart: null }) }
-  const resume = (side: Side) => { if (!session) return; const t = new Date().getTime(); setNow(t); setSession({ ...session, activeSide: side, segmentStart: t }) }
-
-  const clearSession = () => {
-    if (!session) return showToast('No active feed to clear')
-    if (undoState) window.clearTimeout(undoState.timeoutId)
-    const clearedSession = session
-    setSession(null)
-    setBottleOpen(false)
-    const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
-    setUndoState({ session: clearedSession, timeoutId, kind: 'clear-session' })
-    setToast('Active feed cleared')
-  }
-
-  const endSession = () => {
-    if (!session) return showToast('No active feed to end')
-    const t = new Date().getTime()
-    const finished = [...session.segments]
-    if (session.activeSide && session.segmentStart) finished.push({ side: session.activeSide, startedAt: session.segmentStart, endedAt: t })
-    const { left, right } = sumSideDurations(finished)
-    const bottle = session.bottleOunces > 0 ? session.bottleOunces : null
-    const type: FeedType = bottle && left + right > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
-    const selectedKinds = selectedDiapers.filter((kind) => !session.diaperKinds.includes(kind))
-    const diaperKinds = [...session.diaperKinds, ...selectedKinds]
-    setEntries((prev) => [{ id: makeId(), type, startedAt: session.startedAt, endedAt: t, leftSeconds: left, rightSeconds: right, bottleOunces: bottle, note: session.note.trim() || '', diaperKinds }, ...prev])
-    setSelectedDiapers((prev) => prev.filter((kind) => !selectedKinds.includes(kind)))
-    setSession(null)
-    showToast('Feed saved')
-  }
 
   const deleteEntry = (entry: Entry) => {
     if (undoState) window.clearTimeout(undoState.timeoutId)
@@ -282,10 +239,6 @@ function App() {
     showToast('Missed feed saved')
   }
 
-  const activeSplit = useMemo(() => calculateActiveSplit(session, now), [session, now])
-
-  const activeSeconds = activeSplit.left + activeSplit.right
-
   const today = useMemo(() => calculateTodaySummary(entries, diapers, now), [entries, diapers, now])
 
   const lastFeed = entries[0]
@@ -296,6 +249,26 @@ function App() {
   const suggestedSide = useMemo<Side>(() => calculateSuggestedSide(entries, today), [entries, today])
   const nextFeedSideText = suggestedSide[0].toUpperCase()
   const nextFeedWindowText = lastFeed ? formatShortTimeRange(lastFeed.endedAt + 2 * 60 * 60 * 1000, lastFeed.endedAt + 3 * 60 * 60 * 1000) : 'After first feed'
+
+  const { selectedStartMinutesAgo, activeSplit, activeSeconds, activeSide, activeOppositeSide, startSession, switchSide, pause, resume, clearSession, endSession } = useActiveFeedActions({
+    now,
+    setNow,
+    session,
+    setSession,
+    setEntries,
+    selectedDiapers,
+    setSelectedDiapers,
+    startOffsetOpen,
+    startInputMode,
+    startClockText,
+    startMinutesAgo,
+    suggestedSide,
+    undoState,
+    setUndoState,
+    setToast,
+    showToast,
+    setBottleOpen,
+  })
 
   useEffect(() => {
     if (!feedingNotificationsEnabled || notificationPermission !== 'granted' || !lastFeed || typeof Notification === 'undefined') return
@@ -316,9 +289,6 @@ function App() {
       }, delayMs))
     return () => timers.forEach((timer) => window.clearTimeout(timer))
   }, [feedingNotificationsEnabled, lastFeed, notificationPermission])
-  const activeSide = session?.activeSide
-  const activeOppositeSide = activeSide ? oppositeSide(activeSide) : suggestedSide
-
   const trend = useMemo(() => calculateTrend(entries, now), [entries, now])
 
   const stats = useMemo(() => calculateStats(entries, diapers, now, today, trend.days), [entries, diapers, now, today, trend.days])
@@ -455,6 +425,8 @@ function App() {
 }
 
 export default App
+
+
 
 
 
