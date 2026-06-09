@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
-import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, MedicineEvent, MedicineKind, Side, View } from './types'
-import { calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, diaperLabel, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, makeId, medicineLabel, parseClockTimeToday } from './domain/trackerDomain'
+import type { DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, MedicineEvent, MedicineKind, Side, View } from './types'
+import { calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, medicineLabel } from './domain/trackerDomain'
 import { useServerSync } from './sync/useServerSync'
 import { usePersistentTrackerState } from './state/usePersistentTrackerState'
 import { Timeline } from './components/Timeline'
@@ -13,6 +13,7 @@ import { TrackOverview } from './components/TrackOverview'
 import { useNotificationSettings } from './notifications/useNotificationSettings'
 import { useUndoToast } from './state/useUndoToast'
 import { useActiveFeedActions } from './state/useActiveFeedActions'
+import { useAuxiliaryEventActions } from './state/useAuxiliaryEventActions'
 import './styles.css'
 
 const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
@@ -92,24 +93,6 @@ function App() {
     setToast('Entry deleted')
   }
 
-  const deleteDiaper = (diaper: DiaperEvent) => {
-    if (undoState) window.clearTimeout(undoState.timeoutId)
-    setOpenEntryMenuId(null)
-    setConfirmingDeleteEntryId(null)
-    setEditingDiaper(null)
-    setDiapers((prev) => prev.filter((item) => item.id !== diaper.id))
-    const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
-    setUndoState({ diaper, timeoutId, kind: 'diaper-delete' })
-    setToast('Diaper deleted')
-  }
-
-  const saveDiaperEdit = (diaper: DiaperEvent) => {
-    if (!editingDiaper || editingDiaper.kinds.length === 0) return showToast('Select wet, stool, or both')
-    setDiapers((prev) => prev.map((item) => item.id === diaper.id ? { ...item, kind: undefined, kinds: editingDiaper.kinds } : item).sort((a, b) => b.at - a.at))
-    setEditingDiaper(null)
-    showToast('Diaper updated')
-  }
-
   const toggleEditingDiaperKind = (kind: DiaperKind) => {
     if (!editingDiaper) return
     const kinds = editingDiaper.kinds.includes(kind) ? editingDiaper.kinds.filter((item) => item !== kind) : [...editingDiaper.kinds, kind]
@@ -137,47 +120,44 @@ function App() {
     setToast('Session resumed')
   }
 
-  const logBottle = (oz?: number) => {
-    const amount = oz ?? bottleQuickOz
-    if (session) {
-      setSession({ ...session, bottleOunces: +(session.bottleOunces + amount).toFixed(1) })
-      showToast('Bottle added to active feed')
-      return
-    }
-    const t = now || new Date().getTime()
-    setEntries((prev) => [{ id: makeId(), type: 'bottle', startedAt: t, endedAt: t, leftSeconds: 0, rightSeconds: 0, bottleOunces: amount, note: '' }, ...prev])
-    showToast('Bottle feed saved')
-  }
-
-
-  const loggedActiveDiaperKinds = useMemo(() => new Set<DiaperKind>(session?.diaperKinds ?? []), [session])
-
-  const availableSelectedDiapers = selectedDiapers.filter((kind) => !session || !loggedActiveDiaperKinds.has(kind))
-
-  const toggleDiaperSelection = (kind: DiaperKind) => {
-    if (session && loggedActiveDiaperKinds.has(kind)) return
-    setSelectedDiapers((prev) => prev.includes(kind) ? prev.filter((item) => item !== kind) : [...prev, kind])
-  }
-
-  const logSelectedDiapers = () => {
-    const kinds = availableSelectedDiapers
-    if (kinds.length === 0) return showToast(session ? 'Select an unlogged diaper' : 'Select wet, stool, or both')
-    const label = kinds.map(diaperLabel).join(' + ')
-    if (session) {
-      setSession({ ...session, diaperKinds: [...session.diaperKinds, ...kinds] })
-      setSelectedDiapers((prev) => prev.filter((kind) => !kinds.includes(kind)))
-      showToast(`${label} added to this feed`)
-      return
-    }
-    const t = new Date().getTime()
-    const diaper: DiaperEvent = { id: makeId(), kinds, at: t, context: 'standalone' }
-    setDiapers((prev) => [diaper, ...prev].sort((a, b) => b.at - a.at))
-    setSelectedDiapers((prev) => prev.filter((kind) => !kinds.includes(kind)))
-    if (undoState) window.clearTimeout(undoState.timeoutId)
-    const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
-    setUndoState({ diaper, timeoutId, kind: 'diaper-log' })
-    showToast(`${label} diaper logged`)
-  }
+  const {
+    loggedActiveDiaperKinds,
+    availableSelectedDiapers,
+    logBottle,
+    toggleDiaperSelection,
+    logSelectedDiapers,
+    deleteDiaper,
+    saveDiaperEdit,
+    logMedicine,
+    saveMedicineEdit,
+    startMedicineEdit,
+    deleteMedicine,
+    saveManualFeed,
+  } = useAuxiliaryEventActions({
+    now,
+    session,
+    setSession,
+    setEntries,
+    setDiapers,
+    setMedicines,
+    selectedDiapers,
+    setSelectedDiapers,
+    bottleQuickOz,
+    manualDraft,
+    setManualDraft,
+    setManualOpen,
+    setAdditionalOptionsOpen,
+    editingDiaper,
+    setEditingDiaper,
+    editingMedicine,
+    setEditingMedicine,
+    setDismissedMedicineReminderId,
+    setOpenEntryMenuId,
+    setConfirmingDeleteEntryId,
+    undoState,
+    setUndoState,
+    showToast,
+  })
 
   const medicineReminderDue = (['tylenol', 'motrin'] as MedicineKind[])
     .map((kind) => medicines.find((medicine) => medicine.kind === kind))
@@ -187,57 +167,6 @@ function App() {
     ? { id: medicineReminderDue.id, label: medicineLabel(medicineReminderDue.kind), recommendedKind: medicineReminderDue.kind, recommendedLabel: medicineLabel(medicineReminderDue.kind), at: medicineReminderDue.at }
     : null
   const showMedicineReminder = Boolean(medicineReminder && dismissedMedicineReminderId !== medicineReminder.id)
-
-  const logMedicine = (kind: MedicineKind) => {
-    const t = new Date().getTime()
-    const medicine: MedicineEvent = { id: makeId(), kind, at: t }
-    setMedicines((prev) => [medicine, ...prev].sort((a, b) => b.at - a.at))
-    setDismissedMedicineReminderId(null)
-    setAdditionalOptionsOpen(false)
-    if (undoState) window.clearTimeout(undoState.timeoutId)
-    const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
-    setUndoState({ medicine, timeoutId, kind: 'medicine-log' })
-    showToast(`${medicineLabel(kind)} logged`)
-  }
-
-  const saveMedicineEdit = (medicine: MedicineEvent) => {
-    if (!editingMedicine) return
-    const nextAt = parseClockTimeToday(editingMedicine.time, editingMedicine.originalAt)
-    if (nextAt === null) return showToast('Enter a valid medicine time')
-    setMedicines((prev) => prev.map((item) => item.id === medicine.id ? { ...item, kind: editingMedicine.kind, at: nextAt } : item).sort((a, b) => b.at - a.at))
-    setDismissedMedicineReminderId(null)
-    setEditingMedicine(null)
-    showToast('Medicine updated')
-  }
-
-  const startMedicineEdit = (medicine: MedicineEvent) => {
-    setEditingMedicine({ id: medicine.id, kind: medicine.kind, time: formatClockInput(medicine.at), originalAt: medicine.at })
-    setOpenEntryMenuId(null)
-  }
-
-  const deleteMedicine = (medicine: MedicineEvent) => {
-    setMedicines((prev) => prev.filter((item) => item.id !== medicine.id))
-    setEditingMedicine(null)
-    setOpenEntryMenuId(null)
-    if (undoState) window.clearTimeout(undoState.timeoutId)
-    const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
-    setUndoState({ medicine, timeoutId, kind: 'medicine-delete' })
-    showToast('Medicine deleted')
-  }
-
-  const saveManualFeed = () => {
-    const leftSeconds = Math.max(0, Math.round((Number(manualDraft.leftMinutes) || 0) * 60))
-    const rightSeconds = Math.max(0, Math.round((Number(manualDraft.rightMinutes) || 0) * 60))
-    const bottle = Number(manualDraft.bottleOunces) > 0 ? Number(manualDraft.bottleOunces) : null
-    if (leftSeconds + rightSeconds === 0 && !bottle) return showToast('Add nursing time or bottle ounces')
-    const durationMs = Math.max(0, leftSeconds + rightSeconds) * 1000
-    const endedAt = new Date().getTime()
-    const type: FeedType = bottle && leftSeconds + rightSeconds > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
-    setEntries((prev) => [{ id: makeId(), type, startedAt: endedAt - durationMs, endedAt, leftSeconds, rightSeconds, bottleOunces: bottle, note: manualDraft.note.trim() }, ...prev])
-    setManualDraft({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
-    setManualOpen(false)
-    showToast('Missed feed saved')
-  }
 
   const today = useMemo(() => calculateTodaySummary(entries, diapers, now), [entries, diapers, now])
 
