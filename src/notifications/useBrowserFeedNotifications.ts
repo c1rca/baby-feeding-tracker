@@ -14,12 +14,12 @@ export function useBrowserFeedNotifications({ feedingNotificationsEnabled, notif
   useEffect(() => {
     if (!feedingNotificationsEnabled || notificationPermission !== 'granted' || !lastFeed || typeof Notification === 'undefined') return
     const timers = NEXT_FEEDING_REMINDER_OFFSETS_MS
-      .map((offsetMs) => ({ offsetMs, delayMs: lastFeed.endedAt + offsetMs - new Date().getTime() }))
+      .map((offsetMs) => ({ offsetMs, delayMs: lastFeed.startedAt + offsetMs - new Date().getTime() }))
       .filter(({ delayMs }) => delayMs > 0)
       .map(({ offsetMs, delayMs }) => window.setTimeout(() => {
         const hours = Math.round(offsetMs / (60 * 60 * 1000))
         const notification = new Notification('Feeding window reminder', {
-          body: `${hours} hours since the last feed. Open Feedr to log or resume.`,
+          body: `${hours} hours since the last feed started. Open Feedr to log or resume.`,
           tag: `next-feeding-${lastFeed.id}-${hours}h`,
           requireInteraction: hours === 3,
         })

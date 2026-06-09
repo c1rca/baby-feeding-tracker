@@ -47,6 +47,16 @@ describe('useTrackerPageModel', () => {
     expect(result.current.stats.recentEntries).toHaveLength(1)
   })
 
+  it('calculates the next feed window from the last session start even when the session spans pauses', () => {
+    const sessionStartedAt = new Date('2026-01-03T14:00:00').getTime()
+    const sessionEndedAt = new Date('2026-01-03T17:00:00').getTime()
+    const entries = [entry({ id: 'paused-feed', startedAt: sessionStartedAt, endedAt: sessionEndedAt, leftSeconds: 3600, rightSeconds: 3600 })]
+
+    const { result } = renderHook(() => useTrackerPageModel({ entries, diapers: [], medicines: [], now: sessionEndedAt, dismissedMedicineReminderId: null }))
+
+    expect(result.current.nextFeedWindowText).toMatch(/4:00.*5:00.*PM/i)
+  })
+
   it('returns the oldest due per-kind medicine reminder unless dismissed', () => {
     const medicines = [
       medicine({ id: 'recent-tylenol', kind: 'tylenol', at: now - 6.5 * 60 * 60 * 1000 }),

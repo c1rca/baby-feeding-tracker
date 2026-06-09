@@ -70,7 +70,7 @@ export function useTrackerPageModel({ entries, diapers, medicines, now, dismisse
     suggestedSide,
     nextFeedSideText: suggestedSide[0].toUpperCase(),
     nextFeedWindowText: lastFeed
-      ? formatShortTimeRange(lastFeed.endedAt + NEXT_FEED_WINDOW_START_MS, lastFeed.endedAt + NEXT_FEED_WINDOW_END_MS)
+      ? formatShortTimeRange(lastFeed.startedAt + NEXT_FEED_WINDOW_START_MS, lastFeed.startedAt + NEXT_FEED_WINDOW_END_MS)
       : 'After first feed',
     medicineReminder,
     showMedicineReminder: Boolean(medicineReminder && dismissedMedicineReminderId !== medicineReminder.id),

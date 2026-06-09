@@ -2,9 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildMedicineReminder, buildReminder, createNotificationScheduler, formatTime, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeTextEmailRecipients } from '../server/notifications.js'
 
-test('buildReminder schedules the next feeding window two to three hours after latest feed', () => {
-  const endedAt = new Date('2026-06-05T08:00:00Z').getTime()
-  const reminder = buildReminder({ id: 'feed-1', endedAt }, endedAt)
+test('buildReminder schedules the next feeding window two to three hours after latest feed start', () => {
+  const startedAt = new Date('2026-06-05T08:00:00Z').getTime()
+  const endedAt = new Date('2026-06-05T11:00:00Z').getTime()
+  const reminder = buildReminder({ id: 'feed-1', startedAt, endedAt }, endedAt)
 
   assert.equal(reminder.entryId, 'feed-1')
   assert.equal(reminder.dueAt, new Date('2026-06-05T10:00:00Z').getTime())

@@ -402,7 +402,7 @@ describe('App interactions', () => {
     expect(screen.getByText(/Feeding reminders enabled/i)).toBeTruthy()
   })
 
-  it('schedules 2h and 3h feeding notifications with a Feedr link', () => {
+  it('schedules 2h and 3h feeding notifications from the feed start with a Feedr link', () => {
     const base = Date.now()
     const scheduled: Array<{ callback: () => void; delay?: number }> = []
     vi.spyOn(window, 'setTimeout').mockImplementation(((callback: TimerHandler, delay?: number) => {
@@ -427,8 +427,8 @@ describe('App interactions', () => {
         {
           id: 'entry-reminder',
           type: 'breast',
-          startedAt: base - 600000,
-          endedAt: base,
+          startedAt: base,
+          endedAt: base + 60 * 60 * 1000,
           leftSeconds: 300,
           rightSeconds: 300,
           bottleOunces: null,
@@ -449,15 +449,16 @@ describe('App interactions', () => {
     expect(openSpy).toHaveBeenCalledWith('https://feedr.kjw.lol', '_blank', 'noopener,noreferrer')
   })
 
-  it('shows the next feeding window two to three hours after the last feed', () => {
-    const endedAt = new Date(2026, 5, 5, 8, 0).getTime()
+  it('shows the next feeding window two to three hours after the last feed start', () => {
+    const startedAt = new Date(2026, 5, 5, 8, 0).getTime()
+    const endedAt = new Date(2026, 5, 5, 11, 0).getTime()
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify([
         {
           id: 'entry-window',
           type: 'breast',
-          startedAt: endedAt - 600000,
+          startedAt,
           endedAt,
           leftSeconds: 300,
           rightSeconds: 300,
@@ -513,7 +514,7 @@ describe('App interactions', () => {
     expect(screen.queryByText(/^Ready$/i)).toBeNull()
     expect(screen.getByText(/Avg 2h 30m/i)).toBeTruthy()
     expect(screen.getByText(/^Next$/i)).toBeTruthy()
-    expect(heroText).toMatch(/12:30.*1:30.*PM.*L/i)
+    expect(heroText).toMatch(/12:20.*1:20.*PM.*L/i)
     expect(document.querySelector('.next-feed-side')?.textContent?.trim()).toBe('L')
     expect(screen.getByText(/Last /i)).toBeTruthy()
     expect(heroText).not.toMatch(/Suggested:/i)

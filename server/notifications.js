@@ -30,8 +30,9 @@ export function getLatestMedicineDosesByKind(medicines) {
 
 export function buildReminder(latestFeed, now = Date.now()) {
   if (!latestFeed) return null
-  const dueAt = latestFeed.endedAt + TWO_HOURS_MS
-  const windowEndAt = latestFeed.endedAt + THREE_HOURS_MS
+  const feedStartAt = Number.isFinite(latestFeed.startedAt) && latestFeed.startedAt > 0 ? latestFeed.startedAt : latestFeed.endedAt
+  const dueAt = feedStartAt + TWO_HOURS_MS
+  const windowEndAt = feedStartAt + THREE_HOURS_MS
   const catchUpUntil = dueAt + MAX_CATCH_UP_MS
   if (windowEndAt <= now - MAX_CATCH_UP_MS) return null
   return { kind: 'feeding', entryId: latestFeed.id ?? String(latestFeed.endedAt), dueAt, windowEndAt, catchUpUntil }
