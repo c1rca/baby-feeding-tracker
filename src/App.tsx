@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import type { DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, MedicineEvent, MedicineKind, Side, View } from './types'
 import { calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, medicineLabel } from './domain/trackerDomain'
@@ -15,10 +15,10 @@ import { useUndoToast } from './state/useUndoToast'
 import { useActiveFeedActions } from './state/useActiveFeedActions'
 import { useAuxiliaryEventActions } from './state/useAuxiliaryEventActions'
 import { useTimelineEntryActions } from './state/useTimelineEntryActions'
+import { useAppUiEffects } from './state/useAppUiEffects'
+import { useBrowserFeedNotifications } from './notifications/useBrowserFeedNotifications'
 import './styles.css'
 
-const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
-const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
 const MEDICINE_REMINDER_MS = 6 * 60 * 60 * 1000
 function App() {
   const { entries, setEntries, session, setSession, diapers, setDiapers, medicines, setMedicines, theme, setTheme, settingsOpen, setSettingsOpen, feedingNotificationsEnabled, setFeedingNotificationsEnabled } = usePersistentTrackerState()
@@ -45,42 +45,20 @@ function App() {
   const { syncStatus } = useServerSync({ entries, diapers, medicines, session, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { toast, undoState, setToast, setUndoState, showToast, undoToastText, undoLabel, undo } = useUndoToast({ setEntries, setDiapers, setMedicines, setSession })
-  useEffect(() => { const timer = window.setInterval(() => setNow(new Date().getTime()), 1000); return () => window.clearInterval(timer) }, [])
-  useEffect(() => {
-    if (!resumeFocusTick || !session) return
-    window.requestAnimationFrame(() => {
-      heroRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      const primaryControl = heroRef.current?.querySelector<HTMLButtonElement>('.hero-actions button')
-      primaryControl?.focus({ preventScroll: true })
-    })
-  }, [resumeFocusTick, session])
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      setBottleOpen(false)
-      setManualOpen(false)
-      setSettingsOpen(false)
-      setSelectedDiapers([])
-      setEditingDiaper(null)
-      setOpenEntryMenuId(null)
-      setConfirmingDeleteEntryId(null)
-    }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [setSettingsOpen])
-
-  useEffect(() => {
-    if (!openEntryMenuId) return
-    const onPointerDown = (event: PointerEvent) => {
-      const path = event.composedPath()
-      if (path.some((target) => target instanceof Element && target.closest('.entry-action-wrap'))) return
-      setOpenEntryMenuId(null)
-      setConfirmingDeleteEntryId(null)
-    }
-    document.addEventListener('pointerdown', onPointerDown)
-    return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [openEntryMenuId])
-
+  useAppUiEffects({
+    setNow,
+    resumeFocusTick,
+    session,
+    heroRef,
+    setBottleOpen,
+    setManualOpen,
+    setSettingsOpen,
+    setSelectedDiapers,
+    setEditingDiaper,
+    openEntryMenuId,
+    setOpenEntryMenuId,
+    setConfirmingDeleteEntryId,
+  })
 
   const { gotifyAvailable, gotifyRemindersEnabled, notificationPermission, setGotifyReminders, enableFeedingNotifications } = useNotificationSettings({ setFeedingNotificationsEnabled, showToast })
 
@@ -181,25 +159,7 @@ function App() {
     setBottleOpen,
   })
 
-  useEffect(() => {
-    if (!feedingNotificationsEnabled || notificationPermission !== 'granted' || !lastFeed || typeof Notification === 'undefined') return
-    const timers = NEXT_FEEDING_REMINDER_OFFSETS_MS
-      .map((offsetMs) => ({ offsetMs, delayMs: lastFeed.endedAt + offsetMs - new Date().getTime() }))
-      .filter(({ delayMs }) => delayMs > 0)
-      .map(({ offsetMs, delayMs }) => window.setTimeout(() => {
-        const hours = Math.round(offsetMs / (60 * 60 * 1000))
-        const notification = new Notification('Feeding window reminder', {
-          body: `${hours} hours since the last feed. Open Feedr to log or resume.`,
-          tag: `next-feeding-${lastFeed.id}-${hours}h`,
-          requireInteraction: hours === 3,
-        })
-        notification.onclick = () => {
-          window.open(NOTIFICATION_APP_URL, '_blank', 'noopener,noreferrer')
-          notification.close()
-        }
-      }, delayMs))
-    return () => timers.forEach((timer) => window.clearTimeout(timer))
-  }, [feedingNotificationsEnabled, lastFeed, notificationPermission])
+  useBrowserFeedNotifications({ feedingNotificationsEnabled, notificationPermission, lastFeed })
   const trend = useMemo(() => calculateTrend(entries, now), [entries, now])
 
   const stats = useMemo(() => calculateStats(entries, diapers, now, today, trend.days), [entries, diapers, now, today, trend.days])
