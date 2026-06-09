@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import { Activity, Baby, BarChart3, CalendarDays, CirclePause, ClipboardList, Clock3, Download, Droplets, HeartPulse, Moon, Pill, RotateCcw, Settings, Sparkles, Sun, Target, Trash2, Trophy, Upload, Waves, X, XCircle } from 'lucide-react'
+import { Activity, Baby, BarChart3, CalendarDays, ClipboardList, Clock3, Download, Droplets, HeartPulse, Moon, RotateCcw, Settings, Sparkles, Sun, Target, Trash2, Trophy, Upload, Waves, X } from 'lucide-react'
 import { formatDuration, sumSideDurations } from './domain/feedingUtils'
 import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, MedicineEvent, MedicineKind, Side, UndoState, View } from './types'
-import { calculateActiveSplit, calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, diaperLabel, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, makeId, medicineLabel, oppositeSide, parseClockTimeToday, sideLabel } from './domain/trackerDomain'
+import { calculateActiveSplit, calculateAvgGapMinutes, calculateStats, calculateSuggestedSide, calculateTodaySummary, calculateTrend, diaperLabel, entryToResumedSession, formatAvgGapShort, formatClockInput, formatMinutesAgo, formatShortTimeRange, makeId, medicineLabel, oppositeSide, parseClockTimeToday } from './domain/trackerDomain'
 import { useServerSync } from './sync/useServerSync'
 import { usePersistentTrackerState } from './state/usePersistentTrackerState'
 import { Timeline } from './components/Timeline'
+import { HeroPanel } from './components/HeroPanel'
 import './styles.css'
 
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
@@ -423,82 +424,46 @@ function App() {
           <button type="button" className="icon-plain" aria-label="Dismiss medicine reminder" onClick={() => setDismissedMedicineReminderId(medicineReminder.id)}><X size={16} /></button>
         </div>
       ) : null}
-      <section className="card hero" ref={heroRef}>
-        <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span>{' '}<strong>{nextFeedWindowText}{lastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span></div>{session ? <span className="pill">{session.activeSide ? `On ${session.activeSide}` : 'Paused'}</span> : null}</div>
-        <div className="timer">{formatDuration(activeSeconds)}</div>
-        <div className="hero-micro-meta" aria-label="Feed timing summary">
-          <span>{lastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
-          {avgGapShortText ? <span>{avgGapShortText}</span> : null}
-        </div>
-        {session ? (
-          <div className="live-split" aria-label="Live split">
-            <div className="split-title">Live split</div>
-            <div><span>Left</span><strong>{formatDuration(activeSplit.left)}</strong></div>
-            <div><span>Right</span><strong>{formatDuration(activeSplit.right)}</strong></div>
-            <div><span>Bottle</span><strong>{session.bottleOunces.toFixed(1)} oz</strong></div>
-          </div>
-        ) : null}
-        {!session ? (
-          <div className={`start-offset-shell ${startOffsetOpen ? 'expanded' : ''}`}>
-            <button type="button" className="start-offset-toggle" aria-label="Adjust start time" aria-expanded={startOffsetOpen} onClick={() => setStartOffsetOpen((open) => !open)}>
-              <span>Start time</span>
-              <strong>{selectedStartMinutesAgo === 0 ? 'Now' : `${selectedStartMinutesAgo} min ago`}</strong>
-            </button>
-            {startOffsetOpen ? (
-              <div className="start-offset-panel" aria-label="Session start offset">
-                <div className="start-tabs" role="tablist" aria-label="Session start input mode">
-                  <button type="button" role="tab" aria-selected={startInputMode === 'clock'} className={startInputMode === 'clock' ? 'active-tab' : ''} onClick={() => setStartInputMode('clock')}>Clock time</button>
-                  <button type="button" role="tab" aria-selected={startInputMode === 'minutes'} className={startInputMode === 'minutes' ? 'active-tab' : ''} onClick={() => setStartInputMode('minutes')}>Minutes ago</button>
-                </div>
-                {startInputMode === 'clock' ? (
-                  <label>Session start time<input value={startClockText} onChange={(e) => setStartClockText(e.target.value)} placeholder="12:30 PM" /></label>
-                ) : (
-                  <label>Start minutes ago<input inputMode="decimal" value={startMinutesAgo} onChange={(e) => setStartMinutesAgo(e.target.value)} placeholder="5" /></label>
-                )}
-                <span className="start-offset-summary">{selectedStartMinutesAgo === 0 ? 'Starting now' : `${selectedStartMinutesAgo} min ago`}</span>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-        <div className="row hero-actions">
-          {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button className="pause-action" onClick={pause}><CirclePause size={16} /> Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button className="success end-feed" type="button" aria-label="End feed" onClick={endSession}>Stop & Save Feed</button><button className="active-clear-link" type="button" aria-label="Clear active feed" onClick={clearSession}><XCircle size={14} /> Clear active</button></>)}
-        </div>
-        <div className="diaper-panel" role="group" aria-label="Diaper">
-          <span className="diaper-panel-label">Diaper</span>
-          {(['wet', 'stool'] as DiaperKind[]).map((kind) => {
-            const alreadyLogged = session && loggedActiveDiaperKinds.has(kind)
-            const selected = selectedDiapers.includes(kind) && !alreadyLogged
-            const label = alreadyLogged ? `${diaperLabel(kind)} already logged for this feed` : session ? `Select ${kind} during active feed` : `Select ${kind} diaper`
-            return <button key={kind} type="button" className={`diaper-chip ${selected ? 'selected' : ''}`} aria-label={label} aria-pressed={selected} disabled={Boolean(alreadyLogged)} onClick={() => toggleDiaperSelection(kind)}>{diaperLabel(kind)}</button>
-          })}
-          <button type="button" className="diaper-log-button" aria-label="Log selected diapers" disabled={availableSelectedDiapers.length === 0} onClick={logSelectedDiapers}>Log</button>
-        </div>
-        <div className="additional-options-shell">
-          <button type="button" className="additional-options-toggle" aria-label="Additional options" aria-expanded={additionalOptionsOpen} onClick={() => setAdditionalOptionsOpen((open) => !open)}>
-            <span>Additional options</span><strong>{additionalOptionsOpen ? 'Hide' : 'Show'}</strong>
-          </button>
-          {additionalOptionsOpen ? (
-            <div className="additional-options-panel">
-              <div className="medicine-panel" role="group" aria-label="Bottle feed">
-                <span className="diaper-panel-label">Bottle</span>
-                <button type="button" aria-label={session ? 'Add bottle to this feed' : 'Log bottle-only feed'} onClick={() => setBottleOpen(true)}><Baby size={14} /> Bottle</button>
-              </div>
-              {!session ? (
-                <div className="medicine-panel" role="group" aria-label="Missed feed">
-                  <span className="diaper-panel-label">Missed feed</span>
-                  <button type="button" onClick={() => setManualOpen(true)}><CalendarDays size={14} /> Add missed feed</button>
-                </div>
-              ) : null}
-              <div className="medicine-panel" role="group" aria-label="Medicine">
-                <span className="diaper-panel-label">Medicine</span>
-                <button type="button" aria-label="Log Tylenol" onClick={() => logMedicine('tylenol')}><Pill size={14} /> Tylenol</button>
-                <button type="button" aria-label="Log Motrin" onClick={() => logMedicine('motrin')}><Pill size={14} /> Motrin</button>
-              </div>
-              {session ? <div className="edit-panel"><label>Optional note for this feed<input value={session.note} onChange={(v) => setSession({ ...session, note: v.target.value })} placeholder="optional note" /></label></div> : null}
-            </div>
-          ) : null}
-        </div>
-      </section>
+      <HeroPanel
+        ref={heroRef}
+        session={session}
+        activeSeconds={activeSeconds}
+        activeSplit={activeSplit}
+        activeSide={activeSide}
+        activeOppositeSide={activeOppositeSide}
+        suggestedSide={suggestedSide}
+        nextFeedWindowText={nextFeedWindowText}
+        nextFeedSideText={nextFeedSideText}
+        lastFeedMetaText={lastFeedMetaText}
+        avgGapShortText={avgGapShortText}
+        hasLastFeed={Boolean(lastFeed)}
+        startOffsetOpen={startOffsetOpen}
+        startInputMode={startInputMode}
+        startClockText={startClockText}
+        startMinutesAgo={startMinutesAgo}
+        selectedStartMinutesAgo={selectedStartMinutesAgo}
+        selectedDiapers={selectedDiapers}
+        loggedActiveDiaperKinds={loggedActiveDiaperKinds}
+        availableSelectedDiapers={availableSelectedDiapers}
+        additionalOptionsOpen={additionalOptionsOpen}
+        setStartOffsetOpen={setStartOffsetOpen}
+        setStartInputMode={setStartInputMode}
+        setStartClockText={setStartClockText}
+        setStartMinutesAgo={setStartMinutesAgo}
+        setAdditionalOptionsOpen={setAdditionalOptionsOpen}
+        setBottleOpen={setBottleOpen}
+        setManualOpen={setManualOpen}
+        setSession={setSession}
+        startSession={startSession}
+        switchSide={switchSide}
+        pause={pause}
+        resume={resume}
+        endSession={endSession}
+        clearSession={clearSession}
+        toggleDiaperSelection={toggleDiaperSelection}
+        logSelectedDiapers={logSelectedDiapers}
+        logMedicine={logMedicine}
+      />
 
       <section className="grid">
         <div className="card stat"><h3>Feeds today</h3><p>{today.count}</p></div>
