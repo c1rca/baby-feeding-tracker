@@ -34,6 +34,7 @@ type EditingDiaperState = { id: string; kinds: DiaperKind[] } | null
 type EditingMedicineState = { id: string; kind: MedicineKind; time: string; originalAt: number } | null
 type Theme = 'light' | 'dark'
 type View = 'track' | 'stats'
+type ServerState = { entries?: Entry[]; diapers?: DiaperEvent[]; medicines?: MedicineEvent[]; session?: LegacySession | null; theme?: Theme; updatedAt?: string | null }
 
 const KEY_ENTRIES = 'baby-feeding-tracker:v1:entries'
 const KEY_SESSION = 'baby-feeding-tracker:v1:session'
@@ -44,6 +45,7 @@ const KEY_FEEDING_NOTIFICATIONS = 'baby-feeding-tracker:v1:feeding-notifications
 const KEY_DIAPERS = 'baby-feeding-tracker:v1:diapers'
 const KEY_MEDICINES = 'baby-feeding-tracker:v1:medicines'
 const API_STATE = '/api/state'
+const API_STATE_EVENTS = '/api/state/events'
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
 const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
 const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
@@ -199,6 +201,20 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const latestPayloadRef = useRef<{ entries: Entry[]; diapers: DiaperEvent[]; medicines: MedicineEvent[]; session: Session | null; theme: Theme }>({ entries, diapers, medicines, session, theme })
   const serverUpdatedAtRef = useRef<string | null>(null)
+  const applyingRemoteStateRef = useRef(false)
+  const skipNextSyncRef = useRef(false)
+
+  const applyServerState = useCallback((data: ServerState) => {
+    applyingRemoteStateRef.current = true
+    skipNextSyncRef.current = true
+    if (Array.isArray(data.entries)) setEntries([...data.entries].sort((a, b) => b.endedAt - a.endedAt))
+    if (Array.isArray(data.diapers)) setDiapers([...data.diapers].sort((a, b) => b.at - a.at))
+    if (Array.isArray(data.medicines)) setMedicines([...data.medicines].sort((a, b) => b.at - a.at))
+    if (data.session !== undefined) setSession(normalizeSession(data.session))
+    if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
+    if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
+    window.setTimeout(() => { applyingRemoteStateRef.current = false }, 0)
+  }, [])
 
   useEffect(() => { latestPayloadRef.current = { entries, diapers, medicines, session, theme } }, [entries, diapers, medicines, session, theme])
   useEffect(() => { const timer = window.setInterval(() => setNow(new Date().getTime()), 1000); return () => window.clearInterval(timer) }, [])
@@ -293,15 +309,16 @@ function App() {
         body: JSON.stringify({ entries: entriesToSync, diapers: diapersToSync, medicines: medicinesToSync, session: sessionToSync, theme: themeToSync, updatedAt: serverUpdatedAtRef.current }),
       })
       if (!response.ok) throw new Error('sync failed')
-      const data = (await response.json()) as { updatedAt?: string }
+      const data = (await response.json()) as { updatedAt?: string; staleWriteMerged?: boolean; state?: ServerState }
       if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
+      if (data.staleWriteMerged && data.state) applyServerState(data.state)
       localStorage.removeItem(KEY_PENDING_SYNC)
       setSyncStatus('synced')
     } catch {
       localStorage.setItem(KEY_PENDING_SYNC, '1')
       setSyncStatus('offline')
     }
-  }, [])
+  }, [applyServerState])
 
   useEffect(() => {
     window.setTimeout(() => void loadGotifySettings(), 0)
@@ -317,13 +334,8 @@ function App() {
       try {
         const response = await fetch(API_STATE)
         if (!response.ok) throw new Error('load failed')
-        const data = (await response.json()) as { entries?: Entry[]; diapers?: DiaperEvent[]; medicines?: MedicineEvent[]; session?: LegacySession | null; theme?: Theme; updatedAt?: string }
-        if (Array.isArray(data.entries)) setEntries(data.entries.sort((a, b) => b.endedAt - a.endedAt))
-        if (Array.isArray(data.diapers)) setDiapers(data.diapers.sort((a, b) => b.at - a.at))
-        if (Array.isArray(data.medicines)) setMedicines(data.medicines.sort((a, b) => b.at - a.at))
-        if (data.session !== undefined) setSession(normalizeSession(data.session))
-        if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
-        if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
+        const data = (await response.json()) as ServerState
+        applyServerState(data)
         setSyncStatus('synced')
       } catch {
         setSyncStatus('offline')
@@ -333,10 +345,35 @@ function App() {
     }
 
     void loadFromApi()
-  }, [syncToApi])
+  }, [syncToApi, applyServerState])
 
   useEffect(() => {
-    if (!hasHydrated) return
+    if (!hasHydrated || typeof EventSource === 'undefined') return
+    const events = new EventSource(API_STATE_EVENTS)
+    events.onopen = () => {
+      if (localStorage.getItem(KEY_PENDING_SYNC) !== '1') setSyncStatus('synced')
+    }
+    events.addEventListener('state', (event) => {
+      try {
+        const data = JSON.parse((event as MessageEvent).data) as ServerState
+        if (data.updatedAt && data.updatedAt === serverUpdatedAtRef.current) return
+        applyServerState(data)
+        localStorage.removeItem(KEY_PENDING_SYNC)
+        setSyncStatus('synced')
+      } catch {
+        setSyncStatus('offline')
+      }
+    })
+    events.onerror = () => setSyncStatus('offline')
+    return () => events.close()
+  }, [hasHydrated, applyServerState])
+
+  useEffect(() => {
+    if (!hasHydrated || applyingRemoteStateRef.current) return
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false
+      return
+    }
     localStorage.setItem(KEY_PENDING_SYNC, '1')
     window.setTimeout(() => void syncToApi(), 0)
   }, [entries, diapers, medicines, session, theme, hasHydrated, syncToApi])

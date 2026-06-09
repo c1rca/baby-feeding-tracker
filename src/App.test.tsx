@@ -940,6 +940,54 @@ describe('App interactions', () => {
     expect(screen.queryByRole('dialog', { name: /Add missed feed/i })).toBeNull()
   })
 
+
+  it('applies live server state events without echoing another sync write', async () => {
+    const listeners: Record<string, (event: MessageEvent) => void> = {}
+    class MockEventSource {
+      static instance: MockEventSource | null = null
+      onopen: (() => void) | null = null
+      onerror: (() => void) | null = null
+      url: string
+      constructor(url: string) {
+        this.url = url
+        MockEventSource.instance = this
+        window.setTimeout(() => this.onopen?.(), 0)
+      }
+      addEventListener(event: string, listener: (event: MessageEvent) => void) {
+        listeners[event] = listener
+      }
+      close = vi.fn()
+    }
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
+      if (url === '/api/state' && !init) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
+      return new Response(JSON.stringify({ ok: true, updatedAt: 'server-write' }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('EventSource', MockEventSource)
+
+    render(<App />)
+    await waitFor(() => expect(MockEventSource.instance?.url).toBe('/api/state/events'))
+    fetchMock.mockClear()
+
+    listeners.state?.(new MessageEvent('state', {
+      data: JSON.stringify({
+        entries: [{ id: 'remote-bottle', type: 'bottle', startedAt: Date.now() - 1000, endedAt: Date.now(), leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: '' }],
+        diapers: [],
+        medicines: [],
+        session: null,
+        theme: 'light',
+        updatedAt: 'server-2',
+      }),
+    }))
+
+    await waitFor(() => expect(screen.getAllByText(/3\.0 oz/i).length).toBeGreaterThan(0))
+    await new Promise((resolve) => window.setTimeout(resolve, 10))
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
+  })
+
   it('keeps offline changes locally and syncs them on reconnect', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockRejectedValue(new Error('offline'))

@@ -11,6 +11,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const app = express()
+const stateClients = new Set()
 const port = Number(process.env.PORT || 8080)
 const dbDir = process.env.DB_DIR || path.join(__dirname, 'data')
 const dbPath = process.env.DB_PATH || path.join(dbDir, 'feeding-tracker.db')
@@ -107,6 +108,27 @@ const appendEventLog = (event, payload = {}) => {
   } catch (error) {
     console.warn('event log write failed', redactError(error))
   }
+}
+
+const serializeState = (row) => {
+  if (!row) return { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: null }
+  return {
+    entries: JSON.parse(row.entries_json),
+    diapers: JSON.parse(row.diapers_json || '[]'),
+    medicines: JSON.parse(row.medicines_json || '[]'),
+    session: row.session_json ? JSON.parse(row.session_json) : null,
+    theme: row.theme || 'light',
+    updatedAt: row.updated_at,
+  }
+}
+
+const sendStateEvent = (res, event, payload) => {
+  res.write(`event: ${event}\n`)
+  res.write(`data: ${JSON.stringify(payload)}\n\n`)
+}
+
+const broadcastStateChange = (payload) => {
+  for (const res of stateClients) sendStateEvent(res, 'state', payload)
 }
 
 const summarizeState = (entries, session, theme, diapers = [], medicines = []) => ({
@@ -217,18 +239,23 @@ app.put('/api/notification-settings', (req, res) => {
 })
 
 app.get('/api/state', (_req, res) => {
-  const row = selectState.get()
-  if (!row) {
-    return res.json({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: null })
-  }
+  res.json(serializeState(selectState.get()))
+})
 
-  res.json({
-    entries: JSON.parse(row.entries_json),
-    diapers: JSON.parse(row.diapers_json || '[]'),
-    medicines: JSON.parse(row.medicines_json || '[]'),
-    session: row.session_json ? JSON.parse(row.session_json) : null,
-    theme: row.theme || 'light',
-    updatedAt: row.updated_at,
+app.get('/api/state/events', (req, res) => {
+  res.set({
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  })
+  res.flushHeaders?.()
+  stateClients.add(res)
+  sendStateEvent(res, 'state', serializeState(selectState.get()))
+  const heartbeat = setInterval(() => sendStateEvent(res, 'ping', { at: new Date().toISOString() }), 25000)
+  req.on('close', () => {
+    clearInterval(heartbeat)
+    stateClients.delete(res)
+    res.end()
   })
 })
 
@@ -262,7 +289,9 @@ app.put('/api/state', (req, res) => {
   appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines), staleWriteMerged: incoming.stale, entries, diapers, medicines, session })
   notificationScheduler?.evaluate()
 
-  res.json({ ok: true, updatedAt, staleWriteMerged: incoming.stale })
+  const responseState = { entries, diapers, medicines, session, theme, updatedAt }
+  broadcastStateChange(responseState)
+  res.json({ ok: true, updatedAt, staleWriteMerged: incoming.stale, state: responseState })
 })
 
 const distPath = path.join(__dirname, 'dist')
