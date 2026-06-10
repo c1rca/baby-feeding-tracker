@@ -82,7 +82,6 @@ function App() {
   })
 
   const {
-    loggedActiveDiaperKinds,
     availableSelectedDiapers,
     logBottle,
     toggleDiaperSelection,
@@ -202,7 +201,6 @@ function App() {
         startMinutesAgo={startMinutesAgo}
         selectedStartMinutesAgo={selectedStartMinutesAgo}
         selectedDiapers={selectedDiapers}
-        loggedActiveDiaperKinds={loggedActiveDiaperKinds}
         availableSelectedDiapers={availableSelectedDiapers}
         additionalOptionsOpen={additionalOptionsOpen}
         setStartOffsetOpen={setStartOffsetOpen}
