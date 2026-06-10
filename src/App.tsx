@@ -9,6 +9,7 @@ import { HeroPanel } from './components/HeroPanel'
 import { StatsDashboard } from './components/StatsDashboard'
 import { TrackerModals } from './components/TrackerModals'
 import { AppHeader } from './components/AppHeader'
+import { MedicineReminderBanner } from './components/MedicineReminderBanner'
 import { TrackOverview } from './components/TrackOverview'
 import { useNotificationSettings } from './notifications/useNotificationSettings'
 import { useUndoToast } from './state/useUndoToast'
@@ -180,6 +181,13 @@ function App() {
         setSettingsOpen={setSettingsOpen}
       />
 
+      <MedicineReminderBanner
+        medicineReminder={medicineReminder}
+        showMedicineReminder={showMedicineReminder}
+        dismissMedicineReminder={setDismissedMedicineReminderId}
+        logMedicine={logMedicine}
+      />
+
       {view === 'track' ? (
       <div className="tracker-view">
       <HeroPanel
@@ -225,10 +233,6 @@ function App() {
       <TrackOverview
         today={today}
         trend={trend}
-        medicineReminder={medicineReminder}
-        showMedicineReminder={showMedicineReminder}
-        dismissMedicineReminder={setDismissedMedicineReminderId}
-        logMedicine={logMedicine}
       />
       </div>) : (
       <StatsDashboard stats={stats} trend={trend} />

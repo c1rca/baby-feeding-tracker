@@ -1,14 +1,4 @@
-import { Pill, X } from 'lucide-react'
-import type { MedicineKind } from '../types'
 import { formatDuration } from '../domain/feedingUtils'
-
-type MedicineReminder = {
-  id: string
-  label: string
-  recommendedKind: MedicineKind
-  recommendedLabel: string
-  at: number
-}
 
 type TodaySummary = {
   count: number
@@ -28,23 +18,11 @@ type TrendSummary = {
 type TrackOverviewProps = {
   today: TodaySummary
   trend: TrendSummary
-  medicineReminder: MedicineReminder | null
-  showMedicineReminder: boolean
-  dismissMedicineReminder: (id: string) => void
-  logMedicine: (kind: MedicineKind) => void
 }
 
-export function TrackOverview({ today, trend, medicineReminder, showMedicineReminder, dismissMedicineReminder, logMedicine }: TrackOverviewProps) {
+export function TrackOverview({ today, trend }: TrackOverviewProps) {
   return (
     <>
-      {showMedicineReminder && medicineReminder ? (
-        <div className="medicine-reminder-banner" role="alert">
-          <div><strong>Medicine reminder</strong><span>Take {medicineReminder.recommendedLabel}. Last dose was {medicineReminder.label} 6+ hours ago.</span></div>
-          <button type="button" className="medicine-reminder-action" aria-label={`Log ${medicineReminder.recommendedLabel} now`} onClick={() => logMedicine(medicineReminder.recommendedKind)}><Pill size={14} /> Log {medicineReminder.recommendedLabel}</button>
-          <button type="button" className="icon-plain" aria-label="Dismiss medicine reminder" onClick={() => dismissMedicineReminder(medicineReminder.id)}><X size={16} /></button>
-        </div>
-      ) : null}
-
       <section className="grid">
         <div className="card stat"><h3>Feeds today</h3><p>{today.count}</p></div>
         <div className="card stat"><h3>Nursing</h3><p>{formatDuration(today.nursing)}</p></div>

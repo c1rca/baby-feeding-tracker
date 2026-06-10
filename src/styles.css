@@ -193,7 +193,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 @keyframes toast-in { from { transform: translateY(8px); opacity:0; } to { transform: translateY(0); opacity:1; } }
 @media (min-width: 900px) {
   .app { grid-template-columns: 1.1fr .9fr; }
-  .top, .hero, .grid, .settings, .timeline-card { grid-column: 1 / -1; }
+  .top, .medicine-reminder-banner, .hero, .grid, .settings, .timeline-card { grid-column: 1 / -1; }
 }
 @media (max-width: 560px) {
   .grid { grid-template-columns: 1fr; }

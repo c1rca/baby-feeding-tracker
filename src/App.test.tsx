@@ -98,6 +98,7 @@ describe('App interactions', () => {
 
     expect(screen.getByRole('alert').textContent).toMatch(/Take Tylenol/i)
     expect(screen.getByRole('button', { name: /Log Tylenol now/i })).toBeTruthy()
+    expect(screen.getByRole('banner').nextElementSibling).toBe(screen.getByRole('alert'))
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
     const medicineGroup = screen.getByRole('group', { name: /^Medicine$/i })
     expect(within(medicineGroup).getByRole('button', { name: /Log Tylenol/i })).toBeTruthy()
