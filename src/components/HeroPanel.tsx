@@ -196,12 +196,10 @@ function AdditionalOptions({ session, additionalOptionsOpen, setAdditionalOption
             <span className="diaper-panel-label">Bottle</span>
             <button type="button" aria-label={session ? 'Add bottle to this feed' : 'Log bottle-only feed'} onClick={() => setBottleOpen(true)}><Baby size={14} /> Bottle</button>
           </div>
-          {!session ? (
-            <div className="medicine-panel" role="group" aria-label="Missed feed">
-              <span className="diaper-panel-label">Missed feed</span>
-              <button type="button" onClick={() => setManualOpen(true)}><CalendarDays size={14} /> Add missed feed</button>
-            </div>
-          ) : null}
+          <div className="medicine-panel" role="group" aria-label="Missed feed">
+            <span className="diaper-panel-label">Missed feed</span>
+            <button type="button" onClick={() => setManualOpen(true)}><CalendarDays size={14} /> Add missed feed</button>
+          </div>
           <div className="medicine-panel" role="group" aria-label="Medicine">
             <span className="diaper-panel-label">Medicine</span>
             <button type="button" aria-label="Log Tylenol" onClick={() => logMedicine('tylenol')}><Pill size={14} /> Tylenol</button>

@@ -37,6 +37,19 @@ describe('App interactions', () => {
     expect(within(bottleGroup).queryByRole('button', { name: /Add missed feed/i })).toBeNull()
   })
 
+  it('keeps missed feed available inside additional options during an active feed', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Start suggested side/i }))
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+
+    const missedGroup = screen.getByRole('group', { name: /Missed feed/i })
+    await user.click(within(missedGroup).getByRole('button', { name: /Add missed feed/i }))
+    expect(screen.getByRole('dialog', { name: /Add missed feed/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /End feed/i })).toBeTruthy()
+  })
+
   it('logs a quick bottle entry and shows toast feedback', async () => {
     const user = userEvent.setup()
     render(<App />)
