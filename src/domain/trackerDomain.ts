@@ -35,6 +35,37 @@ export const makeId = () => (typeof crypto !== 'undefined' && typeof crypto.rand
 
 export const formatClockInput = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
+export const formatDateInput = (timestamp: number) => {
+  const date = new Date(timestamp)
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+export const formatTimeInput = (timestamp: number) => {
+  const date = new Date(timestamp)
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+}
+
+export const parseDateAndTime = (dateValue: string, timeValue: string) => {
+  if (!dateValue || !timeValue) return null
+  const parsed = new Date(`${dateValue}T${timeValue}`)
+  const timestamp = parsed.getTime()
+  return Number.isFinite(timestamp) ? timestamp : null
+}
+
+export const formatTimelineTimestamp = (timestamp: number, now = new Date().getTime()) => {
+  const ageMs = Math.max(0, now - timestamp)
+  if (ageMs < 2 * DAY_MS) return { primary: formatTime(timestamp), showRelative: true }
+  const date = new Date(timestamp)
+  const sameYear = date.getFullYear() === new Date(now).getFullYear()
+  return {
+    primary: `${date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })} · ${formatTime(timestamp)}`,
+    showRelative: true,
+  }
+}
+
 export const parseClockTimeToday = (value: string, referenceTime: number) => {
   const trimmed = value.trim().toLowerCase().replace(/\s+/g, '')
   const match = trimmed.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/)

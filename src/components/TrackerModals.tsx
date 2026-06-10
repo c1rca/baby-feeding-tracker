@@ -1,8 +1,10 @@
+import { useEffect, useRef } from 'react'
 import type { ChangeEvent, RefObject } from 'react'
 import { Baby, Download, Trash2, Upload } from 'lucide-react'
 import type { DiaperEvent, Entry, Session } from '../types'
+import { formatDateInput, formatTimeInput } from '../domain/trackerDomain'
 
-type ManualDraft = { leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string }
+type ManualDraft = { date: string; time: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string }
 
 type TrackerModalsProps = {
   bottleOpen: boolean
@@ -65,6 +67,19 @@ export function TrackerModals({
   setGotifyReminders,
   showToast,
 }: TrackerModalsProps) {
+  const wasManualOpenRef = useRef(false)
+
+  useEffect(() => {
+    if (!manualOpen) {
+      wasManualOpenRef.current = false
+      return
+    }
+    if (wasManualOpenRef.current) return
+    wasManualOpenRef.current = true
+    const timestamp = new Date().getTime()
+    setManualDraft({ ...manualDraft, date: formatDateInput(timestamp), time: formatTimeInput(timestamp) })
+  }, [manualOpen, manualDraft, setManualDraft])
+
   const exportJson = () => {
     const payload = { version: 1, exportedAt: new Date().toISOString(), entries, diapers }
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
@@ -125,6 +140,8 @@ export function TrackerModals({
           <section className="card modal-card manual-card" role="dialog" aria-modal="true" aria-label="Add missed feed" onClick={(e) => e.stopPropagation()}>
             <div className="hero-top"><h2>Add Missed Feed</h2><span className="pill">Manual</span></div>
             <div className="manual-grid">
+              <label>Feed date<input type="date" value={manualDraft.date} onChange={(e) => setManualDraft({ ...manualDraft, date: e.target.value })} /></label>
+              <label>Feed time<input type="time" value={manualDraft.time} onChange={(e) => setManualDraft({ ...manualDraft, time: e.target.value })} /></label>
               <label>Manual left minutes<input inputMode="decimal" value={manualDraft.leftMinutes} onChange={(e) => setManualDraft({ ...manualDraft, leftMinutes: e.target.value })} placeholder="0" /></label>
               <label>Manual right minutes<input inputMode="decimal" value={manualDraft.rightMinutes} onChange={(e) => setManualDraft({ ...manualDraft, rightMinutes: e.target.value })} placeholder="0" /></label>
               <label>Manual bottle ounces<input inputMode="decimal" value={manualDraft.bottleOunces} onChange={(e) => setManualDraft({ ...manualDraft, bottleOunces: e.target.value })} placeholder="0.0" /></label>

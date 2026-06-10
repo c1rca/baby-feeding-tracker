@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import type { DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, View } from './types'
-import { formatClockInput } from './domain/trackerDomain'
+import { formatClockInput, formatDateInput, formatTimeInput } from './domain/trackerDomain'
 import { useServerSync } from './sync/useServerSync'
 import { usePersistentTrackerState } from './state/usePersistentTrackerState'
 import { Timeline } from './components/Timeline'
@@ -28,7 +28,10 @@ function App() {
   const [view, setView] = useState<View>('track')
   const [bottleOpen, setBottleOpen] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
-  const [manualDraft, setManualDraft] = useState({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
+  const [manualDraft, setManualDraft] = useState(() => {
+    const timestamp = new Date().getTime()
+    return { date: formatDateInput(timestamp), time: formatTimeInput(timestamp), leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' }
+  })
   const [bottleQuickOz, setBottleQuickOz] = useState(2)
   const [startInputMode, setStartInputMode] = useState<'clock' | 'minutes'>('clock')
   const [startOffsetOpen, setStartOffsetOpen] = useState(false)

@@ -50,6 +50,48 @@ describe('App interactions', () => {
     expect(screen.getByRole('button', { name: /End feed/i })).toBeTruthy()
   })
 
+  it('lets a missed feed be saved at a chosen date and time', async () => {
+    const now = new Date(2026, 5, 10, 12, 0).getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
+
+    const dialog = screen.getByRole('dialog', { name: /Add missed feed/i })
+    expect(within(dialog).getByLabelText(/Feed date/i)).toHaveProperty('value', '2026-06-10')
+    expect(within(dialog).getByLabelText(/Feed time/i)).toHaveProperty('value', '12:00')
+
+    await user.clear(within(dialog).getByLabelText(/Feed date/i))
+    await user.type(within(dialog).getByLabelText(/Feed date/i), '2026-06-04')
+    await user.clear(within(dialog).getByLabelText(/Feed time/i))
+    await user.type(within(dialog).getByLabelText(/Feed time/i), '05:00')
+    await user.type(within(dialog).getByLabelText(/Manual left minutes/i), '15')
+    await user.click(within(dialog).getByRole('button', { name: /Save missed feed/i }))
+
+    expect(screen.getByText(/Missed feed saved/i)).toBeTruthy()
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
+    expect(saved[0].endedAt).toBe(new Date(2026, 5, 4, 5, 0).getTime())
+    expect(saved[0].startedAt).toBe(new Date(2026, 5, 4, 4, 45).getTime())
+  })
+
+  it('shows older timeline entries with the calendar date before the clock time', () => {
+    const now = new Date(2026, 5, 10, 12, 0).getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([{ id: 'old-feed', type: 'breast', startedAt: new Date(2026, 5, 4, 5, 0).getTime(), endedAt: new Date(2026, 5, 4, 5, 15).getTime(), leftSeconds: 15 * 60, rightSeconds: 0, bottleOunces: null, note: '' }]),
+    )
+
+    render(<App />)
+
+    expect(screen.getByText(/Jun 4.*5:00 AM/i)).toBeTruthy()
+    expect(screen.getByText(/6 days ago/i)).toBeTruthy()
+  })
+
   it('logs a quick bottle entry and shows toast feedback', async () => {
     const user = userEvent.setup()
     render(<App />)

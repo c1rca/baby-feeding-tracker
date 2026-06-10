@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { diaperLabel, formatClockInput, makeId, medicineLabel, parseClockTimeToday } from '../domain/trackerDomain'
+import { diaperLabel, formatClockInput, formatDateInput, formatTimeInput, makeId, medicineLabel, parseClockTimeToday, parseDateAndTime } from '../domain/trackerDomain'
 import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, Entry, FeedType, MedicineEvent, MedicineKind, Session, UndoState } from '../types'
 
-type ManualDraft = { leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string }
+type ManualDraft = { date: string; time: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string }
 
 type AuxiliaryEventActionsOptions = {
   now: number
@@ -153,11 +153,14 @@ export function useAuxiliaryEventActions({
     const rightSeconds = Math.max(0, Math.round((Number(manualDraft.rightMinutes) || 0) * 60))
     const bottle = Number(manualDraft.bottleOunces) > 0 ? Number(manualDraft.bottleOunces) : null
     if (leftSeconds + rightSeconds === 0 && !bottle) return showToast('Add nursing time or bottle ounces')
+    const manualEndedAt = parseDateAndTime(manualDraft.date, manualDraft.time)
+    if (manualEndedAt === null) return showToast('Enter a valid feed date and time')
     const durationMs = Math.max(0, leftSeconds + rightSeconds) * 1000
-    const endedAt = new Date().getTime()
+    const endedAt = manualEndedAt
     const type: FeedType = bottle && leftSeconds + rightSeconds > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
     setEntries((prev) => [{ id: makeId(), type, startedAt: endedAt - durationMs, endedAt, leftSeconds, rightSeconds, bottleOunces: bottle, note: manualDraft.note.trim() }, ...prev])
-    setManualDraft({ leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
+    const nextDefault = new Date().getTime()
+    setManualDraft({ date: formatDateInput(nextDefault), time: formatTimeInput(nextDefault), leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
     setManualOpen(false)
     showToast('Missed feed saved')
   }

@@ -3,7 +3,7 @@ import { MoreHorizontal, Pencil, Pill, RotateCcw, Save, Trash2 } from 'lucide-re
 import type { Dispatch, SetStateAction } from 'react'
 import { formatDuration } from '../domain/feedingUtils'
 import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, FeedType, MedicineEvent, MedicineKind } from '../types'
-import { diaperEventLabel, diaperKinds, diaperKindsLabel, diaperLabel, entryDiaperKinds, formatTime, medicineLabel, timelineFeedLabel } from '../domain/trackerDomain'
+import { diaperEventLabel, diaperKinds, diaperKindsLabel, diaperLabel, entryDiaperKinds, formatTimelineTimestamp, medicineLabel, timelineFeedLabel } from '../domain/trackerDomain'
 
 type TimelineProps = {
   entries: Entry[]
@@ -91,13 +91,14 @@ function MedicineTimelineItem({ medicine, actions }: { medicine: MedicineEvent; 
   const isEditing = actions.editingMedicine?.id === medicine.id
   const menuOpen = actions.openEntryMenuId === medicine.id
   const confirmingDelete = actions.confirmingDeleteEntryId === medicine.id
+  const timestamp = formatTimelineTimestamp(medicine.at)
 
   return (
     <li className={`timeline-item timeline-medicine timeline-medicine-${medicine.kind} ${menuOpen ? 'menu-open' : ''}`}>
       <div className="timeline-row">
         <div className="timeline-main">
           <div className="timeline-head">
-            <strong>{formatTime(medicine.at)}</strong>
+            <strong>{timestamp.primary}</strong>
             <span className={`badge badge-medicine badge-medicine-${medicine.kind}`}><Pill size={13} /> {medicineLabel(medicine.kind)}</span>
           </div>
           <span className="timeline-age">{formatDistanceToNow(medicine.at, { addSuffix: true })}</span>
@@ -136,12 +137,13 @@ function DiaperTimelineItem({ diaper, actions }: { diaper: DiaperEvent; actions:
   const isEditing = actions.editingDiaper?.id === diaper.id
   const menuOpen = actions.openEntryMenuId === diaper.id
   const confirmingDelete = actions.confirmingDeleteEntryId === diaper.id
+  const timestamp = formatTimelineTimestamp(diaper.at)
 
   return (
     <li className={`timeline-item timeline-diaper timeline-diaper-${kinds.includes('stool') ? 'stool' : 'wet'} ${menuOpen ? 'menu-open' : ''}`}>
       <div className="timeline-row">
         <div className="timeline-main">
-          <div className="timeline-head"><strong>{formatTime(diaper.at)}</strong><span className={`badge badge-diaper ${kinds.includes('stool') ? 'badge-diaper-stool' : ''}`}>{diaperEventLabel(diaper)}</span></div>
+          <div className="timeline-head"><strong>{timestamp.primary}</strong><span className={`badge badge-diaper ${kinds.includes('stool') ? 'badge-diaper-stool' : ''}`}>{diaperEventLabel(diaper)}</span></div>
           <span className="timeline-age">{formatDistanceToNow(diaper.at, { addSuffix: true })}</span>
         </div>
         {!isEditing ? (
@@ -177,13 +179,14 @@ function EntryTimelineItem({ entry, index, actions }: { entry: Entry; index: num
   const menuOpen = actions.openEntryMenuId === entry.id
   const confirmingDelete = actions.confirmingDeleteEntryId === entry.id
   const entryDiapers = entryDiaperKinds(entry)
+  const timestamp = formatTimelineTimestamp(entry.startedAt)
 
   return (
     <li className={`timeline-item timeline-${entry.type} ${menuOpen ? 'menu-open' : ''}`}>
       <div className="timeline-row">
         <div className="timeline-main">
           <div className="timeline-head">
-            <strong>{formatTime(entry.startedAt)}</strong>
+            <strong>{timestamp.primary}</strong>
             <span className={`badge badge-${entry.type}`}>{timelineFeedLabel(entry)}</span>
             {entryDiapers.length ? <span className="badge badge-diaper">{diaperKindsLabel(entryDiapers)}</span> : null}
             <div className="timeline-metrics" aria-label="Feed details">
