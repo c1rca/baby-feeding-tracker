@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createNotificationScheduler, normalizeTextEmailRecipients, sendGotifyMessage } from './server/notifications.js'
+import { buildStateAudit } from './server/auditLog.js'
 import { resolveIncomingState } from './server/stateMerge.js'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -287,6 +288,11 @@ app.put('/api/state', (req, res) => {
     updated_at: updatedAt,
   })
 
+  appendEventLog('state_write_audit', buildStateAudit(existingRow, { entries, diapers, medicines, session, theme }, {
+    staleWriteMerged: incoming.stale,
+    clientUpdatedAt: req.body?.updatedAt,
+    nextUpdatedAt: updatedAt,
+  }))
   appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines), staleWriteMerged: incoming.stale, entries, diapers, medicines, session })
   notificationScheduler?.evaluate()
 
