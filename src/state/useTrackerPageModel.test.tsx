@@ -67,7 +67,7 @@ describe('useTrackerPageModel', () => {
     expect(result.current.nextFeedWindowText).toMatch(/4:00.*5:00.*PM/i)
   })
 
-  it('uses an active session start for the next feed window before the session is saved', () => {
+  it('uses an active session start and opposite side for the next feed cue before the session is saved', () => {
     const sessionStartedAt = new Date('2026-01-03T09:15:00').getTime()
     const lastSavedFeed = entry({ id: 'older-saved-feed', startedAt: new Date('2026-01-03T05:00:00').getTime(), endedAt: new Date('2026-01-03T05:30:00').getTime() })
 
@@ -75,12 +75,13 @@ describe('useTrackerPageModel', () => {
       entries: [lastSavedFeed],
       diapers: [],
       medicines: [],
-      session: activeSession({ startedAt: sessionStartedAt }),
+      session: activeSession({ startedAt: sessionStartedAt, activeSide: 'right' }),
       now: sessionStartedAt + 5 * 60 * 1000,
       dismissedMedicineReminderId: null,
     }))
 
     expect(result.current.nextFeedWindowText).toMatch(/11:15.*12:15.*PM/i)
+    expect(result.current.nextFeedSideText).toBe('L')
   })
 
   it('returns the oldest due per-kind medicine reminder unless dismissed', () => {

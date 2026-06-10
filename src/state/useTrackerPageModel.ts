@@ -10,6 +10,7 @@ import {
   formatMinutesAgo,
   formatShortTimeRange,
   medicineLabel,
+  oppositeSide,
 } from '../domain/trackerDomain'
 
 const MEDICINE_REMINDER_MS = 6 * 60 * 60 * 1000
@@ -61,6 +62,7 @@ export function useTrackerPageModel({ entries, diapers, medicines, session, now,
   const lastFeed = entries[0]
   const activeFeedStartedAt = session?.startedAt ?? null
   const nextFeedStartedAt = activeFeedStartedAt ?? lastFeed?.startedAt ?? null
+  const nextFeedSide = session?.activeSide ? oppositeSide(session.activeSide) : suggestedSide
   const minsSinceLast = lastFeed && now ? Math.floor((now - lastFeed.endedAt) / 60000) : null
 
   return {
@@ -71,7 +73,7 @@ export function useTrackerPageModel({ entries, diapers, medicines, session, now,
     lastFeedMetaText: minsSinceLast === null ? 'No feed history yet' : formatMinutesAgo(minsSinceLast),
     avgGapShortText: avgGapMinutes ? formatAvgGapShort(avgGapMinutes) : null,
     suggestedSide,
-    nextFeedSideText: suggestedSide[0].toUpperCase(),
+    nextFeedSideText: nextFeedSide[0].toUpperCase(),
     nextFeedWindowText: nextFeedStartedAt
       ? formatShortTimeRange(nextFeedStartedAt + NEXT_FEED_WINDOW_START_MS, nextFeedStartedAt + NEXT_FEED_WINDOW_END_MS)
       : 'After first feed',
