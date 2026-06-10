@@ -131,7 +131,7 @@ function App() {
     nextFeedWindowText,
     medicineReminder,
     showMedicineReminder,
-  } = useTrackerPageModel({ entries, diapers, medicines, now, dismissedMedicineReminderId })
+  } = useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId })
 
   const { selectedStartMinutesAgo, activeSplit, activeSeconds, activeSide, activeOppositeSide, startSession, switchSide, pause, resume, clearSession, endSession } = useActiveFeedActions({
     now,

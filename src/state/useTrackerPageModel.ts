@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { DiaperEvent, Entry, MedicineEvent, MedicineKind, Side } from '../types'
+import type { DiaperEvent, Entry, MedicineEvent, MedicineKind, Session, Side } from '../types'
 import {
   calculateAvgGapMinutes,
   calculateStats,
@@ -29,11 +29,12 @@ type TrackerPageModelOptions = {
   entries: Entry[]
   diapers: DiaperEvent[]
   medicines: MedicineEvent[]
+  session: Session | null
   now: number
   dismissedMedicineReminderId: string | null
 }
 
-export function useTrackerPageModel({ entries, diapers, medicines, now, dismissedMedicineReminderId }: TrackerPageModelOptions) {
+export function useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId }: TrackerPageModelOptions) {
   const today = useMemo(() => calculateTodaySummary(entries, diapers, now), [entries, diapers, now])
   const trend = useMemo(() => calculateTrend(entries, now), [entries, now])
   const stats = useMemo(() => calculateStats(entries, diapers, now, today, trend.days), [entries, diapers, now, today, trend.days])
@@ -58,6 +59,8 @@ export function useTrackerPageModel({ entries, diapers, medicines, now, dismisse
   }, [medicines, now])
 
   const lastFeed = entries[0]
+  const activeFeedStartedAt = session?.startedAt ?? null
+  const nextFeedStartedAt = activeFeedStartedAt ?? lastFeed?.startedAt ?? null
   const minsSinceLast = lastFeed && now ? Math.floor((now - lastFeed.endedAt) / 60000) : null
 
   return {
@@ -69,8 +72,8 @@ export function useTrackerPageModel({ entries, diapers, medicines, now, dismisse
     avgGapShortText: avgGapMinutes ? formatAvgGapShort(avgGapMinutes) : null,
     suggestedSide,
     nextFeedSideText: suggestedSide[0].toUpperCase(),
-    nextFeedWindowText: lastFeed
-      ? formatShortTimeRange(lastFeed.startedAt + NEXT_FEED_WINDOW_START_MS, lastFeed.startedAt + NEXT_FEED_WINDOW_END_MS)
+    nextFeedWindowText: nextFeedStartedAt
+      ? formatShortTimeRange(nextFeedStartedAt + NEXT_FEED_WINDOW_START_MS, nextFeedStartedAt + NEXT_FEED_WINDOW_END_MS)
       : 'After first feed',
     medicineReminder,
     showMedicineReminder: Boolean(medicineReminder && dismissedMedicineReminderId !== medicineReminder.id),
