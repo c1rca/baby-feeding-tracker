@@ -376,6 +376,42 @@ describe('App interactions', () => {
     expect(within(firstItem).getByRole('menuitem', { name: /Delete entry/i })).toBeTruthy()
   })
 
+  it('orders backfilled timeline feeds by their feed start time, not entry insertion or end time', () => {
+    const newerStart = new Date(2026, 5, 5, 10, 0).getTime()
+    const olderStart = new Date(2026, 5, 5, 8, 0).getTime()
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        {
+          id: 'older-long-backfill',
+          type: 'breast',
+          startedAt: olderStart,
+          endedAt: olderStart + 3 * 60 * 60 * 1000,
+          leftSeconds: 90 * 60,
+          rightSeconds: 90 * 60,
+          bottleOunces: null,
+          note: 'older backfill',
+        },
+        {
+          id: 'newer-short-feed',
+          type: 'bottle',
+          startedAt: newerStart,
+          endedAt: newerStart + 5 * 60 * 1000,
+          leftSeconds: 0,
+          rightSeconds: 0,
+          bottleOunces: 2,
+          note: 'newer feed',
+        },
+      ]),
+    )
+
+    render(<App />)
+
+    const items = screen.getAllByRole('listitem')
+    expect(within(items[0]).getByText(/newer feed/i)).toBeTruthy()
+    expect(within(items[1]).getByText(/older backfill/i)).toBeTruthy()
+  })
+
   it('closes a timeline action menu when clicking outside it', async () => {
     localStorage.setItem(
       STORAGE_KEY,
@@ -957,8 +993,8 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /End feed/i }))
     const savedItems = screen.getAllByRole('listitem')
     expect(savedItems).toHaveLength(2)
-    expect(within(savedItems[0]).queryByText(/Wet \+ Stool/i)).toBeNull()
-    expect(within(savedItems[1]).getByText(/Wet \+ Stool/i)).toBeTruthy()
+    expect(within(savedItems[0]).getByText(/Wet \+ Stool/i)).toBeTruthy()
+    expect(within(savedItems[1]).queryByText(/Wet \+ Stool/i)).toBeNull()
     expect(screen.queryByText(/Attached to active feed/i)).toBeNull()
     expect(screen.queryByText(/Outside feed/i)).toBeNull()
   })

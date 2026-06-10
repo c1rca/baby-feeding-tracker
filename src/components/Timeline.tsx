@@ -67,7 +67,7 @@ const DIAPER_KINDS: DiaperKind[] = ['wet', 'stool']
 
 function timelineItems(entries: Entry[], diapers: DiaperEvent[], medicines: MedicineEvent[]): TimelineItem[] {
   return [
-    ...entries.map((entry) => ({ kind: 'feed' as const, time: entry.endedAt, entry })),
+    ...entries.map((entry) => ({ kind: 'feed' as const, time: entry.startedAt, entry })),
     ...diapers.map((diaper) => ({ kind: 'diaper' as const, time: diaper.at, diaper })),
     ...medicines.map((medicine) => ({ kind: 'medicine' as const, time: medicine.at, medicine })),
   ].sort((a, b) => b.time - a.time)
