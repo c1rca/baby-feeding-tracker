@@ -40,6 +40,19 @@ export const useServerSync = ({ entries, diapers, medicines, session, theme, set
     window.setTimeout(() => { applyingServerStateRef.current = false }, 0)
   }, [setDiapers, setEntries, setMedicines, setSession, setTheme])
 
+  const loadServerState = useCallback(async () => {
+    const response = await fetch(API_STATE, { cache: 'no-store' })
+    if (!response.ok) throw new Error('load failed')
+    return await response.json() as ServerState
+  }, [])
+
+  const mergeById = <T extends { id: string }>(serverItems: T[] | undefined, localItems: T[] | undefined) => {
+    const merged = new Map<string, T>()
+    for (const item of Array.isArray(serverItems) ? serverItems : []) merged.set(item.id, item)
+    for (const item of Array.isArray(localItems) ? localItems : []) merged.set(item.id, item)
+    return [...merged.values()]
+  }
+
   const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme, nextDiapers?: DiaperEvent[], nextMedicines?: MedicineEvent[]) => {
     const payload = latestPayloadRef.current
     setSyncStatus('syncing')
@@ -59,7 +72,7 @@ export const useServerSync = ({ entries, diapers, medicines, session, theme, set
       if (!response.ok) throw new Error('sync failed')
       const data = (await response.json()) as { updatedAt?: string; staleWriteMerged?: boolean; state?: ServerState }
       if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
-      if (data.staleWriteMerged && data.state) applyServerState(data.state)
+      if (data.state) applyServerState(data.state)
       localStorage.removeItem(KEY_PENDING_SYNC)
       setSyncStatus('synced')
     } catch {
@@ -72,24 +85,36 @@ export const useServerSync = ({ entries, diapers, medicines, session, theme, set
 
   useEffect(() => {
     const loadFromApi = async () => {
-      if (localStorage.getItem(KEY_PENDING_SYNC) === '1') {
-        setHasHydrated(true)
-        await syncToApi()
-        return
-      }
+      const hasPendingSync = localStorage.getItem(KEY_PENDING_SYNC) === '1'
+      const localPayload = latestPayloadRef.current
       try {
-        const response = await fetch(API_STATE)
-        if (!response.ok) throw new Error('load failed')
-        applyServerState((await response.json()) as ServerState)
+        const serverState = await loadServerState()
+        if (hasPendingSync) {
+          const mergedEntries = mergeById(serverState.entries, localPayload.entries).sort((a, b) => b.endedAt - a.endedAt)
+          const mergedDiapers = mergeById(serverState.diapers, localPayload.diapers).sort((a, b) => b.at - a.at)
+          const mergedMedicines = mergeById(serverState.medicines, localPayload.medicines).sort((a, b) => b.at - a.at)
+          const mergedSession = localPayload.session ?? normalizeSession(serverState.session ?? null)
+          const mergedTheme = localPayload.theme ?? serverState.theme ?? 'light'
+          if (serverState.updatedAt) serverUpdatedAtRef.current = serverState.updatedAt
+          setHasHydrated(true)
+          await syncToApi(mergedEntries, mergedSession, mergedTheme, mergedDiapers, mergedMedicines)
+          return
+        }
+        applyServerState(serverState)
         setSyncStatus('synced')
       } catch {
+        if (hasPendingSync) {
+          setHasHydrated(true)
+          await syncToApi()
+          return
+        }
         setSyncStatus(localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'issue')
       } finally {
         setHasHydrated(true)
       }
     }
     void loadFromApi()
-  }, [applyServerState, syncToApi])
+  }, [applyServerState, loadServerState, syncToApi])
 
   useEffect(() => {
     if (!hasHydrated || applyingServerStateRef.current) return

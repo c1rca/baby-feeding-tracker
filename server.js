@@ -239,6 +239,7 @@ app.put('/api/notification-settings', (req, res) => {
 })
 
 app.get('/api/state', (_req, res) => {
+  res.set('Cache-Control', 'no-store')
   res.json(serializeState(selectState.get()))
 })
 

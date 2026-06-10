@@ -67,8 +67,24 @@ describe('useServerSync', () => {
     await waitFor(() => expect(screen.getByTestId('entries').textContent).toBe('server'))
     expect(screen.getByTestId('theme').textContent).toBe('dark')
     expect(screen.getByTestId('status').textContent).toBe('synced')
-    expect(fetchMock).toHaveBeenCalledWith('/api/state')
+    expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' }))
     expect(MockEventSource.instances).toHaveLength(0)
+  })
+
+  it('refreshes from the server before replaying pending local changes', async () => {
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync', '1')
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init || init.method !== 'PUT') return { ok: true, json: async () => ({ entries: [entry('wife-entry', 4000)], diapers: [], medicines: [], session: null, theme: 'dark', updatedAt: 'server-new' }) }
+      return { ok: true, json: async () => ({ updatedAt: 'server-merged', staleWriteMerged: true, state: { entries: [entry('wife-entry', 4000), entry('local-pending', 3000)], diapers: [], medicines: [], session: null, theme: 'dark', updatedAt: 'server-merged' } }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness initialEntries={[entry('local-pending', 3000)]} />)
+
+    await waitFor(() => expect(screen.getByTestId('entries').textContent).toBe('wife-entry,local-pending'))
+    expect(fetchMock.mock.calls[0]).toEqual(['/api/state', expect.objectContaining({ cache: 'no-store' })])
+    expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
+    expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
   })
 
   it('writes local changes back to the server state without opening a live subscription', async () => {
@@ -79,7 +95,7 @@ describe('useServerSync', () => {
     vi.stubGlobal('fetch', fetchMock)
 
     render(<Harness />)
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state'))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' })))
     await new Promise((resolve) => setTimeout(resolve, 0))
     screen.getByRole('button', { name: 'add local' }).click()
 

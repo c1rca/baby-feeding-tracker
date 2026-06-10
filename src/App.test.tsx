@@ -1042,7 +1042,7 @@ describe('App interactions', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
-      if (url === '/api/state' && !init) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: { startedAt: 1, activeSide: 'right', segments: [], bottleOunces: 0, note: '', diaperKinds: [] }, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
+      if (url === '/api/state' && !init?.method) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: { startedAt: 1, activeSide: 'right', segments: [], bottleOunces: 0, note: '', diaperKinds: [] }, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
       return new Response(JSON.stringify({ ok: true, updatedAt: 'server-write' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -1052,7 +1052,7 @@ describe('App interactions', () => {
 
     await new Promise((resolve) => window.setTimeout(resolve, 10))
     expect(MockEventSource.instance).toBeNull()
-    expect(fetchMock).toHaveBeenCalledWith('/api/state')
+    expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' }))
     expect(screen.getByText(/On right/i)).toBeTruthy()
   })
 
@@ -1060,7 +1060,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
-      if (String(input) === '/api/state' && !init) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
+      if (String(input) === '/api/state' && !init?.method) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
       return new Response(JSON.stringify({ ok: true, updatedAt: 'server-2' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
