@@ -989,13 +989,25 @@ describe('App interactions', () => {
     expect(fetchMock).not.toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
   })
 
+  it('does not show offline changes saved for a passive connection issue without local changes', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('offline'))
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state'))
+    expect(screen.queryByText(/Offline changes saved/i)).toBeNull()
+    expect(screen.getByText(/Connection issue/i)).toBeTruthy()
+  })
+
   it('keeps offline changes locally and syncs them on reconnect', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn().mockRejectedValue(new Error('offline'))
     vi.stubGlobal('fetch', fetchMock)
 
     render(<App />)
-    expect(await screen.findByText(/Offline changes saved/i)).toBeTruthy()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state'))
+    expect(screen.queryByText(/Offline changes saved/i)).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
     await user.click(screen.getByRole('button', { name: /Log bottle-only feed/i }))

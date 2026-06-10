@@ -6,7 +6,7 @@ const KEY_PENDING_SYNC = 'baby-feeding-tracker:v1:pending-sync'
 const API_STATE = '/api/state'
 const API_STATE_EVENTS = '/api/state/events'
 
-type SyncStatus = 'syncing' | 'synced' | 'offline'
+type SyncStatus = 'syncing' | 'synced' | 'offline' | 'issue'
 
 type UseServerSyncOptions = {
   entries: Entry[]
@@ -83,7 +83,7 @@ export const useServerSync = ({ entries, diapers, medicines, session, theme, set
         applyServerState(data)
         setSyncStatus('synced')
       } catch {
-        setSyncStatus('offline')
+        setSyncStatus(localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'issue')
       } finally {
         setHasHydrated(true)
       }
@@ -109,7 +109,7 @@ export const useServerSync = ({ entries, diapers, medicines, session, theme, set
         setSyncStatus('offline')
       }
     })
-    events.onerror = () => setSyncStatus('offline')
+    events.onerror = () => setSyncStatus(localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'issue')
     return () => events.close()
   }, [hasHydrated, applyServerState])
 
