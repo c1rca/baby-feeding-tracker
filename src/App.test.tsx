@@ -49,6 +49,24 @@ describe('App interactions', () => {
     expect(screen.getByText(/Feeds today/i).nextElementSibling?.textContent).toBe('1')
   })
 
+  it('puts pause and resume on a compact timer-side transport control', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Start suggested side/i }))
+
+    const pauseToggle = screen.getByRole('button', { name: /Pause feed timer/i })
+    expect(pauseToggle.className).toContain('transport-toggle')
+    expect(pauseToggle.className).toContain('is-playing')
+    expect(screen.queryByRole('button', { name: /^Pause$/i })).toBeNull()
+
+    await user.click(pauseToggle)
+
+    expect(screen.getByText(/^Paused$/i)).toBeTruthy()
+    const resumeToggle = screen.getByRole('button', { name: /Resume feed timer/i })
+    expect(resumeToggle.className).toContain('is-paused')
+  })
+
   it('opens a polished stats dashboard with deeper care insights', async () => {
     const now = Date.now()
     localStorage.setItem(
@@ -258,9 +276,10 @@ describe('App interactions', () => {
     expect(screen.getByText(/Session resumed/i)).toBeTruthy()
     expect(screen.getByText(/On right/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Switch to Left/i })).toBeTruthy()
-    const pauseButton = screen.getByRole('button', { name: /^Pause$/i })
-    expect(pauseButton.className).toContain('pause-action')
-    expect(pauseButton.querySelector('svg')).toBeTruthy()
+    const pauseToggle = screen.getByRole('button', { name: /Pause feed timer/i })
+    expect(pauseToggle.className).toContain('transport-toggle')
+    expect(pauseToggle.querySelector('svg')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Pause$/i })).toBeNull()
     expect(screen.getByRole('button', { name: /End feed/i }).querySelector('svg')).toBeNull()
     expect(screen.queryByRole('button', { name: /Resume Left/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /Resume Right/i })).toBeNull()

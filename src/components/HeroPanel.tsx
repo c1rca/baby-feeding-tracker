@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { Baby, CalendarDays, CirclePause, Pill, XCircle } from 'lucide-react'
+import { Baby, CalendarDays, CirclePause, CirclePlay, Pill, XCircle } from 'lucide-react'
 import { formatDuration } from '../domain/feedingUtils'
 import { diaperLabel, sideLabel, oppositeSide } from '../domain/trackerDomain'
 import type { DiaperKind, Session, Side } from '../types'
@@ -84,7 +84,20 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   return (
     <section className="card hero" ref={ref}>
       <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span>{' '}<strong>{nextFeedWindowText}{hasLastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span></div>{session ? <span className="pill">{session.activeSide ? `On ${session.activeSide}` : 'Paused'}</span> : null}</div>
-      <div className="timer">{formatDuration(activeSeconds)}</div>
+      <div className="timer-cluster">
+        <div className="timer">{formatDuration(activeSeconds)}</div>
+        {session ? (
+          <button
+            type="button"
+            className={`transport-toggle ${activeSide ? 'is-playing' : 'is-paused'}`}
+            aria-label={activeSide ? 'Pause feed timer' : `Resume feed timer on ${sideLabel(suggestedSide)}`}
+            title={activeSide ? 'Pause' : `Resume ${sideLabel(suggestedSide)}`}
+            onClick={activeSide ? pause : () => resume(suggestedSide)}
+          >
+            {activeSide ? <CirclePause size={22} /> : <CirclePlay size={22} />}
+          </button>
+        ) : null}
+      </div>
       <div className="hero-micro-meta" aria-label="Feed timing summary">
         <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
         {avgGapShortText ? <span>{avgGapShortText}</span> : null}
@@ -120,7 +133,7 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
         </div>
       ) : null}
       <div className="row hero-actions">
-        {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button></>) : (<>{activeSide ? (<><button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button><button className="pause-action" onClick={pause}><CirclePause size={16} /> Pause</button></>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button className="success end-feed" type="button" aria-label="End feed" onClick={endSession}>Stop & Save Feed</button><button className="active-clear-link" type="button" aria-label="Clear active feed" onClick={clearSession}><XCircle size={14} /> Clear active</button></>)}
+        {!session ? (<><button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button><button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button></>) : (<>{activeSide ? (<button className="primary" onClick={() => switchSide(activeOppositeSide)}>Switch to {sideLabel(activeOppositeSide)}</button>) : (<><button className="primary" onClick={() => resume(suggestedSide)}>Resume {sideLabel(suggestedSide)}</button><button onClick={() => resume(oppositeSide(suggestedSide))}>Resume {sideLabel(oppositeSide(suggestedSide))}</button></>)}<button className="success end-feed" type="button" aria-label="End feed" onClick={endSession}>Stop & Save Feed</button><button className="active-clear-link" type="button" aria-label="Clear active feed" onClick={clearSession}><XCircle size={14} /> Clear active</button></>)}
       </div>
       <div className="diaper-panel" role="group" aria-label="Diaper">
         <span className="diaper-panel-label">Diaper</span>
