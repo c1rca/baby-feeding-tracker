@@ -133,7 +133,7 @@ describe('useServerSync', () => {
 
   it('writes local changes back to the server state without opening a live subscription', async () => {
     const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
-      if (!init) return { ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-1' }) }
+      if (!init || init.method !== 'PUT') return { ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-1' }) }
       return { ok: true, json: async () => ({ updatedAt: 'server-2' }) }
     })
     vi.stubGlobal('fetch', fetchMock)
