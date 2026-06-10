@@ -4,6 +4,13 @@ import { formatDuration } from '../domain/feedingUtils'
 import { diaperLabel, sideLabel, oppositeSide } from '../domain/trackerDomain'
 import type { DiaperKind, Session, Side } from '../types'
 
+function sessionStatusLabel(session: Session | null) {
+  if (!session) return null
+  if (session.activeSide) return `On ${session.activeSide}`
+  const lastSide = session.segments.at(-1)?.side
+  return lastSide ? `Paused ${lastSide}` : 'Paused'
+}
+
 type HeroPanelProps = {
   session: Session | null
   activeSeconds: number
@@ -81,9 +88,11 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   logSelectedDiapers,
   logMedicine,
 }, ref) {
+  const statusLabel = sessionStatusLabel(session)
+
   return (
     <section className="card hero" ref={ref}>
-      <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span>{' '}<strong>{nextFeedWindowText}{hasLastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span></div>{session ? <span className="pill">{session.activeSide ? `On ${session.activeSide}` : 'Paused'}</span> : null}</div>
+      <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span>{' '}<strong>{nextFeedWindowText}{hasLastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span></div>{statusLabel ? <span className="pill">{statusLabel}</span> : null}</div>
       <div className="timer-cluster">
         <div className="timer">{formatDuration(activeSeconds)}</div>
         {session ? (

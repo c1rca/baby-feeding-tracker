@@ -62,7 +62,7 @@ describe('App interactions', () => {
 
     await user.click(pauseToggle)
 
-    expect(screen.getByText(/^Paused$/i)).toBeTruthy()
+    expect(screen.getByText(/^Paused left$/i)).toBeTruthy()
     const resumeToggle = screen.getByRole('button', { name: /Resume feed timer/i })
     expect(resumeToggle.className).toContain('is-paused')
   })
