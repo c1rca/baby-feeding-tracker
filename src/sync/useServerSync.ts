@@ -93,7 +93,8 @@ export const useServerSync = ({ entries, diapers, medicines, session, theme, set
           const mergedEntries = mergeById(serverState.entries, localPayload.entries).sort((a, b) => b.endedAt - a.endedAt)
           const mergedDiapers = mergeById(serverState.diapers, localPayload.diapers).sort((a, b) => b.at - a.at)
           const mergedMedicines = mergeById(serverState.medicines, localPayload.medicines).sort((a, b) => b.at - a.at)
-          const mergedSession = localPayload.session ?? normalizeSession(serverState.session ?? null)
+          const serverSession = normalizeSession(serverState.session ?? null)
+          const mergedSession = serverSession ?? localPayload.session
           const mergedTheme = localPayload.theme ?? serverState.theme ?? 'light'
           if (serverState.updatedAt) serverUpdatedAtRef.current = serverState.updatedAt
           setHasHydrated(true)

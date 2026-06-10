@@ -61,3 +61,78 @@ test('resolveIncomingState allows current clients to intentionally delete medici
   assert.equal(resolved.stale, false)
   assert.deepEqual(resolved.medicines, [])
 })
+
+test('resolveIncomingState preserves existing server session on stale null-session writes', () => {
+  const existingSession = { startedAt: 1000, activeSide: 'left', segmentStart: 1000, segments: [], bottleOunces: 0, note: '', diaperKinds: [] }
+  const existingRow = {
+    entries_json: JSON.stringify([{ id: 'server-feed', endedAt: 10 }]),
+    diapers_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([]),
+    session_json: JSON.stringify(existingSession),
+    theme: 'light',
+    updated_at: 'server-v2',
+  }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [{ id: 'local-feed', endedAt: 20 }],
+    diapers: [],
+    medicines: [],
+    session: null,
+    theme: 'light',
+    updatedAt: 'server-v1',
+  })
+
+  assert.equal(resolved.stale, true)
+  assert.deepEqual(resolved.session, existingSession)
+  assert.deepEqual(resolved.entries.map((entry) => entry.id).sort(), ['local-feed', 'server-feed'])
+})
+
+test('resolveIncomingState preserves existing server session on stale old-session writes', () => {
+  const existingSession = { startedAt: 2000, activeSide: 'right', segmentStart: 2000, segments: [], bottleOunces: 0, note: 'server', diaperKinds: [] }
+  const staleSession = { startedAt: 1000, activeSide: 'left', segmentStart: 1000, segments: [], bottleOunces: 0, note: 'stale', diaperKinds: [] }
+  const existingRow = {
+    entries_json: JSON.stringify([]),
+    diapers_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([]),
+    session_json: JSON.stringify(existingSession),
+    theme: 'light',
+    updated_at: 'server-v2',
+  }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [],
+    diapers: [],
+    medicines: [],
+    session: staleSession,
+    theme: 'light',
+    updatedAt: 'server-v1',
+  })
+
+  assert.equal(resolved.stale, true)
+  assert.deepEqual(resolved.session, existingSession)
+})
+
+test('resolveIncomingState preserves server-only entities when stale writes omit them', () => {
+  const existingRow = {
+    entries_json: JSON.stringify([{ id: 'server-feed', endedAt: 10 }]),
+    diapers_json: JSON.stringify([{ id: 'server-diaper', kinds: ['wet'], at: 20 }]),
+    medicines_json: JSON.stringify([{ id: 'server-med', kind: 'tylenol', at: 30 }]),
+    session_json: null,
+    theme: 'light',
+    updated_at: 'server-v2',
+  }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [],
+    diapers: [],
+    medicines: [],
+    session: null,
+    theme: 'light',
+    updatedAt: 'server-v1',
+  })
+
+  assert.equal(resolved.stale, true)
+  assert.deepEqual(resolved.entries.map((entry) => entry.id), ['server-feed'])
+  assert.deepEqual(resolved.diapers.map((diaper) => diaper.id), ['server-diaper'])
+  assert.deepEqual(resolved.medicines.map((medicine) => medicine.id), ['server-med'])
+})

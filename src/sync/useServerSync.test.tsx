@@ -15,6 +15,16 @@ const entry = (id: string, endedAt: number): Entry => ({
   note: '',
 })
 
+const session = (startedAt: number, note = ''): Session => ({
+  startedAt,
+  activeSide: 'left',
+  segmentStart: startedAt,
+  segments: [],
+  bottleOunces: 0,
+  note,
+  diaperKinds: [],
+})
+
 class MockEventSource {
   static instances: MockEventSource[] = []
   url: string
@@ -27,18 +37,19 @@ class MockEventSource {
   close() {}
 }
 
-function Harness({ initialEntries = [] as Entry[] }) {
+function Harness({ initialEntries = [] as Entry[], initialSession = null as Session | null }) {
   const [entries, setEntries] = useState<Entry[]>(initialEntries)
   const [diapers, setDiapers] = useState<DiaperEvent[]>([])
   const [medicines, setMedicines] = useState<MedicineEvent[]>([])
-  const [session, setSession] = useState<Session | null>(null)
+  const [sessionState, setSession] = useState<Session | null>(initialSession)
   const [theme, setTheme] = useState<Theme>('light')
-  const { syncStatus } = useServerSync({ entries, diapers, medicines, session, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
+  const { syncStatus } = useServerSync({ entries, diapers, medicines, session: sessionState, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
 
   return (
     <div>
       <span data-testid="status">{syncStatus}</span>
       <span data-testid="entries">{entries.map((item) => item.id).join(',')}</span>
+      <span data-testid="session-note">{sessionState?.note ?? ''}</span>
       <span data-testid="theme">{theme}</span>
       <button type="button" onClick={() => setEntries((prev) => [entry('local', 3000), ...prev])}>add local</button>
     </div>
@@ -85,6 +96,39 @@ describe('useServerSync', () => {
     expect(fetchMock.mock.calls[0]).toEqual(['/api/state', expect.objectContaining({ cache: 'no-store' })])
     expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
     expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
+  })
+
+  it('preserves server session when replaying pending local changes', async () => {
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync', '1')
+    const serverSession = session(5000, 'server-session')
+    const localSession = session(1000, 'local-stale-session')
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init || init.method !== 'PUT') return { ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], session: serverSession, theme: 'light', updatedAt: 'server-new' }) }
+      return { ok: true, json: async () => ({ updatedAt: 'server-merged', state: { entries: [], diapers: [], medicines: [], session: serverSession, theme: 'light', updatedAt: 'server-merged' } }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness initialSession={localSession} />)
+
+    await waitFor(() => expect(screen.getByTestId('session-note').textContent).toBe('server-session'))
+    const putCall = fetchMock.mock.calls.find((call) => call[1]?.method === 'PUT')
+    expect(JSON.parse(String(putCall?.[1]?.body)).session.note).toBe('server-session')
+  })
+
+  it('replays pending local session when the server has no active session', async () => {
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync', '1')
+    const localSession = session(1000, 'local-session')
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init || init.method !== 'PUT') return { ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-new' }) }
+      return { ok: true, json: async () => ({ updatedAt: 'server-merged', state: { entries: [], diapers: [], medicines: [], session: localSession, theme: 'light', updatedAt: 'server-merged' } }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness initialSession={localSession} />)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' })))
+    const putCall = fetchMock.mock.calls.find((call) => call[1]?.method === 'PUT')
+    expect(JSON.parse(String(putCall?.[1]?.body)).session.note).toBe('local-session')
   })
 
   it('writes local changes back to the server state without opening a live subscription', async () => {
