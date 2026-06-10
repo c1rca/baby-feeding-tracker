@@ -57,7 +57,7 @@ export function useAuxiliaryEventActions({
   showToast,
 }: AuxiliaryEventActionsOptions) {
   const loggedActiveDiaperKinds = useMemo(() => new Set<DiaperKind>(session?.diaperKinds ?? []), [session])
-  const availableSelectedDiapers = selectedDiapers.filter((kind) => !session || !loggedActiveDiaperKinds.has(kind))
+  const availableSelectedDiapers = selectedDiapers
 
   const clearUndoTimeout = () => {
     if (undoState) window.clearTimeout(undoState.timeoutId)
@@ -76,7 +76,6 @@ export function useAuxiliaryEventActions({
   }
 
   const toggleDiaperSelection = (kind: DiaperKind) => {
-    if (session && loggedActiveDiaperKinds.has(kind)) return
     setSelectedDiapers((prev) => prev.includes(kind) ? prev.filter((item) => item !== kind) : [...prev, kind])
   }
 

@@ -22,7 +22,6 @@ type HeroPanelProps = {
   startMinutesAgo: string
   selectedStartMinutesAgo: number
   selectedDiapers: DiaperKind[]
-  loggedActiveDiaperKinds: Set<DiaperKind>
   availableSelectedDiapers: DiaperKind[]
   additionalOptionsOpen: boolean
   setStartOffsetOpen: (updater: (open: boolean) => boolean) => void
@@ -62,7 +61,6 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   startMinutesAgo,
   selectedStartMinutesAgo,
   selectedDiapers,
-  loggedActiveDiaperKinds,
   availableSelectedDiapers,
   additionalOptionsOpen,
   setStartOffsetOpen,
@@ -127,10 +125,9 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
       <div className="diaper-panel" role="group" aria-label="Diaper">
         <span className="diaper-panel-label">Diaper</span>
         {(['wet', 'stool'] as DiaperKind[]).map((kind) => {
-          const alreadyLogged = session && loggedActiveDiaperKinds.has(kind)
-          const selected = selectedDiapers.includes(kind) && !alreadyLogged
-          const label = alreadyLogged ? `${diaperLabel(kind)} already logged for this feed` : session ? `Select ${kind} during active feed` : `Select ${kind} diaper`
-          return <button key={kind} type="button" className={`diaper-chip ${selected ? 'selected' : ''}`} aria-label={label} aria-pressed={selected} disabled={Boolean(alreadyLogged)} onClick={() => toggleDiaperSelection(kind)}>{diaperLabel(kind)}</button>
+          const selected = selectedDiapers.includes(kind)
+          const label = session ? `Select ${kind} during active feed` : `Select ${kind} diaper`
+          return <button key={kind} type="button" className={`diaper-chip ${selected ? 'selected' : ''}`} aria-label={label} aria-pressed={selected} onClick={() => toggleDiaperSelection(kind)}>{diaperLabel(kind)}</button>
         })}
         <button type="button" className="diaper-log-button" aria-label="Log selected diapers" disabled={availableSelectedDiapers.length === 0} onClick={logSelectedDiapers}>Log</button>
       </div>

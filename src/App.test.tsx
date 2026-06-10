@@ -936,6 +936,31 @@ describe('App interactions', () => {
     expect(screen.queryByText(/Outside feed/i)).toBeNull()
   })
 
+
+  it('still allows immediate standalone diaper logging when the active feed already has pending diaper selections', async () => {
+    const user = userEvent.setup()
+    const now = Date.now()
+    localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify({
+      startedAt: now - 5 * 60 * 1000,
+      activeSide: 'left',
+      segments: [{ side: 'left', startedAt: now - 5 * 60 * 1000, endedAt: null }],
+      bottleOunces: 0,
+      note: '',
+      diaperKinds: ['wet', 'stool'],
+    }))
+
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Select wet during active feed/i }))
+    await user.click(screen.getByRole('button', { name: /Select stool during active feed/i }))
+    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
+
+    expect(screen.getByText(/Wet \+ Stool diaper logged/i)).toBeTruthy()
+    const items = screen.getAllByRole('listitem')
+    expect(items).toHaveLength(1)
+    expect(within(items[0]).getByText(/Wet \+ Stool/i)).toBeTruthy()
+  })
+
   it('includes selected active-feed diapers when saving if Log was not pressed', async () => {
     const user = userEvent.setup()
     render(<App />)
@@ -976,20 +1001,13 @@ describe('App interactions', () => {
   })
 
 
-  it('applies live server state events without echoing another sync write', async () => {
-    const listeners: Record<string, (event: MessageEvent) => void> = {}
+  it('does not subscribe to live server state or apply remote session changes across open browsers', async () => {
     class MockEventSource {
       static instance: MockEventSource | null = null
-      onopen: (() => void) | null = null
-      onerror: (() => void) | null = null
       url: string
       constructor(url: string) {
         this.url = url
         MockEventSource.instance = this
-        window.setTimeout(() => this.onopen?.(), 0)
-      }
-      addEventListener(event: string, listener: (event: MessageEvent) => void) {
-        listeners[event] = listener
       }
       close = vi.fn()
     }
@@ -997,61 +1015,39 @@ describe('App interactions', () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
-      if (url === '/api/state' && !init) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
+      if (url === '/api/state' && !init) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: { startedAt: 1, activeSide: 'right', segments: [], bottleOunces: 0, note: '', diaperKinds: [] }, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
       return new Response(JSON.stringify({ ok: true, updatedAt: 'server-write' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
     vi.stubGlobal('EventSource', MockEventSource)
 
     render(<App />)
-    await waitFor(() => expect(MockEventSource.instance?.url).toBe('/api/state/events'))
-    fetchMock.mockClear()
 
-    listeners.state?.(new MessageEvent('state', {
-      data: JSON.stringify({
-        entries: [{ id: 'remote-bottle', type: 'bottle', startedAt: Date.now() - 1000, endedAt: Date.now(), leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: '' }],
-        diapers: [],
-        medicines: [],
-        session: null,
-        theme: 'light',
-        updatedAt: 'server-2',
-      }),
-    }))
-
-    await waitFor(() => expect(screen.getAllByText(/3\.0 oz/i).length).toBeGreaterThan(0))
     await new Promise((resolve) => window.setTimeout(resolve, 10))
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
+    expect(MockEventSource.instance).toBeNull()
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/state')
+    expect(screen.queryByText(/On right/i)).toBeNull()
   })
 
-  it('does not show offline changes saved for a passive connection issue without local changes', async () => {
-    const fetchMock = vi.fn().mockRejectedValue(new Error('offline'))
-    vi.stubGlobal('fetch', fetchMock)
-
-    render(<App />)
-
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state'))
-    expect(screen.queryByText(/Offline changes saved/i)).toBeNull()
-    expect(screen.getByText(/Connection issue/i)).toBeTruthy()
-  })
-
-  it('keeps offline changes locally and syncs them on reconnect', async () => {
+  it('keeps local changes local without pending cross-browser sync', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.fn().mockRejectedValue(new Error('offline'))
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    })
     vi.stubGlobal('fetch', fetchMock)
 
     render(<App />)
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state'))
     expect(screen.queryByText(/Offline changes saved/i)).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
     await user.click(screen.getByRole('button', { name: /Log bottle-only feed/i }))
     await user.click(screen.getByRole('button', { name: /^log bottle$/i }))
-    expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBe('1')
+    expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')).toHaveLength(1)
 
-    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) })
     window.dispatchEvent(new Event('online'))
-    await waitFor(() => expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull())
-    expect(screen.queryByText(/^Synced$/i)).toBeNull()
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
+    await new Promise((resolve) => window.setTimeout(resolve, 10))
+    expect(fetchMock).not.toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
   })
 })
