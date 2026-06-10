@@ -74,6 +74,16 @@ describe('App interactions', () => {
     expect(screen.getByText(/^Next$/i)).toBeTruthy()
   })
 
+  it('shows sync status to the left of the stats toggle', () => {
+    render(<App />)
+
+    const syncBadge = screen.getByLabelText(/Sync status: Online/i)
+    const statsToggle = screen.getByRole('button', { name: /Show stats/i })
+
+    expect(syncBadge.textContent).toBe('Online')
+    expect(syncBadge.compareDocumentPosition(statsToggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('opens a polished stats dashboard with deeper care insights', async () => {
     const now = Date.now()
     localStorage.setItem(

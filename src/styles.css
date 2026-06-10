@@ -14,6 +14,7 @@ body { margin: 0; }
 .sync-synced { color:#166534; border-color:#bbf7d0; background:#f0fdf4; }
 .sync-syncing { color:#1d4ed8; border-color:#bfdbfe; background:#eff6ff; }
 .sync-offline { color:#92400e; border-color:#fde68a; background:#fffbeb; }
+.sync-issue { color:#991b1b; border-color:#fecaca; background:#fef2f2; }
 .icon-plain {
   min-height: auto;
   width: auto;
@@ -300,6 +301,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .sync-pill { background:rgba(15,23,42,.86); border-color:#334155; }
 [data-theme='dark'] .sync-synced { color:#86efac; border-color:#166534; }
 [data-theme='dark'] .sync-syncing { color:#93c5fd; border-color:#1d4ed8; }
+[data-theme='dark'] .sync-issue { color:#fca5a5; border-color:#991b1b; }
 [data-theme='dark'] .sync-offline { color:#fcd34d; border-color:#92400e; }
 
 .trend { display:flex; gap:10px; align-items:flex-end; }

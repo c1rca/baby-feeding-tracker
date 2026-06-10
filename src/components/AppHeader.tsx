@@ -13,17 +13,22 @@ type AppHeaderProps = {
   setSettingsOpen: Dispatch<SetStateAction<boolean>>
 }
 
+const syncLabel: Record<SyncStatus, string> = {
+  synced: 'Online',
+  syncing: 'Syncing',
+  offline: 'Offline changes saved',
+  issue: 'Connection issue',
+}
+
 export function AppHeader({ view, syncStatus, theme, settingsOpen, setView, setTheme, setSettingsOpen }: AppHeaderProps) {
   return (
     <header className="top">
       <h1><Baby size={20} /> Baby Feeding Tracker</h1>
       <div className="top-actions">
+        <span className={`sync-pill sync-${syncStatus}`} aria-label={`Sync status: ${syncLabel[syncStatus]}`}>{syncLabel[syncStatus]}</span>
         <button className={`icon-plain view-icon-toggle ${view === 'stats' ? 'active' : ''}`} aria-label={view === 'stats' ? 'Show tracker' : 'Show stats'} title={view === 'stats' ? 'Show tracker' : 'Show stats'} onClick={() => setView((current) => current === 'stats' ? 'track' : 'stats')}>
           {view === 'stats' ? <ClipboardList size={18} /> : <BarChart3 size={18} />}
         </button>
-        {(syncStatus === 'offline' || syncStatus === 'issue') && (
-          <span className={`sync-pill sync-${syncStatus}`}>{syncStatus === 'offline' ? 'Offline changes saved' : 'Connection issue'}</span>
-        )}
         <button className="icon-plain" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
           {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
         </button>
