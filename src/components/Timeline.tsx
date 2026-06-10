@@ -193,7 +193,7 @@ function EntryTimelineItem({ entry, index, actions }: { entry: Entry; index: num
               {hasBottle ? <span className={`metric bottle-metric ${total === 0 ? 'primary-metric' : ''}`}>{entry.bottleOunces?.toFixed(1)} oz</span> : null}
             </div>
           </div>
-          <span className="timeline-age">{formatDistanceToNow(entry.endedAt, { addSuffix: true })}</span>
+          <span className="timeline-age">{formatDistanceToNow(entry.startedAt, { addSuffix: true })}</span>
           {entry.note ? <div className="note-chip">📝 {entry.note}</div> : null}
         </div>
         {!isEditing ? (

@@ -376,7 +376,8 @@ describe('App interactions', () => {
     expect(within(firstItem).getByRole('menuitem', { name: /Delete entry/i })).toBeTruthy()
   })
 
-  it('orders backfilled timeline feeds by their feed start time, not entry insertion or end time', () => {
+  it('orders backfilled timeline feeds by their feed start time and ages them from that start time', () => {
+    vi.setSystemTime(new Date(2026, 5, 5, 12, 0))
     const newerStart = new Date(2026, 5, 5, 10, 0).getTime()
     const olderStart = new Date(2026, 5, 5, 8, 0).getTime()
     localStorage.setItem(
@@ -409,7 +410,9 @@ describe('App interactions', () => {
 
     const items = screen.getAllByRole('listitem')
     expect(within(items[0]).getByText(/newer feed/i)).toBeTruthy()
+    expect(within(items[0]).getByText(/about 2 hours ago/i)).toBeTruthy()
     expect(within(items[1]).getByText(/older backfill/i)).toBeTruthy()
+    expect(within(items[1]).getByText(/about 4 hours ago/i)).toBeTruthy()
   })
 
   it('closes a timeline action menu when clicking outside it', async () => {
