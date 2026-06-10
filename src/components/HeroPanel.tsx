@@ -89,10 +89,11 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   logMedicine,
 }, ref) {
   const statusLabel = sessionStatusLabel(session)
+  const showNextCue = !session
 
   return (
     <section className="card hero" ref={ref}>
-      <div className="hero-top"><div className="feed-cues hero-priority-cues"><span className="next-window"><span>Next</span>{' '}<strong>{nextFeedWindowText}{hasLastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span></div>{statusLabel ? <span className="pill">{statusLabel}</span> : null}</div>
+      <div className="hero-top"><div className="feed-cues hero-priority-cues">{showNextCue ? <span className="next-window"><span>Next</span>{' '}<strong>{nextFeedWindowText}{hasLastFeed ? <> <span className="next-feed-side">{nextFeedSideText}</span></> : null}</strong></span> : null}</div>{statusLabel ? <span className="pill">{statusLabel}</span> : null}</div>
       <div className="timer-cluster">
         <div className="timer">{formatDuration(activeSeconds)}</div>
         {session ? (

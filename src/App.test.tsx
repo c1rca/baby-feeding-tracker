@@ -59,12 +59,19 @@ describe('App interactions', () => {
     expect(pauseToggle.className).toContain('transport-toggle')
     expect(pauseToggle.className).toContain('is-playing')
     expect(screen.queryByRole('button', { name: /^Pause$/i })).toBeNull()
+    expect(screen.queryByText(/^Next$/i)).toBeNull()
+    expect(document.querySelector('.next-feed-side')).toBeNull()
 
     await user.click(pauseToggle)
 
     expect(screen.getByText(/^Paused left$/i)).toBeTruthy()
+    expect(screen.queryByText(/^Next$/i)).toBeNull()
+    expect(document.querySelector('.next-feed-side')).toBeNull()
     const resumeToggle = screen.getByRole('button', { name: /Resume feed timer/i })
     expect(resumeToggle.className).toContain('is-paused')
+
+    await user.click(screen.getByRole('button', { name: /Clear active feed/i }))
+    expect(screen.getByText(/^Next$/i)).toBeTruthy()
   })
 
   it('opens a polished stats dashboard with deeper care insights', async () => {
