@@ -109,7 +109,9 @@ export const useServerSync = ({ entries, diapers, medicines, session, theme, set
         setSyncStatus('offline')
       }
     })
-    events.onerror = () => setSyncStatus(localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'issue')
+    events.onerror = () => {
+      if (localStorage.getItem(KEY_PENDING_SYNC) === '1') setSyncStatus('offline')
+    }
     return () => events.close()
   }, [hasHydrated, applyServerState])
 

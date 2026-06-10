@@ -101,6 +101,22 @@ describe('useServerSync', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('stays visually quiet when an already-synced SSE connection drops in the background', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'v1' }) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness />)
+    await waitFor(() => expect(MockEventSource.instances).toHaveLength(1))
+    expect(screen.getByTestId('status').textContent).toBe('synced')
+
+    act(() => {
+      MockEventSource.instances[0].onerror?.()
+    })
+
+    expect(screen.getByTestId('status').textContent).toBe('synced')
+    expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
+  })
+
   it('marks pending sync and retries local changes when offline', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce({ ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'v1' }) })
