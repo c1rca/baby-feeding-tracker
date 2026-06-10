@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { DiaperEvent, Entry, MedicineEvent, Session, Theme } from '../types'
@@ -39,6 +39,7 @@ function Harness({ initialEntries = [] as Entry[] }) {
     <div>
       <span data-testid="status">{syncStatus}</span>
       <span data-testid="entries">{entries.map((item) => item.id).join(',')}</span>
+      <span data-testid="theme">{theme}</span>
       <button type="button" onClick={() => setEntries((prev) => [entry('local', 3000), ...prev])}>add local</button>
     </div>
   )
@@ -57,29 +58,35 @@ describe('useServerSync', () => {
     vi.restoreAllMocks()
   })
 
-  it('does not hydrate from the server or subscribe to live state events', async () => {
+  it('hydrates timeline data from the server without subscribing to live state events', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ entries: [entry('server', 2000)], diapers: [], medicines: [], session: null, theme: 'dark', updatedAt: 'v1' }) })
     vi.stubGlobal('fetch', fetchMock)
 
     render(<Harness />)
-    await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(screen.getByTestId('entries').textContent).toBe('')
+    await waitFor(() => expect(screen.getByTestId('entries').textContent).toBe('server'))
+    expect(screen.getByTestId('theme').textContent).toBe('dark')
     expect(screen.getByTestId('status').textContent).toBe('synced')
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/state')
+    expect(fetchMock).toHaveBeenCalledWith('/api/state')
     expect(MockEventSource.instances).toHaveLength(0)
   })
 
-  it('does not write local changes to the shared server state or mark pending sync', async () => {
-    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ updatedAt: 'v2' }) })
+  it('writes local changes back to the server state without opening a live subscription', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init) return { ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-1' }) }
+      return { ok: true, json: async () => ({ updatedAt: 'server-2' }) }
+    })
     vi.stubGlobal('fetch', fetchMock)
 
     render(<Harness />)
-    screen.getByRole('button', { name: 'add local' }).click()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state'))
     await new Promise((resolve) => setTimeout(resolve, 0))
+    screen.getByRole('button', { name: 'add local' }).click()
 
-    expect(screen.getByTestId('entries').textContent).toContain('local')
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' })))
+    const putCall = [...fetchMock.mock.calls].reverse().find((call) => call[1]?.method === 'PUT')
+    expect(JSON.parse(String(putCall?.[1]?.body)).entries[0].id).toBe('local')
     expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
+    expect(MockEventSource.instances).toHaveLength(0)
   })
 })

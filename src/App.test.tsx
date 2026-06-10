@@ -1001,7 +1001,7 @@ describe('App interactions', () => {
   })
 
 
-  it('does not subscribe to live server state or apply remote session changes across open browsers', async () => {
+  it('hydrates saved server state without subscribing to live server events', async () => {
     class MockEventSource {
       static instance: MockEventSource | null = null
       url: string
@@ -1025,15 +1025,16 @@ describe('App interactions', () => {
 
     await new Promise((resolve) => window.setTimeout(resolve, 10))
     expect(MockEventSource.instance).toBeNull()
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/state')
-    expect(screen.queryByText(/On right/i)).toBeNull()
+    expect(fetchMock).toHaveBeenCalledWith('/api/state')
+    expect(screen.getByText(/On right/i)).toBeTruthy()
   })
 
-  it('keeps local changes local without pending cross-browser sync', async () => {
+  it('saves local changes back to the server without pending cross-browser sync banners', async () => {
     const user = userEvent.setup()
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
-      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      if (String(input) === '/api/state' && !init) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
+      return new Response(JSON.stringify({ ok: true, updatedAt: 'server-2' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
 
@@ -1048,6 +1049,6 @@ describe('App interactions', () => {
 
     window.dispatchEvent(new Event('online'))
     await new Promise((resolve) => window.setTimeout(resolve, 10))
-    expect(fetchMock).not.toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
+    expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
   })
 })
