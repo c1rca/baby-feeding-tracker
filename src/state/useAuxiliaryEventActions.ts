@@ -84,12 +84,6 @@ export function useAuxiliaryEventActions({
     const kinds = availableSelectedDiapers
     if (kinds.length === 0) return showToast(session ? 'Select an unlogged diaper' : 'Select wet, stool, or both')
     const label = kinds.map(diaperLabel).join(' + ')
-    if (session) {
-      setSession({ ...session, diaperKinds: [...session.diaperKinds, ...kinds] })
-      setSelectedDiapers((prev) => prev.filter((kind) => !kinds.includes(kind)))
-      showToast(`${label} added to this feed`)
-      return
-    }
     const t = new Date().getTime()
     const diaper: DiaperEvent = { id: makeId(), kinds, at: t, context: 'standalone' }
     setDiapers((prev) => [diaper, ...prev].sort((a, b) => b.at - a.at))
