@@ -74,8 +74,10 @@ body { margin: 0; }
 .additional-options-toggle strong { font-size:.82rem; opacity:.78; }
 .additional-options-panel { display:grid; gap:10px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:16px; background:rgba(248,250,252,.58); animation:panel-in .16s ease; }
 .medicine-reminder-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid #fed7aa; border-radius:18px; background:linear-gradient(135deg,#fff7ed,#fffbeb); color:#7c2d12; box-shadow:0 14px 28px rgba(154,52,18,.10); }
-.medicine-reminder-banner div { display:grid; gap:2px; }
+.medicine-reminder-banner div { display:grid; gap:2px; flex:1; min-width:0; }
 .medicine-reminder-banner span { color:#9a3412; font-size:.9rem; font-weight:650; }
+.medicine-reminder-action { display:inline-flex; align-items:center; gap:6px; padding:8px 10px; border-radius:999px; border:1px solid #fdba74; background:#fff7ed; color:#9a3412; font-size:.82rem; font-weight:800; white-space:nowrap; box-shadow:none; }
+.medicine-reminder-action:hover { transform:none; box-shadow:0 8px 18px rgba(154,52,18,.12); border-color:#fb923c; }
 .hero-micro-meta span { display:inline-flex; align-items:center; gap:5px; }
 .hero-micro-meta span + span::before { content:""; width:4px; height:4px; border-radius:999px; background:#cbd5e1; margin-right:1px; }
 .start-offset-shell { display:grid; justify-items:start; gap:8px; margin: 8px 0 12px; }
@@ -273,6 +275,8 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .additional-options-toggle:hover { background:rgba(30,41,59,.72); border-color:#475569; }
 [data-theme='dark'] .medicine-reminder-banner { background:linear-gradient(135deg,#431407,#1f2937); border-color:#9a3412; color:#ffedd5; box-shadow:0 14px 28px rgba(0,0,0,.22); }
 [data-theme='dark'] .medicine-reminder-banner span { color:#fed7aa; }
+[data-theme='dark'] .medicine-reminder-action { background:#431407; border-color:#9a3412; color:#ffedd5; }
+[data-theme='dark'] .medicine-reminder-action:hover { background:#5f1b08; border-color:#fb923c; }
 [data-theme='dark'] .icon-plain { color:#cbd5e1; }
 [data-theme='dark'] .hero-micro-meta span + span::before { background:#475569; }
 [data-theme='dark'] .hero-actions .active-clear-link { color:#94a3b8; background:transparent; border-color:transparent; box-shadow:none; }

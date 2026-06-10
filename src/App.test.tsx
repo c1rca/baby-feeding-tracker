@@ -97,10 +97,11 @@ describe('App interactions', () => {
     render(<App />)
 
     expect(screen.getByRole('alert').textContent).toMatch(/Take Tylenol/i)
-    expect(screen.queryByRole('button', { name: /Log Tylenol/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Log Tylenol now/i })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    expect(screen.getByRole('button', { name: /Log Tylenol/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Log Motrin/i })).toBeTruthy()
+    const medicineGroup = screen.getByRole('group', { name: /^Medicine$/i })
+    expect(within(medicineGroup).getByRole('button', { name: /Log Tylenol/i })).toBeTruthy()
+    expect(within(medicineGroup).getByRole('button', { name: /Log Motrin/i })).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: /Dismiss medicine reminder/i }))
     expect(screen.queryByRole('alert')).toBeNull()
@@ -114,6 +115,41 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Undo medicine log/i }))
     expect(screen.getByText(/Medicine log undone/i)).toBeTruthy()
     expect(screen.queryAllByText(/^Tylenol$/i).length).toBe(1)
+  })
+
+  it('quick logs the due medicine from the reminder banner', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'dose-old', kind: 'motrin', at: now - 6 * 60 * 60 * 1000 - 1 }]))
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toMatch(/Take Motrin/i)
+    await user.click(within(alert).getByRole('button', { name: /Log Motrin now/i }))
+
+    expect(screen.getByText(/Motrin logged/i)).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+    const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
+    expect(saved[0].kind).toBe('motrin')
+    expect(saved[0].at).toBe(now)
+  })
+
+  it('quick logs medicine from a notification link query and removes the query', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    window.history.replaceState({}, '', '/?quickMed=tylenol')
+
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByText(/Tylenol logged/i)).toBeTruthy())
+    const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
+    expect(saved).toHaveLength(1)
+    expect(saved[0].kind).toBe('tylenol')
+    expect(window.location.search).toBe('')
   })
 
   it('shows a medicine reminder for a due kind even when another medicine was taken more recently', () => {

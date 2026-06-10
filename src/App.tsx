@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import type { DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, View } from './types'
 import { formatClockInput } from './domain/trackerDomain'
@@ -42,6 +42,7 @@ function App() {
   const [confirmingDeleteEntryId, setConfirmingDeleteEntryId] = useState<string | null>(null)
   const [resumeFocusTick, setResumeFocusTick] = useState(0)
   const heroRef = useRef<HTMLElement | null>(null)
+  const processedQuickMedicineRef = useRef(false)
   const { syncStatus } = useServerSync({ entries, diapers, medicines, session, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { toast, undoState, setToast, setUndoState, showToast, undoToastText, undoLabel, undo } = useUndoToast({ setEntries, setDiapers, setMedicines, setSession })
@@ -118,6 +119,19 @@ function App() {
     setUndoState,
     showToast,
   })
+
+  useEffect(() => {
+    if (processedQuickMedicineRef.current) return
+    const params = new URLSearchParams(window.location.search)
+    const quickMed = params.get('quickMed')
+    if (quickMed !== 'tylenol' && quickMed !== 'motrin') return
+    processedQuickMedicineRef.current = true
+    logMedicine(quickMed)
+    params.delete('quickMed')
+    const nextQuery = params.toString()
+    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`
+    window.history.replaceState({}, '', nextUrl)
+  }, [logMedicine])
 
   const {
     today,
@@ -216,6 +230,7 @@ function App() {
         medicineReminder={medicineReminder}
         showMedicineReminder={showMedicineReminder}
         dismissMedicineReminder={setDismissedMedicineReminderId}
+        logMedicine={logMedicine}
       />
       </div>) : (
       <StatsDashboard stats={stats} trend={trend} />

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildMedicineReminder, buildReminder, createNotificationScheduler, formatTime, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeTextEmailRecipients } from '../server/notifications.js'
+import { buildMedicineQuickLogUrl, buildMedicineReminder, buildReminder, createNotificationScheduler, formatTime, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeTextEmailRecipients } from '../server/notifications.js'
 
 test('buildReminder schedules the next feeding window two to three hours after latest feed start', () => {
   const startedAt = new Date('2026-06-05T08:00:00Z').getTime()
@@ -60,6 +60,10 @@ test('normalizeTextEmailRecipients supports comma-separated addresses', () => {
   )
 })
 
+test('buildMedicineQuickLogUrl links directly to quick logging the medicine kind', () => {
+  assert.equal(buildMedicineQuickLogUrl('motrin'), 'https://feedr.kjw.lol/?quickMed=motrin')
+})
+
 test('notification scheduler sends Gotify and text-email medication reminders once per missed dose window', async () => {
   let now = new Date('2026-06-05T14:00:00Z').getTime()
   const row = {
@@ -95,11 +99,13 @@ test('notification scheduler sends Gotify and text-email medication reminders on
   assert.equal(sent[0].title, 'Medicine reminder')
   assert.match(sent[0].message, /Take Motrin/i)
   assert.match(sent[0].message, /Last dose was Motrin/i)
-  assert.match(sent[0].message, /https:\/\/feedr\.kjw\.lol$/)
+  assert.match(sent[0].message, /Log Motrin now: https:\/\/feedr\.kjw\.lol\/\?quickMed=motrin$/)
+  assert.equal(sent[0].extras?.['client::notification']?.click?.url, 'https://feedr.kjw.lol/?quickMed=motrin')
   assert.equal(textEmails.length, 1)
   assert.equal(textEmails[0].subject, 'Medicine reminder')
   assert.match(textEmails[0].message, /Take Motrin/i)
   assert.match(textEmails[0].message, /Last dose was Motrin/i)
+  assert.match(textEmails[0].message, /Log Motrin now: https:\/\/feedr\.kjw\.lol\/\?quickMed=motrin$/)
   assert.ok(notificationRows.get('medicine:motrin:dose-1').sent_at)
   assert.equal(timers.length, 1)
 
@@ -114,6 +120,7 @@ test('notification scheduler sends Gotify and text-email medication reminders on
 
   assert.equal(sent.length, 2)
   assert.match(sent[1].message, /Take Tylenol/i)
+  assert.match(sent[1].message, /Log Tylenol now: https:\/\/feedr\.kjw\.lol\/\?quickMed=tylenol$/)
   assert.equal(textEmails.length, 2)
   assert.ok(notificationRows.get('medicine:tylenol:dose-2').sent_at)
 })

@@ -73,6 +73,11 @@ function medicationLabel(kind) {
   return kind === 'motrin' ? 'Motrin' : 'Tylenol'
 }
 
+export function buildMedicineQuickLogUrl(kind) {
+  const medication = kind === 'motrin' ? 'motrin' : 'tylenol'
+  return `${FEEDR_URL}/?quickMed=${medication}`
+}
+
 export function createNotificationScheduler({
   selectState,
   getNotificationState,
@@ -155,11 +160,16 @@ export function createNotificationScheduler({
 
       try {
         if (freshReminder.kind === 'medicine') {
+          const medicineLabelText = medicationLabel(freshReminder.recommendedKind)
+          const quickLogUrl = buildMedicineQuickLogUrl(freshReminder.recommendedKind)
           const medicinePayload = {
             title: 'Medicine reminder',
             subject: 'Medicine reminder',
-            message: `Take ${medicationLabel(freshReminder.recommendedKind)}. Last dose was ${medicationLabel(freshReminder.medicineKind)} 6+ hours ago.\n\n${FEEDR_URL}`,
+            message: `Take ${medicineLabelText}. Last dose was ${medicationLabel(freshReminder.medicineKind)} 6+ hours ago.\n\nLog ${medicineLabelText} now: ${quickLogUrl}`,
             priority: 5,
+            extras: {
+              'client::notification': { click: { url: quickLogUrl } },
+            },
           }
           markHandled(freshReminder)
           const results = await Promise.allSettled([
@@ -198,7 +208,7 @@ export function formatTime(timestamp, timeZone = process.env.FEEDING_TIME_ZONE |
   return new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit', timeZone }).format(new Date(timestamp))
 }
 
-export async function sendGotifyMessage({ url, token, title, message, priority = 5 }) {
+export async function sendGotifyMessage({ url, token, title, message, priority = 5, extras }) {
   if (!url || !token) throw new Error('Gotify URL and token are required')
   const response = await fetch(`${url.replace(/\/$/, '')}/message`, {
     method: 'POST',
@@ -206,7 +216,7 @@ export async function sendGotifyMessage({ url, token, title, message, priority =
       'Content-Type': 'application/json',
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ title, message, priority }),
+    body: JSON.stringify({ title, message, priority, ...(extras ? { extras } : {}) }),
   })
   if (!response.ok) throw new Error(`Gotify responded ${response.status}`)
 }
