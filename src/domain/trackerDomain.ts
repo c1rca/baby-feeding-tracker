@@ -204,8 +204,8 @@ export const calculateStats = (
   const balanceTotal = Math.max(1, totalLeft + totalRight)
   const leftPercent = Math.round((totalLeft / balanceTotal) * 100)
   const bestDay = trendDays.reduce((best, day) => (day.count > best.count ? day : best), trendDays[0] ?? { label: '—', count: 0 })
-  const sorted = recentEntries.slice().sort((a, b) => a.endedAt - b.endedAt)
-  const gaps = sorted.slice(1).map((entry, index) => Math.max(0, entry.endedAt - sorted[index].endedAt))
+  const sorted = recentEntries.slice().sort((a, b) => a.startedAt - b.startedAt)
+  const gaps = sorted.slice(1).map((entry, index) => Math.max(0, entry.startedAt - sorted[index].endedAt))
   const avgGap = gaps.length ? Math.round(gaps.reduce((sum, gap) => sum + gap, 0) / gaps.length / 1000) : 0
   const nightFeeds = recentEntries.filter((entry) => {
     const hour = new Date(entry.endedAt).getHours()

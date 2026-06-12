@@ -141,7 +141,7 @@ export function TrackerModals({
             <div className="hero-top"><h2>Add Missed Feed</h2><span className="pill">Manual</span></div>
             <div className="manual-grid">
               <label>Feed date<input type="date" value={manualDraft.date} onChange={(e) => setManualDraft({ ...manualDraft, date: e.target.value })} /></label>
-              <label>Feed time<input type="time" value={manualDraft.time} onChange={(e) => setManualDraft({ ...manualDraft, time: e.target.value })} /></label>
+              <label>Feed start time<input type="time" value={manualDraft.time} onChange={(e) => setManualDraft({ ...manualDraft, time: e.target.value })} /></label>
               <label>Manual left minutes<input inputMode="decimal" value={manualDraft.leftMinutes} onChange={(e) => setManualDraft({ ...manualDraft, leftMinutes: e.target.value })} placeholder="0" /></label>
               <label>Manual right minutes<input inputMode="decimal" value={manualDraft.rightMinutes} onChange={(e) => setManualDraft({ ...manualDraft, rightMinutes: e.target.value })} placeholder="0" /></label>
               <label>Manual bottle ounces<input inputMode="decimal" value={manualDraft.bottleOunces} onChange={(e) => setManualDraft({ ...manualDraft, bottleOunces: e.target.value })} placeholder="0.0" /></label>

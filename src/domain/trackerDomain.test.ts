@@ -88,6 +88,20 @@ describe('trackerDomain', () => {
     vi.useRealTimers()
   })
 
+  it('calculates longest stretch as previous end to next start in timeline order', () => {
+    const entries = [
+      entry({ id: 'overnight', startedAt: todayAt(2, 53), endedAt: todayAt(3, 35), leftSeconds: 0, rightSeconds: 1800 }),
+      entry({ id: 'backfill-overlap', startedAt: todayAt(5, 30), endedAt: todayAt(10, 14), leftSeconds: 1800, rightSeconds: 0 }),
+      entry({ id: 'morning', startedAt: todayAt(8), endedAt: todayAt(10, 13), leftSeconds: 0, rightSeconds: 1620 }),
+    ]
+    const trend = calculateTrend(entries, noon)
+    const today = calculateTodaySummary(entries, [], noon)
+
+    const stats = calculateStats(entries, [], noon, today, trend.days)
+
+    expect(stats.longestGapLabel).toBe('1h 55m')
+  })
+
   it('normalizes legacy single-kind diapers', () => {
     expect(diaperKinds({ id: 'd1', kind: 'wet', at: noon, context: 'standalone' })).toEqual(['wet'])
   })

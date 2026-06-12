@@ -248,7 +248,8 @@ function saveEntryEdit(entry: Entry, editing: NonNullable<EditingState>, actions
   const rightSeconds = Math.max(0, Math.round((Number(editing.rightMinutes) || 0) * 60))
   const bottle = Number(editing.bottleOunces) > 0 ? Number(editing.bottleOunces) : null
   const type: FeedType = bottle && leftSeconds + rightSeconds > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
-  actions.setEntries((prev) => prev.map((current) => current.id === entry.id ? { ...current, type, leftSeconds, rightSeconds, bottleOunces: bottle, note: editing.note.trim(), diaperKinds: editing.diaperKinds } : current).sort((a, b) => b.endedAt - a.endedAt))
+  const durationMs = (leftSeconds + rightSeconds) * 1000
+  actions.setEntries((prev) => prev.map((current) => current.id === entry.id ? { ...current, type, leftSeconds, rightSeconds, bottleOunces: bottle, note: editing.note.trim(), diaperKinds: editing.diaperKinds, endedAt: current.startedAt + durationMs } : current).sort((a, b) => b.endedAt - a.endedAt))
   actions.setEditing(null)
   actions.showToast('Entry updated')
 }

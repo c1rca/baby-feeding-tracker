@@ -1,9 +1,10 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import App from './App'
+import type { Entry } from './types'
 
 const STORAGE_SESSION_KEY = 'baby-feeding-tracker:v1:session'
-import App from './App'
 
 const STORAGE_KEY = 'baby-feeding-tracker:v1:entries'
 const STORAGE_DIAPERS_KEY = 'baby-feeding-tracker:v1:diapers'
@@ -62,19 +63,19 @@ describe('App interactions', () => {
 
     const dialog = screen.getByRole('dialog', { name: /Add missed feed/i })
     expect(within(dialog).getByLabelText(/Feed date/i)).toHaveProperty('value', '2026-06-10')
-    expect(within(dialog).getByLabelText(/Feed time/i)).toHaveProperty('value', '12:00')
+    expect(within(dialog).getByLabelText(/Feed start time/i)).toHaveProperty('value', '12:00')
 
     await user.clear(within(dialog).getByLabelText(/Feed date/i))
     await user.type(within(dialog).getByLabelText(/Feed date/i), '2026-06-04')
-    await user.clear(within(dialog).getByLabelText(/Feed time/i))
-    await user.type(within(dialog).getByLabelText(/Feed time/i), '05:00')
+    await user.clear(within(dialog).getByLabelText(/Feed start time/i))
+    await user.type(within(dialog).getByLabelText(/Feed start time/i), '05:00')
     await user.type(within(dialog).getByLabelText(/Manual left minutes/i), '15')
     await user.click(within(dialog).getByRole('button', { name: /Save missed feed/i }))
 
     expect(screen.getByText(/Missed feed saved/i)).toBeTruthy()
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
-    expect(saved[0].endedAt).toBe(new Date(2026, 5, 4, 5, 0).getTime())
-    expect(saved[0].startedAt).toBe(new Date(2026, 5, 4, 4, 45).getTime())
+    expect(saved[0].startedAt).toBe(new Date(2026, 5, 4, 5, 0).getTime())
+    expect(saved[0].endedAt).toBe(new Date(2026, 5, 4, 5, 15).getTime())
   })
 
   it('shows older timeline entries with the calendar date before the clock time', () => {
@@ -896,13 +897,14 @@ describe('App interactions', () => {
   })
 
   it('edits left and right nursing minutes in a timeline item', async () => {
+    const baseStartedAt = Date.now() - 720000
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify([
         {
           id: 'entry-nursing-edit',
           type: 'breast',
-          startedAt: Date.now() - 720000,
+          startedAt: baseStartedAt,
           endedAt: Date.now(),
           leftSeconds: 420,
           rightSeconds: 300,
@@ -928,9 +930,10 @@ describe('App interactions', () => {
     const updatedItem = screen.getAllByRole('listitem')[0]
     expect(within(updatedItem).getByText(/Left:\s+9m 00s/i)).toBeTruthy()
     expect(within(updatedItem).getByText(/Right:\s+4m 00s/i)).toBeTruthy()
-    const savedEntries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<{ leftSeconds: number; rightSeconds: number }>
+    const savedEntries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<{ startedAt: number; endedAt: number; leftSeconds: number; rightSeconds: number }>
     expect(savedEntries[0].leftSeconds).toBe(540)
     expect(savedEntries[0].rightSeconds).toBe(240)
+    expect(savedEntries[0].endedAt).toBe(baseStartedAt + 13 * 60 * 1000)
   })
 
   it('requires confirmation before clearing all data', async () => {
@@ -961,12 +964,16 @@ describe('App interactions', () => {
     confirmSpy.mockRestore()
   })
 
-  it('adds a missed manual feed with bottle and nursing details', async () => {
+  it('adds a missed manual feed with bottle and nursing details from the entered start time', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
     await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
+    await user.clear(screen.getByLabelText(/Feed date/i))
+    await user.type(screen.getByLabelText(/Feed date/i), '2026-06-10')
+    await user.clear(screen.getByLabelText(/Feed start time/i))
+    await user.type(screen.getByLabelText(/Feed start time/i), '08:00')
     await user.clear(screen.getByLabelText(/Manual bottle ounces/i))
     await user.type(screen.getByLabelText(/Manual bottle ounces/i), '2.5')
     await user.clear(screen.getByLabelText(/Manual left minutes/i))
@@ -976,6 +983,9 @@ describe('App interactions', () => {
     await user.type(screen.getByLabelText(/Manual note/i), 'late log')
     await user.click(screen.getByRole('button', { name: /Save missed feed/i }))
 
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Entry[]
+    expect(saved[0].startedAt).toBe(new Date('2026-06-10T08:00:00').getTime())
+    expect(saved[0].endedAt).toBe(new Date('2026-06-10T08:12:00').getTime())
     expect(screen.getByText(/Missed feed saved/i)).toBeTruthy()
     expect(screen.getByText(/mixed/i)).toBeTruthy()
     expect(screen.getAllByText(/2\.5 oz/i).length).toBeGreaterThan(0)
