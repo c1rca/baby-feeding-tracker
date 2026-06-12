@@ -300,10 +300,12 @@ describe('App interactions', () => {
     await vi.advanceTimersByTimeAsync(10)
 
     await waitFor(() => expect(screen.getByText(/Motrin logged/i)).toBeTruthy())
-    const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
-    expect(saved).toHaveLength(1)
-    expect(saved[0].kind).toBe('motrin')
-    expect(saved[0].at).toBeGreaterThanOrEqual(now)
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
+      expect(saved).toHaveLength(1)
+      expect(saved[0].kind).toBe('motrin')
+      expect(saved[0].at).toBeGreaterThanOrEqual(now)
+    })
     expect(window.location.search).toBe('')
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({

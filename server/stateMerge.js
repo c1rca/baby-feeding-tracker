@@ -23,10 +23,11 @@ function byId(items) {
   return map
 }
 
-export function mergeByIdPreservingExisting(existingItems, incomingItems) {
+export function mergeByIdPreservingExisting(existingItems, incomingItems, deletedIds = []) {
   const merged = byId(existingItems)
+  const deleted = new Set(Array.isArray(deletedIds) ? deletedIds : [])
   for (const item of Array.isArray(incomingItems) ? incomingItems : []) {
-    if (item?.id) merged.set(item.id, item)
+    if (item?.id && !deleted.has(item.id)) merged.set(item.id, item)
   }
   return [...merged.values()]
 }
@@ -42,15 +43,15 @@ export function isStaleStateWrite(existingUpdatedAt, clientUpdatedAt) {
 // - Stale clients are treated as offline replays and may only add/update ID-based entities.
 // - Stale clients must not delete server-only entities by omission.
 // - Stale clients must not replace active server session state; session conflict handling stays server-authoritative until sessions have IDs/revisions.
-export function resolveIncomingState(existingRow, incoming) {
+export function resolveIncomingState(existingRow, incoming, options = {}) {
   const stale = isStaleStateWrite(existingRow?.updated_at, incoming.updatedAt)
   if (!stale || !existingRow) return { ...incoming, stale }
 
   return {
     ...incoming,
-    entries: mergeByIdPreservingExisting(parseJsonArray(existingRow.entries_json), incoming.entries),
-    diapers: mergeByIdPreservingExisting(parseJsonArray(existingRow.diapers_json), incoming.diapers),
-    medicines: mergeByIdPreservingExisting(parseJsonArray(existingRow.medicines_json), incoming.medicines),
+    entries: mergeByIdPreservingExisting(parseJsonArray(existingRow.entries_json), incoming.entries, options.deletedEntryIds),
+    diapers: mergeByIdPreservingExisting(parseJsonArray(existingRow.diapers_json), incoming.diapers, options.deletedDiaperIds),
+    medicines: mergeByIdPreservingExisting(parseJsonArray(existingRow.medicines_json), incoming.medicines, options.deletedMedicineIds),
     session: parseJsonValue(existingRow.session_json, null),
     stale,
   }

@@ -60,6 +60,12 @@ db.exec(`
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS deleted_items (
+    item_id TEXT PRIMARY KEY,
+    collection TEXT NOT NULL,
+    deleted_at TEXT NOT NULL
+  );
 `)
 
 const hasDiapersColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'diapers_json'").get().count > 0
@@ -95,6 +101,14 @@ const upsertSetting = db.prepare(`
   ON CONFLICT(key) DO UPDATE SET
     value = excluded.value,
     updated_at = excluded.updated_at
+`)
+const selectDeletedItems = db.prepare('SELECT item_id, collection FROM deleted_items')
+const upsertDeletedItem = db.prepare(`
+  INSERT INTO deleted_items (item_id, collection, deleted_at)
+  VALUES (@item_id, @collection, @deleted_at)
+  ON CONFLICT(item_id) DO UPDATE SET
+    collection = excluded.collection,
+    deleted_at = excluded.deleted_at
 `)
 
 const redactError = (error) => ({
@@ -142,6 +156,24 @@ const summarizeState = (entries, session, theme, diapers = [], medicines = []) =
   sessionStartedAt: session?.startedAt ?? null,
   theme,
 })
+
+const deletedItemOptions = () => {
+  const deletedEntryIds = []
+  const deletedDiaperIds = []
+  const deletedMedicineIds = []
+  for (const row of selectDeletedItems.all()) {
+    if (row.collection === 'entries') deletedEntryIds.push(row.item_id)
+    if (row.collection === 'diapers') deletedDiaperIds.push(row.item_id)
+    if (row.collection === 'medicines') deletedMedicineIds.push(row.item_id)
+  }
+  return { deletedEntryIds, deletedDiaperIds, deletedMedicineIds }
+}
+
+const recordDeletedItems = (audit, deletedAt) => {
+  for (const entry of audit.entries?.removed || []) upsertDeletedItem.run({ item_id: entry.id, collection: 'entries', deleted_at: deletedAt })
+  for (const diaper of audit.diapers?.removed || []) upsertDeletedItem.run({ item_id: diaper.id, collection: 'diapers', deleted_at: deletedAt })
+  for (const medicine of audit.medicines?.removed || []) upsertDeletedItem.run({ item_id: medicine.id, collection: 'medicines', deleted_at: deletedAt })
+}
 
 const createStartupBackup = async () => {
   if (process.env.BACKUP_ON_START !== '1') return null
@@ -270,7 +302,7 @@ app.put('/api/state', (req, res) => {
     session: req.body?.session ?? null,
     theme: req.body?.theme === 'dark' ? 'dark' : 'light',
     updatedAt: req.body?.updatedAt,
-  })
+  }, deletedItemOptions())
   const { entries, diapers, medicines, session, theme } = incoming
 
   const entriesJson = JSON.stringify(entries)
@@ -288,11 +320,13 @@ app.put('/api/state', (req, res) => {
     updated_at: updatedAt,
   })
 
-  appendEventLog('state_write_audit', buildStateAudit(existingRow, { entries, diapers, medicines, session, theme }, {
+  const audit = buildStateAudit(existingRow, { entries, diapers, medicines, session, theme }, {
     staleWriteMerged: incoming.stale,
     clientUpdatedAt: req.body?.updatedAt,
     nextUpdatedAt: updatedAt,
-  }))
+  })
+  recordDeletedItems(audit, updatedAt)
+  appendEventLog('state_write_audit', audit)
   appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines), staleWriteMerged: incoming.stale, entries, diapers, medicines, session })
   notificationScheduler?.evaluate()
 

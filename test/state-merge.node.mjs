@@ -138,6 +138,31 @@ test('resolveIncomingState preserves server-only entities when stale writes omit
   assert.deepEqual(resolved.medicines.map((medicine) => medicine.id), ['server-med'])
 })
 
+test('resolveIncomingState does not resurrect stale entries that were already deleted on the server', () => {
+  const existingRow = {
+    entries_json: JSON.stringify([{ id: 'server-feed', endedAt: 20 }]),
+    diapers_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([]),
+    session_json: null,
+    theme: 'light',
+    updated_at: 'server-after-delete',
+  }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [{ id: 'deleted-feed', endedAt: 10 }, { id: 'server-feed', endedAt: 20 }, { id: 'new-offline-feed', endedAt: 30 }],
+    diapers: [],
+    medicines: [],
+    session: null,
+    theme: 'light',
+    updatedAt: 'server-before-delete',
+  }, {
+    deletedEntryIds: ['deleted-feed'],
+  })
+
+  assert.equal(resolved.stale, true)
+  assert.deepEqual(resolved.entries.map((entry) => entry.id).sort(), ['new-offline-feed', 'server-feed'])
+})
+
 test('buildStateAudit captures compact rebuild-critical timeline changes', () => {
   const existingRow = {
     entries_json: JSON.stringify([{ id: 'feed-old', type: 'breast', startedAt: 100, endedAt: 200, leftSeconds: 60, rightSeconds: 0, bottleOunces: null, note: 'before' }]),
