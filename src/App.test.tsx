@@ -78,6 +78,35 @@ describe('App interactions', () => {
     expect(saved[0].endedAt).toBe(new Date(2026, 5, 4, 5, 15).getTime())
   })
 
+  it('keeps the real latest feed first when saving an older missed feed', async () => {
+    const now = new Date(2026, 5, 10, 12, 0).getTime()
+    const latestStart = new Date(2026, 5, 10, 9, 30).getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([{ id: 'latest-real-feed', type: 'breast', startedAt: latestStart, endedAt: latestStart + 12 * 60 * 1000, leftSeconds: 12 * 60, rightSeconds: 0, bottleOunces: null, note: '' }]),
+    )
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
+    const dialog = screen.getByRole('dialog', { name: /Add missed feed/i })
+    await user.clear(within(dialog).getByLabelText(/Feed date/i))
+    await user.type(within(dialog).getByLabelText(/Feed date/i), '2026-06-10')
+    await user.clear(within(dialog).getByLabelText(/Feed start time/i))
+    await user.type(within(dialog).getByLabelText(/Feed start time/i), '06:00')
+    await user.type(within(dialog).getByLabelText(/Manual left minutes/i), '15')
+    await user.click(within(dialog).getByRole('button', { name: /Save missed feed/i }))
+
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Entry[]
+    expect(saved[0].id).toBe('latest-real-feed')
+    expect(saved[0].startedAt).toBe(latestStart)
+    expect(screen.getByText(/11:30 AM–12:30 PM/i)).toBeTruthy()
+    expect(screen.getByText(/Last 2h 18m ago/i)).toBeTruthy()
+  })
+
   it('shows older timeline entries with the calendar date before the clock time', () => {
     const now = new Date(2026, 5, 10, 12, 0).getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })

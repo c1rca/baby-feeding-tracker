@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { diaperLabel, formatClockInput, formatDateInput, formatTimeInput, makeId, medicineLabel, parseClockTimeToday, parseDateAndTime } from '../domain/trackerDomain'
+import { diaperLabel, formatClockInput, formatDateInput, formatTimeInput, makeId, medicineLabel, parseClockTimeToday, parseDateAndTime, sortEntriesLatestFirst } from '../domain/trackerDomain'
 import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, Entry, FeedType, MedicineEvent, MedicineKind, Session, UndoState } from '../types'
 
 type ManualDraft = { date: string; time: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string }
@@ -159,7 +159,7 @@ export function useAuxiliaryEventActions({
     const startedAt = manualStartedAt
     const endedAt = startedAt + durationMs
     const type: FeedType = bottle && leftSeconds + rightSeconds > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
-    setEntries((prev) => [{ id: makeId(), type, startedAt, endedAt, leftSeconds, rightSeconds, bottleOunces: bottle, note: manualDraft.note.trim() }, ...prev])
+    setEntries((prev) => sortEntriesLatestFirst([{ id: makeId(), type, startedAt, endedAt, leftSeconds, rightSeconds, bottleOunces: bottle, note: manualDraft.note.trim() }, ...prev]))
     const nextDefault = new Date().getTime()
     setManualDraft({ date: formatDateInput(nextDefault), time: formatTimeInput(nextDefault), leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
     setManualOpen(false)

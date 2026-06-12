@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useState } from 'react'
+import { forwardRef, useState } from 'react'
 import { Baby, CalendarDays, CirclePause, CirclePlay, Pill, XCircle } from 'lucide-react'
 import { formatDuration } from '../domain/feedingUtils'
 import { diaperLabel, sideLabel, oppositeSide } from '../domain/trackerDomain'
@@ -141,18 +141,16 @@ function StartOffsetControl({ session, startOffsetOpen, startInputMode, startClo
 type HeroActionsProps = Pick<HeroPanelProps, 'session' | 'activeSide' | 'activeOppositeSide' | 'suggestedSide' | 'startSession' | 'switchSide' | 'resume' | 'endSession' | 'clearSession'>
 
 function HeroActions({ session, activeSide, activeOppositeSide, suggestedSide, startSession, switchSide, resume, endSession, clearSession }: HeroActionsProps) {
-  const [clearConfirming, setClearConfirming] = useState(false)
-
-  useEffect(() => {
-    if (!session) setClearConfirming(false)
-  }, [session])
+  const [clearConfirmingFor, setClearConfirmingFor] = useState<number | null>(null)
+  const clearConfirming = Boolean(session && clearConfirmingFor === session.startedAt)
 
   const requestClearSession = () => {
+    if (!session) return
     if (!clearConfirming) {
-      setClearConfirming(true)
+      setClearConfirmingFor(session.startedAt)
       return
     }
-    setClearConfirming(false)
+    setClearConfirmingFor(null)
     clearSession()
   }
 

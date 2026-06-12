@@ -63,6 +63,9 @@ export const parseDateAndTime = (dateValue: string, timeValue: string) => {
   return Number.isFinite(timestamp) ? timestamp : null
 }
 
+export const sortEntriesLatestFirst = (entries: Entry[]) =>
+  entries.slice().sort((a, b) => b.startedAt - a.startedAt || b.endedAt - a.endedAt)
+
 export const formatTimelineTimestamp = (timestamp: number, now = new Date().getTime()) => {
   const ageMs = Math.max(0, now - timestamp)
   if (ageMs < 2 * DAY_MS) return { primary: formatTime(timestamp), showRelative: true }
