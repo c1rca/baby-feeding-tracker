@@ -8,6 +8,8 @@ type StatsDashboardProps = {
   trend: ReturnType<typeof calculateTrend>
 }
 
+const formatAverage = (value: number) => value.toFixed(1)
+
 export function StatsDashboard({ stats, trend }: StatsDashboardProps) {
   return (
     <section className="stats-page" aria-label="Stats dashboard">
@@ -39,7 +41,19 @@ export function StatsDashboard({ stats, trend }: StatsDashboardProps) {
         </article>
         <article className="card diaper-signal-card">
           <div><span className="muted">Diaper signal</span><div className="diaper-signal-values"><strong>{stats.wetCount}<small>wet</small></strong><strong>{stats.stoolCount}<small>stool</small></strong></div></div>
-          <p>Logged alongside feeds and standalone changes for a cleaner weekly care picture.</p>
+          <div className="diaper-average-grid" aria-label="Diaper daily averages">
+            <div className="diaper-average-row">
+              <span>Wet/day</span>
+              <strong>{formatAverage(stats.diaperAverages.wet.weekly)}</strong>
+              <small>Today: {stats.diaperAverages.wet.today} · All-time: {formatAverage(stats.diaperAverages.wet.allTime)}</small>
+            </div>
+            <div className="diaper-average-row">
+              <span>Stool/day</span>
+              <strong>{formatAverage(stats.diaperAverages.stool.weekly)}</strong>
+              <small>Today: {stats.diaperAverages.stool.today} · All-time: {formatAverage(stats.diaperAverages.stool.allTime)}</small>
+            </div>
+          </div>
+          <p>7-day averages with today and all-time context, counting mixed diapers toward both signals.</p>
         </article>
       </section>
 

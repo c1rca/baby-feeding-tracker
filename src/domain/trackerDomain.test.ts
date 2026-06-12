@@ -102,6 +102,27 @@ describe('trackerDomain', () => {
     expect(stats.longestGapLabel).toBe('1h 55m')
   })
 
+  it('calculates diaper daily averages for today, weekly, and all time', () => {
+    const entries = [
+      entry({ id: 'feed-wet', startedAt: todayAt(8), endedAt: todayAt(8, 10), diaperKinds: ['wet'] }),
+      entry({ id: 'old-feed-stool', startedAt: todayAt(-8 * 24), endedAt: todayAt(-8 * 24, 10), diaperKinds: ['stool'] }),
+    ]
+    const diapers: DiaperEvent[] = [
+      { id: 'today-mixed', kinds: ['wet', 'stool'], at: todayAt(9), context: 'standalone' },
+      { id: 'week-wet', kinds: ['wet'], at: todayAt(-24), context: 'standalone' },
+      { id: 'old-mixed', kinds: ['wet', 'stool'], at: todayAt(-8 * 24), context: 'standalone' },
+    ]
+    const trend = calculateTrend(entries, noon)
+    const today = calculateTodaySummary(entries, diapers, noon)
+
+    const stats = calculateStats(entries, diapers, noon, today, trend.days)
+
+    expect(stats.diaperAverages).toEqual({
+      wet: { today: 2, weekly: 0.4, allTime: 0.4 },
+      stool: { today: 1, weekly: 0.1, allTime: 0.3 },
+    })
+  })
+
   it('normalizes legacy single-kind diapers', () => {
     expect(diaperKinds({ id: 'd1', kind: 'wet', at: noon, context: 'standalone' })).toEqual(['wet'])
   })

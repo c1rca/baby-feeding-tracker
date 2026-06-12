@@ -3,6 +3,14 @@ import type { DiaperEvent, DiaperKind, Entry, LegacySession, MedicineKind, Segme
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
+const roundTenth = (value: number) => Math.round(value * 10) / 10
+const startOfDayMs = (timestamp: number) => {
+  const date = new Date(timestamp)
+  date.setHours(0, 0, 0, 0)
+  return date.getTime()
+}
+
+export const isSide = (value: unknown): value is Side => value === 'left' || value === 'right'
 export const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 export const formatShortTimeRange = (start: number, end: number) => {
@@ -188,7 +196,7 @@ export const calculateStats = (
   entries: Entry[],
   diapers: DiaperEvent[],
   now: number,
-  today: { left: number; right: number },
+  today: { left: number; right: number; wet: number; stool: number },
   trendDays: { label: string; count: number }[],
 ) => {
   const nowDate = new Date(now)
@@ -223,10 +231,21 @@ export const calculateStats = (
   const feedStool = recentEntries.filter((entry) => entryDiaperKinds(entry).includes('stool')).length
   const wetCount = standaloneWet + feedWet
   const stoolCount = standaloneStool + feedStool
+  const allDiaperSignals = [
+    ...diapers.flatMap((diaper) => diaperKinds(diaper).map((kind) => ({ kind, at: diaper.at }))),
+    ...entries.flatMap((entry) => entryDiaperKinds(entry).map((kind) => ({ kind, at: entry.endedAt }))),
+  ]
+  const allTimeStart = allDiaperSignals.length ? Math.min(...allDiaperSignals.map((signal) => signal.at)) : dayStart.getTime()
+  const allTimeDays = Math.max(1, Math.floor((dayStart.getTime() - startOfDayMs(allTimeStart)) / DAY_MS) + 1)
+  const countAllTime = (kind: DiaperKind) => allDiaperSignals.filter((signal) => signal.kind === kind).length
+  const diaperAverages = {
+    wet: { today: today.wet, weekly: roundTenth(wetCount / 7), allTime: roundTenth(countAllTime('wet') / allTimeDays) },
+    stool: { today: today.stool, weekly: roundTenth(stoolCount / 7), allTime: roundTenth(countAllTime('stool') / allTimeDays) },
+  }
   const sideDelta = Math.abs(totalLeft - totalRight)
   const balanceLabel = sideDelta < 5 * 60 ? 'Beautifully balanced' : totalLeft > totalRight ? 'Left leading' : 'Right leading'
   const nextSideLabel = sideLabel(calculateSuggestedSide(entries, today))
   const longestGapLabel = longestGap ? formatDuration(Math.round(longestGap / 1000)) : '—'
   const momentumLabel = last24Entries.length >= avgFeedsPerDay ? 'Above weekly pace' : last24Entries.length ? 'Below weekly pace' : 'Quiet 24h'
-  return { recentEntries, totalNursing, totalBottle, avgNursing, totalLeft, totalRight, leftPercent, bestDay, avgGap, nightFeeds, last24Entries, avgFeedsPerDay, longestNursing, longestGap, longestGapLabel, bottleFeeds, wetCount, stoolCount, balanceLabel, nextSideLabel, momentumLabel }
+  return { recentEntries, totalNursing, totalBottle, avgNursing, totalLeft, totalRight, leftPercent, bestDay, avgGap, nightFeeds, last24Entries, avgFeedsPerDay, longestNursing, longestGap, longestGapLabel, bottleFeeds, wetCount, stoolCount, diaperAverages, balanceLabel, nextSideLabel, momentumLabel }
 }
