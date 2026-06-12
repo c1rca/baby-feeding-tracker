@@ -47,7 +47,7 @@ function App() {
   const [resumeFocusTick, setResumeFocusTick] = useState(0)
   const heroRef = useRef<HTMLElement | null>(null)
   const processedQuickMedicineRef = useRef(false)
-  const { syncStatus } = useServerSync({ entries, diapers, medicines, session, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
+  const { syncStatus, hasHydrated } = useServerSync({ entries, diapers, medicines, session, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const { toast, undoState, setToast, setUndoState, showToast, undoToastText, undoLabel, undo } = useUndoToast({ setEntries, setDiapers, setMedicines, setSession })
   useAppUiEffects({
@@ -125,6 +125,7 @@ function App() {
 
   useEffect(() => {
     if (processedQuickMedicineRef.current) return
+    if (!hasHydrated) return
     const params = new URLSearchParams(window.location.search)
     const quickMed = params.get('quickMed')
     if (quickMed !== 'tylenol' && quickMed !== 'motrin') return
@@ -134,7 +135,7 @@ function App() {
     const nextQuery = params.toString()
     const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`
     window.history.replaceState({}, '', nextUrl)
-  }, [logMedicine])
+  }, [hasHydrated, logMedicine])
 
   const {
     today,

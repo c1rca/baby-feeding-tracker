@@ -139,5 +139,5 @@ export const useServerSync = ({ entries, diapers, medicines, session, theme, set
     }
   }, [syncToApi])
 
-  return { syncStatus }
+  return { syncStatus, hasHydrated }
 }

@@ -272,10 +272,45 @@ describe('App interactions', () => {
     render(<App />)
 
     await waitFor(() => expect(screen.getByText(/Tylenol logged/i)).toBeTruthy())
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
+      expect(saved).toHaveLength(1)
+      expect(saved[0].kind).toBe('tylenol')
+    })
+    expect(window.location.search).toBe('')
+  })
+
+  it('quick logs medicine from a notification link after server hydration', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    window.history.replaceState({}, '', '/?quickMed=motrin')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
+      if (url === '/api/state' && !init?.method) {
+        await new Promise((resolve) => window.setTimeout(resolve, 5))
+        return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: null, theme: 'dark', updatedAt: 'server-1' }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ ok: true, updatedAt: 'server-2' }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+    await vi.advanceTimersByTimeAsync(10)
+
+    await waitFor(() => expect(screen.getByText(/Motrin logged/i)).toBeTruthy())
     const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
     expect(saved).toHaveLength(1)
-    expect(saved[0].kind).toBe('tylenol')
+    expect(saved[0].kind).toBe('motrin')
+    expect(saved[0].at).toBeGreaterThanOrEqual(now)
     expect(window.location.search).toBe('')
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({
+        method: 'PUT',
+        body: expect.stringContaining('motrin'),
+      }))
+    })
   })
 
   it('shows a medicine reminder for a due kind even when another medicine was taken more recently', () => {
