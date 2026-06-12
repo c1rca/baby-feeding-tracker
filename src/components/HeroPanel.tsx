@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useEffect, useState } from 'react'
 import { Baby, CalendarDays, CirclePause, CirclePlay, Pill, XCircle } from 'lucide-react'
 import { formatDuration } from '../domain/feedingUtils'
 import { diaperLabel, sideLabel, oppositeSide } from '../domain/trackerDomain'
@@ -141,6 +141,21 @@ function StartOffsetControl({ session, startOffsetOpen, startInputMode, startClo
 type HeroActionsProps = Pick<HeroPanelProps, 'session' | 'activeSide' | 'activeOppositeSide' | 'suggestedSide' | 'startSession' | 'switchSide' | 'resume' | 'endSession' | 'clearSession'>
 
 function HeroActions({ session, activeSide, activeOppositeSide, suggestedSide, startSession, switchSide, resume, endSession, clearSession }: HeroActionsProps) {
+  const [clearConfirming, setClearConfirming] = useState(false)
+
+  useEffect(() => {
+    if (!session) setClearConfirming(false)
+  }, [session])
+
+  const requestClearSession = () => {
+    if (!clearConfirming) {
+      setClearConfirming(true)
+      return
+    }
+    setClearConfirming(false)
+    clearSession()
+  }
+
   return (
     <div className="row hero-actions">
       {!session ? (
@@ -159,7 +174,7 @@ function HeroActions({ session, activeSide, activeOppositeSide, suggestedSide, s
             </>
           )}
           <button className="success end-feed" type="button" aria-label="End feed" onClick={endSession}>Stop & Save Feed</button>
-          <button className="active-clear-link" type="button" aria-label="Clear active feed" onClick={clearSession}><XCircle size={14} /> Clear active</button>
+          <button className={`active-clear-link ${clearConfirming ? 'confirming' : ''}`} type="button" aria-label={clearConfirming ? 'Confirm clear active feed' : 'Clear active feed'} onClick={requestClearSession}><XCircle size={14} /> {clearConfirming ? 'Confirm clear' : 'Clear active'}</button>
         </>
       )}
     </div>

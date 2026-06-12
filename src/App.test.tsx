@@ -127,6 +127,7 @@ describe('App interactions', () => {
     expect(resumeToggle.className).toContain('is-paused')
 
     await user.click(screen.getByRole('button', { name: /Clear active feed/i }))
+    await user.click(screen.getByRole('button', { name: /Confirm clear active feed/i }))
     expect(screen.getByText(/^Next$/i)).toBeTruthy()
   })
 
@@ -874,8 +875,9 @@ describe('App interactions', () => {
     expect(savedSession.startedAt).toBe(new Date('2026-06-05T12:40:00').getTime())
   })
 
-  it('clears an active feed without saving an entry', async () => {
-    const user = userEvent.setup()
+  it('confirms before clearing an active feed and offers a 5 second undo', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
@@ -886,6 +888,12 @@ describe('App interactions', () => {
     expect(clearActive.className).not.toContain('subtle-danger')
 
     await user.click(clearActive)
+
+    expect(screen.getByRole('button', { name: /Confirm clear active feed/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /End feed/i })).toBeTruthy()
+    expect(localStorage.getItem(STORAGE_SESSION_KEY)).not.toBe('null')
+
+    await user.click(screen.getByRole('button', { name: /Confirm clear active feed/i }))
 
     expect(screen.getByText(/Active feed cleared/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Undo clear active feed/i })).toBeTruthy()
@@ -898,6 +906,11 @@ describe('App interactions', () => {
     expect(screen.getByText(/Active feed restored/i)).toBeTruthy()
     expect(screen.getByText(/On left/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /End feed/i }).className).toContain('success')
+
+    await user.click(screen.getByRole('button', { name: /Clear active feed/i }))
+    await user.click(screen.getByRole('button', { name: /Confirm clear active feed/i }))
+    vi.advanceTimersByTime(5000)
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Undo clear active feed/i })).toBeNull())
   })
 
   it('edits left and right nursing minutes in a timeline item', async () => {
