@@ -16,7 +16,7 @@ const entry: Entry = {
 
 const diaper: DiaperEvent = { id: 'diaper-1', at: 3000, kind: 'wet', context: 'standalone' }
 const medicine: MedicineEvent = { id: 'medicine-1', at: 4000, kind: 'tylenol' }
-const session: Session = { startedAt: 5000, activeSide: 'left', segmentStart: 5000, segments: [], bottleOunces: 0, note: '', diaperKinds: [] }
+const session: Session = { id: 'session-1', startedAt: 5000, activeSide: 'left', segmentStart: 5000, segments: [], bottleOunces: 0, note: '', diaperKinds: [] }
 
 describe('usePersistentTrackerState', () => {
   beforeEach(() => {

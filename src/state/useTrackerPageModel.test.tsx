@@ -31,6 +31,7 @@ const medicine = (overrides: Partial<MedicineEvent> = {}): MedicineEvent => ({
 })
 
 const activeSession = (overrides: Partial<Session> = {}): Session => ({
+  id: overrides.id ?? 'session-1',
   startedAt: overrides.startedAt ?? now - 30 * 60 * 1000,
   activeSide: overrides.activeSide ?? 'left',
   segmentStart: overrides.segmentStart ?? now - 30 * 60 * 1000,

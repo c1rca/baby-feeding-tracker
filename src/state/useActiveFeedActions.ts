@@ -63,7 +63,7 @@ export function useActiveFeedActions({
     const t = new Date().getTime()
     const startedAt = Math.min(selectedStartTime, t)
     setNow(t)
-    setSession({ startedAt, activeSide: side, segmentStart: startedAt, segments: [], bottleOunces: 0, note: '', diaperKinds: [] })
+    setSession({ id: makeId(), startedAt, activeSide: side, segmentStart: startedAt, segments: [], bottleOunces: 0, note: '', diaperKinds: [] })
   }
 
   const switchSide = (side: Side) => {
@@ -106,7 +106,7 @@ export function useActiveFeedActions({
     const type: FeedType = bottle && left + right > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
     const selectedKinds = selectedDiapers.filter((kind) => !session.diaperKinds.includes(kind))
     const diaperKinds = [...session.diaperKinds, ...selectedKinds]
-    setEntries((prev) => [{ id: makeId(), type, startedAt: session.startedAt, endedAt: t, leftSeconds: left, rightSeconds: right, bottleOunces: bottle, note: session.note.trim() || '', diaperKinds }, ...prev])
+    setEntries((prev) => [{ id: makeId(), sourceSessionId: session.id, type, startedAt: session.startedAt, endedAt: t, leftSeconds: left, rightSeconds: right, bottleOunces: bottle, note: session.note.trim() || '', diaperKinds }, ...prev])
     setSelectedDiapers((prev) => prev.filter((kind) => !selectedKinds.includes(kind)))
     setSession(null)
     showToast('Feed saved')

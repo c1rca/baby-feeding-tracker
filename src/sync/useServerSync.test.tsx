@@ -16,6 +16,7 @@ const entry = (id: string, endedAt: number): Entry => ({
 })
 
 const session = (startedAt: number, note = ''): Session => ({
+  id: `session-${startedAt}`,
   startedAt,
   activeSide: 'left',
   segmentStart: startedAt,

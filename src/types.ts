@@ -10,6 +10,7 @@ export type View = 'track' | 'stats'
 
 export type Entry = {
   id: string
+  sourceSessionId?: string
   type: FeedType
   startedAt: number
   endedAt: number
@@ -32,6 +33,7 @@ export type DiaperEvent = {
 export type MedicineEvent = { id: string; kind: MedicineKind; at: number }
 
 export type Session = {
+  id: string
   startedAt: number
   activeSide: Side | null
   segmentStart: number | null
@@ -41,7 +43,8 @@ export type Session = {
   diaperKinds: DiaperKind[]
 }
 
-export type LegacySession = Omit<Session, 'note' | 'bottleOunces' | 'diaperKinds'> & {
+export type LegacySession = Omit<Session, 'id' | 'note' | 'bottleOunces' | 'diaperKinds'> & {
+  id?: string
   note?: string
   bottleOunces?: number
   diaperKinds?: DiaperKind[]

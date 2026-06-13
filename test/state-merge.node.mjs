@@ -163,6 +163,53 @@ test('resolveIncomingState does not resurrect stale entries that were already de
   assert.deepEqual(resolved.entries.map((entry) => entry.id).sort(), ['new-offline-feed', 'server-feed'])
 })
 
+test('resolveIncomingState dedupes stale duplicate feed entries by source session id', () => {
+  const existingRow = {
+    entries_json: JSON.stringify([{ id: 'current-feed', sourceSessionId: 'session-1', type: 'breast', startedAt: 1000, endedAt: 2000, leftSeconds: 10, rightSeconds: 0, bottleOunces: null }]),
+    diapers_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([]),
+    session_json: null,
+    theme: 'light',
+    updated_at: 'server-v2',
+  }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [{ id: 'stale-feed', sourceSessionId: 'session-1', type: 'breast', startedAt: 1000, endedAt: 1900, leftSeconds: 9, rightSeconds: 0, bottleOunces: null }],
+    diapers: [],
+    medicines: [],
+    session: null,
+    theme: 'light',
+    updatedAt: 'server-v1',
+  })
+
+  assert.equal(resolved.stale, true)
+  assert.deepEqual(resolved.entries.map((entry) => entry.id), ['current-feed'])
+})
+
+test('resolveIncomingState dedupes legacy stale duplicate active-feed saves conservatively', () => {
+  const startedAt = 1781312332300
+  const existingRow = {
+    entries_json: JSON.stringify([{ id: 'current-feed', type: 'breast', startedAt, endedAt: 1781315602140, leftSeconds: 1708, rightSeconds: 0, bottleOunces: null }]),
+    diapers_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([]),
+    session_json: null,
+    theme: 'light',
+    updated_at: 'server-v2',
+  }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [{ id: 'stale-feed', type: 'breast', startedAt, endedAt: 1781315593475, leftSeconds: 1699, rightSeconds: 0, bottleOunces: null }],
+    diapers: [],
+    medicines: [],
+    session: null,
+    theme: 'light',
+    updatedAt: 'server-v1',
+  })
+
+  assert.equal(resolved.stale, true)
+  assert.deepEqual(resolved.entries.map((entry) => entry.id), ['current-feed'])
+})
+
 test('buildStateAudit captures compact rebuild-critical timeline changes', () => {
   const existingRow = {
     entries_json: JSON.stringify([{ id: 'feed-old', type: 'breast', startedAt: 100, endedAt: 200, leftSeconds: 60, rightSeconds: 0, bottleOunces: null, note: 'before' }]),

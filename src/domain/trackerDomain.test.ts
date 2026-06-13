@@ -33,7 +33,8 @@ const entry = (overrides: Partial<Entry> = {}): Entry => ({
 
 describe('trackerDomain', () => {
   it('normalizes legacy session optional fields safely', () => {
-    expect(normalizeSession({ startedAt: 1, activeSide: 'left', segmentStart: 1, segments: [], diaperKinds: ['wet', 'bogus' as never] })).toEqual({
+    expect(normalizeSession({ id: 'session-1', startedAt: 1, activeSide: 'left', segmentStart: 1, segments: [], diaperKinds: ['wet', 'bogus' as never] })).toEqual({
+      id: 'session-1',
       startedAt: 1,
       activeSide: 'left',
       segmentStart: 1,
@@ -60,7 +61,7 @@ describe('trackerDomain', () => {
   })
 
   it('calculates active split including the live segment', () => {
-    const session: Session = { startedAt: todayAt(8), activeSide: 'right', segmentStart: todayAt(8, 10), segments: [{ side: 'left', startedAt: todayAt(8), endedAt: todayAt(8, 5) }], bottleOunces: 0, note: '', diaperKinds: [] }
+    const session: Session = { id: 'session-1', startedAt: todayAt(8), activeSide: 'right', segmentStart: todayAt(8, 10), segments: [{ side: 'left', startedAt: todayAt(8), endedAt: todayAt(8, 5) }], bottleOunces: 0, note: '', diaperKinds: [] }
     expect(calculateActiveSplit(session, todayAt(8, 15))).toEqual({ left: 300, right: 300 })
   })
 

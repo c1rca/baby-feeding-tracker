@@ -103,6 +103,7 @@ export const normalizeSession = (raw: LegacySession | Session | null | undefined
   if (!raw) return null
   return {
     ...raw,
+    id: typeof raw.id === 'string' && raw.id ? raw.id : makeId(),
     bottleOunces: typeof raw.bottleOunces === 'number' ? raw.bottleOunces : 0,
     note: typeof raw.note === 'string' ? raw.note : '',
     diaperKinds: Array.isArray(raw.diaperKinds) ? raw.diaperKinds.filter((kind): kind is DiaperKind => kind === 'wet' || kind === 'stool') : [],
@@ -131,6 +132,7 @@ export const entryToResumedSession = (entry: Entry, resumeAt: number): Session =
   }
 
   return {
+    id: makeId(),
     startedAt: entry.startedAt,
     activeSide: entryResumeSide(entry),
     segmentStart: resumeAt,
