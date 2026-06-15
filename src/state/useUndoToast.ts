@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import type { DiaperEvent, Entry, MedicineEvent, Session, UndoState } from '../types'
+import { undoLabelFor, undoToastTextFor } from './undoToastLabels'
 
 type UndoToastOptions = {
   setEntries: Dispatch<SetStateAction<Entry[]>>
@@ -18,33 +19,8 @@ export function useUndoToast({ setEntries, setDiapers, setMedicines, setSession 
     window.setTimeout(() => setToast(''), 1800)
   }
 
-  const undoToastText = undoState?.kind === 'resume'
-    ? 'Session resumed'
-    : undoState?.kind === 'clear-session'
-      ? 'Active feed cleared'
-      : undoState?.kind === 'diaper-log'
-        ? 'Diaper logged'
-        : undoState?.kind === 'diaper-delete'
-          ? 'Diaper deleted'
-          : undoState?.kind === 'medicine-log'
-            ? 'Medicine logged'
-            : undoState?.kind === 'medicine-delete'
-              ? 'Medicine deleted'
-              : 'Entry deleted'
-
-  const undoLabel = undoState?.kind === 'resume'
-    ? 'Undo resume'
-    : undoState?.kind === 'clear-session'
-      ? 'Undo clear active feed'
-      : undoState?.kind === 'diaper-log'
-        ? 'Undo diaper log'
-        : undoState?.kind === 'diaper-delete'
-          ? 'Undo diaper delete'
-          : undoState?.kind === 'medicine-log'
-            ? 'Undo medicine log'
-            : undoState?.kind === 'medicine-delete'
-              ? 'Undo medicine delete'
-              : 'Undo delete'
+  const undoToastText = undoToastTextFor(undoState)
+  const undoLabel = undoLabelFor(undoState)
 
   const undo = () => {
     if (!undoState) return
