@@ -1,82 +1,10 @@
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000
-const THREE_HOURS_MS = 3 * 60 * 60 * 1000
-const SIX_HOURS_MS = 6 * 60 * 60 * 1000
-const MAX_CATCH_UP_MS = 30 * 60 * 1000
-const DEFAULT_TIME_ZONE = 'America/New_York'
-export const FEEDR_URL = 'https://feedr.kjw.lol'
+import { DEFAULT_TIME_ZONE, FEEDR_URL } from './notificationConstants.js'
+import { buildMedicineQuickLogUrl, formatTime, normalizeTextEmailRecipients } from './notificationFormatting.js'
+import { buildMedicineReminder, buildReminder, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, parseJsonArray } from './notificationModels.js'
+import { buildFeedingNotificationPayload, buildMedicineNotificationPayload } from './notificationPayloads.js'
 
-export function getLatestEndedFeed(entries) {
-  if (!Array.isArray(entries)) return null
-  return entries
-    .filter((entry) => Number.isFinite(entry?.endedAt) && entry.endedAt > 0)
-    .sort((a, b) => b.endedAt - a.endedAt)[0] ?? null
-}
-
-export function getLatestMedicineDose(medicines) {
-  if (!Array.isArray(medicines)) return null
-  return medicines
-    .filter((dose) => (dose?.kind === 'tylenol' || dose?.kind === 'motrin') && Number.isFinite(dose?.at) && dose.at > 0)
-    .sort((a, b) => b.at - a.at)[0] ?? null
-}
-
-export function getLatestMedicineDosesByKind(medicines) {
-  if (!Array.isArray(medicines)) return []
-  return ['tylenol', 'motrin']
-    .map((kind) => medicines
-      .filter((dose) => dose?.kind === kind && Number.isFinite(dose?.at) && dose.at > 0)
-      .sort((a, b) => b.at - a.at)[0])
-    .filter(Boolean)
-}
-
-export function buildReminder(latestFeed, now = Date.now()) {
-  if (!latestFeed) return null
-  const feedStartAt = Number.isFinite(latestFeed.startedAt) && latestFeed.startedAt > 0 ? latestFeed.startedAt : latestFeed.endedAt
-  const dueAt = feedStartAt + TWO_HOURS_MS
-  const windowEndAt = feedStartAt + THREE_HOURS_MS
-  const catchUpUntil = dueAt + MAX_CATCH_UP_MS
-  if (windowEndAt <= now - MAX_CATCH_UP_MS) return null
-  return { kind: 'feeding', entryId: latestFeed.id ?? String(latestFeed.endedAt), dueAt, windowEndAt, catchUpUntil }
-}
-
-export function buildMedicineReminder(latestDose, now = Date.now()) {
-  if (!latestDose) return null
-  const dueAt = latestDose.at + SIX_HOURS_MS
-  const catchUpUntil = dueAt + MAX_CATCH_UP_MS
-  if (dueAt <= now - MAX_CATCH_UP_MS) return null
-  return { kind: 'medicine', doseId: latestDose.id ?? String(latestDose.at), medicineKind: latestDose.kind, recommendedKind: latestDose.kind, dueAt, catchUpUntil }
-}
-
-export function hasActiveSession(row) {
-  if (!row?.session_json) return false
-  try {
-    return Boolean(JSON.parse(row.session_json))
-  } catch {
-    return Boolean(row.session_json)
-  }
-}
-
-function parseJsonArray(value) {
-  try {
-    const parsed = JSON.parse(value || '[]')
-    return Array.isArray(parsed) ? parsed : []
-  } catch {
-    return null
-  }
-}
-
-export function normalizeTextEmailRecipients(value) {
-  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean)
-  return String(value || '').split(',').map((item) => item.trim()).filter(Boolean)
-}
-
-function medicationLabel(kind) {
-  return kind === 'motrin' ? 'Motrin' : 'Tylenol'
-}
-
-export function buildMedicineQuickLogUrl(kind) {
-  const medication = kind === 'motrin' ? 'motrin' : 'tylenol'
-  return `${FEEDR_URL}/?quickMed=${medication}`
-}
+export { FEEDR_URL }
+export { buildMedicineQuickLogUrl, buildMedicineReminder, buildReminder, formatTime, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeTextEmailRecipients }
 
 export function createNotificationScheduler({
   selectState,
@@ -131,6 +59,22 @@ export function createNotificationScheduler({
       .sort((a, b) => a.dueAt - b.dueAt)[0] ?? null
   }
 
+  const sendDueReminder = async (freshReminder) => {
+    if (freshReminder.kind === 'medicine') {
+      markHandled(freshReminder)
+      const results = await Promise.allSettled([
+        sendGotify ? sendGotify(buildMedicineNotificationPayload(freshReminder)) : Promise.resolve(),
+        sendTextEmail ? sendTextEmail(buildMedicineNotificationPayload(freshReminder)) : Promise.resolve(),
+      ])
+      const failed = results.find((result) => result.status === 'rejected')
+      if (failed) logger.warn?.('Medicine notification channel failed', failed.reason)
+      return
+    }
+
+    await sendGotify(buildFeedingNotificationPayload(freshReminder, timeZone))
+    markHandled(freshReminder)
+  }
+
   const evaluate = () => {
     if (!isEnabled) return cancel()
     const row = selectState.get()
@@ -159,33 +103,7 @@ export function createNotificationScheduler({
       if (!freshReminder || freshReminder.notificationId !== reminder.notificationId || now() > freshReminder.catchUpUntil) return evaluate()
 
       try {
-        if (freshReminder.kind === 'medicine') {
-          const medicineLabelText = medicationLabel(freshReminder.recommendedKind)
-          const quickLogUrl = buildMedicineQuickLogUrl(freshReminder.recommendedKind)
-          const medicinePayload = {
-            title: 'Medicine reminder',
-            subject: 'Medicine reminder',
-            message: `Take ${medicineLabelText}. Last dose was ${medicationLabel(freshReminder.medicineKind)} 6+ hours ago.\n\nLog ${medicineLabelText} now: ${quickLogUrl}`,
-            priority: 5,
-            extras: {
-              'client::notification': { click: { url: quickLogUrl } },
-            },
-          }
-          markHandled(freshReminder)
-          const results = await Promise.allSettled([
-            sendGotify ? sendGotify(medicinePayload) : Promise.resolve(),
-            sendTextEmail ? sendTextEmail(medicinePayload) : Promise.resolve(),
-          ])
-          const failed = results.find((result) => result.status === 'rejected')
-          if (failed) logger.warn?.('Medicine notification channel failed', failed.reason)
-        } else {
-          await sendGotify({
-            title: 'Feeding reminder',
-            message: `Next feeding window is open (${formatTime(freshReminder.dueAt, timeZone)}–${formatTime(freshReminder.windowEndAt, timeZone)}).\n\n${FEEDR_URL}`,
-            priority: 5,
-          })
-        }
-        markHandled(freshReminder)
+        await sendDueReminder(freshReminder)
       } catch (error) {
         scheduled = null
         logger.warn?.('Gotify notification failed', error)
@@ -202,10 +120,6 @@ export function createNotificationScheduler({
   }
 
   return { evaluate, cancel, setEnabled, isEnabled: () => isEnabled, getScheduled: () => scheduled }
-}
-
-export function formatTime(timestamp, timeZone = process.env.FEEDING_TIME_ZONE || process.env.TZ || DEFAULT_TIME_ZONE) {
-  return new Intl.DateTimeFormat([], { hour: 'numeric', minute: '2-digit', timeZone }).format(new Date(timestamp))
 }
 
 export async function sendGotifyMessage({ url, token, title, message, priority = 5, extras }) {
