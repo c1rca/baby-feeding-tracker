@@ -25,7 +25,11 @@ export function usePersistLocalChanges({
   theme,
 }: PersistLocalChangesOptions) {
   useEffect(() => {
-    if (!hasHydrated || isApplyingServerState()) return
+    if (!hasHydrated) return
+    if (isApplyingServerState()) {
+      consumeSkipNextSync()
+      return
+    }
     if (consumeSkipNextSync()) return
 
     localStorage.setItem(KEY_PENDING_SYNC, '1')
