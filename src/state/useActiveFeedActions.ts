@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { sumSideDurations } from '../domain/feedingUtils'
-import { calculateActiveSplit, makeId, oppositeSide, parseClockTimeToday } from '../domain/trackerDomain'
-import type { DiaperKind, Entry, FeedType, Session, Side, UndoState } from '../types'
+import { calculateActiveSplit, oppositeSide } from '../domain/trackerDomain'
+import type { DiaperKind, Entry, Session, Side, UndoState } from '../types'
+import { resolveSelectedStartTime, type StartInputMode } from './activeFeedModels'
+import { useActiveSessionCompletion } from './useActiveSessionCompletion'
+import { useActiveSessionLifecycle } from './useActiveSessionLifecycle'
 
 type ActiveFeedActionsOptions = {
   now: number
@@ -13,7 +15,7 @@ type ActiveFeedActionsOptions = {
   selectedDiapers: DiaperKind[]
   setSelectedDiapers: Dispatch<SetStateAction<DiaperKind[]>>
   startOffsetOpen: boolean
-  startInputMode: 'clock' | 'minutes'
+  startInputMode: StartInputMode
   startClockText: string
   startMinutesAgo: string
   suggestedSide: Side
@@ -43,86 +45,37 @@ export function useActiveFeedActions({
   showToast,
   setBottleOpen,
 }: ActiveFeedActionsOptions) {
-  const selectedStartTime = useMemo(() => {
-    const t = now
-    if (!startOffsetOpen) return now
-    if (startInputMode === 'minutes') {
-      const minutes = Math.max(0, Number(startMinutesAgo) || 0)
-      return t - Math.round(minutes * 60000)
-    }
-    return parseClockTimeToday(startClockText, t) ?? t
-  }, [now, startClockText, startInputMode, startMinutesAgo, startOffsetOpen])
+  const selectedStartTime = useMemo(() => resolveSelectedStartTime({
+    now,
+    startOffsetOpen,
+    startInputMode,
+    startClockText,
+    startMinutesAgo,
+  }), [now, startClockText, startInputMode, startMinutesAgo, startOffsetOpen])
 
-  const selectedStartMinutesAgo = Math.max(0, Math.round((now - selectedStartTime) / 60000))
   const activeSplit = useMemo(() => calculateActiveSplit(session, now), [session, now])
-  const activeSeconds = activeSplit.left + activeSplit.right
   const activeSide = session?.activeSide
-  const activeOppositeSide = activeSide ? oppositeSide(activeSide) : suggestedSide
-
-  const startSession = (side: Side) => {
-    const t = new Date().getTime()
-    const startedAt = Math.min(selectedStartTime, t)
-    setNow(t)
-    setSession({ id: makeId(), startedAt, activeSide: side, segmentStart: startedAt, segments: [], bottleOunces: 0, note: '', diaperKinds: [] })
-  }
-
-  const switchSide = (side: Side) => {
-    if (!session || !session.activeSide || !session.segmentStart) return
-    const t = new Date().getTime()
-    setSession({ ...session, segments: [...session.segments, { side: session.activeSide, startedAt: session.segmentStart, endedAt: t }], activeSide: side, segmentStart: t })
-  }
-
-  const pause = () => {
-    if (!session || !session.activeSide || !session.segmentStart) return
-    const t = new Date().getTime()
-    setSession({ ...session, segments: [...session.segments, { side: session.activeSide, startedAt: session.segmentStart, endedAt: t }], activeSide: null, segmentStart: null })
-  }
-
-  const resume = (side: Side) => {
-    if (!session) return
-    const t = new Date().getTime()
-    setNow(t)
-    setSession({ ...session, activeSide: side, segmentStart: t })
-  }
-
-  const clearSession = () => {
-    if (!session) return showToast('No active feed to clear')
-    if (undoState) window.clearTimeout(undoState.timeoutId)
-    const clearedSession = session
-    setSession(null)
-    setBottleOpen(false)
-    const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
-    setUndoState({ session: clearedSession, timeoutId, kind: 'clear-session' })
-    setToast('Active feed cleared')
-  }
-
-  const endSession = () => {
-    if (!session) return showToast('No active feed to end')
-    const t = new Date().getTime()
-    const finished = [...session.segments]
-    if (session.activeSide && session.segmentStart) finished.push({ side: session.activeSide, startedAt: session.segmentStart, endedAt: t })
-    const { left, right } = sumSideDurations(finished)
-    const bottle = session.bottleOunces > 0 ? session.bottleOunces : null
-    const type: FeedType = bottle && left + right > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
-    const selectedKinds = selectedDiapers.filter((kind) => !session.diaperKinds.includes(kind))
-    const diaperKinds = [...session.diaperKinds, ...selectedKinds]
-    setEntries((prev) => [{ id: makeId(), sourceSessionId: session.id, type, startedAt: session.startedAt, endedAt: t, leftSeconds: left, rightSeconds: right, bottleOunces: bottle, note: session.note.trim() || '', diaperKinds }, ...prev])
-    setSelectedDiapers((prev) => prev.filter((kind) => !selectedKinds.includes(kind)))
-    setSession(null)
-    showToast('Feed saved')
-  }
+  const lifecycle = useActiveSessionLifecycle({ selectedStartTime, session, setNow, setSession })
+  const completion = useActiveSessionCompletion({
+    session,
+    selectedDiapers,
+    setEntries,
+    setSelectedDiapers,
+    undoState,
+    setUndoState,
+    setSession,
+    setToast,
+    showToast,
+    setBottleOpen,
+  })
 
   return {
-    selectedStartMinutesAgo,
+    selectedStartMinutesAgo: Math.max(0, Math.round((now - selectedStartTime) / 60000)),
     activeSplit,
-    activeSeconds,
+    activeSeconds: activeSplit.left + activeSplit.right,
     activeSide,
-    activeOppositeSide,
-    startSession,
-    switchSide,
-    pause,
-    resume,
-    clearSession,
-    endSession,
+    activeOppositeSide: activeSide ? oppositeSide(activeSide) : suggestedSide,
+    ...lifecycle,
+    ...completion,
   }
 }
