@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { diaperLabel, formatClockInput, formatDateInput, formatTimeInput, makeId, medicineLabel, parseClockTimeToday, parseDateAndTime, sortEntriesLatestFirst } from '../domain/trackerDomain'
-import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, Entry, FeedType, MedicineEvent, MedicineKind, Session, UndoState } from '../types'
-
-type ManualDraft = { date: string; time: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string }
+import { diaperLabel, formatClockInput, medicineLabel, parseClockTimeToday, sortEntriesLatestFirst } from '../domain/trackerDomain'
+import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, Entry, MedicineEvent, MedicineKind, Session, UndoState } from '../types'
+import { addBottleToSession, createBottleEntry, createDefaultManualDraft, createMedicineDose, createStandaloneDiaper, parseManualFeedDraft, toggleDiaperKind } from './auxiliaryEventModels'
+import type { ManualDraft } from './auxiliaryEventModels'
 
 type AuxiliaryEventActionsOptions = {
   now: number
@@ -66,25 +66,23 @@ export function useAuxiliaryEventActions({
   const logBottle = (oz?: number) => {
     const amount = oz ?? bottleQuickOz
     if (session) {
-      setSession({ ...session, bottleOunces: +(session.bottleOunces + amount).toFixed(1) })
+      setSession(addBottleToSession(session, amount))
       showToast('Bottle added to active feed')
       return
     }
-    const t = now || new Date().getTime()
-    setEntries((prev) => [{ id: makeId(), type: 'bottle', startedAt: t, endedAt: t, leftSeconds: 0, rightSeconds: 0, bottleOunces: amount, note: '' }, ...prev])
+    setEntries((prev) => [createBottleEntry(amount, now || new Date().getTime()), ...prev])
     showToast('Bottle feed saved')
   }
 
   const toggleDiaperSelection = (kind: DiaperKind) => {
-    setSelectedDiapers((prev) => prev.includes(kind) ? prev.filter((item) => item !== kind) : [...prev, kind])
+    setSelectedDiapers((prev) => toggleDiaperKind(prev, kind))
   }
 
   const logSelectedDiapers = () => {
     const kinds = availableSelectedDiapers
     if (kinds.length === 0) return showToast(session ? 'Select an unlogged diaper' : 'Select wet, stool, or both')
     const label = kinds.map(diaperLabel).join(' + ')
-    const t = new Date().getTime()
-    const diaper: DiaperEvent = { id: makeId(), kinds, at: t, context: 'standalone' }
+    const diaper = createStandaloneDiaper(kinds, new Date().getTime())
     setDiapers((prev) => [diaper, ...prev].sort((a, b) => b.at - a.at))
     setSelectedDiapers((prev) => prev.filter((kind) => !kinds.includes(kind)))
     clearUndoTimeout()
@@ -112,8 +110,7 @@ export function useAuxiliaryEventActions({
   }
 
   const logMedicine = (kind: MedicineKind) => {
-    const t = new Date().getTime()
-    const medicine: MedicineEvent = { id: makeId(), kind, at: t }
+    const medicine = createMedicineDose(kind, new Date().getTime())
     setMedicines((prev) => [medicine, ...prev].sort((a, b) => b.at - a.at))
     setDismissedMedicineReminderId(null)
     setAdditionalOptionsOpen(false)
@@ -149,19 +146,13 @@ export function useAuxiliaryEventActions({
   }
 
   const saveManualFeed = () => {
-    const leftSeconds = Math.max(0, Math.round((Number(manualDraft.leftMinutes) || 0) * 60))
-    const rightSeconds = Math.max(0, Math.round((Number(manualDraft.rightMinutes) || 0) * 60))
-    const bottle = Number(manualDraft.bottleOunces) > 0 ? Number(manualDraft.bottleOunces) : null
-    if (leftSeconds + rightSeconds === 0 && !bottle) return showToast('Add nursing time or bottle ounces')
-    const manualStartedAt = parseDateAndTime(manualDraft.date, manualDraft.time)
-    if (manualStartedAt === null) return showToast('Enter a valid feed date and time')
-    const durationMs = Math.max(0, leftSeconds + rightSeconds) * 1000
-    const startedAt = manualStartedAt
-    const endedAt = startedAt + durationMs
-    const type: FeedType = bottle && leftSeconds + rightSeconds > 0 ? 'mixed' : bottle ? 'bottle' : 'breast'
-    setEntries((prev) => sortEntriesLatestFirst([{ id: makeId(), type, startedAt, endedAt, leftSeconds, rightSeconds, bottleOunces: bottle, note: manualDraft.note.trim() }, ...prev]))
-    const nextDefault = new Date().getTime()
-    setManualDraft({ date: formatDateInput(nextDefault), time: formatTimeInput(nextDefault), leftMinutes: '', rightMinutes: '', bottleOunces: '', note: '' })
+    const result = parseManualFeedDraft(manualDraft)
+    if (!result.ok) {
+      return showToast(result.reason === 'empty' ? 'Add nursing time or bottle ounces' : 'Enter a valid feed date and time')
+    }
+
+    setEntries((prev) => sortEntriesLatestFirst([result.entry, ...prev]))
+    setManualDraft(createDefaultManualDraft(new Date().getTime()))
     setManualOpen(false)
     showToast('Missed feed saved')
   }
