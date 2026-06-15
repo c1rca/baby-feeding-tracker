@@ -1,0 +1,125 @@
+import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { describe, expect, it, vi } from 'vitest'
+import App from './App'
+import {
+  STORAGE_DIAPERS_KEY,
+  STORAGE_KEY,
+  STORAGE_MEDICINES_KEY,
+  setupAppTestEnvironment,
+} from './appTestSetup'
+
+describe('App interactions', () => {
+  setupAppTestEnvironment()
+
+  it('opens a polished stats dashboard with deeper care insights', async () => {
+    const now = Date.now()
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        { id: 'latest-r', type: 'breast', startedAt: now - 2 * 60 * 60 * 1000, endedAt: now - 2 * 60 * 60 * 1000 + 15 * 60 * 1000, leftSeconds: 0, rightSeconds: 15 * 60, bottleOunces: null, note: '' },
+        { id: 'left-long', type: 'breast', startedAt: now - 6 * 60 * 60 * 1000, endedAt: now - 6 * 60 * 60 * 1000 + 30 * 60 * 1000, leftSeconds: 30 * 60, rightSeconds: 0, bottleOunces: null, note: '', diaperKinds: ['wet'] },
+        { id: 'mixed', type: 'mixed', startedAt: now - 26 * 60 * 60 * 1000, endedAt: now - 26 * 60 * 60 * 1000 + 20 * 60 * 1000, leftSeconds: 8 * 60, rightSeconds: 7 * 60, bottleOunces: 2.5, note: '' },
+      ]),
+    )
+    localStorage.setItem(STORAGE_DIAPERS_KEY, JSON.stringify([{ id: 'diaper-1', kinds: ['wet', 'stool'], at: now - 60 * 60 * 1000, context: 'standalone' }]))
+
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Show stats/i }))
+
+    expect(screen.getByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
+    expect(screen.getByText(/24h momentum/i)).toBeTruthy()
+    expect(screen.getByText(/Longest stretch/i)).toBeTruthy()
+    expect(screen.getByText(/Longest nursing/i)).toBeTruthy()
+    expect(screen.getByText(/Next side cue/i)).toBeTruthy()
+    expect(screen.getByText(/Smart read/i)).toBeTruthy()
+    expect(screen.getByText(/Diaper signal/i)).toBeTruthy()
+    expect(screen.getAllByText('2').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('1').length).toBeGreaterThan(0)
+    expect(screen.getByText(/Wet\/day/i)).toBeTruthy()
+    expect(screen.getByText(/Stool\/day/i)).toBeTruthy()
+    expect(screen.getAllByText(/Today: 2 · All-time: 2.0/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Today: 1 · All-time: 1.0/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/wet/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/stool/i).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('heading', { name: /Timeline/i })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Show tracker/i }))
+    expect(screen.getByRole('heading', { name: /Timeline/i })).toBeTruthy()
+    expect(screen.queryByRole('region', { name: /Stats dashboard/i })).toBeNull()
+  })
+
+  it('keeps medicine controls collapsed, alternates reminders, and undoes a new medicine log', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(
+      STORAGE_MEDICINES_KEY,
+      JSON.stringify([{ id: 'dose-old', kind: 'tylenol', at: now - 6 * 60 * 60 * 1000 - 1 }]),
+    )
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+
+    expect(screen.getByRole('alert').textContent).toMatch(/Take Tylenol/i)
+    expect(screen.getByRole('button', { name: /Log Tylenol now/i })).toBeTruthy()
+    expect(screen.getByRole('banner').nextElementSibling).toBe(screen.getByRole('alert'))
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    const medicineGroup = screen.getByRole('group', { name: /^Medicine$/i })
+    expect(within(medicineGroup).getByRole('button', { name: /Log Tylenol/i })).toBeTruthy()
+    expect(within(medicineGroup).getByRole('button', { name: /Log Motrin/i })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Dismiss medicine reminder/i }))
+    expect(screen.queryByRole('alert')).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Log Tylenol/i }))
+    expect(screen.getByText(/Tylenol logged/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Additional options/i }).getAttribute('aria-expanded')).toBe('false')
+    expect(screen.queryByRole('button', { name: /Log Tylenol/i })).toBeNull()
+    expect(screen.getAllByText(/^Tylenol$/i).length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: /Undo medicine log/i }))
+    expect(screen.getByText(/Medicine log undone/i)).toBeTruthy()
+    expect(screen.queryAllByText(/^Tylenol$/i).length).toBe(1)
+  })
+
+  it('quick logs the due medicine from the reminder banner', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'dose-old', kind: 'motrin', at: now - 6 * 60 * 60 * 1000 - 1 }]))
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toMatch(/Take Motrin/i)
+    await user.click(within(alert).getByRole('button', { name: /Log Motrin now/i }))
+
+    expect(screen.getByText(/Motrin logged/i)).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+    const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
+    expect(saved[0].kind).toBe('motrin')
+    expect(saved[0].at).toBe(now)
+  })
+
+  it('shows a medicine reminder for a due kind even when another medicine was taken more recently', () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(
+      STORAGE_MEDICINES_KEY,
+      JSON.stringify([
+        { id: 'tylenol-recent', kind: 'tylenol', at: now - 4 * 60 * 60 * 1000 },
+        { id: 'motrin-due', kind: 'motrin', at: now - 6 * 60 * 60 * 1000 - 1 },
+      ]),
+    )
+
+    render(<App />)
+
+    expect(screen.getByRole('alert').textContent).toMatch(/Take Motrin/i)
+    expect(screen.getByRole('alert').textContent).toMatch(/Last dose was Motrin/i)
+  })
+})
