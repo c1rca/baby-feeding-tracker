@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ComponentProps } from 'react'
 import type { DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, View } from '../types'
 import { formatClockInput, formatDateInput, formatTimeInput } from '../domain/trackerDomain'
@@ -12,6 +12,7 @@ import { useTimelineEntryActions } from './useTimelineEntryActions'
 import { useAppUiEffects } from './useAppUiEffects'
 import { useBrowserFeedNotifications } from '../notifications/useBrowserFeedNotifications'
 import { useTrackerPageModel } from './useTrackerPageModel'
+import { useQuickMedicineQuery } from './useQuickMedicineQuery'
 import type { AppHeader } from '../components/AppHeader'
 import type { MedicineReminderBanner } from '../components/MedicineReminderBanner'
 import type { StatsDashboard } from '../components/StatsDashboard'
@@ -51,7 +52,6 @@ export function useTrackerAppController() {
   const [confirmingDeleteEntryId, setConfirmingDeleteEntryId] = useState<string | null>(null)
   const [resumeFocusTick, setResumeFocusTick] = useState(0)
   const heroRef = useRef<HTMLElement | null>(null)
-  const processedQuickMedicineRef = useRef(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   const { syncStatus, hasHydrated } = useServerSync({ entries, diapers, medicines, session, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
@@ -63,19 +63,7 @@ export function useTrackerAppController() {
   const { deleteEntry, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, resumeEntry } = useTimelineEntryActions({ session, setNow, setSession, setEntries, editing, setEditing, editingDiaper, setEditingDiaper, setOpenEntryMenuId, setConfirmingDeleteEntryId, setResumeFocusTick, undoState, setUndoState, setToast, showToast })
   const { availableSelectedDiapers, logBottle, toggleDiaperSelection, logSelectedDiapers, deleteDiaper, saveDiaperEdit, logMedicine, saveMedicineEdit, startMedicineEdit, deleteMedicine, saveManualFeed } = useAuxiliaryEventActions({ now, session, setSession, setEntries, setDiapers, setMedicines, selectedDiapers, setSelectedDiapers, bottleQuickOz, manualDraft, setManualDraft, setManualOpen, setAdditionalOptionsOpen, editingDiaper, setEditingDiaper, editingMedicine, setEditingMedicine, setDismissedMedicineReminderId, setOpenEntryMenuId, setConfirmingDeleteEntryId, undoState, setUndoState, showToast })
 
-  useEffect(() => {
-    if (processedQuickMedicineRef.current) return
-    if (!hasHydrated) return
-    const params = new URLSearchParams(window.location.search)
-    const quickMed = params.get('quickMed')
-    if (quickMed !== 'tylenol' && quickMed !== 'motrin') return
-    processedQuickMedicineRef.current = true
-    logMedicine(quickMed)
-    params.delete('quickMed')
-    const nextQuery = params.toString()
-    const nextUrl = `${window.location.pathname}${nextQuery ? `?${nextQuery}` : ''}${window.location.hash}`
-    window.history.replaceState({}, '', nextUrl)
-  }, [hasHydrated, logMedicine])
+  useQuickMedicineQuery({ hasHydrated, logMedicine })
 
   const { today, trend, stats, lastFeed, lastFeedMetaText, avgGapShortText, suggestedSide, nextFeedSideText, nextFeedWindowText, medicineReminder, showMedicineReminder } = useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId })
   const { selectedStartMinutesAgo, activeSplit, activeSeconds, activeSide, activeOppositeSide, startSession, switchSide, pause, resume, clearSession, endSession } = useActiveFeedActions({ now, setNow, session, setSession, setEntries, selectedDiapers, setSelectedDiapers, startOffsetOpen, startInputMode, startClockText, startMinutesAgo, suggestedSide, undoState, setUndoState, setToast, showToast, setBottleOpen })
