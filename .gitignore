@@ -25,10 +25,11 @@ lerna-debug.log*
 !.env.*.example
 *.local
 
-# Runtime data: private baby records, SQLite files, backups, event logs
+# Runtime data: private baby records, SQLite files, backups, rollback artifacts, event logs
 data/
 data-dev/
 backups/
+rollback/
 *.db
 *.db-*
 *.sqlite
