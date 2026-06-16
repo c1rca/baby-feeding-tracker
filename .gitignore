@@ -1,5 +1,16 @@
+# Dependencies
+node_modules/
+
+# Production/build output
+dist/
+dist-ssr/
+coverage/
+.vite/
+.cache/
+*.tsbuildinfo
+
 # Logs
-logs
+logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
@@ -7,21 +18,31 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
 *.local
-.env.gotify
-.env.smtp
 
+# Runtime data: private baby records, SQLite files, backups, event logs
 data/
 data-dev/
 backups/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.jsonl
 
-# Editor directories and files
+# Docker/local overrides
+compose.override.yml
+docker-compose.override.yml
+
+# Editor/OS files
 .vscode/*
 !.vscode/extensions.json
-.idea
+.idea/
 .DS_Store
 *.suo
 *.ntvs*

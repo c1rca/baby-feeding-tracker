@@ -1,130 +1,97 @@
 # Baby Feeding Tracker
 
-A tiny, polished newborn feeding tracker for one-handed, low-light use. Tracks left/right nursing time, bottle ounces, mixed feeds, notes, missed feeds, and daily trends.
+> A tiny, production-ready care tracker built for one-handed, low-light newborn feeding workflows.
 
-## Production quick start
+![Baby Feeding Tracker dark-mode dashboard](docs/assets/app-screenshot.svg)
 
-Full production/migration/offline runbook: [`docs/PRODUCTION.md`](docs/PRODUCTION.md).
+## Why it exists
+
+Baby care tracking should be fast at 3 AM, reliable when Wi-Fi is flaky, and simple enough that two tired parents can trust it. This app focuses on the moments that matter: start a feed, switch sides, add bottle/diaper/medicine context, and move on.
+
+## Highlights
+
+| Feature | What it gives you |
+|---|---|
+| **One-tap feeding** | Start left/right nursing sessions with live timers and resume support. |
+| **Mixed care timeline** | Nursing, bottle, diaper, missed feeds, and medicine events in one scan-friendly feed. |
+| **Smart reminders** | Feeding windows plus independent Tylenol/Motrin six-hour reminder schedules. |
+| **Offline-first UX** | Browser storage keeps tracking usable when the server is unavailable, then syncs back. |
+| **SQLite durability** | Simple single-file persistence with backup, restore, and event replay tooling. |
+| **Docker deploy** | Runs cleanly as a small private LAN service with health checks and mounted data. |
+
+## Quick start
 
 ```bash
 git clone <repo-url> baby-feeding-tracker
 cd baby-feeding-tracker
-mkdir -p data backups
+npm ci
+npm run build
+npm test
+```
+
+Run locally:
+
+```bash
+npm run dev
+```
+
+Production Docker:
+
+```bash
+mkdir -p data backups logs
 docker compose up -d --build
 curl http://localhost:8080/api/health
 ```
 
-Open: `http://SERVER_IP:8080`
+Open `http://localhost:8080`.
 
-## What to copy to another server
+## Configuration
 
-Copy the repo plus one flat SQLite backup file. That is enough.
-
-```bash
-# On old server
-cd /path/to/baby-feeding-tracker
-npm ci
-npm run backup:db
-ls -lh backups/*.db
-```
-
-Move the newest `backups/feeding-tracker-YYYYMMDD-HHMMSS.db` to the new server.
+Secrets stay local. Copy the examples and fill in real values only on the machine that runs the app:
 
 ```bash
-# On new server
-cd /path/to/baby-feeding-tracker
-mkdir -p data backups
-cp /path/to/feeding-tracker-YYYYMMDD-HHMMSS.db backups/
-npm ci
-npm run restore:db -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
-docker compose up -d --build
-curl http://localhost:8080/api/health
+cp .env.gotify.example .env.gotify
+cp .env.smtp.example .env.smtp
 ```
 
-The app stores durable state at:
+The real `.env.*`, SQLite data, logs, backups, `node_modules`, and build output are ignored by git.
 
-- `./data/feeding-tracker.db` — SQLite database mounted into Docker at `/data/feeding-tracker.db`
-- `./backups/*.db` — portable single-file backups
-- `docs/PRODUCTION.md` — full production, migration, backup, restore, and offline-sync runbook
+## Data & backups
 
-## Docker Compose
+| Path | Purpose |
+|---|---|
+| `data/feeding-tracker.db` | Runtime SQLite database. |
+| `backups/*.db` | Portable backup files. |
+| `logs/feeding-tracker-events.jsonl` | Reconstructable state event log. |
 
-```yaml
-services:
-  feeding-tracker:
-    build: .
-    container_name: baby-feeding-tracker
-    ports:
-      - "8080:8080"
-    environment:
-      - PORT=8080
-      - DB_DIR=/data
-      - DB_PATH=/data/feeding-tracker.db
-    volumes:
-      - ./data:/data
-    restart: unless-stopped
-```
-
-Change the left side of `8080:8080` if another service already uses the port.
-
-## Backups
-
-Create a consistent, portable SQLite backup:
+Create a portable backup:
 
 ```bash
 npm run backup:db
 ```
 
-Recommended daily cron:
-
-```cron
-15 3 * * * cd /path/to/baby-feeding-tracker && npm run backup:db >/tmp/baby-feeding-tracker-backup.log 2>&1
-```
-
-## Restore
-
-Restore only while the app is stopped:
+Restore while the app is stopped:
 
 ```bash
 docker compose down
 npm run restore:db -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
 docker compose up -d
-curl http://localhost:8080/api/health
 ```
 
-## Offline use
+Full production runbook: [`docs/PRODUCTION.md`](docs/PRODUCTION.md).
 
-After the first successful visit, the app caches the UI shell, saves feed changes immediately to browser `localStorage`, shows `Offline changes saved` when the server is unreachable, and automatically syncs pending changes on reconnect/focus.
+## Quality bar
 
-## Local development
-
-```bash
-npm ci
-npm run dev
-```
-
-## Validation checklist
-
-Run before shipping changes:
+Current validation suite:
 
 ```bash
-npm test
-npm run build
 npm run lint
-docker compose config
-docker compose up -d --build
-curl http://localhost:8080/api/health
+npm run build
+npm test
 ```
 
-## UI/UX checklist
-
-- First screen stays focused on active feed.
-- Primary action is obvious and thumb-friendly.
-- Left/right split remains visible during active feeds.
-- Bottle copy changes based on context: bottle-only vs add bottle to active feed.
-- Settings/data actions are tucked away but easy to reach.
-- Dark mode remains high-contrast for overnight use.
+Coverage includes UI flows, sync behavior, stale-write merging, notification scheduling, backup/restore, event replay, and server route modules.
 
 ## Security note
 
-Designed for trusted LAN/private deployment. Put it behind an auth proxy before exposing it publicly.
+Designed for trusted private/LAN deployment. Put it behind an auth proxy before exposing it to the public internet.

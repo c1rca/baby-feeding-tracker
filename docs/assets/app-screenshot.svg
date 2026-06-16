@@ -1,0 +1,75 @@
+<svg width="1440" height="1024" viewBox="0 0 1440 1024" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Baby Feeding Tracker application screenshot</title>
+  <desc id="desc">Dark mode dashboard showing the feeding timer, quick actions, daily stats, seven day trend, and recent timeline.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1440" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#08111f"/>
+      <stop offset="1" stop-color="#0d1728"/>
+    </linearGradient>
+    <linearGradient id="hero" x1="118" y1="76" x2="1324" y2="454" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#111d33"/>
+      <stop offset="1" stop-color="#0e1a2e"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#7c8cff"/>
+      <stop offset="1" stop-color="#38d5ff"/>
+    </linearGradient>
+    <filter id="shadow" x="74" y="42" width="1292" height="900" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="28" stdDeviation="38" flood-color="#000814" flood-opacity="0.42"/>
+    </filter>
+    <style>
+      .panel{fill:#0d182b;stroke:#24334f;stroke-width:1.5}.soft{fill:#111f36;stroke:#2b3d5f;stroke-width:1}.text{font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;fill:#e8eefc}.muted{fill:#8ea0bd}.tiny{font-size:18px}.small{font-size:22px}.body{font-size:26px}.label{font-size:16px;letter-spacing:.14em;text-transform:uppercase;fill:#7f91ad}.h1{font-size:38px;font-weight:800}.num{font-size:108px;font-weight:850;letter-spacing:-.06em}.stat{font-size:42px;font-weight:780}.chip{fill:#142943;stroke:#35537d;stroke-width:1}.blue{fill:#6b7cff}.cyan{fill:#2fc7df}.green{fill:#41d49d}.orange{fill:#ffb86b}.pink{fill:#ff6d9f}.line{stroke:#233650;stroke-width:1}.bar{fill:url(#accent)}
+    </style>
+  </defs>
+  <rect width="1440" height="1024" fill="url(#bg)"/>
+  <g filter="url(#shadow)">
+    <rect x="96" y="56" width="1248" height="856" rx="34" fill="#091321" stroke="#1d2b43"/>
+  </g>
+
+  <g transform="translate(132 96)">
+    <circle cx="12" cy="12" r="6" fill="#8be9fd"/><text x="30" y="21" class="text small" font-weight="760">Baby Feeding Tracker</text>
+    <g transform="translate(996 0)"><circle cx="9" cy="12" r="5" fill="#41d49d"/><text x="24" y="20" class="muted tiny">Online</text><rect x="112" y="0" width="38" height="28" rx="14" fill="#111f36" stroke="#2d405f"/><circle cx="137" cy="14" r="9" fill="#e8eefc"/></g>
+  </g>
+
+  <rect x="132" y="148" width="1176" height="318" rx="28" fill="url(#hero)" stroke="#2a3e60"/>
+  <g transform="translate(174 190)">
+    <text class="label">Next feeding window</text>
+    <text y="112" class="text num">0m 00s</text>
+    <text y="148" class="muted small">Last feed 35m ago · Avg interval 2h 05m</text>
+    <g transform="translate(0 190)">
+      <rect width="168" height="64" rx="18" fill="#6b7cff"/><text x="84" y="40" text-anchor="middle" class="text small" font-weight="760">Start Left</text>
+      <rect x="190" width="168" height="64" rx="18" fill="#111f36" stroke="#314466"/><text x="274" y="40" text-anchor="middle" class="text small" font-weight="760">Start Right</text>
+      <rect x="382" width="168" height="64" rx="18" fill="#111f36" stroke="#314466"/><text x="466" y="40" text-anchor="middle" class="text small" font-weight="760">Add Bottle</text>
+    </g>
+  </g>
+  <g transform="translate(930 202)">
+    <rect width="306" height="190" rx="24" fill="#0b1627" stroke="#263b5c"/>
+    <text x="30" y="48" class="label">Suggested side</text><text x="30" y="112" class="text" font-size="74" font-weight="850">Left</text><text x="30" y="154" class="muted small">Balanced from last session</text>
+  </g>
+
+  <g transform="translate(132 502)">
+    <rect width="1176" height="144" rx="24" class="panel"/>
+    <g transform="translate(34 34)"><text class="label">Feeds today</text><text y="66" class="text stat">3</text></g>
+    <g transform="translate(262 34)"><text class="label">Nursing</text><text y="66" class="text stat">41m</text></g>
+    <g transform="translate(490 34)"><text class="label">Bottle</text><text y="66" class="text stat">2.5 oz</text></g>
+    <g transform="translate(718 34)"><text class="label">L / R split</text><text y="66" class="text stat">27m / 14m</text></g>
+    <g transform="translate(990 34)"><text class="label">Diapers</text><text y="66" class="text stat">2</text></g>
+  </g>
+
+  <g transform="translate(132 684)">
+    <rect width="528" height="190" rx="24" class="panel"/><text x="30" y="48" class="text body" font-weight="780">7-Day Trend</text>
+    <g transform="translate(40 80)">
+      <rect x="0" y="58" width="34" height="52" rx="10" class="bar" opacity=".55"/><rect x="70" y="36" width="34" height="74" rx="10" class="bar" opacity=".72"/><rect x="140" y="20" width="34" height="90" rx="10" class="bar"/><rect x="210" y="44" width="34" height="66" rx="10" class="bar" opacity=".78"/><rect x="280" y="28" width="34" height="82" rx="10" class="bar" opacity=".92"/><rect x="350" y="64" width="34" height="46" rx="10" class="bar" opacity=".6"/><rect x="420" y="48" width="34" height="62" rx="10" class="bar" opacity=".82"/>
+      <text y="142" class="muted tiny">Wed</text><text x="68" y="142" class="muted tiny">Thu</text><text x="140" y="142" class="muted tiny">Fri</text><text x="212" y="142" class="muted tiny">Sat</text><text x="278" y="142" class="muted tiny">Sun</text><text x="348" y="142" class="muted tiny">Mon</text><text x="420" y="142" class="muted tiny">Tue</text>
+    </g>
+  </g>
+
+  <g transform="translate(700 684)">
+    <rect width="608" height="190" rx="24" class="panel"/><text x="30" y="48" class="text body" font-weight="780">Recent Timeline</text><text x="470" y="48" class="muted tiny">Latest first</text>
+    <g transform="translate(30 75)">
+      <rect width="548" height="34" rx="17" class="soft"/><circle cx="20" cy="17" r="5" class="cyan"/><text x="42" y="23" class="text tiny">Nursing · Left 9m / Right 14m</text><text x="404" y="23" class="muted tiny">35m ago</text>
+      <rect y="46" width="548" height="34" rx="17" class="soft"/><circle cx="20" cy="63" r="5" class="green"/><text x="42" y="69" class="text tiny">Wet diaper</text><text x="404" y="69" class="muted tiny">50m ago</text>
+      <rect y="92" width="548" height="34" rx="17" class="soft"/><circle cx="20" cy="109" r="5" class="orange"/><text x="42" y="115" class="text tiny">Bottle · 2.5 oz</text><text x="404" y="115" class="muted tiny">4h ago</text>
+    </g>
+  </g>
+</svg>
