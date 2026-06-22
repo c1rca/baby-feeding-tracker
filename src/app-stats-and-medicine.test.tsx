@@ -66,13 +66,51 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Add measurement/i }))
     const modal = screen.getByRole('form', { name: /Add growth measurement/i })
     expect(within(modal).getByLabelText(/Calculated age in months/i)).toBeTruthy()
-    await user.type(within(modal).getByLabelText(/Weight/i), '12')
+    await user.type(within(modal).getByLabelText(/Pounds/i), '8')
+    await user.type(within(modal).getByLabelText(/Ounces/i), '11')
     await user.type(within(modal).getByLabelText(/Length/i), '58')
     await user.type(within(modal).getByLabelText(/Head/i), '39')
     await user.click(within(modal).getByRole('button', { name: /Save measurement/i }))
 
     expect(screen.queryByRole('form', { name: /Add growth measurement/i })).toBeNull()
+    expect(screen.getAllByText(/8 lb 11 oz/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/percentile/i).length).toBeGreaterThan(0)
+  })
+
+  it('edits and deletes growth measurements with undo', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Show stats/i }))
+    await user.click(screen.getByRole('button', { name: /Add measurement/i }))
+    let modal = screen.getByRole('form', { name: /Add growth measurement/i })
+    await user.type(within(modal).getByLabelText(/Pounds/i), '12')
+    await user.type(within(modal).getByLabelText(/Length/i), '58')
+    await user.type(within(modal).getByLabelText(/Head/i), '39')
+    await user.click(within(modal).getByRole('button', { name: /Save measurement/i }))
+    expect(screen.getAllByText(/12 lb/i).length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: /Edit growth measurement/i }))
+    modal = screen.getByRole('form', { name: /Edit growth measurement/i })
+    await user.clear(within(modal).getByLabelText(/Pounds/i))
+    await user.type(within(modal).getByLabelText(/Pounds/i), '13')
+    await user.clear(within(modal).getByLabelText(/Ounces/i))
+    await user.type(within(modal).getByLabelText(/Ounces/i), '8')
+    await user.click(within(modal).getByRole('button', { name: /Save changes/i }))
+    expect(screen.getByText(/Growth measurement updated/i)).toBeTruthy()
+    expect(screen.getAllByText(/13 lb 8 oz/i).length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: /Undo growth edit/i }))
+    expect(screen.getByText(/Growth edit undone/i)).toBeTruthy()
+    expect(screen.getAllByText(/12 lb/i).length).toBeGreaterThan(0)
+
+    await user.click(screen.getByRole('button', { name: /Delete growth measurement/i }))
+    expect(screen.getByText(/Growth measurement deleted/i)).toBeTruthy()
+    expect(screen.queryByText(/12 lb/i)).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Undo growth delete/i }))
+    expect(screen.getByText(/Growth delete undone/i)).toBeTruthy()
+    expect(screen.getAllByText(/12 lb/i).length).toBeGreaterThan(0)
   })
 
   it('keeps medicine controls collapsed, alternates reminders, and undoes a new medicine log', async () => {
