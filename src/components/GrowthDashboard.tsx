@@ -199,7 +199,8 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
             <div className="growth-form-grid">
               <label>Date<input type="date" value={draft.measuredAt} onChange={(e) => setDraft((d) => ({ ...d, measuredAt: e.target.value }))} /></label>
               <label>Age<input readOnly value={`${ageMonths} months`} aria-label="Calculated age in months" /></label>
-              <fieldset className="growth-weight-field"><legend>Weight</legend><div><label>Pounds<input inputMode="numeric" placeholder="8" value={draft.weightPounds} onChange={(e) => setDraft((d) => ({ ...d, weightPounds: e.target.value }))} /></label><label>Ounces<input inputMode="decimal" placeholder="11" value={draft.weightOunces} onChange={(e) => setDraft((d) => ({ ...d, weightOunces: e.target.value }))} /></label></div><small>Enter Nanit/doctor format: pounds + ounces. We store decimal pounds for charting.</small></fieldset>
+              <label>Pounds<input inputMode="numeric" placeholder="8" value={draft.weightPounds} onChange={(e) => setDraft((d) => ({ ...d, weightPounds: e.target.value }))} /></label>
+              <label>Ounces<input inputMode="decimal" placeholder="11" value={draft.weightOunces} onChange={(e) => setDraft((d) => ({ ...d, weightOunces: e.target.value }))} /></label>
               <label>Length (cm)<input inputMode="decimal" placeholder="60.5" value={draft.lengthCm} onChange={(e) => setDraft((d) => ({ ...d, lengthCm: e.target.value }))} /></label>
               <label>Head (cm)<input inputMode="decimal" placeholder="40.2" value={draft.headCm} onChange={(e) => setDraft((d) => ({ ...d, headCm: e.target.value }))} /></label>
               <label className="growth-note">Note<input placeholder="Doctor visit" value={draft.note} onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))} /></label>
