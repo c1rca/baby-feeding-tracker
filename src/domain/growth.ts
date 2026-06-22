@@ -8,7 +8,10 @@ const AVERAGE_DAYS_PER_MONTH = 365.2425 / 12
 export function calculateAgeMonths(babyDob: string, measuredAt: number) {
   const dobMs = new Date(`${babyDob}T12:00:00`).getTime()
   if (!Number.isFinite(dobMs) || !Number.isFinite(measuredAt)) return 0
-  return Math.max(0, Math.round(((measuredAt - dobMs) / 86_400_000 / AVERAGE_DAYS_PER_MONTH) * 10) / 10)
+  const ageDays = Math.max(0, (measuredAt - dobMs) / 86_400_000)
+  if (ageDays < 1) return 0
+  const rawMonths = ageDays / AVERAGE_DAYS_PER_MONTH
+  return Math.min(24, Math.floor(rawMonths) + 0.5)
 }
 
 const valueForMetric = (measurement: GrowthMeasurement, key: GrowthMetricKey) => {
