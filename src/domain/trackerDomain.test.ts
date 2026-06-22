@@ -8,6 +8,7 @@ import {
   calculateTrend,
   diaperKinds,
   entryToResumedSession,
+  formatTimelineTimestamp,
   normalizeSession,
   parseClockTimeToday,
 } from './trackerDomain'
@@ -49,6 +50,13 @@ describe('trackerDomain', () => {
     expect(parseClockTimeToday('8:15am', todayAt(12))).toBe(todayAt(8, 15))
     expect(parseClockTimeToday('11:00pm', todayAt(12))).toBe(todayAt(23) - 24 * 60 * 60 * 1000)
     expect(parseClockTimeToday('25:99', todayAt(12))).toBeNull()
+  })
+
+  it('shows calendar date for timeline events older than 24 hours', () => {
+    const now = new Date(2026, 5, 21, 12, 0).getTime()
+    const olderThan24Hours = new Date(2026, 5, 20, 10, 30).getTime()
+
+    expect(formatTimelineTimestamp(olderThan24Hours, now).primary).toMatch(/^Sat, Jun 20 · 10:30 AM$/)
   })
 
   it('converts a saved entry into a resumable session on the correct side', () => {

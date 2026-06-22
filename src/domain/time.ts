@@ -37,7 +37,7 @@ export const parseDateAndTime = (dateValue: string, timeValue: string) => {
 
 export const formatTimelineTimestamp = (timestamp: number, now = new Date().getTime()) => {
   const ageMs = Math.max(0, now - timestamp)
-  if (ageMs < 2 * DAY_MS) return { primary: formatTime(timestamp), showRelative: true }
+  if (ageMs < DAY_MS) return { primary: formatTime(timestamp), showRelative: true }
   const date = new Date(timestamp)
   const sameYear = date.getFullYear() === new Date(now).getFullYear()
   return {
