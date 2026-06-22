@@ -51,6 +51,30 @@ describe('App interactions', () => {
     expect(screen.queryByRole('region', { name: /Stats dashboard/i })).toBeNull()
   })
 
+  it('uses a premium growth chart with metric tabs and modal measurement entry', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Show stats/i }))
+    expect(screen.getByRole('region', { name: /Growth percentile tracker/i })).toBeTruthy()
+    expect(screen.getByRole('tab', { name: /Weight/i }).getAttribute('aria-selected')).toBe('true')
+
+    await user.click(screen.getByRole('tab', { name: /Length/i }))
+    expect(screen.getByRole('tab', { name: /Length/i }).getAttribute('aria-selected')).toBe('true')
+    expect(screen.getByRole('img', { name: /Length percentile chart/i })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Add measurement/i }))
+    const modal = screen.getByRole('form', { name: /Add growth measurement/i })
+    expect(within(modal).getByLabelText(/Calculated age in months/i)).toBeTruthy()
+    await user.type(within(modal).getByLabelText(/Weight/i), '12')
+    await user.type(within(modal).getByLabelText(/Length/i), '58')
+    await user.type(within(modal).getByLabelText(/Head/i), '39')
+    await user.click(within(modal).getByRole('button', { name: /Save measurement/i }))
+
+    expect(screen.queryByRole('form', { name: /Add growth measurement/i })).toBeNull()
+    expect(screen.getAllByText(/percentile/i).length).toBeGreaterThan(0)
+  })
+
   it('keeps medicine controls collapsed, alternates reminders, and undoes a new medicine log', async () => {
     const now = new Date('2026-06-05T14:00:00Z').getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })
