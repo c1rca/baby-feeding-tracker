@@ -60,33 +60,35 @@ export const createStateRouter = ({
         entries: Array.isArray(req.body?.entries) ? req.body.entries : [],
         diapers: Array.isArray(req.body?.diapers) ? req.body.diapers : [],
         medicines: Array.isArray(req.body?.medicines) ? req.body.medicines : [],
+        growthMeasurements: Array.isArray(req.body?.growthMeasurements) ? req.body.growthMeasurements : [],
         session: req.body?.session ?? null,
         theme: req.body?.theme === 'dark' ? 'dark' : 'light',
         updatedAt: req.body?.updatedAt,
       }, deletedItemOptions())
-      const { entries, diapers, medicines, session, theme } = incoming
+      const { entries, diapers, medicines, growthMeasurements, session, theme } = incoming
       const updatedAt = new Date().toISOString()
 
       upsertState.run({
         entries_json: JSON.stringify(entries),
         diapers_json: JSON.stringify(diapers),
         medicines_json: JSON.stringify(medicines),
+        growth_measurements_json: JSON.stringify(growthMeasurements),
         session_json: session ? JSON.stringify(session) : null,
         theme,
         updated_at: updatedAt,
       })
 
-      const audit = buildStateAudit(existingRow, { entries, diapers, medicines, session, theme }, {
+      const audit = buildStateAudit(existingRow, { entries, diapers, medicines, growthMeasurements, session, theme }, {
         staleWriteMerged: incoming.stale,
         clientUpdatedAt: req.body?.updatedAt,
         nextUpdatedAt: updatedAt,
       })
       recordDeletedItems(audit, updatedAt)
       appendEventLog('state_write_audit', audit)
-      appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines), staleWriteMerged: incoming.stale, entries, diapers, medicines, session })
+      appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines, growthMeasurements), staleWriteMerged: incoming.stale, entries, diapers, medicines, growthMeasurements, session })
       notificationScheduler?.evaluate()
 
-      const responseState = { entries, diapers, medicines, session, theme, updatedAt }
+      const responseState = { entries, diapers, medicines, growthMeasurements, session, theme, updatedAt }
       broadcastStateChange(responseState)
       res.json({ ok: true, updatedAt, staleWriteMerged: incoming.stale, state: responseState })
     })

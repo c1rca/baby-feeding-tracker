@@ -28,7 +28,7 @@ type AppToastProps = ComponentProps<typeof AppToast>
 type TrackViewProps = ComponentProps<typeof TrackView>
 
 export function useTrackerAppController() {
-  const { entries, setEntries, session, setSession, diapers, setDiapers, medicines, setMedicines, theme, setTheme, settingsOpen, setSettingsOpen, feedingNotificationsEnabled, setFeedingNotificationsEnabled } = usePersistentTrackerState()
+  const { entries, setEntries, session, setSession, diapers, setDiapers, medicines, setMedicines, growthMeasurements, setGrowthMeasurements, theme, setTheme, settingsOpen, setSettingsOpen, feedingNotificationsEnabled, setFeedingNotificationsEnabled } = usePersistentTrackerState()
   const [selectedDiapers, setSelectedDiapers] = useState<DiaperKind[]>([])
   const [dismissedMedicineReminderId, setDismissedMedicineReminderId] = useState<string | null>(null)
   const [view, setView] = useState<View>('track')
@@ -54,7 +54,7 @@ export function useTrackerAppController() {
   const heroRef = useRef<HTMLElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  const { syncStatus, hasHydrated } = useServerSync({ entries, diapers, medicines, session, theme, setEntries, setDiapers, setMedicines, setSession, setTheme })
+  const { syncStatus, hasHydrated } = useServerSync({ entries, diapers, medicines, growthMeasurements, session, theme, setEntries, setDiapers, setMedicines, setGrowthMeasurements, setSession, setTheme })
   const { toast, undoState, setToast, setUndoState, showToast, undoToastText, undoLabel, undo } = useUndoToast({ setEntries, setDiapers, setMedicines, setSession })
 
   useAppUiEffects({ setNow, resumeFocusTick, session, heroRef, setBottleOpen, setManualOpen, setSettingsOpen, setSelectedDiapers, setEditingDiaper, openEntryMenuId, setOpenEntryMenuId, setConfirmingDeleteEntryId })
@@ -72,7 +72,7 @@ export function useTrackerAppController() {
 
   const headerProps: AppHeaderProps = { view, syncStatus, theme, settingsOpen, setView, setTheme, setSettingsOpen }
   const medicineReminderProps: MedicineReminderBannerProps = { medicineReminder, showMedicineReminder, dismissMedicineReminder: setDismissedMedicineReminderId, logMedicine }
-  const statsProps: StatsDashboardProps = { stats, trend }
+  const statsProps: StatsDashboardProps = { stats, trend, growthMeasurements, setGrowthMeasurements }
   const trackViewProps: TrackViewProps = {
     heroRef,
     hero: { session, activeSeconds, activeSplit, activeSide, activeOppositeSide, suggestedSide, nextFeedWindowText, nextFeedSideText, lastFeedMetaText, avgGapShortText, hasLastFeed: Boolean(lastFeed), startOffsetOpen, startInputMode, startClockText, startMinutesAgo, selectedStartMinutesAgo, selectedDiapers, availableSelectedDiapers, additionalOptionsOpen, setStartOffsetOpen, setStartInputMode, setStartClockText, setStartMinutesAgo, setAdditionalOptionsOpen, setBottleOpen, setManualOpen, setSession, startSession, switchSide, pause, resume, endSession, clearSession, toggleDiaperSelection, logSelectedDiapers, logMedicine },

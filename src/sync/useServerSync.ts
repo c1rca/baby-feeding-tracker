@@ -8,13 +8,13 @@ import { useLatestServerPayload, useServerStateApplier } from './useServerStateA
 import { usePendingSyncRetry, usePersistLocalChanges } from './useServerSyncEffects'
 
 export const useServerSync = (options: UseServerSyncOptions) => {
-  const { entries, diapers, medicines, session, theme } = options
+  const { entries, diapers, medicines, growthMeasurements, session, theme } = options
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => (localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'synced'))
   const [hasHydrated, setHasHydrated] = useState(false)
   const latestPayloadRef = useLatestServerPayload(options)
   const { applyServerState, applyingServerStateRef, serverUpdatedAtRef, skipNextSyncRef } = useServerStateApplier(options)
 
-  const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme, nextDiapers?: ServerSyncPayload['diapers'], nextMedicines?: ServerSyncPayload['medicines']) => {
+  const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme, nextDiapers?: ServerSyncPayload['diapers'], nextMedicines?: ServerSyncPayload['medicines'], nextGrowthMeasurements?: ServerSyncPayload['growthMeasurements']) => {
     const payload = latestPayloadRef.current
     setSyncStatus('syncing')
     try {
@@ -22,6 +22,7 @@ export const useServerSync = (options: UseServerSyncOptions) => {
         entries: nextEntries,
         diapers: nextDiapers,
         medicines: nextMedicines,
+        growthMeasurements: nextGrowthMeasurements,
         session: nextSession,
         theme: nextTheme,
       }))
@@ -43,7 +44,7 @@ export const useServerSync = (options: UseServerSyncOptions) => {
   }, [skipNextSyncRef])
 
   useInitialServerSync({ latestPayloadRef, serverUpdatedAtRef, applyServerState, syncToApi, setHasHydrated, setSyncStatus })
-  usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, entries, diapers, medicines, session, theme })
+  usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, entries, diapers, medicines, growthMeasurements, session, theme })
   usePendingSyncRetry(syncToApi)
 
   return { syncStatus, hasHydrated }

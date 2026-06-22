@@ -1,4 +1,6 @@
+import { normalizeGrowthMeasurements } from '../domain/growth'
 import { normalizeSession } from '../domain/trackerDomain'
+import type { GrowthMeasurement } from '../domain/growthTypes'
 import type { DiaperEvent, Entry, LegacySession, MedicineEvent, Theme } from '../types'
 
 export const TRACKER_STORAGE_KEYS = {
@@ -9,6 +11,7 @@ export const TRACKER_STORAGE_KEYS = {
   feedingNotifications: 'baby-feeding-tracker:v1:feeding-notifications',
   diapers: 'baby-feeding-tracker:v1:diapers',
   medicines: 'baby-feeding-tracker:v1:medicines',
+  growthMeasurements: 'baby-feeding-tracker:v1:growth-measurements',
 } as const
 
 const THEME_COOKIE = 'baby_feeding_theme'
@@ -35,6 +38,11 @@ export const readSortedDiapers = () => {
 export const readSortedMedicines = () => {
   const parsed = safeJsonParse<MedicineEvent[]>(localStorage.getItem(TRACKER_STORAGE_KEYS.medicines)) ?? []
   return parsed.sort((a, b) => b.at - a.at)
+}
+
+export const readSortedGrowthMeasurements = () => {
+  const parsed = safeJsonParse<GrowthMeasurement[]>(localStorage.getItem(TRACKER_STORAGE_KEYS.growthMeasurements)) ?? []
+  return normalizeGrowthMeasurements(parsed)
 }
 
 export const readSession = () => {

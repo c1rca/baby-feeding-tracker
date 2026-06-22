@@ -1,4 +1,5 @@
 import type { SideSegment } from './domain/feedingUtils'
+import type { GrowthMeasurement } from './domain/growthTypes'
 
 export type Side = 'left' | 'right'
 export type FeedType = 'breast' | 'bottle' | 'mixed'
@@ -54,6 +55,7 @@ export type ServerState = {
   entries?: Entry[]
   diapers?: DiaperEvent[]
   medicines?: MedicineEvent[]
+  growthMeasurements?: GrowthMeasurement[]
   session?: LegacySession | null
   theme?: Theme
   updatedAt?: string | null

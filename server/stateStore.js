@@ -1,19 +1,21 @@
 export const serializeState = (row) => {
-  if (!row) return { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: null }
+  if (!row) return { entries: [], diapers: [], medicines: [], growthMeasurements: [], session: null, theme: 'light', updatedAt: null }
   return {
     entries: JSON.parse(row.entries_json),
     diapers: JSON.parse(row.diapers_json || '[]'),
     medicines: JSON.parse(row.medicines_json || '[]'),
+    growthMeasurements: JSON.parse(row.growth_measurements_json || '[]'),
     session: row.session_json ? JSON.parse(row.session_json) : null,
     theme: row.theme || 'light',
     updatedAt: row.updated_at,
   }
 }
 
-export const summarizeState = (entries, session, theme, diapers = [], medicines = []) => ({
+export const summarizeState = (entries, session, theme, diapers = [], medicines = [], growthMeasurements = []) => ({
   entryCount: entries.length,
   diaperCount: diapers.length,
   medicineCount: medicines.length,
+  growthMeasurementCount: growthMeasurements.length,
   latestEntryId: entries[0]?.id ?? null,
   latestEndedAt: entries[0]?.endedAt ?? null,
   hasSession: Boolean(session),

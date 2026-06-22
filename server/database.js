@@ -16,6 +16,7 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath }) {
       theme TEXT NOT NULL DEFAULT 'light',
       diapers_json TEXT NOT NULL DEFAULT '[]',
       medicines_json TEXT NOT NULL DEFAULT '[]',
+      growth_measurements_json TEXT NOT NULL DEFAULT '[]',
       updated_at TEXT NOT NULL
     );
 
@@ -43,20 +44,23 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath }) {
   if (!hasDiapersColumn) db.exec("ALTER TABLE app_state ADD COLUMN diapers_json TEXT NOT NULL DEFAULT '[]'")
   const hasMedicinesColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'medicines_json'").get().count > 0
   if (!hasMedicinesColumn) db.exec("ALTER TABLE app_state ADD COLUMN medicines_json TEXT NOT NULL DEFAULT '[]'")
+  const hasGrowthMeasurementsColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'growth_measurements_json'").get().count > 0
+  if (!hasGrowthMeasurementsColumn) db.exec("ALTER TABLE app_state ADD COLUMN growth_measurements_json TEXT NOT NULL DEFAULT '[]'")
 
   return db
 }
 
 export function prepareTrackerStatements(db) {
   return {
-    selectState: db.prepare('SELECT entries_json, diapers_json, medicines_json, session_json, theme, updated_at FROM app_state WHERE id = 1'),
+    selectState: db.prepare('SELECT entries_json, diapers_json, medicines_json, growth_measurements_json, session_json, theme, updated_at FROM app_state WHERE id = 1'),
     upsertState: db.prepare(`
-      INSERT INTO app_state (id, entries_json, diapers_json, medicines_json, session_json, theme, updated_at)
-      VALUES (1, @entries_json, @diapers_json, @medicines_json, @session_json, @theme, @updated_at)
+      INSERT INTO app_state (id, entries_json, diapers_json, medicines_json, growth_measurements_json, session_json, theme, updated_at)
+      VALUES (1, @entries_json, @diapers_json, @medicines_json, @growth_measurements_json, @session_json, @theme, @updated_at)
       ON CONFLICT(id) DO UPDATE SET
         entries_json = excluded.entries_json,
         diapers_json = excluded.diapers_json,
         medicines_json = excluded.medicines_json,
+        growth_measurements_json = excluded.growth_measurements_json,
         session_json = excluded.session_json,
         theme = excluded.theme,
         updated_at = excluded.updated_at

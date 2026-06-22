@@ -7,6 +7,7 @@ import {
   readSession,
   readSortedDiapers,
   readSortedEntries,
+  readSortedGrowthMeasurements,
   readSortedMedicines,
   readTheme,
 } from './persistentTrackerStorage'
@@ -16,6 +17,7 @@ export function usePersistentTrackerState() {
   const [session, setSession] = useState<Session | null>(readSession)
   const [diapers, setDiapers] = useState<DiaperEvent[]>(readSortedDiapers)
   const [medicines, setMedicines] = useState<MedicineEvent[]>(readSortedMedicines)
+  const [growthMeasurements, setGrowthMeasurements] = useState(readSortedGrowthMeasurements)
   const [theme, setTheme] = useState<Theme>(readTheme)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [feedingNotificationsEnabled, setFeedingNotificationsEnabled] = useState(readFeedingNotificationsEnabled)
@@ -23,6 +25,7 @@ export function usePersistentTrackerState() {
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.entries, JSON.stringify(entries)), [entries])
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.diapers, JSON.stringify(diapers)), [diapers])
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.medicines, JSON.stringify(medicines)), [medicines])
+  useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.growthMeasurements, JSON.stringify(growthMeasurements)), [growthMeasurements])
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.session, JSON.stringify(session)), [session])
   useEffect(() => persistTheme(theme), [theme])
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.settingsOpen, settingsOpen ? '1' : '0'), [settingsOpen])
@@ -37,6 +40,8 @@ export function usePersistentTrackerState() {
     setDiapers,
     medicines,
     setMedicines,
+    growthMeasurements,
+    setGrowthMeasurements,
     theme,
     setTheme,
     settingsOpen,

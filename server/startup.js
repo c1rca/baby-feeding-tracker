@@ -26,8 +26,9 @@ export const appendStartupStateSnapshot = ({ selectState, appendEventLog, summar
     const entries = JSON.parse(startupRow.entries_json)
     const diapers = JSON.parse(startupRow.diapers_json || '[]')
     const medicines = JSON.parse(startupRow.medicines_json || '[]')
+    const growthMeasurements = JSON.parse(startupRow.growth_measurements_json || '[]')
     const session = startupRow.session_json ? JSON.parse(startupRow.session_json) : null
-    appendEventLog('startup_state_snapshot', { ...summarizeState(entries, session, startupRow.theme || 'light', diapers, medicines), entries, diapers, medicines, session })
+    appendEventLog('startup_state_snapshot', { ...summarizeState(entries, session, startupRow.theme || 'light', diapers, medicines, growthMeasurements), entries, diapers, medicines, growthMeasurements, session })
   } catch (error) {
     appendEventLog('startup_state_snapshot_failed', { error: redactError(error) })
   }

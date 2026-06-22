@@ -1,4 +1,6 @@
 import { normalizeSession } from '../domain/trackerDomain'
+import { normalizeGrowthMeasurements } from '../domain/growth'
+import type { GrowthMeasurement } from '../domain/growthTypes'
 import type { DiaperEvent, Entry, MedicineEvent, ServerState } from '../types'
 import type { ServerSyncPayload } from './serverSyncTypes'
 
@@ -12,6 +14,10 @@ export function sortDiapers(diapers: DiaperEvent[]) {
 
 export function sortMedicines(medicines: MedicineEvent[]) {
   return [...medicines].sort((a, b) => b.at - a.at)
+}
+
+export function sortGrowthMeasurements(growthMeasurements: GrowthMeasurement[]) {
+  return normalizeGrowthMeasurements(growthMeasurements)
 }
 
 export function mergeById<T extends { id: string }>(serverItems: T[] | undefined, localItems: T[] | undefined) {
@@ -28,6 +34,7 @@ export function buildPendingSyncPayload(serverState: ServerState, localPayload: 
     entries: sortEntries(mergeById(serverState.entries, localPayload.entries)),
     diapers: sortDiapers(mergeById(serverState.diapers, localPayload.diapers)),
     medicines: sortMedicines(mergeById(serverState.medicines, localPayload.medicines)),
+    growthMeasurements: sortGrowthMeasurements(mergeById(serverState.growthMeasurements, localPayload.growthMeasurements)),
     session: serverSession ?? localPayload.session,
     theme: localPayload.theme ?? serverState.theme ?? 'light',
   }
@@ -42,6 +49,7 @@ export function buildApiStatePayload(
     entries: overrides.entries ?? currentPayload.entries,
     diapers: overrides.diapers ?? currentPayload.diapers,
     medicines: overrides.medicines ?? currentPayload.medicines,
+    growthMeasurements: overrides.growthMeasurements ?? currentPayload.growthMeasurements,
     session: overrides.session ?? currentPayload.session,
     theme: overrides.theme ?? currentPayload.theme,
     updatedAt: serverUpdatedAt,
