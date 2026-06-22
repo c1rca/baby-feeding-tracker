@@ -92,6 +92,7 @@ export function resolveIncomingState(existingRow, incoming, options = {}) {
     diapers: mergeByIdPreservingExisting(parseJsonArray(existingRow.diapers_json), incoming.diapers, options.deletedDiaperIds),
     medicines: mergeByIdPreservingExisting(parseJsonArray(existingRow.medicines_json), incoming.medicines, options.deletedMedicineIds),
     growthMeasurements: mergeByIdPreservingExisting(parseJsonArray(existingRow.growth_measurements_json), incoming.growthMeasurements),
+    babyDob: existingRow.baby_dob || incoming.babyDob || '2026-06-03',
     session: parseJsonValue(existingRow.session_json, null),
     stale,
   }

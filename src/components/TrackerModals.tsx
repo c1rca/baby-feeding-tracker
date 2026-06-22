@@ -14,6 +14,7 @@ export function TrackerModals({
   manualDraft,
   entries,
   diapers,
+  babyDob,
   feedingNotificationsEnabled,
   notificationPermission,
   gotifyAvailable,
@@ -26,6 +27,7 @@ export function TrackerModals({
   setManualDraft,
   setEntries,
   setDiapers,
+  setBabyDob,
   setSession,
   setUndoState,
   setFeedingNotificationsEnabled,
@@ -52,7 +54,7 @@ export function TrackerModals({
     <>
       {bottleOpen ? <BottleModal session={session} bottleQuickOz={bottleQuickOz} setBottleOpen={setBottleOpen} setBottleQuickOz={setBottleQuickOz} logBottle={logBottle} /> : null}
       {manualOpen ? <ManualFeedModal manualDraft={manualDraft} setManualDraft={setManualDraft} setManualOpen={setManualOpen} saveManualFeed={saveManualFeed} /> : null}
-      {settingsOpen ? <SettingsModal entries={entries} diapers={diapers} feedingNotificationsEnabled={feedingNotificationsEnabled} notificationPermission={notificationPermission} gotifyAvailable={gotifyAvailable} gotifyRemindersEnabled={gotifyRemindersEnabled} fileInputRef={fileInputRef} setSettingsOpen={setSettingsOpen} setEntries={setEntries} setDiapers={setDiapers} setSession={setSession} setUndoState={setUndoState} setFeedingNotificationsEnabled={setFeedingNotificationsEnabled} enableFeedingNotifications={enableFeedingNotifications} setGotifyReminders={setGotifyReminders} showToast={showToast} /> : null}
+      {settingsOpen ? <SettingsModal entries={entries} diapers={diapers} babyDob={babyDob} feedingNotificationsEnabled={feedingNotificationsEnabled} notificationPermission={notificationPermission} gotifyAvailable={gotifyAvailable} gotifyRemindersEnabled={gotifyRemindersEnabled} fileInputRef={fileInputRef} setSettingsOpen={setSettingsOpen} setEntries={setEntries} setDiapers={setDiapers} setBabyDob={setBabyDob} setSession={setSession} setUndoState={setUndoState} setFeedingNotificationsEnabled={setFeedingNotificationsEnabled} enableFeedingNotifications={enableFeedingNotifications} setGotifyReminders={setGotifyReminders} showToast={showToast} /> : null}
     </>
   )
 }

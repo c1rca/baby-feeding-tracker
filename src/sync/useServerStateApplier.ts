@@ -6,7 +6,7 @@ import type { UseServerSyncOptions } from './serverSyncTypes'
 
 type ServerStateApplierOptions = Pick<
   UseServerSyncOptions,
-  'setEntries' | 'setDiapers' | 'setMedicines' | 'setGrowthMeasurements' | 'setSession' | 'setTheme'
+  'setEntries' | 'setDiapers' | 'setMedicines' | 'setGrowthMeasurements' | 'setBabyDob' | 'setSession' | 'setTheme'
 >
 
 export function useServerStateApplier({
@@ -14,6 +14,7 @@ export function useServerStateApplier({
   setDiapers,
   setMedicines,
   setGrowthMeasurements,
+  setBabyDob,
   setSession,
   setTheme,
 }: ServerStateApplierOptions) {
@@ -28,21 +29,22 @@ export function useServerStateApplier({
     if (Array.isArray(data.diapers)) setDiapers(sortDiapers(data.diapers))
     if (Array.isArray(data.medicines)) setMedicines(sortMedicines(data.medicines))
     if (Array.isArray(data.growthMeasurements)) setGrowthMeasurements(sortGrowthMeasurements(data.growthMeasurements))
+    if (typeof data.babyDob === 'string') setBabyDob(data.babyDob)
     if (data.session !== undefined) setSession(normalizeSession(data.session))
     if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
     if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
     window.setTimeout(() => { applyingServerStateRef.current = false }, 0)
-  }, [setDiapers, setEntries, setGrowthMeasurements, setMedicines, setSession, setTheme])
+  }, [setBabyDob, setDiapers, setEntries, setGrowthMeasurements, setMedicines, setSession, setTheme])
 
   return { applyServerState, applyingServerStateRef, serverUpdatedAtRef, skipNextSyncRef }
 }
 
-export function useLatestServerPayload({ entries, diapers, medicines, growthMeasurements, session, theme }: UseServerSyncOptions) {
-  const latestPayloadRef = useRef({ entries, diapers, medicines, growthMeasurements, session, theme })
+export function useLatestServerPayload({ entries, diapers, medicines, growthMeasurements, babyDob, session, theme }: UseServerSyncOptions) {
+  const latestPayloadRef = useRef({ entries, diapers, medicines, growthMeasurements, babyDob, session, theme })
 
   useEffect(() => {
-    latestPayloadRef.current = { entries, diapers, medicines, growthMeasurements, session, theme }
-  }, [entries, diapers, medicines, growthMeasurements, session, theme])
+    latestPayloadRef.current = { entries, diapers, medicines, growthMeasurements, babyDob, session, theme }
+  }, [entries, diapers, medicines, growthMeasurements, babyDob, session, theme])
 
   return latestPayloadRef
 }

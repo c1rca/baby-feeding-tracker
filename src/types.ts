@@ -56,6 +56,7 @@ export type ServerState = {
   diapers?: DiaperEvent[]
   medicines?: MedicineEvent[]
   growthMeasurements?: GrowthMeasurement[]
+  babyDob?: string
   session?: LegacySession | null
   theme?: Theme
   updatedAt?: string | null

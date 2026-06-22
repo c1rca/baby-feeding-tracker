@@ -12,6 +12,7 @@ export type TrackerModalsProps = {
   manualDraft: ManualDraft
   entries: Entry[]
   diapers: DiaperEvent[]
+  babyDob: string
   feedingNotificationsEnabled: boolean
   notificationPermission: NotificationPermission
   gotifyAvailable: boolean
@@ -24,6 +25,7 @@ export type TrackerModalsProps = {
   setManualDraft: (draft: ManualDraft) => void
   setEntries: (updater: Entry[] | ((prev: Entry[]) => Entry[])) => void
   setDiapers: (updater: DiaperEvent[] | ((prev: DiaperEvent[]) => DiaperEvent[])) => void
+  setBabyDob: (dob: string) => void
   setSession: (session: Session | null) => void
   setUndoState: (state: null) => void
   setFeedingNotificationsEnabled: (enabled: boolean) => void

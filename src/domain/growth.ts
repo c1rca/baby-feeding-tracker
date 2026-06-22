@@ -3,6 +3,13 @@ import type { GrowthMeasurement, GrowthMetric, GrowthMetricKey, GrowthStandardPo
 
 export const GROWTH_PERCENTILE_LINES = ['p3', 'p10', 'p25', 'p50', 'p75', 'p90', 'p97'] as const
 export const GROWTH_REFERENCE_SOURCE = 'WHO Child Growth Standards for boys 0–24 months via CDC LMS tables'
+const AVERAGE_DAYS_PER_MONTH = 365.2425 / 12
+
+export function calculateAgeMonths(babyDob: string, measuredAt: number) {
+  const dobMs = new Date(`${babyDob}T12:00:00`).getTime()
+  if (!Number.isFinite(dobMs) || !Number.isFinite(measuredAt)) return 0
+  return Math.max(0, Math.round(((measuredAt - dobMs) / 86_400_000 / AVERAGE_DAYS_PER_MONTH) * 10) / 10)
+}
 
 const valueForMetric = (measurement: GrowthMeasurement, key: GrowthMetricKey) => {
   if (key === 'weight') return measurement.weightLb

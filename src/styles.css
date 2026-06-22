@@ -495,3 +495,11 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
   .growth-row { grid-template-columns:1fr auto; }
   .growth-row span { grid-column:1 / -1; }
 }
+.setting-row { display:flex; justify-content:space-between; align-items:center; gap:16px; padding:12px 0; border-top:1px solid #e2e8f0; }
+.setting-row span { display:grid; gap:3px; }
+.setting-row small { color:#64748b; font-weight:700; }
+.setting-row input[type='date'] { border:1px solid #cbd5e1; border-radius:14px; padding:10px 12px; font:inherit; font-weight:800; background:#fff; color:#0f172a; }
+[data-theme='dark'] .setting-row { border-color:#334155; }
+[data-theme='dark'] .setting-row small { color:#94a3b8; }
+[data-theme='dark'] .setting-row input[type='date'] { background:#0f172a; border-color:#334155; color:#e2e8f0; }
+@media (max-width: 560px) { .setting-row { display:grid; } }

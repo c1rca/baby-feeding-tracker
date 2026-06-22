@@ -9,9 +9,10 @@ type StatsDashboardProps = {
   trend: ReturnType<typeof calculateTrend>
   growthMeasurements: GrowthMeasurement[]
   setGrowthMeasurements: Dispatch<SetStateAction<GrowthMeasurement[]>>
+  babyDob: string
 }
 
-export function StatsDashboard({ stats, trend, growthMeasurements, setGrowthMeasurements }: StatsDashboardProps) {
+export function StatsDashboard({ stats, trend, growthMeasurements, setGrowthMeasurements, babyDob }: StatsDashboardProps) {
   return (
     <section className="stats-page" aria-label="Stats dashboard">
       <StatsHero stats={stats} />
@@ -19,7 +20,7 @@ export function StatsDashboard({ stats, trend, growthMeasurements, setGrowthMeas
       <StatsStoryGrid stats={stats} />
       <RhythmCard trend={trend} />
       <BalanceAndNightCards stats={stats} />
-      <GrowthDashboard growthMeasurements={growthMeasurements} setGrowthMeasurements={setGrowthMeasurements} />
+      <GrowthDashboard growthMeasurements={growthMeasurements} setGrowthMeasurements={setGrowthMeasurements} babyDob={babyDob} />
     </section>
   )
 }

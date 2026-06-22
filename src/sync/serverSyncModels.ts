@@ -35,6 +35,7 @@ export function buildPendingSyncPayload(serverState: ServerState, localPayload: 
     diapers: sortDiapers(mergeById(serverState.diapers, localPayload.diapers)),
     medicines: sortMedicines(mergeById(serverState.medicines, localPayload.medicines)),
     growthMeasurements: sortGrowthMeasurements(mergeById(serverState.growthMeasurements, localPayload.growthMeasurements)),
+    babyDob: serverState.babyDob || localPayload.babyDob || '2026-06-03',
     session: serverSession ?? localPayload.session,
     theme: localPayload.theme ?? serverState.theme ?? 'light',
   }
@@ -50,6 +51,7 @@ export function buildApiStatePayload(
     diapers: overrides.diapers ?? currentPayload.diapers,
     medicines: overrides.medicines ?? currentPayload.medicines,
     growthMeasurements: overrides.growthMeasurements ?? currentPayload.growthMeasurements,
+    babyDob: overrides.babyDob ?? currentPayload.babyDob,
     session: overrides.session ?? currentPayload.session,
     theme: overrides.theme ?? currentPayload.theme,
     updatedAt: serverUpdatedAt,

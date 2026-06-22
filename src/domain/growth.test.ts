@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildGrowthMetricModels, estimatePercentile, normalizeGrowthMeasurements } from './growth'
+import { buildGrowthMetricModels, calculateAgeMonths, estimatePercentile, normalizeGrowthMeasurements } from './growth'
 import { BOY_GROWTH_STANDARDS } from './growthStandards'
 
 describe('growth percentile modeling', () => {
+  it('calculates age in months from date of birth and measurement date', () => {
+    expect(calculateAgeMonths('2026-06-03', new Date('2026-07-03T12:00:00').getTime())).toBe(1)
+  })
+
   it('estimates a baby measurement against WHO percentile curves', () => {
     const weight = BOY_GROWTH_STANDARDS.find((metric) => metric.key === 'weight')!
     const monthTwo = weight.standards.find((point) => point.month === 1.5)!

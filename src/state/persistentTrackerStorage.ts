@@ -12,6 +12,7 @@ export const TRACKER_STORAGE_KEYS = {
   diapers: 'baby-feeding-tracker:v1:diapers',
   medicines: 'baby-feeding-tracker:v1:medicines',
   growthMeasurements: 'baby-feeding-tracker:v1:growth-measurements',
+  babyDob: 'baby-feeding-tracker:v1:baby-dob',
 } as const
 
 const THEME_COOKIE = 'baby_feeding_theme'
@@ -51,6 +52,8 @@ export const readSession = () => {
 }
 
 export const readFeedingNotificationsEnabled = () => localStorage.getItem(TRACKER_STORAGE_KEYS.feedingNotifications) === '1'
+
+export const readBabyDob = () => localStorage.getItem(TRACKER_STORAGE_KEYS.babyDob) || '2026-06-03'
 
 const getCookieTheme = (): Theme | null => {
   const match = document.cookie.match(/(?:^|; )baby_feeding_theme=([^;]+)/)

@@ -44,9 +44,10 @@ function Harness({ initialEntries = [] as Entry[], initialSession = null as Sess
   const [diapers, setDiapers] = useState<DiaperEvent[]>([])
   const [medicines, setMedicines] = useState<MedicineEvent[]>([])
   const [growthMeasurements, setGrowthMeasurements] = useState<GrowthMeasurement[]>([])
+  const [babyDob, setBabyDob] = useState('2026-06-03')
   const [sessionState, setSession] = useState<Session | null>(initialSession)
   const [theme, setTheme] = useState<Theme>('light')
-  const { syncStatus } = useServerSync({ entries, diapers, medicines, growthMeasurements, session: sessionState, theme, setEntries, setDiapers, setMedicines, setGrowthMeasurements, setSession, setTheme })
+  const { syncStatus } = useServerSync({ entries, diapers, medicines, growthMeasurements, babyDob, session: sessionState, theme, setEntries, setDiapers, setMedicines, setGrowthMeasurements, setBabyDob, setSession, setTheme })
 
   return (
     <div>

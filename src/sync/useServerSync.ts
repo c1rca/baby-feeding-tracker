@@ -8,7 +8,7 @@ import { useLatestServerPayload, useServerStateApplier } from './useServerStateA
 import { usePendingSyncRetry, usePersistLocalChanges } from './useServerSyncEffects'
 
 export const useServerSync = (options: UseServerSyncOptions) => {
-  const { entries, diapers, medicines, growthMeasurements, session, theme } = options
+  const { entries, diapers, medicines, growthMeasurements, babyDob, session, theme } = options
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => (localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'synced'))
   const [hasHydrated, setHasHydrated] = useState(false)
   const latestPayloadRef = useLatestServerPayload(options)
@@ -44,7 +44,7 @@ export const useServerSync = (options: UseServerSyncOptions) => {
   }, [skipNextSyncRef])
 
   useInitialServerSync({ latestPayloadRef, serverUpdatedAtRef, applyServerState, syncToApi, setHasHydrated, setSyncStatus })
-  usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, entries, diapers, medicines, growthMeasurements, session, theme })
+  usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, entries, diapers, medicines, growthMeasurements, babyDob, session, theme })
   usePendingSyncRetry(syncToApi)
 
   return { syncStatus, hasHydrated }

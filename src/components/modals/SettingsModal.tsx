@@ -8,6 +8,7 @@ type SettingsModalProps = Pick<
   TrackerModalsProps,
   | 'entries'
   | 'diapers'
+  | 'babyDob'
   | 'feedingNotificationsEnabled'
   | 'notificationPermission'
   | 'gotifyAvailable'
@@ -16,6 +17,7 @@ type SettingsModalProps = Pick<
   | 'setSettingsOpen'
   | 'setEntries'
   | 'setDiapers'
+  | 'setBabyDob'
   | 'setSession'
   | 'setUndoState'
   | 'setFeedingNotificationsEnabled'
@@ -24,7 +26,7 @@ type SettingsModalProps = Pick<
   | 'showToast'
 >
 
-export function SettingsModal({ entries, diapers, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, fileInputRef, setSettingsOpen, setEntries, setDiapers, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, showToast }: SettingsModalProps) {
+export function SettingsModal({ entries, diapers, babyDob, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, showToast }: SettingsModalProps) {
   return (
     <ModalFrame label="Settings and data" className="settings" onClose={() => setSettingsOpen(false)}>
       <h2>Settings & Data</h2>
@@ -40,6 +42,13 @@ export function SettingsModal({ entries, diapers, feedingNotificationsEnabled, n
         gotifyRemindersEnabled={gotifyRemindersEnabled}
         setGotifyReminders={setGotifyReminders}
       />
+      <label className="setting-row">
+        <span>
+          <strong>Baby date of birth</strong>
+          <small>Used to auto-calculate growth chart age.</small>
+        </span>
+        <input type="date" value={babyDob} onChange={(event) => setBabyDob(event.target.value)} />
+      </label>
       <SettingsDataControls
         entries={entries}
         diapers={diapers}
