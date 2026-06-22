@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, Entry, MedicineEvent } from '../../types'
 
 export type TimelineProps = {
+  now: number
   entries: Entry[]
   diapers: DiaperEvent[]
   medicines: MedicineEvent[]

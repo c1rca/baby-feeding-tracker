@@ -29,6 +29,7 @@ describe('App interactions', () => {
 
     await user.click(screen.getByRole('button', { name: /Show stats/i }))
 
+    expect(localStorage.getItem('baby-feeding-tracker-view')).toBe('stats')
     expect(screen.getByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
     expect(screen.getByText(/24h momentum/i)).toBeTruthy()
     expect(screen.getByText(/Longest stretch/i)).toBeTruthy()
@@ -111,6 +112,16 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Undo growth delete/i }))
     expect(screen.getByText(/Growth delete undone/i)).toBeTruthy()
     expect(screen.getAllByText(/12 lb/i).length).toBeGreaterThan(0)
+  })
+
+  it('reopens the stats page from persisted view and keeps header actions ordered', () => {
+    localStorage.setItem('baby-feeding-tracker-view', 'stats')
+
+    render(<App />)
+
+    expect(screen.getByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
+    const headerButtons = Array.from(document.querySelectorAll('.top-actions button')).map((button) => button.getAttribute('aria-label'))
+    expect(headerButtons).toEqual(['Show tracker', 'Show settings', 'Enable dark mode'])
   })
 
   it('keeps medicine controls collapsed, alternates reminders, and undoes a new medicine log', async () => {

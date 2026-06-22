@@ -102,6 +102,36 @@ describe('App interactions', () => {
     expect(within(items[1]).getByText(/about 4 hours ago/i)).toBeTruthy()
   })
 
+  it('pages older timeline events after the last 48 hours and can show all', async () => {
+    const now = new Date(2026, 5, 10, 12, 0).getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify([
+        { id: 'recent-feed', type: 'breast', startedAt: now - 2 * 60 * 60 * 1000, endedAt: now - 2 * 60 * 60 * 1000 + 10 * 60 * 1000, leftSeconds: 10 * 60, rightSeconds: 0, bottleOunces: null, note: 'recent feed' },
+        ...Array.from({ length: 26 }, (_, index) => ({ id: `old-feed-${index}`, type: 'bottle', startedAt: now - (72 + index) * 60 * 60 * 1000, endedAt: now - (72 + index) * 60 * 60 * 1000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 2, note: `old feed ${index}` })),
+      ]),
+    )
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+
+    expect(screen.getByText(/Latest first · past 48 hours/i)).toBeTruthy()
+    expect(screen.getByText(/recent feed/i)).toBeTruthy()
+    expect(screen.getByText(/old feed 0/i)).toBeTruthy()
+    expect(screen.queryByText(/old feed 25/i)).toBeNull()
+    expect(screen.getByText(/older page 1 of 2/i)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Older/i }))
+    expect(screen.getByText(/old feed 25/i)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Show all/i }))
+    expect(screen.getByText(/Showing all 27 events/i)).toBeTruthy()
+    expect(screen.getByText(/old feed 0/i)).toBeTruthy()
+    expect(screen.getByText(/old feed 25/i)).toBeTruthy()
+  })
+
   it('keeps saved timeline metrics compact and non-redundant', () => {
     localStorage.setItem(
       STORAGE_KEY,
