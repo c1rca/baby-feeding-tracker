@@ -71,6 +71,17 @@ export function mergeEntriesPreservingExisting(existingEntries, incomingEntries,
   return [...merged.values()]
 }
 
+export function dedupeFeedEntries(entries) {
+  const deduped = []
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    if (!entry?.id) continue
+    const duplicateIndex = deduped.findIndex((existing) => existing.id !== entry.id && sameFeedSave(existing, entry))
+    if (duplicateIndex >= 0) continue
+    deduped.push(entry)
+  }
+  return deduped
+}
+
 export function isStaleStateWrite(existingUpdatedAt, clientUpdatedAt) {
   if (!existingUpdatedAt) return false
   if (!clientUpdatedAt) return true
@@ -84,7 +95,7 @@ export function isStaleStateWrite(existingUpdatedAt, clientUpdatedAt) {
 // - Stale clients must not replace active server session state; session conflict handling stays server-authoritative until sessions have IDs/revisions.
 export function resolveIncomingState(existingRow, incoming, options = {}) {
   const stale = isStaleStateWrite(existingRow?.updated_at, incoming.updatedAt)
-  if (!stale || !existingRow) return { ...incoming, stale }
+  if (!stale || !existingRow) return { ...incoming, entries: dedupeFeedEntries(incoming.entries), stale }
 
   return {
     ...incoming,

@@ -74,3 +74,30 @@ test('resolveIncomingState dedupes stale duplicate feed entries by source sessio
   assert.equal(resolved.stale, true)
   assert.deepEqual(resolved.entries.map((entry) => entry.id), ['current-feed'])
 })
+
+test('resolveIncomingState dedupes current full-state writes that contain two entries from the same active session', () => {
+  const existingRow = {
+    entries_json: JSON.stringify([]),
+    diapers_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([]),
+    session_json: null,
+    theme: 'light',
+    updated_at: 'server-v2',
+  }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [
+      { id: 'stale-completion', sourceSessionId: 'session-1', type: 'breast', startedAt: 1000, endedAt: 2200, leftSeconds: 0, rightSeconds: 1200, bottleOunces: null, diaperKinds: ['wet'] },
+      { id: 'current-completion', sourceSessionId: 'session-1', type: 'breast', startedAt: 1000, endedAt: 2190, leftSeconds: 0, rightSeconds: 1190, bottleOunces: null, diaperKinds: [] },
+    ],
+    diapers: [],
+    medicines: [],
+    session: null,
+    theme: 'light',
+    updatedAt: 'server-v2',
+  })
+
+  assert.equal(resolved.stale, false)
+  assert.equal(resolved.entries.length, 1)
+  assert.deepEqual(resolved.entries[0], { id: 'stale-completion', sourceSessionId: 'session-1', type: 'breast', startedAt: 1000, endedAt: 2200, leftSeconds: 0, rightSeconds: 1200, bottleOunces: null, diaperKinds: ['wet'] })
+})
