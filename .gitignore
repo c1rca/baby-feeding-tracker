@@ -36,6 +36,16 @@ rollback/
 *.sqlite3
 *.jsonl
 
+# Local planning / implementation notes
+IMPLEMENTATION_PLAN.md
+implementation-plan.md
+implementation_plan.md
+*IMPLEMENTATION_PLAN*.md
+*implementation-plan*.md
+*implementation_plan*.md
+plans/
+docs/plans/
+
 # Docker/local overrides
 compose.override.yml
 docker-compose.override.yml
