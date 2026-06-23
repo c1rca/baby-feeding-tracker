@@ -158,6 +158,25 @@ describe('App interactions', () => {
     expect(screen.queryAllByText(/^Tylenol$/i).length).toBe(1)
   })
 
+  it('keeps a dismissed medicine reminder hidden after a page refresh', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'dose-old', kind: 'tylenol', at: now - 6 * 60 * 60 * 1000 - 1 }]))
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const { unmount } = render(<App />)
+
+    expect(screen.getByRole('alert').textContent).toMatch(/Take Tylenol/i)
+    await user.click(screen.getByRole('button', { name: /Dismiss medicine reminder/i }))
+    expect(screen.queryByRole('alert')).toBeNull()
+
+    unmount()
+    render(<App />)
+
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
   it('quick logs the due medicine from the reminder banner', async () => {
     const now = new Date('2026-06-05T14:00:00Z').getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })

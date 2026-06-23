@@ -21,9 +21,14 @@ import type { AppToast } from '../components/AppToast'
 import type { TrackView } from '../components/TrackView'
 
 const VIEW_STORAGE_KEY = 'baby-feeding-tracker-view'
+const DISMISSED_MEDICINE_REMINDER_STORAGE_KEY = 'baby-feeding-tracker-dismissed-medicine-reminder'
 const readInitialView = (): View => {
   if (typeof window === 'undefined') return 'track'
   return window.localStorage.getItem(VIEW_STORAGE_KEY) === 'stats' ? 'stats' : 'track'
+}
+const readDismissedMedicineReminderId = () => {
+  if (typeof window === 'undefined') return null
+  return window.localStorage.getItem(DISMISSED_MEDICINE_REMINDER_STORAGE_KEY)
 }
 
 type AppHeaderProps = ComponentProps<typeof AppHeader>
@@ -36,7 +41,7 @@ type TrackViewProps = ComponentProps<typeof TrackView>
 export function useTrackerAppController() {
   const { entries, setEntries, session, setSession, diapers, setDiapers, medicines, setMedicines, growthMeasurements, setGrowthMeasurements, babyDob, setBabyDob, theme, setTheme, settingsOpen, setSettingsOpen, feedingNotificationsEnabled, setFeedingNotificationsEnabled } = usePersistentTrackerState()
   const [selectedDiapers, setSelectedDiapers] = useState<DiaperKind[]>([])
-  const [dismissedMedicineReminderId, setDismissedMedicineReminderId] = useState<string | null>(null)
+  const [dismissedMedicineReminderId, setDismissedMedicineReminderId] = useState<string | null>(readDismissedMedicineReminderId)
   const [view, setView] = useState<View>(readInitialView)
   const [bottleOpen, setBottleOpen] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
@@ -74,6 +79,14 @@ export function useTrackerAppController() {
   useEffect(() => {
     window.localStorage.setItem(VIEW_STORAGE_KEY, view)
   }, [view])
+
+  useEffect(() => {
+    if (dismissedMedicineReminderId) {
+      window.localStorage.setItem(DISMISSED_MEDICINE_REMINDER_STORAGE_KEY, dismissedMedicineReminderId)
+    } else {
+      window.localStorage.removeItem(DISMISSED_MEDICINE_REMINDER_STORAGE_KEY)
+    }
+  }, [dismissedMedicineReminderId])
 
   const { today, trend, stats, lastFeed, lastFeedMetaText, avgGapShortText, suggestedSide, nextFeedSideText, nextFeedWindowText, medicineReminder, showMedicineReminder } = useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId })
   const { selectedStartMinutesAgo, activeSplit, activeSeconds, activeSide, activeOppositeSide, startSession, switchSide, pause, resume, clearSession, endSession } = useActiveFeedActions({ now, setNow, session, setSession, setEntries, selectedDiapers, setSelectedDiapers, startOffsetOpen, startInputMode, startClockText, startMinutesAgo, setStartOffsetOpen, setStartInputMode, setStartClockText, setStartMinutesAgo, suggestedSide, undoState, setUndoState, setToast, showToast, setBottleOpen })
