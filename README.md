@@ -2,7 +2,7 @@
 
 > A tiny, production-ready care tracker built for one-handed, low-light newborn feeding workflows.
 
-![Baby Feeding Tracker dark-mode dashboard](docs/assets/app-screenshot.svg)
+![Baby Feeding Tracker dark-mode dashboard](docs/assets/app-screenshot.png)
 
 ## Why it exists
 
