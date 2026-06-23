@@ -312,6 +312,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 .trend-col { display:flex; flex-direction:column; align-items:center; gap:4px; min-width:28px; }
 .trend-bar { width:18px; border-radius:8px; background: linear-gradient(180deg,#60a5fa,#4f46e5); }
 .note-chip { margin-top:8px; font-size:.85rem; color:#475569; background:#f8fafc; border:1px solid #e2e8f0; border-radius:999px; padding:4px 10px; display:inline-block; }
+[data-theme='dark'] .note-chip { color:#b8c2d4; background:rgba(30,41,59,.48); border-color:rgba(100,116,139,.38); box-shadow:none; }
 .preset-row button { min-height: 36px; }
 
 .bottle-card { display: grid; gap: 12px; }
