@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import { calculateActiveSplit, oppositeSide } from '../domain/trackerDomain'
+import { calculateActiveSplit, formatClockInput, oppositeSide } from '../domain/trackerDomain'
 import type { DiaperKind, Entry, Session, Side, UndoState } from '../types'
 import { resolveSelectedStartTime, type StartInputMode } from './activeFeedModels'
 import { useActiveSessionCompletion } from './useActiveSessionCompletion'
@@ -18,6 +18,10 @@ type ActiveFeedActionsOptions = {
   startInputMode: StartInputMode
   startClockText: string
   startMinutesAgo: string
+  setStartOffsetOpen: Dispatch<SetStateAction<boolean>>
+  setStartInputMode: Dispatch<SetStateAction<StartInputMode>>
+  setStartClockText: Dispatch<SetStateAction<string>>
+  setStartMinutesAgo: Dispatch<SetStateAction<string>>
   suggestedSide: Side
   undoState: UndoState | null
   setUndoState: Dispatch<SetStateAction<UndoState | null>>
@@ -38,6 +42,10 @@ export function useActiveFeedActions({
   startInputMode,
   startClockText,
   startMinutesAgo,
+  setStartOffsetOpen,
+  setStartInputMode,
+  setStartClockText,
+  setStartMinutesAgo,
   suggestedSide,
   undoState,
   setUndoState,
@@ -55,7 +63,19 @@ export function useActiveFeedActions({
 
   const activeSplit = useMemo(() => calculateActiveSplit(session, now), [session, now])
   const activeSide = session?.activeSide
-  const lifecycle = useActiveSessionLifecycle({ selectedStartTime, session, setNow, setSession })
+  const lifecycle = useActiveSessionLifecycle({
+    selectedStartTime,
+    startOffsetOpen,
+    session,
+    setNow,
+    setSession,
+    resetStartOffset: (currentTime) => {
+      setStartOffsetOpen(false)
+      setStartInputMode('clock')
+      setStartClockText(formatClockInput(currentTime))
+      setStartMinutesAgo('0')
+    },
+  })
   const completion = useActiveSessionCompletion({
     session,
     selectedDiapers,

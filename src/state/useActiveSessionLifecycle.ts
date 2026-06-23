@@ -4,16 +4,19 @@ import { buildStartedSession, pauseActiveSession, resumeActiveSession, switchAct
 
 type ActiveSessionLifecycleOptions = {
   selectedStartTime: number
+  startOffsetOpen: boolean
   session: Session | null
   setNow: Dispatch<SetStateAction<number>>
   setSession: Dispatch<SetStateAction<Session | null>>
+  resetStartOffset: (currentTime: number) => void
 }
 
-export function useActiveSessionLifecycle({ selectedStartTime, session, setNow, setSession }: ActiveSessionLifecycleOptions) {
+export function useActiveSessionLifecycle({ selectedStartTime, startOffsetOpen, session, setNow, setSession, resetStartOffset }: ActiveSessionLifecycleOptions) {
   const startSession = (side: Side) => {
     const t = new Date().getTime()
     setNow(t)
-    setSession(buildStartedSession(side, selectedStartTime, t))
+    setSession(buildStartedSession(side, startOffsetOpen ? selectedStartTime : t, t))
+    resetStartOffset(t)
   }
 
   const switchSide = (side: Side) => {

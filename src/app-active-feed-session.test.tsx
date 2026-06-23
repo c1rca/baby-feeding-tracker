@@ -99,6 +99,26 @@ describe('App interactions', () => {
     expect(savedSession.startedAt).toBe(new Date('2026-06-05T12:40:00').getTime())
   })
 
+  it('resets a backdated start time after saving so the next feed starts now', async () => {
+    vi.setSystemTime(new Date('2026-06-05T12:45:00'))
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Adjust start time/i }))
+    const startTime = screen.getByLabelText(/Session start time/i) as HTMLInputElement
+    await user.clear(startTime)
+    await user.type(startTime, '12:30pm')
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
+    await user.click(screen.getByRole('button', { name: /End feed/i }))
+
+    vi.setSystemTime(new Date('2026-06-05T13:45:00'))
+    await user.click(screen.getByRole('button', { name: /Start suggested side: Right/i }))
+
+    const savedSession = JSON.parse(localStorage.getItem(STORAGE_SESSION_KEY) || 'null') as { startedAt: number }
+    expect(savedSession.startedAt).toBe(new Date('2026-06-05T13:45:00').getTime())
+    expect(screen.getAllByText(/0m 00s/i).length).toBeGreaterThan(0)
+  })
+
   it('confirms before clearing an active feed and offers a 5 second undo', async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true })
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })

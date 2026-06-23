@@ -76,7 +76,7 @@ export function useTrackerAppController() {
   }, [view])
 
   const { today, trend, stats, lastFeed, lastFeedMetaText, avgGapShortText, suggestedSide, nextFeedSideText, nextFeedWindowText, medicineReminder, showMedicineReminder } = useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId })
-  const { selectedStartMinutesAgo, activeSplit, activeSeconds, activeSide, activeOppositeSide, startSession, switchSide, pause, resume, clearSession, endSession } = useActiveFeedActions({ now, setNow, session, setSession, setEntries, selectedDiapers, setSelectedDiapers, startOffsetOpen, startInputMode, startClockText, startMinutesAgo, suggestedSide, undoState, setUndoState, setToast, showToast, setBottleOpen })
+  const { selectedStartMinutesAgo, activeSplit, activeSeconds, activeSide, activeOppositeSide, startSession, switchSide, pause, resume, clearSession, endSession } = useActiveFeedActions({ now, setNow, session, setSession, setEntries, selectedDiapers, setSelectedDiapers, startOffsetOpen, startInputMode, startClockText, startMinutesAgo, setStartOffsetOpen, setStartInputMode, setStartClockText, setStartMinutesAgo, suggestedSide, undoState, setUndoState, setToast, showToast, setBottleOpen })
 
   useBrowserFeedNotifications({ feedingNotificationsEnabled, notificationPermission, lastFeed })
 
