@@ -114,7 +114,7 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Show settings/i }))
 
     await waitFor(() => expect(screen.getByText(/Gotify reminders/i)).toBeTruthy())
-    expect(screen.getByText(/Status: off/i)).toBeTruthy()
+    expect(screen.getByLabelText(/Gotify reminders status: Off/i)).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Turn on/i }))
 
     await waitFor(() => expect(screen.getByText(/Gotify reminders enabled/i)).toBeTruthy())
