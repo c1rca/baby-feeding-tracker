@@ -29,9 +29,16 @@ type SettingsModalProps = Pick<
 >
 
 export function SettingsModal({ entries, diapers, babyDob, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, showToast }: SettingsModalProps) {
+  const closeSettings = () => setSettingsOpen(false)
+
   return (
-    <ModalFrame label="Settings and data" className="settings" onClose={() => setSettingsOpen(false)}>
-      <h2>Settings & Data</h2>
+    <ModalFrame label="Settings and data" className="settings" onClose={closeSettings}>
+      <div className="settings-modal-header">
+        <h2>Settings & Data</h2>
+        <button type="button" className="settings-close-button" aria-label="Close settings" onClick={closeSettings}>
+          ×
+        </button>
+      </div>
       <BrowserReminderSetting
         feedingNotificationsEnabled={feedingNotificationsEnabled}
         notificationPermission={notificationPermission}

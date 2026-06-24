@@ -28,6 +28,17 @@ describe('App interactions', () => {
     expect(window.location.search).toBe('')
   })
 
+  it('closes settings with a top-right close button', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    expect(screen.getByRole('dialog', { name: /Settings and data/i })).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Close settings/i }))
+    expect(screen.queryByRole('dialog', { name: /Settings and data/i })).toBeNull()
+  })
+
   it('requests notification permission from settings', async () => {
     const requestPermission = vi.fn(async () => 'granted' as NotificationPermission)
     const NotificationMock = vi.fn()
