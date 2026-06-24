@@ -31,6 +31,7 @@ test('health route reports runtime availability and current reminder enablement'
 test('notification settings route clamps disabled channels and persists the resulting setting', () => {
   const app = createFakeApp()
   let enabled = true
+  let medicineReminderSettings = { tylenol: 6, motrin: 6 }
   const writes = []
   const events = []
   const schedulerCalls = []
@@ -38,9 +39,12 @@ test('notification settings route clamps disabled channels and persists the resu
     config: { notificationChannelsAvailable: false },
     getGotifyRemindersEnabled: () => enabled,
     setGotifyRemindersEnabled: (value) => { enabled = value },
+    getMedicineReminderSettings: () => medicineReminderSettings,
+    setMedicineReminderSettings: (value) => { medicineReminderSettings = value },
     writeBooleanSetting: (key, value) => writes.push({ key, value }),
+    writeJsonSetting: (key, value) => writes.push({ key, value }),
     appendEventLog: (event, payload) => events.push({ event, payload }),
-    notificationScheduler: { setEnabled: (value) => schedulerCalls.push(value) },
+    notificationScheduler: { setEnabled: (value) => schedulerCalls.push(value), evaluate: () => schedulerCalls.push('evaluate') },
   })(app)
 
   const res = createJsonResponse()
@@ -50,5 +54,33 @@ test('notification settings route clamps disabled channels and persists the resu
   assert.deepEqual(writes, [{ key: 'gotify_reminders_enabled', value: false }])
   assert.deepEqual(schedulerCalls, [false])
   assert.deepEqual(events, [{ event: 'settings_update', payload: { key: 'gotify_reminders_enabled', value: '0' } }])
-  assert.deepEqual(res.body, { ok: true, available: false, gotifyRemindersEnabled: false })
+  assert.deepEqual(res.body, { ok: true, available: false, gotifyRemindersEnabled: false, medicineReminderSettings: { tylenol: 6, motrin: 6 } })
+})
+
+test('notification settings route persists per-kind medicine reminder intervals', () => {
+  const app = createFakeApp()
+  let medicineReminderSettings = { tylenol: 6, motrin: 6 }
+  const writes = []
+  const events = []
+  const schedulerCalls = []
+  createNotificationSettingsRouter({
+    config: { notificationChannelsAvailable: true },
+    getGotifyRemindersEnabled: () => true,
+    setGotifyRemindersEnabled: () => {},
+    getMedicineReminderSettings: () => medicineReminderSettings,
+    setMedicineReminderSettings: (value) => { medicineReminderSettings = value },
+    writeBooleanSetting: () => {},
+    writeJsonSetting: (key, value) => writes.push({ key, value }),
+    appendEventLog: (event, payload) => events.push({ event, payload }),
+    notificationScheduler: { setEnabled: () => {}, evaluate: () => schedulerCalls.push('evaluate') },
+  })(app)
+
+  const res = createJsonResponse()
+  app.route('PUT', '/api/notification-settings')({ body: { medicineReminderSettings: { tylenol: 4, motrin: 0 } } }, res)
+
+  assert.deepEqual(medicineReminderSettings, { tylenol: 4, motrin: 0 })
+  assert.deepEqual(writes, [{ key: 'medicine_reminder_settings', value: { tylenol: 4, motrin: 0 } }])
+  assert.deepEqual(schedulerCalls, ['evaluate'])
+  assert.deepEqual(events, [{ event: 'settings_update', payload: { key: 'medicine_reminder_settings', value: { tylenol: 4, motrin: 0 } } }])
+  assert.deepEqual(res.body, { ok: true, available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 4, motrin: 0 } })
 })

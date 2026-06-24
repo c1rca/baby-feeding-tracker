@@ -3,6 +3,8 @@ import type { DiaperEvent, Entry, Session } from '../../types'
 
 export type ManualDraft = { date: string; time: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string }
 
+export type MedicineReminderSettings = { tylenol: 0 | 4 | 6; motrin: 0 | 4 | 6 }
+
 export type TrackerModalsProps = {
   bottleOpen: boolean
   manualOpen: boolean
@@ -17,6 +19,7 @@ export type TrackerModalsProps = {
   notificationPermission: NotificationPermission
   gotifyAvailable: boolean
   gotifyRemindersEnabled: boolean
+  medicineReminderSettings: MedicineReminderSettings
   fileInputRef: RefObject<HTMLInputElement | null>
   setBottleOpen: (open: boolean) => void
   setManualOpen: (open: boolean) => void
@@ -33,5 +36,6 @@ export type TrackerModalsProps = {
   saveManualFeed: () => void
   enableFeedingNotifications: () => void
   setGotifyReminders: (enabled: boolean) => void | Promise<void>
+  setMedicineReminderSettings: (settings: MedicineReminderSettings) => void | Promise<void>
   showToast: (message: string) => void
 }

@@ -1,4 +1,4 @@
-import { MAX_CATCH_UP_MS, SIX_HOURS_MS, THREE_HOURS_MS, TWO_HOURS_MS } from './notificationConstants.js'
+import { FOUR_HOURS_MS, MAX_CATCH_UP_MS, SIX_HOURS_MS, THREE_HOURS_MS, TWO_HOURS_MS } from './notificationConstants.js'
 
 export function getLatestEndedFeed(entries) {
   if (!Array.isArray(entries)) return null
@@ -33,9 +33,19 @@ export function buildReminder(latestFeed, now = Date.now()) {
   return { kind: 'feeding', entryId: latestFeed.id ?? String(latestFeed.endedAt), dueAt, windowEndAt, catchUpUntil }
 }
 
-export function buildMedicineReminder(latestDose, now = Date.now()) {
+export function normalizeMedicineReminderSettings(settings = {}) {
+  const intervalFor = (kind) => {
+    const value = Number(settings?.[kind])
+    return value === 0 || value === 4 || value === 6 ? value : 6
+  }
+  return { tylenol: intervalFor('tylenol'), motrin: intervalFor('motrin') }
+}
+
+export function buildMedicineReminder(latestDose, now = Date.now(), settings = {}) {
   if (!latestDose) return null
-  const dueAt = latestDose.at + SIX_HOURS_MS
+  const intervalHours = normalizeMedicineReminderSettings(settings)[latestDose.kind]
+  if (!intervalHours) return null
+  const dueAt = latestDose.at + (intervalHours === 4 ? FOUR_HOURS_MS : SIX_HOURS_MS)
   const catchUpUntil = dueAt + MAX_CATCH_UP_MS
   if (dueAt <= now - MAX_CATCH_UP_MS) return null
   return { kind: 'medicine', doseId: latestDose.id ?? String(latestDose.at), medicineKind: latestDose.kind, recommendedKind: latestDose.kind, dueAt, catchUpUntil }

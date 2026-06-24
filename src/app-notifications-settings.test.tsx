@@ -120,4 +120,39 @@ describe('App interactions', () => {
     await waitFor(() => expect(screen.getByText(/Gotify reminders enabled/i)).toBeTruthy())
     expect(fetchMock).toHaveBeenCalledWith('/api/notification-settings', expect.objectContaining({ method: 'PUT' }))
   })
+
+  it('updates per-medicine server reminder intervals from settings', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/notification-settings' && !init) {
+        return new Response(JSON.stringify({ available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 6, motrin: 6 } }), { status: 200 })
+      }
+      if (url === '/api/notification-settings' && init?.method === 'PUT') {
+        return new Response(JSON.stringify({ available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 4, motrin: 0 } }), { status: 200 })
+      }
+      if (url === '/api/state') {
+        return new Response(JSON.stringify({ entries: [], session: null, theme: 'light' }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+
+    const tylenolSelect = await screen.findByLabelText(/Tylenol reminder interval/i)
+    const motrinSelect = screen.getByLabelText(/Motrin reminder interval/i)
+    expect((tylenolSelect as HTMLSelectElement).value).toBe('6')
+    expect((motrinSelect as HTMLSelectElement).value).toBe('6')
+
+    await user.selectOptions(tylenolSelect, '4')
+    await user.selectOptions(motrinSelect, '0')
+
+    await waitFor(() => expect(screen.getByText(/Medicine reminder settings saved/i)).toBeTruthy())
+    expect(fetchMock).toHaveBeenLastCalledWith('/api/notification-settings', expect.objectContaining({
+      method: 'PUT',
+      body: JSON.stringify({ medicineReminderSettings: { tylenol: 4, motrin: 0 } }),
+    }))
+  })
 })

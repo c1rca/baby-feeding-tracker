@@ -43,7 +43,7 @@ test('getLatestMedicineDosesByKind keeps Tylenol and Motrin schedules separate',
   assert.deepEqual(latest.map((dose) => dose.id), ['newer-tylenol', 'latest-motrin'])
 })
 
-test('buildMedicineReminder schedules the same medicine six hours after latest dose', () => {
+test('buildMedicineReminder schedules the same medicine six hours after latest dose by default', () => {
   const at = new Date('2026-06-05T08:00:00Z').getTime()
   const reminder = buildMedicineReminder({ id: 'dose-1', kind: 'tylenol', at }, at)
 
@@ -51,6 +51,14 @@ test('buildMedicineReminder schedules the same medicine six hours after latest d
   assert.equal(reminder.dueAt, new Date('2026-06-05T14:00:00Z').getTime())
   assert.equal(reminder.medicineKind, 'tylenol')
   assert.equal(reminder.recommendedKind, 'tylenol')
+})
+
+test('buildMedicineReminder respects per-kind four hour and off settings', () => {
+  const at = new Date('2026-06-05T08:00:00Z').getTime()
+  const reminder = buildMedicineReminder({ id: 'dose-1', kind: 'motrin', at }, at, { motrin: 4, tylenol: 0 })
+
+  assert.equal(reminder.dueAt, new Date('2026-06-05T12:00:00Z').getTime())
+  assert.equal(buildMedicineReminder({ id: 'dose-2', kind: 'tylenol', at }, at, { motrin: 4, tylenol: 0 }), null)
 })
 
 test('normalizeTextEmailRecipients supports comma-separated addresses', () => {

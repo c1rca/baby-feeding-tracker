@@ -21,7 +21,7 @@ export const createTextEmailSender = (config) => {
   }
 }
 
-export const createTrackerNotificationScheduler = ({ config, selectState, getNotificationState, upsertNotificationState, gotifyRemindersEnabled, appendEventLog, redactError }) => {
+export const createTrackerNotificationScheduler = ({ config, selectState, getNotificationState, upsertNotificationState, gotifyRemindersEnabled, getMedicineReminderSettings, appendEventLog, redactError }) => {
   if (!config.notificationChannelsAvailable) return null
 
   const sendTextEmailMessage = createTextEmailSender(config)
@@ -55,5 +55,6 @@ export const createTrackerNotificationScheduler = ({ config, selectState, getNot
         }
       : null,
     enabled: gotifyRemindersEnabled,
+    getMedicineReminderSettings,
   })
 }

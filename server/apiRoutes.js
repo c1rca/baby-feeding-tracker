@@ -1,3 +1,5 @@
+import { normalizeMedicineReminderSettings } from './notificationModels.js'
+
 export const createHealthRouter = ({ config, getGotifyRemindersEnabled }) => {
   const router = (app) => {
     app.get('/api/health', (_req, res) => {
@@ -14,19 +16,33 @@ export const createHealthRouter = ({ config, getGotifyRemindersEnabled }) => {
   return router
 }
 
-export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEnabled, setGotifyRemindersEnabled, writeBooleanSetting, appendEventLog, notificationScheduler }) => {
+export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEnabled, setGotifyRemindersEnabled, getMedicineReminderSettings, setMedicineReminderSettings, writeBooleanSetting, writeJsonSetting, appendEventLog, notificationScheduler }) => {
+  const settingsPayload = () => ({
+    available: config.notificationChannelsAvailable,
+    gotifyRemindersEnabled: getGotifyRemindersEnabled(),
+    medicineReminderSettings: getMedicineReminderSettings(),
+  })
   const router = (app) => {
     app.get('/api/notification-settings', (_req, res) => {
-      res.json({ available: config.notificationChannelsAvailable, gotifyRemindersEnabled: getGotifyRemindersEnabled() })
+      res.json(settingsPayload())
     })
 
     app.put('/api/notification-settings', (req, res) => {
-      const enabled = Boolean(req.body?.gotifyRemindersEnabled) && config.notificationChannelsAvailable
-      setGotifyRemindersEnabled(enabled)
-      writeBooleanSetting('gotify_reminders_enabled', enabled)
-      appendEventLog('settings_update', { key: 'gotify_reminders_enabled', value: enabled ? '1' : '0' })
-      notificationScheduler?.setEnabled(enabled)
-      res.json({ ok: true, available: config.notificationChannelsAvailable, gotifyRemindersEnabled: getGotifyRemindersEnabled() })
+      if (Object.prototype.hasOwnProperty.call(req.body ?? {}, 'gotifyRemindersEnabled')) {
+        const enabled = Boolean(req.body?.gotifyRemindersEnabled) && config.notificationChannelsAvailable
+        setGotifyRemindersEnabled(enabled)
+        writeBooleanSetting('gotify_reminders_enabled', enabled)
+        appendEventLog('settings_update', { key: 'gotify_reminders_enabled', value: enabled ? '1' : '0' })
+        notificationScheduler?.setEnabled(enabled)
+      }
+      if (req.body?.medicineReminderSettings) {
+        const nextSettings = normalizeMedicineReminderSettings(req.body.medicineReminderSettings)
+        setMedicineReminderSettings(nextSettings)
+        writeJsonSetting('medicine_reminder_settings', nextSettings)
+        appendEventLog('settings_update', { key: 'medicine_reminder_settings', value: nextSettings })
+        notificationScheduler?.evaluate()
+      }
+      res.json({ ok: true, ...settingsPayload() })
     })
   }
   return router

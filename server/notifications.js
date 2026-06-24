@@ -1,10 +1,10 @@
 import { DEFAULT_TIME_ZONE, FEEDR_URL } from './notificationConstants.js'
 import { buildMedicineQuickLogUrl, formatTime, normalizeTextEmailRecipients } from './notificationFormatting.js'
-import { buildMedicineReminder, buildReminder, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, parseJsonArray } from './notificationModels.js'
+import { buildMedicineReminder, buildReminder, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeMedicineReminderSettings, parseJsonArray } from './notificationModels.js'
 import { buildFeedingNotificationPayload, buildMedicineNotificationPayload } from './notificationPayloads.js'
 
 export { FEEDR_URL }
-export { buildMedicineQuickLogUrl, buildMedicineReminder, buildReminder, formatTime, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeTextEmailRecipients }
+export { buildMedicineQuickLogUrl, buildMedicineReminder, buildReminder, formatTime, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeMedicineReminderSettings, normalizeTextEmailRecipients }
 
 export function createNotificationScheduler({
   selectState,
@@ -13,6 +13,7 @@ export function createNotificationScheduler({
   sendGotify,
   sendTextEmail,
   enabled = true,
+  getMedicineReminderSettings = () => ({ tylenol: 6, motrin: 6 }),
   now = () => Date.now(),
   setTimer = setTimeout,
   clearTimer = clearTimeout,
@@ -49,8 +50,9 @@ export function createNotificationScheduler({
       const feeding = buildReminder(getLatestEndedFeed(entries), now())
       if (feeding) reminders.push({ ...feeding, notificationId: feeding.entryId })
     }
+    const medicineReminderSettings = getMedicineReminderSettings()
     for (const latestDose of getLatestMedicineDosesByKind(medicines)) {
-      const medicine = buildMedicineReminder(latestDose, now())
+      const medicine = buildMedicineReminder(latestDose, now(), medicineReminderSettings)
       if (medicine) reminders.push({ ...medicine, notificationId: `medicine:${medicine.medicineKind}:${medicine.doseId}` })
     }
 

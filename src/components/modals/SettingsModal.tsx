@@ -13,6 +13,7 @@ type SettingsModalProps = Pick<
   | 'notificationPermission'
   | 'gotifyAvailable'
   | 'gotifyRemindersEnabled'
+  | 'medicineReminderSettings'
   | 'fileInputRef'
   | 'setSettingsOpen'
   | 'setEntries'
@@ -23,10 +24,11 @@ type SettingsModalProps = Pick<
   | 'setFeedingNotificationsEnabled'
   | 'enableFeedingNotifications'
   | 'setGotifyReminders'
+  | 'setMedicineReminderSettings'
   | 'showToast'
 >
 
-export function SettingsModal({ entries, diapers, babyDob, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, showToast }: SettingsModalProps) {
+export function SettingsModal({ entries, diapers, babyDob, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, showToast }: SettingsModalProps) {
   return (
     <ModalFrame label="Settings and data" className="settings" onClose={() => setSettingsOpen(false)}>
       <h2>Settings & Data</h2>
@@ -40,7 +42,9 @@ export function SettingsModal({ entries, diapers, babyDob, feedingNotificationsE
       <GotifyReminderSetting
         gotifyAvailable={gotifyAvailable}
         gotifyRemindersEnabled={gotifyRemindersEnabled}
+        medicineReminderSettings={medicineReminderSettings}
         setGotifyReminders={setGotifyReminders}
+        setMedicineReminderSettings={setMedicineReminderSettings}
       />
       <label className="setting-row">
         <span>
