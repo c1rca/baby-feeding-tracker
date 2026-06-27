@@ -47,6 +47,16 @@ export const calculateStats = (
   const wetCount = countDiaperKind(diapers, recentEntries, 'wet', weekStart)
   const stoolCount = countDiaperKind(diapers, recentEntries, 'stool', weekStart)
   const sideDelta = Math.abs(totalLeft - totalRight)
+  const feedingHoursByDay = trendDays.map((day, index) => {
+    const start = weekStart + index * DAY_MS
+    const end = start + DAY_MS
+    const seconds = recentEntries
+      .filter((entry) => entry.endedAt >= start && entry.endedAt < end)
+      .reduce((sum, entry) => sum + nursingSeconds(entry), 0)
+    return { label: day.label, seconds, hours: roundTenth(seconds / 3600) }
+  })
+  const maxFeedingSeconds = Math.max(1, ...feedingHoursByDay.map((day) => day.seconds))
+  const avgFeedingHoursPerDay = roundTenth(totalNursing / 3600 / 7)
 
   return {
     recentEntries,
@@ -68,6 +78,9 @@ export const calculateStats = (
     wetCount,
     stoolCount,
     diaperAverages: calculateDiaperAverages(entries, diapers, dayStartMs, today, wetCount, stoolCount),
+    feedingHoursByDay,
+    maxFeedingSeconds,
+    avgFeedingHoursPerDay,
     balanceLabel: sideDelta < 5 * 60 ? 'Beautifully balanced' : totalLeft > totalRight ? 'Left leading' : 'Right leading',
     nextSideLabel: sideLabel(calculateSuggestedSide(entries, today)),
     momentumLabel: last24Entries.length >= avgFeedsPerDay ? 'Above weekly pace' : last24Entries.length ? 'Below weekly pace' : 'Quiet 24h',

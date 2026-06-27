@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import type { GrowthMeasurement } from '../domain/growthTypes'
 import type { calculateStats, calculateTrend } from '../domain/trackerDomain'
 import { GrowthDashboard } from './GrowthDashboard'
-import { BalanceAndNightCards, InsightGrid, RhythmCard, StatsHero, StatsStoryGrid } from './stats/StatsDashboardSections'
+import { BalanceAndNightCards, FeedingHoursCard, InsightGrid, RhythmCard, StatsHero, StatsStoryGrid } from './stats/StatsDashboardSections'
 
 type StatsDashboardProps = {
   stats: ReturnType<typeof calculateStats>
@@ -18,6 +18,7 @@ export function StatsDashboard({ stats, trend, growthMeasurements, setGrowthMeas
       <StatsHero stats={stats} />
       <InsightGrid stats={stats} />
       <StatsStoryGrid stats={stats} />
+      <FeedingHoursCard stats={stats} />
       <RhythmCard trend={trend} />
       <BalanceAndNightCards stats={stats} />
       <GrowthDashboard growthMeasurements={growthMeasurements} setGrowthMeasurements={setGrowthMeasurements} babyDob={babyDob} />

@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { Activity, Baby, CalendarDays, Clock3, Droplets, HeartPulse, Sparkles, Target, Trophy, Waves } from 'lucide-react'
+import { Activity, Baby, BarChart3, CalendarDays, Clock3, Droplets, HeartPulse, Sparkles, Target, Trophy, Waves } from 'lucide-react'
 import { formatDuration } from '../../domain/feedingUtils'
 import type { calculateStats, calculateTrend } from '../../domain/trackerDomain'
 
@@ -60,6 +60,29 @@ export function StatsStoryGrid({ stats }: { stats: Stats }) {
         </div>
         <p>7-day averages with today and all-time context, counting mixed diapers toward both signals.</p>
       </article>
+    </section>
+  )
+}
+
+export function FeedingHoursCard({ stats }: { stats: Stats }) {
+  return (
+    <section className="card feeding-hours-card" aria-label="Daily feeding hours">
+      <div className="feeding-hours-copy">
+        <span className="stats-kicker"><BarChart3 size={15} /> Time invested</span>
+        <h2>{stats.totalNursing ? `${stats.avgFeedingHoursPerDay} hrs/day` : 'Hours per day will appear here'}</h2>
+        <p>{stats.totalNursing ? `${formatDuration(stats.totalNursing)} of nursing time captured across the last 7 days.` : 'Log nursing sessions to see daily feeding-time intensity and patterns.'}</p>
+      </div>
+      <div className="feeding-hours-bars">
+        {stats.feedingHoursByDay.map((day) => (
+          <div key={day.label} className="feeding-hours-day">
+            <div className="feeding-hours-track" aria-label={`${day.label}: ${day.hours} feeding hours`}>
+              <div style={{ height: `${Math.max(day.seconds ? 12 : 0, (day.seconds / stats.maxFeedingSeconds) * 100)}%` }} />
+            </div>
+            <strong>{day.hours ? `${day.hours}h` : '—'}</strong>
+            <span>{day.label}</span>
+          </div>
+        ))}
+      </div>
     </section>
   )
 }

@@ -93,7 +93,8 @@ describe('trackerDomain', () => {
     const today = calculateTodaySummary(entries, diapers, noon)
     const stats = calculateStats(entries, diapers, noon, today, trend.days)
     expect(trend.days.at(-1)).toMatchObject({ count: 2 })
-    expect(stats).toMatchObject({ totalNursing: 1500, totalBottle: 2, bottleFeeds: 1, wetCount: 1, nextSideLabel: 'Right' })
+    expect(stats).toMatchObject({ totalNursing: 1500, totalBottle: 2, bottleFeeds: 1, wetCount: 1, nextSideLabel: 'Right', avgFeedingHoursPerDay: 0.1 })
+    expect(stats.feedingHoursByDay.at(-1)).toMatchObject({ seconds: 1500, hours: 0.4 })
     vi.useRealTimers()
   })
 
