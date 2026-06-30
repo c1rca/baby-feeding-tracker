@@ -15,7 +15,7 @@ export function useQuickMedicineQuery({ hasHydrated, logMedicine }: QuickMedicin
 
     const params = new URLSearchParams(window.location.search)
     const quickMed = params.get('quickMed')
-    if (quickMed !== 'tylenol' && quickMed !== 'motrin') return
+    if (quickMed !== 'tylenol' && quickMed !== 'motrin' && quickMed !== 'vitamin_d') return
 
     processedQuickMedicineRef.current = true
     logMedicine(quickMed)

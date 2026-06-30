@@ -60,6 +60,17 @@ export function StatsStoryGrid({ stats }: { stats: Stats }) {
         </div>
         <p>7-day averages with today and all-time context, counting mixed diapers toward both signals.</p>
       </article>
+      <article className="card diaper-signal-card vitamin-stats-card">
+        <div><span className="muted">Vitamin D</span><div className="diaper-signal-values"><strong>{stats.vitaminDTakenToday ? '✓' : '—'}<small>{stats.vitaminDTakenToday ? 'Taken today' : 'Not today'}</small></strong><strong>{stats.vitaminDDosesThisWeek}<small>week</small></strong></div></div>
+        <div className="diaper-average-grid" aria-label="Vitamin D summary">
+          <div className="diaper-average-row">
+            <span>Daily vitamin</span>
+            <strong>{stats.vitaminDTakenToday ? 'Taken today' : 'Due today'}</strong>
+            <small>{stats.vitaminDDosesThisWeek} {stats.vitaminDDosesThisWeek === 1 ? 'dose' : 'doses'} this week</small>
+          </div>
+        </div>
+        <p>Once-daily Vitamin D tracking with a daily status and weekly dose count.</p>
+      </article>
     </section>
   )
 }

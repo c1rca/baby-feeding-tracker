@@ -23,6 +23,7 @@ describe('App interactions', () => {
       ]),
     )
     localStorage.setItem(STORAGE_DIAPERS_KEY, JSON.stringify([{ id: 'diaper-1', kinds: ['wet', 'stool'], at: now - 60 * 60 * 1000, context: 'standalone' }]))
+    localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'vitamin-today', kind: 'vitamin_d', at: now - 3 * 60 * 60 * 1000 }]))
 
     const user = userEvent.setup()
     render(<App />)
@@ -43,6 +44,9 @@ describe('App interactions', () => {
     expect(screen.getByText(/Stool\/day/i)).toBeTruthy()
     expect(screen.getAllByText(/Today: 2 · All-time: 2.0/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Today: 1 · All-time: 1.0/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Vitamin D/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Taken today/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/1 dose this week/i)).toBeTruthy()
     expect(screen.getAllByText(/wet/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/stool/i).length).toBeGreaterThan(0)
     expect(screen.queryByRole('heading', { name: /Timeline/i })).toBeNull()

@@ -6,11 +6,13 @@ export function normalizeTextEmailRecipients(value) {
 }
 
 export function medicationLabel(kind) {
-  return kind === 'motrin' ? 'Motrin' : 'Tylenol'
+  if (kind === 'motrin') return 'Motrin'
+  if (kind === 'vitamin_d') return 'Vitamin D'
+  return 'Tylenol'
 }
 
 export function buildMedicineQuickLogUrl(kind) {
-  const medication = kind === 'motrin' ? 'motrin' : 'tylenol'
+  const medication = kind === 'motrin' ? 'motrin' : kind === 'vitamin_d' ? 'vitamin_d' : 'tylenol'
   return `${FEEDR_URL}/?quickMed=${medication}`
 }
 

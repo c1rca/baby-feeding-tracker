@@ -4,10 +4,12 @@ import { buildMedicineQuickLogUrl, formatTime, medicationLabel } from './notific
 export function buildMedicineNotificationPayload(reminder) {
   const medicineLabelText = medicationLabel(reminder.recommendedKind)
   const quickLogUrl = buildMedicineQuickLogUrl(reminder.recommendedKind)
+  const intervalHours = reminder.intervalHours ?? 6
+  const title = reminder.recommendedKind === 'vitamin_d' ? 'Vitamin D reminder' : 'Medicine reminder'
   return {
-    title: 'Medicine reminder',
-    subject: 'Medicine reminder',
-    message: `Take ${medicineLabelText}. Last dose was ${medicationLabel(reminder.medicineKind)} 6+ hours ago.\n\nLog ${medicineLabelText} now: ${quickLogUrl}`,
+    title,
+    subject: title,
+    message: `Take ${medicineLabelText}. Last dose was ${medicationLabel(reminder.medicineKind)} ${intervalHours}+ hours ago.\n\nLog ${medicineLabelText} now: ${quickLogUrl}`,
     priority: 5,
     extras: {
       'client::notification': { click: { url: quickLogUrl } },

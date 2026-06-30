@@ -28,7 +28,7 @@ type TrackerPageModelOptions = {
 export function useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId }: TrackerPageModelOptions) {
   const today = useMemo(() => calculateTodaySummary(entries, diapers, now), [entries, diapers, now])
   const trend = useMemo(() => calculateTrend(entries, now), [entries, now])
-  const stats = useMemo(() => calculateStats(entries, diapers, now, today, trend.days), [entries, diapers, now, today, trend.days])
+  const stats = useMemo(() => calculateStats(entries, diapers, medicines, now, today, trend.days), [entries, diapers, medicines, now, today, trend.days])
   const avgGapMinutes = useMemo(() => calculateAvgGapMinutes(entries), [entries])
   const suggestedSide = useMemo<Side>(() => calculateSuggestedSide(entries, today), [entries, today])
 

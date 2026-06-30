@@ -91,7 +91,7 @@ describe('trackerDomain', () => {
     const diapers: DiaperEvent[] = [{ id: 'd1', kind: 'wet', at: todayAt(3), context: 'standalone' }]
     const trend = calculateTrend(entries, noon)
     const today = calculateTodaySummary(entries, diapers, noon)
-    const stats = calculateStats(entries, diapers, noon, today, trend.days)
+    const stats = calculateStats(entries, diapers, [], noon, today, trend.days)
     expect(trend.days.at(-1)).toMatchObject({ count: 2 })
     expect(stats).toMatchObject({ totalNursing: 1500, totalBottle: 2, bottleFeeds: 1, wetCount: 1, nextSideLabel: 'Right', avgFeedingHoursPerDay: 0.1 })
     expect(stats.feedingHoursByDay.at(-1)).toMatchObject({ seconds: 1500, hours: 0.4 })
@@ -107,7 +107,7 @@ describe('trackerDomain', () => {
     const trend = calculateTrend(entries, noon)
     const today = calculateTodaySummary(entries, [], noon)
 
-    const stats = calculateStats(entries, [], noon, today, trend.days)
+    const stats = calculateStats(entries, [], [], noon, today, trend.days)
 
     expect(stats.longestGapLabel).toBe('1h 55m')
   })
@@ -125,7 +125,7 @@ describe('trackerDomain', () => {
     const trend = calculateTrend(entries, noon)
     const today = calculateTodaySummary(entries, diapers, noon)
 
-    const stats = calculateStats(entries, diapers, noon, today, trend.days)
+    const stats = calculateStats(entries, diapers, [], noon, today, trend.days)
 
     expect(stats.diaperAverages).toEqual({
       wet: { today: 2, weekly: 0.4, allTime: 0.4 },

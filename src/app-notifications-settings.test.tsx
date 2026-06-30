@@ -15,15 +15,15 @@ describe('App interactions', () => {
     const now = new Date('2026-06-05T14:00:00Z').getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(now)
-    window.history.replaceState({}, '', '/?quickMed=tylenol')
+    window.history.replaceState({}, '', '/?quickMed=vitamin_d')
 
     render(<App />)
 
-    await waitFor(() => expect(screen.getByText(/Tylenol logged/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Vitamin D logged/i)).toBeTruthy())
     await waitFor(() => {
       const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
       expect(saved).toHaveLength(1)
-      expect(saved[0].kind).toBe('tylenol')
+      expect(saved[0].kind).toBe('vitamin_d')
     })
     expect(window.location.search).toBe('')
   })

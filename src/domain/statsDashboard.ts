@@ -1,7 +1,7 @@
 import { formatDuration } from './feedingUtils'
 import { sideLabel } from './labels'
 import { DAY_MS } from './time'
-import type { DiaperEvent, Entry } from '../types'
+import type { DiaperEvent, Entry, MedicineEvent } from '../types'
 import { calculateDiaperAverages } from './statsDiapers'
 import { calculateSuggestedSide } from './statsSummary'
 import {
@@ -18,6 +18,7 @@ import {
 export const calculateStats = (
   entries: Entry[],
   diapers: DiaperEvent[],
+  medicines: MedicineEvent[],
   now: number,
   today: { left: number; right: number; wet: number; stool: number },
   trendDays: { label: string; count: number }[],
@@ -57,6 +58,12 @@ export const calculateStats = (
   })
   const maxFeedingSeconds = Math.max(1, ...feedingHoursByDay.map((day) => day.seconds))
   const avgFeedingHoursPerDay = roundTenth(totalNursing / 3600 / 7)
+  const recentMedicines = medicines.filter((medicine) => medicine.at >= weekStart)
+  const vitaminDDosesThisWeek = recentMedicines.filter((medicine) => medicine.kind === 'vitamin_d').length
+  const latestVitaminD = medicines
+    .filter((medicine) => medicine.kind === 'vitamin_d' && Number.isFinite(medicine.at))
+    .sort((a, b) => b.at - a.at)[0] ?? null
+  const vitaminDTakenToday = Boolean(latestVitaminD && latestVitaminD.at >= dayStartMs)
 
   return {
     recentEntries,
@@ -78,6 +85,9 @@ export const calculateStats = (
     wetCount,
     stoolCount,
     diaperAverages: calculateDiaperAverages(entries, diapers, dayStartMs, today, wetCount, stoolCount),
+    vitaminDDosesThisWeek,
+    latestVitaminD,
+    vitaminDTakenToday,
     feedingHoursByDay,
     maxFeedingSeconds,
     avgFeedingHoursPerDay,

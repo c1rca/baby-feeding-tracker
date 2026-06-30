@@ -63,6 +63,47 @@ test('notification scheduler sends Gotify and text-email medication reminders on
   assert.ok(notificationRows.get('medicine:tylenol:dose-2').sent_at)
 })
 
+test('notification scheduler sends one Vitamin D reminder after the 18 hour window', async () => {
+  const doseAt = new Date('2026-06-04T12:00:00Z').getTime()
+  let now = doseAt + 18 * 60 * 60 * 1000
+  const row = {
+    entries_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([{ id: 'vitamin-dose-1', kind: 'vitamin_d', at: doseAt }]),
+  }
+  const sent = []
+  const textEmails = []
+  const timers = []
+  const notificationRows = new Map()
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => row },
+    getNotificationState: { get: (id) => notificationRows.get(id) },
+    upsertNotificationState: { run: (value) => notificationRows.set(value.entry_id, value) },
+    sendGotify: async (payload) => sent.push(payload),
+    sendTextEmail: async (payload) => textEmails.push(payload),
+    now: () => now,
+    setTimer: (fn, delay) => { timers.push({ fn, delay }); return timers.length },
+    clearTimer: () => {},
+  })
+
+  scheduler.evaluate()
+  assert.equal(timers[0].delay, 0)
+  await timers[0].fn()
+
+  assert.equal(sent.length, 1)
+  assert.equal(sent[0].title, 'Vitamin D reminder')
+  assert.match(sent[0].message, /Take Vitamin D/i)
+  assert.match(sent[0].message, /18\+ hours ago/i)
+  assert.match(sent[0].message, /Log Vitamin D now: https:\/\/feedr\.kjw\.lol\/\?quickMed=vitamin_d$/)
+  assert.equal(sent[0].extras?.['client::notification']?.click?.url, 'https://feedr.kjw.lol/?quickMed=vitamin_d')
+  assert.equal(textEmails.length, 1)
+  assert.equal(textEmails[0].subject, 'Vitamin D reminder')
+  assert.ok(notificationRows.get('medicine:vitamin_d:vitamin-dose-1').sent_at)
+
+  now += 30 * 60 * 1000
+  scheduler.evaluate()
+  assert.equal(sent.length, 1)
+})
+
 test('notification scheduler does not re-trigger a medicine reminder after one channel fails', async () => {
   const now = new Date('2026-06-05T14:00:00Z').getTime()
   const row = {

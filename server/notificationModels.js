@@ -1,4 +1,4 @@
-import { FOUR_HOURS_MS, MAX_CATCH_UP_MS, SIX_HOURS_MS, THREE_HOURS_MS, TWO_HOURS_MS } from './notificationConstants.js'
+import { EIGHTEEN_HOURS_MS, FOUR_HOURS_MS, MAX_CATCH_UP_MS, SIX_HOURS_MS, THREE_HOURS_MS, TWO_HOURS_MS } from './notificationConstants.js'
 
 export function getLatestEndedFeed(entries) {
   if (!Array.isArray(entries)) return null
@@ -16,7 +16,7 @@ export function getLatestMedicineDose(medicines) {
 
 export function getLatestMedicineDosesByKind(medicines) {
   if (!Array.isArray(medicines)) return []
-  return ['tylenol', 'motrin']
+  return ['tylenol', 'motrin', 'vitamin_d']
     .map((kind) => medicines
       .filter((dose) => dose?.kind === kind && Number.isFinite(dose?.at) && dose.at > 0)
       .sort((a, b) => b.at - a.at)[0])
@@ -43,12 +43,18 @@ export function normalizeMedicineReminderSettings(settings = {}) {
 
 export function buildMedicineReminder(latestDose, now = Date.now(), settings = {}) {
   if (!latestDose) return null
+  if (latestDose.kind === 'vitamin_d') {
+    const dueAt = latestDose.at + EIGHTEEN_HOURS_MS
+    const catchUpUntil = dueAt + MAX_CATCH_UP_MS
+    if (dueAt <= now - MAX_CATCH_UP_MS) return null
+    return { kind: 'medicine', doseId: latestDose.id ?? String(latestDose.at), medicineKind: latestDose.kind, recommendedKind: latestDose.kind, dueAt, catchUpUntil, intervalHours: 18 }
+  }
   const intervalHours = normalizeMedicineReminderSettings(settings)[latestDose.kind]
   if (!intervalHours) return null
   const dueAt = latestDose.at + (intervalHours === 4 ? FOUR_HOURS_MS : SIX_HOURS_MS)
   const catchUpUntil = dueAt + MAX_CATCH_UP_MS
   if (dueAt <= now - MAX_CATCH_UP_MS) return null
-  return { kind: 'medicine', doseId: latestDose.id ?? String(latestDose.at), medicineKind: latestDose.kind, recommendedKind: latestDose.kind, dueAt, catchUpUntil }
+  return { kind: 'medicine', doseId: latestDose.id ?? String(latestDose.at), medicineKind: latestDose.kind, recommendedKind: latestDose.kind, dueAt, catchUpUntil, intervalHours }
 }
 
 export function hasActiveSession(row) {
