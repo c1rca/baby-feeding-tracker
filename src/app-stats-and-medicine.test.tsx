@@ -158,6 +158,42 @@ describe('App interactions', () => {
     expect(screen.queryAllByText(/^Tylenol$/i).length).toBe(1)
   })
 
+  it('logs Vitamin D from additional options and reminds once daily after 18 hours', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'vitamin-yesterday', kind: 'vitamin_d', at: now - 19 * 60 * 60 * 1000 }]))
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+
+    const alert = screen.getByRole('alert')
+    expect(alert.className).toContain('vitamin-reminder-banner')
+    expect(alert.textContent).toMatch(/Vitamin D/i)
+    expect(alert.textContent).toMatch(/18\+ hours ago/i)
+
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    const medicineGroup = screen.getByRole('group', { name: /^Medicine$/i })
+    expect(within(medicineGroup).getByRole('button', { name: /Log Vitamin D/i })).toBeTruthy()
+
+    await user.click(within(alert).getByRole('button', { name: /Log Vitamin D now/i }))
+    expect(screen.getByText(/Vitamin D logged/i)).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+    const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
+    expect(saved[0].kind).toBe('vitamin_d')
+  })
+
+  it('does not show the Vitamin D banner when Vitamin D was already taken today', () => {
+    const now = new Date('2026-06-05T23:00:00').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'vitamin-today', kind: 'vitamin_d', at: new Date('2026-06-05T00:30:00').getTime() }]))
+
+    render(<App />)
+
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
   it('keeps a dismissed medicine reminder hidden after a page refresh', async () => {
     const now = new Date('2026-06-05T14:00:00Z').getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })

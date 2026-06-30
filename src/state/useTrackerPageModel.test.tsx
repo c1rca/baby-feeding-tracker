@@ -98,6 +98,8 @@ describe('useTrackerPageModel', () => {
       recommendedKind: 'motrin',
       recommendedLabel: 'Motrin',
       at: medicines[1].at,
+      type: 'medicine',
+      elapsedHours: 6,
     })
     expect(visible.current.showMedicineReminder).toBe(true)
 

@@ -1,7 +1,7 @@
 import type { DiaperEvent, Entry, MedicineEvent } from '../../types'
 import type { TimelineActions, TimelineItem } from './timelineTypes'
 
-export const MEDICINE_KINDS = ['tylenol', 'motrin'] as const
+export const MEDICINE_KINDS = ['tylenol', 'motrin', 'vitamin_d'] as const
 export const DIAPER_KINDS = ['wet', 'stool'] as const
 
 export function timelineItems(entries: Entry[], diapers: DiaperEvent[], medicines: MedicineEvent[]): TimelineItem[] {

@@ -5,7 +5,7 @@ export type Side = 'left' | 'right'
 export type FeedType = 'breast' | 'bottle' | 'mixed'
 export type Segment = SideSegment
 export type DiaperKind = 'wet' | 'stool'
-export type MedicineKind = 'tylenol' | 'motrin'
+export type MedicineKind = 'tylenol' | 'motrin' | 'vitamin_d'
 export type Theme = 'light' | 'dark'
 export type View = 'track' | 'stats'
 

@@ -9,7 +9,13 @@ export const diaperKinds = (event: DiaperEvent): DiaperKind[] => event.kinds?.le
 export const diaperEventLabel = (event: DiaperEvent) => diaperKinds(event).map(diaperLabel).join(' + ')
 export const diaperKindsLabel = (kinds: DiaperKind[]) => kinds.map(diaperLabel).join(' + ')
 
-export const medicineLabel = (kind: MedicineKind) => (kind === 'tylenol' ? 'Tylenol' : 'Motrin')
+const MEDICINE_LABELS: Record<MedicineKind, string> = {
+  tylenol: 'Tylenol',
+  motrin: 'Motrin',
+  vitamin_d: 'Vitamin D',
+}
+
+export const medicineLabel = (kind: MedicineKind) => MEDICINE_LABELS[kind]
 
 export const entryDiaperKinds = (entry: Entry): DiaperKind[] => entry.diaperKinds ?? []
 

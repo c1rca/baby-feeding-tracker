@@ -1,4 +1,4 @@
-import type { DiaperKind, Session, Side } from '../../types'
+import type { DiaperKind, MedicineKind, Session, Side } from '../../types'
 
 export type HeroPanelProps = {
   session: Session | null
@@ -36,5 +36,5 @@ export type HeroPanelProps = {
   clearSession: () => void
   toggleDiaperSelection: (kind: DiaperKind) => void
   logSelectedDiapers: () => void
-  logMedicine: (kind: 'tylenol' | 'motrin') => void
+  logMedicine: (kind: MedicineKind) => void
 }
