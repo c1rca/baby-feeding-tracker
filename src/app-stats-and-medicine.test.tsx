@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -160,6 +160,41 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Undo medicine log/i }))
     expect(screen.getByText(/Medicine log undone/i)).toBeTruthy()
     expect(screen.queryAllByText(/^Tylenol$/i).length).toBe(1)
+  })
+
+  it('suppresses the Tylenol banner when Tylenol reminders are turned off', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(
+      STORAGE_MEDICINES_KEY,
+      JSON.stringify([
+        { id: 'tylenol-old', kind: 'tylenol', at: now - 7 * 60 * 60 * 1000 },
+        { id: 'motrin-recent', kind: 'motrin', at: now - 60 * 60 * 1000 },
+      ]),
+    )
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input)
+      if (url === '/api/notification-settings') {
+        return new Response(JSON.stringify({ available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 0, motrin: 6 } }), { status: 200 })
+      }
+      if (url === '/api/state') {
+        return new Response(JSON.stringify({ entries: [], diapers: [], medicines: JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]'), session: null, theme: 'light' }), { status: 200 })
+      }
+      return new Response('{}', { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+    await vi.advanceTimersByTimeAsync(0)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/notification-settings'))
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    await user.click(screen.getByRole('button', { name: /Log Motrin/i }))
+    expect(screen.getByText(/Motrin logged/i)).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('logs Vitamin D from additional options and reminds once daily after 18 hours', async () => {

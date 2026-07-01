@@ -1,16 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import { DEFAULT_MEDICINE_REMINDER_SETTINGS, normalizeMedicineReminderSettings, type MedicineReminderSettings } from '../state/medicineReminderModel'
 
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
-
-type MedicineReminderSettings = { tylenol: 0 | 4 | 6; motrin: 0 | 4 | 6 }
-const DEFAULT_MEDICINE_REMINDER_SETTINGS: MedicineReminderSettings = { tylenol: 6, motrin: 6 }
-const normalizeMedicineReminderSettings = (settings?: Partial<Record<keyof MedicineReminderSettings, number>>): MedicineReminderSettings => {
-  const intervalFor = (kind: keyof MedicineReminderSettings): 0 | 4 | 6 => {
-    const value = Number(settings?.[kind])
-    return value === 0 || value === 4 || value === 6 ? value : 6
-  }
-  return { tylenol: intervalFor('tylenol'), motrin: intervalFor('motrin') }
-}
 
 type NotificationSettingsOptions = {
   setFeedingNotificationsEnabled: (enabled: boolean) => void

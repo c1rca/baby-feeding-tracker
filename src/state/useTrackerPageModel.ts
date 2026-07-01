@@ -11,7 +11,7 @@ import {
   formatShortTimeRange,
   oppositeSide,
 } from '../domain/trackerDomain'
-import { getMedicineReminder, type MedicineReminderModel } from './medicineReminderModel'
+import { DEFAULT_MEDICINE_REMINDER_SETTINGS, getMedicineReminder, type MedicineReminderModel, type MedicineReminderSettings } from './medicineReminderModel'
 
 const NEXT_FEED_WINDOW_START_MS = 2 * 60 * 60 * 1000
 const NEXT_FEED_WINDOW_END_MS = 3 * 60 * 60 * 1000
@@ -23,16 +23,18 @@ type TrackerPageModelOptions = {
   session: Session | null
   now: number
   dismissedMedicineReminderId: string | null
+  medicineReminderSettings?: MedicineReminderSettings
 }
 
-export function useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId }: TrackerPageModelOptions) {
+export function useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId, medicineReminderSettings }: TrackerPageModelOptions) {
   const today = useMemo(() => calculateTodaySummary(entries, diapers, now), [entries, diapers, now])
   const trend = useMemo(() => calculateTrend(entries, now), [entries, now])
   const stats = useMemo(() => calculateStats(entries, diapers, medicines, now, today, trend.days), [entries, diapers, medicines, now, today, trend.days])
   const avgGapMinutes = useMemo(() => calculateAvgGapMinutes(entries), [entries])
   const suggestedSide = useMemo<Side>(() => calculateSuggestedSide(entries, today), [entries, today])
 
-  const medicineReminder = useMemo<MedicineReminderModel | null>(() => getMedicineReminder(medicines, now), [medicines, now])
+  const effectiveMedicineReminderSettings = medicineReminderSettings ?? DEFAULT_MEDICINE_REMINDER_SETTINGS
+  const medicineReminder = useMemo<MedicineReminderModel | null>(() => getMedicineReminder(medicines, now, effectiveMedicineReminderSettings), [medicines, now, effectiveMedicineReminderSettings])
 
   const lastFeed = entries[0]
   const activeFeedStartedAt = session?.startedAt ?? null

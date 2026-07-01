@@ -1,9 +1,21 @@
 import type { MedicineEvent, MedicineKind } from '../types'
 import { medicineLabel } from '../domain/trackerDomain'
 
-const MEDICINE_REMINDER_MS = 6 * 60 * 60 * 1000
+export type MedicineReminderSettings = { tylenol: 0 | 4 | 6; motrin: 0 | 4 | 6 }
+export const DEFAULT_MEDICINE_REMINDER_SETTINGS: MedicineReminderSettings = { tylenol: 6, motrin: 6 }
+
+export const normalizeMedicineReminderSettings = (settings?: Partial<Record<keyof MedicineReminderSettings, number>>): MedicineReminderSettings => {
+  const intervalFor = (kind: keyof MedicineReminderSettings): 0 | 4 | 6 => {
+    const value = Number(settings?.[kind])
+    return value === 0 || value === 4 || value === 6 ? value : 6
+  }
+  return { tylenol: intervalFor('tylenol'), motrin: intervalFor('motrin') }
+}
+
+const FOUR_HOURS_MS = 4 * 60 * 60 * 1000
+const SIX_HOURS_MS = 6 * 60 * 60 * 1000
 const VITAMIN_D_REMINDER_MS = 18 * 60 * 60 * 1000
-const REMINDER_MEDICINE_KINDS: MedicineKind[] = ['tylenol', 'motrin']
+const REMINDER_MEDICINE_KINDS: (keyof MedicineReminderSettings)[] = ['tylenol', 'motrin']
 
 export type MedicineReminderModel = {
   id: string
@@ -40,7 +52,7 @@ const buildReminder = (medicine: MedicineEvent, type: MedicineReminderModel['typ
   }
 }
 
-export function getMedicineReminder(medicines: MedicineEvent[], now: number): MedicineReminderModel | null {
+export function getMedicineReminder(medicines: MedicineEvent[], now: number, settings: MedicineReminderSettings = DEFAULT_MEDICINE_REMINDER_SETTINGS): MedicineReminderModel | null {
   const vitaminDReminder = (() => {
     const lastVitaminD = latestDoseFor(medicines, 'vitamin_d')
     if (!lastVitaminD) return null
@@ -52,10 +64,16 @@ export function getMedicineReminder(medicines: MedicineEvent[], now: number): Me
   if (vitaminDReminder) return vitaminDReminder
 
   const medicineReminderDue = REMINDER_MEDICINE_KINDS
-    .map((kind) => latestDoseFor(medicines, kind))
-    .filter((medicine): medicine is MedicineEvent => Boolean(medicine && now - medicine.at >= MEDICINE_REMINDER_MS))
-    .sort((a, b) => a.at - b.at)[0]
+    .filter((kind) => settings[kind] !== 0)
+    .map((kind) => {
+      const medicine = latestDoseFor(medicines, kind)
+      const intervalHours = settings[kind]
+      const reminderMs = intervalHours === 4 ? FOUR_HOURS_MS : SIX_HOURS_MS
+      return medicine && now - medicine.at >= reminderMs ? { medicine, intervalHours } : null
+    })
+    .filter((item): item is { medicine: MedicineEvent; intervalHours: 4 | 6 } => Boolean(item))
+    .sort((a, b) => a.medicine.at - b.medicine.at)[0]
 
   if (!medicineReminderDue) return null
-  return buildReminder(medicineReminderDue, 'medicine', 6)
+  return buildReminder(medicineReminderDue.medicine, 'medicine', medicineReminderDue.intervalHours)
 }
