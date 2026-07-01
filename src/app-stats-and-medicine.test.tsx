@@ -139,8 +139,9 @@ describe('App interactions', () => {
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
+    await vi.advanceTimersByTimeAsync(0)
 
-    expect(screen.getByRole('alert').textContent).toMatch(/Take Tylenol/i)
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Take Tylenol/i)
     expect(screen.getByRole('button', { name: /Log Tylenol now/i })).toBeTruthy()
     expect(screen.getByRole('banner').nextElementSibling).toBe(screen.getByRole('alert'))
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
@@ -187,6 +188,8 @@ describe('App interactions', () => {
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
+
+    expect(screen.queryByRole('alert')).toBeNull()
     await vi.advanceTimersByTimeAsync(0)
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/notification-settings'))
@@ -241,8 +244,9 @@ describe('App interactions', () => {
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     const { unmount } = render(<App />)
+    await vi.advanceTimersByTimeAsync(0)
 
-    expect(screen.getByRole('alert').textContent).toMatch(/Take Tylenol/i)
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Take Tylenol/i)
     await user.click(screen.getByRole('button', { name: /Dismiss medicine reminder/i }))
     expect(screen.queryByRole('alert')).toBeNull()
 
@@ -260,8 +264,9 @@ describe('App interactions', () => {
 
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
+    await vi.advanceTimersByTimeAsync(0)
 
-    const alert = screen.getByRole('alert')
+    const alert = await screen.findByRole('alert')
     expect(alert.textContent).toMatch(/Take Motrin/i)
     await user.click(within(alert).getByRole('button', { name: /Log Motrin now/i }))
 
@@ -269,10 +274,11 @@ describe('App interactions', () => {
     expect(screen.queryByRole('alert')).toBeNull()
     const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
     expect(saved[0].kind).toBe('motrin')
-    expect(saved[0].at).toBe(now)
+    expect(saved[0].at).toBeGreaterThanOrEqual(now)
+    expect(saved[0].at).toBeLessThan(now + 1000)
   })
 
-  it('shows a medicine reminder for a due kind even when another medicine was taken more recently', () => {
+  it('shows a medicine reminder for a due kind even when another medicine was taken more recently', async () => {
     const now = new Date('2026-06-05T14:00:00Z').getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(now)
@@ -285,8 +291,10 @@ describe('App interactions', () => {
     )
 
     render(<App />)
+    await vi.advanceTimersByTimeAsync(0)
 
-    expect(screen.getByRole('alert').textContent).toMatch(/Take Motrin/i)
-    expect(screen.getByRole('alert').textContent).toMatch(/Last dose was Motrin/i)
+    const alert = await screen.findByRole('alert')
+    expect(alert.textContent).toMatch(/Take Motrin/i)
+    expect(alert.textContent).toMatch(/Last dose was Motrin/i)
   })
 })

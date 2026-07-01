@@ -12,6 +12,7 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
   const [gotifyAvailable, setGotifyAvailable] = useState(false)
   const [gotifyRemindersEnabled, setGotifyRemindersEnabled] = useState(false)
   const [medicineReminderSettings, setMedicineReminderSettingsState] = useState<MedicineReminderSettings>(DEFAULT_MEDICINE_REMINDER_SETTINGS)
+  const [medicineReminderSettingsLoaded, setMedicineReminderSettingsLoaded] = useState(false)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => (typeof Notification === 'undefined' ? 'denied' : Notification.permission))
 
   const loadGotifySettings = useCallback(async () => {
@@ -22,8 +23,10 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
       setGotifyAvailable(Boolean(data.available))
       setGotifyRemindersEnabled(Boolean(data.gotifyRemindersEnabled))
       setMedicineReminderSettingsState(normalizeMedicineReminderSettings(data.medicineReminderSettings))
+      setMedicineReminderSettingsLoaded(true)
     } catch {
       setGotifyAvailable(false)
+      setMedicineReminderSettingsLoaded(true)
     }
   }, [])
 
@@ -84,6 +87,7 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
     gotifyAvailable,
     gotifyRemindersEnabled,
     medicineReminderSettings,
+    medicineReminderSettingsLoaded,
     notificationPermission,
     setGotifyReminders,
     setMedicineReminderSettings,

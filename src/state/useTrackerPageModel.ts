@@ -23,7 +23,7 @@ type TrackerPageModelOptions = {
   session: Session | null
   now: number
   dismissedMedicineReminderId: string | null
-  medicineReminderSettings?: MedicineReminderSettings
+  medicineReminderSettings?: MedicineReminderSettings | null
 }
 
 export function useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId, medicineReminderSettings }: TrackerPageModelOptions) {
@@ -33,7 +33,7 @@ export function useTrackerPageModel({ entries, diapers, medicines, session, now,
   const avgGapMinutes = useMemo(() => calculateAvgGapMinutes(entries), [entries])
   const suggestedSide = useMemo<Side>(() => calculateSuggestedSide(entries, today), [entries, today])
 
-  const effectiveMedicineReminderSettings = medicineReminderSettings ?? DEFAULT_MEDICINE_REMINDER_SETTINGS
+  const effectiveMedicineReminderSettings = medicineReminderSettings === undefined ? DEFAULT_MEDICINE_REMINDER_SETTINGS : medicineReminderSettings
   const medicineReminder = useMemo<MedicineReminderModel | null>(() => getMedicineReminder(medicines, now, effectiveMedicineReminderSettings), [medicines, now, effectiveMedicineReminderSettings])
 
   const lastFeed = entries[0]

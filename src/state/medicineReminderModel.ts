@@ -52,7 +52,7 @@ const buildReminder = (medicine: MedicineEvent, type: MedicineReminderModel['typ
   }
 }
 
-export function getMedicineReminder(medicines: MedicineEvent[], now: number, settings: MedicineReminderSettings = DEFAULT_MEDICINE_REMINDER_SETTINGS): MedicineReminderModel | null {
+export function getMedicineReminder(medicines: MedicineEvent[], now: number, settings: MedicineReminderSettings | null = DEFAULT_MEDICINE_REMINDER_SETTINGS): MedicineReminderModel | null {
   const vitaminDReminder = (() => {
     const lastVitaminD = latestDoseFor(medicines, 'vitamin_d')
     if (!lastVitaminD) return null
@@ -63,11 +63,14 @@ export function getMedicineReminder(medicines: MedicineEvent[], now: number, set
 
   if (vitaminDReminder) return vitaminDReminder
 
+  const loadedSettings = settings
+  if (!loadedSettings) return null
+
   const medicineReminderDue = REMINDER_MEDICINE_KINDS
-    .filter((kind) => settings[kind] !== 0)
+    .filter((kind) => loadedSettings[kind] !== 0)
     .map((kind) => {
       const medicine = latestDoseFor(medicines, kind)
-      const intervalHours = settings[kind]
+      const intervalHours = loadedSettings[kind]
       const reminderMs = intervalHours === 4 ? FOUR_HOURS_MS : SIX_HOURS_MS
       return medicine && now - medicine.at >= reminderMs ? { medicine, intervalHours } : null
     })

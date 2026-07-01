@@ -70,7 +70,7 @@ export function useTrackerAppController() {
 
   useAppUiEffects({ setNow, resumeFocusTick, session, heroRef, setBottleOpen, setManualOpen, setSettingsOpen, setSelectedDiapers, setEditingDiaper, openEntryMenuId, setOpenEntryMenuId, setConfirmingDeleteEntryId })
 
-  const { gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, notificationPermission, setGotifyReminders, setMedicineReminderSettings, enableFeedingNotifications } = useNotificationSettings({ setFeedingNotificationsEnabled, showToast })
+  const { gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, medicineReminderSettingsLoaded, notificationPermission, setGotifyReminders, setMedicineReminderSettings, enableFeedingNotifications } = useNotificationSettings({ setFeedingNotificationsEnabled, showToast })
   const { deleteEntry, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, resumeEntry } = useTimelineEntryActions({ session, setNow, setSession, setEntries, editing, setEditing, editingDiaper, setEditingDiaper, setOpenEntryMenuId, setConfirmingDeleteEntryId, setResumeFocusTick, undoState, setUndoState, setToast, showToast })
   const { availableSelectedDiapers, logBottle, toggleDiaperSelection, logSelectedDiapers, deleteDiaper, saveDiaperEdit, logMedicine, saveMedicineEdit, startMedicineEdit, deleteMedicine, saveManualFeed } = useAuxiliaryEventActions({ now, session, setSession, setEntries, setDiapers, setMedicines, selectedDiapers, setSelectedDiapers, bottleQuickOz, manualDraft, setManualDraft, setManualOpen, setAdditionalOptionsOpen, editingDiaper, setEditingDiaper, editingMedicine, setEditingMedicine, setDismissedMedicineReminderId, setOpenEntryMenuId, setConfirmingDeleteEntryId, undoState, setUndoState, showToast })
 
@@ -88,7 +88,7 @@ export function useTrackerAppController() {
     }
   }, [dismissedMedicineReminderId])
 
-  const { today, trend, stats, lastFeed, lastFeedMetaText, avgGapShortText, suggestedSide, nextFeedSideText, nextFeedWindowText, medicineReminder, showMedicineReminder } = useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId, medicineReminderSettings })
+  const { today, trend, stats, lastFeed, lastFeedMetaText, avgGapShortText, suggestedSide, nextFeedSideText, nextFeedWindowText, medicineReminder, showMedicineReminder } = useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId, medicineReminderSettings: medicineReminderSettingsLoaded ? medicineReminderSettings : null })
   const { selectedStartMinutesAgo, activeSplit, activeSeconds, activeSide, activeOppositeSide, startSession, switchSide, pause, resume, clearSession, endSession } = useActiveFeedActions({ now, setNow, session, setSession, setEntries, selectedDiapers, setSelectedDiapers, startOffsetOpen, startInputMode, startClockText, startMinutesAgo, setStartOffsetOpen, setStartInputMode, setStartClockText, setStartMinutesAgo, suggestedSide, undoState, setUndoState, setToast, showToast, setBottleOpen })
 
   useBrowserFeedNotifications({ feedingNotificationsEnabled, notificationPermission, lastFeed })
