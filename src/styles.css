@@ -78,6 +78,7 @@ body { margin: 0; }
 .additional-options-toggle:hover { background:#f8fafc; border-color:#cbd5e1; transform:none; box-shadow:none; }
 .additional-options-toggle strong { font-size:.82rem; opacity:.78; }
 .additional-options-panel { display:grid; gap:10px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:16px; background:rgba(248,250,252,.58); animation:panel-in .16s ease; }
+.medicine-reminder-stack { display:grid; gap:10px; }
 .medicine-reminder-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid #fed7aa; border-radius:18px; background:linear-gradient(135deg,#fff7ed,#fffbeb); color:#7c2d12; box-shadow:0 14px 28px rgba(154,52,18,.10); }
 .vitamin-reminder-banner { border-color:#bfdbfe; background:linear-gradient(135deg,#eff6ff,#ecfeff); color:#1e3a8a; box-shadow:0 14px 28px rgba(37,99,235,.10); }
 .medicine-reminder-banner div { display:grid; gap:2px; flex:1; min-width:0; }
@@ -227,7 +228,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 @keyframes toast-in { from { transform: translateY(8px); opacity:0; } to { transform: translateY(0); opacity:1; } }
 @media (min-width: 900px) {
   .app { grid-template-columns: 1.1fr .9fr; }
-  .top, .medicine-reminder-banner, .hero, .grid, .settings, .timeline-card, .stats-page { grid-column: 1 / -1; }
+  .top, .medicine-reminder-stack, .hero, .grid, .settings, .timeline-card, .stats-page { grid-column: 1 / -1; }
 }
 @media (max-width: 560px) {
   .grid { grid-template-columns: 1fr; }

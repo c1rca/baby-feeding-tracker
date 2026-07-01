@@ -20,7 +20,7 @@ export type AuxiliaryEventActionsOptions = {
   setEditingDiaper: Dispatch<SetStateAction<EditingDiaperState>>
   editingMedicine: EditingMedicineState
   setEditingMedicine: Dispatch<SetStateAction<EditingMedicineState>>
-  setDismissedMedicineReminderId: Dispatch<SetStateAction<string | null>>
+  setDismissedMedicineReminderIds: Dispatch<SetStateAction<string[]>>
   setOpenEntryMenuId: Dispatch<SetStateAction<string | null>>
   setConfirmingDeleteEntryId: Dispatch<SetStateAction<string | null>>
   undoState: UndoState | null

@@ -143,13 +143,14 @@ describe('App interactions', () => {
 
     expect((await screen.findByRole('alert')).textContent).toMatch(/Take Tylenol/i)
     expect(screen.getByRole('button', { name: /Log Tylenol now/i })).toBeTruthy()
-    expect(screen.getByRole('banner').nextElementSibling).toBe(screen.getByRole('alert'))
+    expect(screen.getByRole('banner').nextElementSibling?.className).toContain('medicine-reminder-stack')
+    expect(screen.getByRole('banner').nextElementSibling?.firstElementChild).toBe(screen.getByRole('alert'))
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
     const medicineGroup = screen.getByRole('group', { name: /^Medicine$/i })
     expect(within(medicineGroup).getByRole('button', { name: /Log Tylenol/i })).toBeTruthy()
     expect(within(medicineGroup).getByRole('button', { name: /Log Motrin/i })).toBeTruthy()
 
-    await user.click(screen.getByRole('button', { name: /Dismiss medicine reminder/i }))
+    await user.click(screen.getByRole('button', { name: /Dismiss Tylenol reminder/i }))
     expect(screen.queryByRole('alert')).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /Log Tylenol/i }))
@@ -161,6 +162,40 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Undo medicine log/i }))
     expect(screen.getByText(/Medicine log undone/i)).toBeTruthy()
     expect(screen.queryAllByText(/^Tylenol$/i).length).toBe(1)
+  })
+
+
+  it('stacks every due medicine and Vitamin D reminder so none are hidden', async () => {
+    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(now)
+    localStorage.setItem(
+      STORAGE_MEDICINES_KEY,
+      JSON.stringify([
+        { id: 'vitamin-old', kind: 'vitamin_d', at: now - 19 * 60 * 60 * 1000 },
+        { id: 'tylenol-old', kind: 'tylenol', at: now - 6 * 60 * 60 * 1000 - 1 },
+        { id: 'motrin-old', kind: 'motrin', at: now - 7 * 60 * 60 * 1000 },
+      ]),
+    )
+
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    render(<App />)
+    await vi.advanceTimersByTimeAsync(0)
+
+    const alerts = screen.getAllByRole('alert')
+    expect(alerts).toHaveLength(3)
+    expect(alerts.map((alert) => alert.textContent)).toEqual([
+      expect.stringMatching(/Take Vitamin D/i),
+      expect.stringMatching(/Take Motrin/i),
+      expect.stringMatching(/Take Tylenol/i),
+    ])
+    expect(screen.getByRole('banner').nextElementSibling?.className).toContain('medicine-reminder-stack')
+
+    await user.click(screen.getByRole('button', { name: /Dismiss Motrin reminder/i }))
+    expect(screen.getAllByRole('alert')).toHaveLength(2)
+    expect(screen.queryByRole('button', { name: /Log Motrin now/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Log Vitamin D now/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Log Tylenol now/i })).toBeTruthy()
   })
 
   it('suppresses the Tylenol banner when Tylenol reminders are turned off', async () => {
@@ -247,7 +282,7 @@ describe('App interactions', () => {
     await vi.advanceTimersByTimeAsync(0)
 
     expect((await screen.findByRole('alert')).textContent).toMatch(/Take Tylenol/i)
-    await user.click(screen.getByRole('button', { name: /Dismiss medicine reminder/i }))
+    await user.click(screen.getByRole('button', { name: /Dismiss Tylenol reminder/i }))
     expect(screen.queryByRole('alert')).toBeNull()
 
     unmount()

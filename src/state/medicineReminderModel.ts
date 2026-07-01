@@ -52,7 +52,7 @@ const buildReminder = (medicine: MedicineEvent, type: MedicineReminderModel['typ
   }
 }
 
-export function getMedicineReminder(medicines: MedicineEvent[], now: number, settings: MedicineReminderSettings | null = DEFAULT_MEDICINE_REMINDER_SETTINGS): MedicineReminderModel | null {
+export function getMedicineReminders(medicines: MedicineEvent[], now: number, settings: MedicineReminderSettings | null = DEFAULT_MEDICINE_REMINDER_SETTINGS): MedicineReminderModel[] {
   const vitaminDReminder = (() => {
     const lastVitaminD = latestDoseFor(medicines, 'vitamin_d')
     if (!lastVitaminD) return null
@@ -61,12 +61,12 @@ export function getMedicineReminder(medicines: MedicineEvent[], now: number, set
     return buildReminder(lastVitaminD, 'vitamin_d', 18)
   })()
 
-  if (vitaminDReminder) return vitaminDReminder
+  const reminders: MedicineReminderModel[] = vitaminDReminder ? [vitaminDReminder] : []
 
   const loadedSettings = settings
-  if (!loadedSettings) return null
+  if (!loadedSettings) return reminders
 
-  const medicineReminderDue = REMINDER_MEDICINE_KINDS
+  const medicineRemindersDue = REMINDER_MEDICINE_KINDS
     .filter((kind) => loadedSettings[kind] !== 0)
     .map((kind) => {
       const medicine = latestDoseFor(medicines, kind)
@@ -75,8 +75,14 @@ export function getMedicineReminder(medicines: MedicineEvent[], now: number, set
       return medicine && now - medicine.at >= reminderMs ? { medicine, intervalHours } : null
     })
     .filter((item): item is { medicine: MedicineEvent; intervalHours: 4 | 6 } => Boolean(item))
-    .sort((a, b) => a.medicine.at - b.medicine.at)[0]
+    .sort((a, b) => a.medicine.at - b.medicine.at)
 
-  if (!medicineReminderDue) return null
-  return buildReminder(medicineReminderDue.medicine, 'medicine', medicineReminderDue.intervalHours)
+  return [
+    ...reminders,
+    ...medicineRemindersDue.map((item) => buildReminder(item.medicine, 'medicine', item.intervalHours)),
+  ]
+}
+
+export function getMedicineReminder(medicines: MedicineEvent[], now: number, settings: MedicineReminderSettings | null = DEFAULT_MEDICINE_REMINDER_SETTINGS): MedicineReminderModel | null {
+  return getMedicineReminders(medicines, now, settings)[0] ?? null
 }

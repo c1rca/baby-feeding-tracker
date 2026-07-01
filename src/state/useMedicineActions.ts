@@ -7,7 +7,7 @@ type MedicineActionsOptions = {
   editingMedicine: EditingMedicineState
   setEditingMedicine: Dispatch<SetStateAction<EditingMedicineState>>
   setMedicines: Dispatch<SetStateAction<MedicineEvent[]>>
-  setDismissedMedicineReminderId: Dispatch<SetStateAction<string | null>>
+  setDismissedMedicineReminderIds: Dispatch<SetStateAction<string[]>>
   setAdditionalOptionsOpen: Dispatch<SetStateAction<boolean>>
   setOpenEntryMenuId: Dispatch<SetStateAction<string | null>>
   clearUndoTimeout: () => void
@@ -15,11 +15,11 @@ type MedicineActionsOptions = {
   showToast: (message: string) => void
 }
 
-export function useMedicineActions({ editingMedicine, setEditingMedicine, setMedicines, setDismissedMedicineReminderId, setAdditionalOptionsOpen, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: MedicineActionsOptions) {
+export function useMedicineActions({ editingMedicine, setEditingMedicine, setMedicines, setDismissedMedicineReminderIds, setAdditionalOptionsOpen, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: MedicineActionsOptions) {
   const logMedicine = (kind: MedicineKind) => {
     const medicine = createMedicineDose(kind, new Date().getTime())
     setMedicines((prev) => [medicine, ...prev].sort((a, b) => b.at - a.at))
-    setDismissedMedicineReminderId(null)
+    setDismissedMedicineReminderIds([])
     setAdditionalOptionsOpen(false)
     clearUndoTimeout()
     const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
@@ -32,7 +32,7 @@ export function useMedicineActions({ editingMedicine, setEditingMedicine, setMed
     const nextAt = parseClockTimeToday(editingMedicine.time, editingMedicine.originalAt)
     if (nextAt === null) return showToast('Enter a valid medicine time')
     setMedicines((prev) => prev.map((item) => item.id === medicine.id ? { ...item, kind: editingMedicine.kind, at: nextAt } : item).sort((a, b) => b.at - a.at))
-    setDismissedMedicineReminderId(null)
+    setDismissedMedicineReminderIds([])
     setEditingMedicine(null)
     showToast('Medicine updated')
   }

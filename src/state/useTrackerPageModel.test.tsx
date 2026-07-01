@@ -46,7 +46,7 @@ describe('useTrackerPageModel', () => {
     const entries = [entry({ id: 'latest', endedAt: now - 45 * 60 * 1000, leftSeconds: 60, rightSeconds: 120 })]
     const diapers = [diaper()]
 
-    const { result } = renderHook(() => useTrackerPageModel({ entries, diapers, medicines: [], session: null, now, dismissedMedicineReminderId: null }))
+    const { result } = renderHook(() => useTrackerPageModel({ entries, diapers, medicines: [], session: null, now, dismissedMedicineReminderIds: [] }))
 
     expect(result.current.lastFeed?.id).toBe('latest')
     expect(result.current.lastFeedMetaText).toBe('45m ago')
@@ -63,7 +63,7 @@ describe('useTrackerPageModel', () => {
     const sessionEndedAt = new Date('2026-01-03T17:00:00').getTime()
     const entries = [entry({ id: 'paused-feed', startedAt: sessionStartedAt, endedAt: sessionEndedAt, leftSeconds: 3600, rightSeconds: 3600 })]
 
-    const { result } = renderHook(() => useTrackerPageModel({ entries, diapers: [], medicines: [], session: null, now: sessionEndedAt, dismissedMedicineReminderId: null }))
+    const { result } = renderHook(() => useTrackerPageModel({ entries, diapers: [], medicines: [], session: null, now: sessionEndedAt, dismissedMedicineReminderIds: [] }))
 
     expect(result.current.nextFeedWindowText).toMatch(/4:00.*5:00.*PM/i)
   })
@@ -78,20 +78,20 @@ describe('useTrackerPageModel', () => {
       medicines: [],
       session: activeSession({ startedAt: sessionStartedAt, activeSide: 'right' }),
       now: sessionStartedAt + 5 * 60 * 1000,
-      dismissedMedicineReminderId: null,
+      dismissedMedicineReminderIds: [],
     }))
 
     expect(result.current.nextFeedWindowText).toMatch(/11:15.*12:15.*PM/i)
     expect(result.current.nextFeedSideText).toBe('L')
   })
 
-  it('returns the oldest due per-kind medicine reminder unless dismissed', () => {
+  it('returns all due per-kind medicine reminders unless dismissed', () => {
     const medicines = [
       medicine({ id: 'recent-tylenol', kind: 'tylenol', at: now - 6.5 * 60 * 60 * 1000 }),
       medicine({ id: 'older-motrin', kind: 'motrin', at: now - 7 * 60 * 60 * 1000 }),
     ]
 
-    const { result: visible } = renderHook(() => useTrackerPageModel({ entries: [], diapers: [], medicines, session: null, now, dismissedMedicineReminderId: null }))
+    const { result: visible } = renderHook(() => useTrackerPageModel({ entries: [], diapers: [], medicines, session: null, now, dismissedMedicineReminderIds: [] }))
     expect(visible.current.medicineReminder).toEqual({
       id: 'older-motrin',
       label: 'Motrin',
@@ -101,10 +101,12 @@ describe('useTrackerPageModel', () => {
       type: 'medicine',
       elapsedHours: 6,
     })
+    expect(visible.current.medicineReminders.map((reminder) => reminder.id)).toEqual(['older-motrin', 'recent-tylenol'])
     expect(visible.current.showMedicineReminder).toBe(true)
 
-    const { result: dismissed } = renderHook(() => useTrackerPageModel({ entries: [], diapers: [], medicines, session: null, now, dismissedMedicineReminderId: 'older-motrin' }))
-    expect(dismissed.current.medicineReminder?.id).toBe('older-motrin')
-    expect(dismissed.current.showMedicineReminder).toBe(false)
+    const { result: dismissed } = renderHook(() => useTrackerPageModel({ entries: [], diapers: [], medicines, session: null, now, dismissedMedicineReminderIds: ['older-motrin'] }))
+    expect(dismissed.current.medicineReminder?.id).toBe('recent-tylenol')
+    expect(dismissed.current.medicineReminders.map((reminder) => reminder.id)).toEqual(['recent-tylenol'])
+    expect(dismissed.current.showMedicineReminder).toBe(true)
   })
 })

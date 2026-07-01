@@ -26,9 +26,16 @@ const readInitialView = (): View => {
   if (typeof window === 'undefined') return 'track'
   return window.localStorage.getItem(VIEW_STORAGE_KEY) === 'stats' ? 'stats' : 'track'
 }
-const readDismissedMedicineReminderId = () => {
-  if (typeof window === 'undefined') return null
-  return window.localStorage.getItem(DISMISSED_MEDICINE_REMINDER_STORAGE_KEY)
+const readDismissedMedicineReminderIds = () => {
+  if (typeof window === 'undefined') return []
+  const stored = window.localStorage.getItem(DISMISSED_MEDICINE_REMINDER_STORAGE_KEY)
+  if (!stored) return []
+  try {
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed.filter((item): item is string => typeof item === 'string') : []
+  } catch {
+    return [stored]
+  }
 }
 
 type AppHeaderProps = ComponentProps<typeof AppHeader>
@@ -41,7 +48,7 @@ type TrackViewProps = ComponentProps<typeof TrackView>
 export function useTrackerAppController() {
   const { entries, setEntries, session, setSession, diapers, setDiapers, medicines, setMedicines, growthMeasurements, setGrowthMeasurements, babyDob, setBabyDob, theme, setTheme, settingsOpen, setSettingsOpen, feedingNotificationsEnabled, setFeedingNotificationsEnabled } = usePersistentTrackerState()
   const [selectedDiapers, setSelectedDiapers] = useState<DiaperKind[]>([])
-  const [dismissedMedicineReminderId, setDismissedMedicineReminderId] = useState<string | null>(readDismissedMedicineReminderId)
+  const [dismissedMedicineReminderIds, setDismissedMedicineReminderIds] = useState<string[]>(readDismissedMedicineReminderIds)
   const [view, setView] = useState<View>(readInitialView)
   const [bottleOpen, setBottleOpen] = useState(false)
   const [manualOpen, setManualOpen] = useState(false)
@@ -72,7 +79,7 @@ export function useTrackerAppController() {
 
   const { gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, medicineReminderSettingsLoaded, notificationPermission, setGotifyReminders, setMedicineReminderSettings, enableFeedingNotifications } = useNotificationSettings({ setFeedingNotificationsEnabled, showToast })
   const { deleteEntry, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, resumeEntry } = useTimelineEntryActions({ session, setNow, setSession, setEntries, editing, setEditing, editingDiaper, setEditingDiaper, setOpenEntryMenuId, setConfirmingDeleteEntryId, setResumeFocusTick, undoState, setUndoState, setToast, showToast })
-  const { availableSelectedDiapers, logBottle, toggleDiaperSelection, logSelectedDiapers, deleteDiaper, saveDiaperEdit, logMedicine, saveMedicineEdit, startMedicineEdit, deleteMedicine, saveManualFeed } = useAuxiliaryEventActions({ now, session, setSession, setEntries, setDiapers, setMedicines, selectedDiapers, setSelectedDiapers, bottleQuickOz, manualDraft, setManualDraft, setManualOpen, setAdditionalOptionsOpen, editingDiaper, setEditingDiaper, editingMedicine, setEditingMedicine, setDismissedMedicineReminderId, setOpenEntryMenuId, setConfirmingDeleteEntryId, undoState, setUndoState, showToast })
+  const { availableSelectedDiapers, logBottle, toggleDiaperSelection, logSelectedDiapers, deleteDiaper, saveDiaperEdit, logMedicine, saveMedicineEdit, startMedicineEdit, deleteMedicine, saveManualFeed } = useAuxiliaryEventActions({ now, session, setSession, setEntries, setDiapers, setMedicines, selectedDiapers, setSelectedDiapers, bottleQuickOz, manualDraft, setManualDraft, setManualOpen, setAdditionalOptionsOpen, editingDiaper, setEditingDiaper, editingMedicine, setEditingMedicine, setDismissedMedicineReminderIds, setOpenEntryMenuId, setConfirmingDeleteEntryId, undoState, setUndoState, showToast })
 
   useQuickMedicineQuery({ hasHydrated, logMedicine })
 
@@ -81,20 +88,20 @@ export function useTrackerAppController() {
   }, [view])
 
   useEffect(() => {
-    if (dismissedMedicineReminderId) {
-      window.localStorage.setItem(DISMISSED_MEDICINE_REMINDER_STORAGE_KEY, dismissedMedicineReminderId)
+    if (dismissedMedicineReminderIds.length > 0) {
+      window.localStorage.setItem(DISMISSED_MEDICINE_REMINDER_STORAGE_KEY, JSON.stringify(dismissedMedicineReminderIds))
     } else {
       window.localStorage.removeItem(DISMISSED_MEDICINE_REMINDER_STORAGE_KEY)
     }
-  }, [dismissedMedicineReminderId])
+  }, [dismissedMedicineReminderIds])
 
-  const { today, trend, stats, lastFeed, lastFeedMetaText, avgGapShortText, suggestedSide, nextFeedSideText, nextFeedWindowText, medicineReminder, showMedicineReminder } = useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderId, medicineReminderSettings: medicineReminderSettingsLoaded ? medicineReminderSettings : null })
+  const { today, trend, stats, lastFeed, lastFeedMetaText, avgGapShortText, suggestedSide, nextFeedSideText, nextFeedWindowText, medicineReminder, medicineReminders, showMedicineReminder } = useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderIds, medicineReminderSettings: medicineReminderSettingsLoaded ? medicineReminderSettings : null })
   const { selectedStartMinutesAgo, activeSplit, activeSeconds, activeSide, activeOppositeSide, startSession, switchSide, pause, resume, clearSession, endSession } = useActiveFeedActions({ now, setNow, session, setSession, setEntries, selectedDiapers, setSelectedDiapers, startOffsetOpen, startInputMode, startClockText, startMinutesAgo, setStartOffsetOpen, setStartInputMode, setStartClockText, setStartMinutesAgo, suggestedSide, undoState, setUndoState, setToast, showToast, setBottleOpen })
 
   useBrowserFeedNotifications({ feedingNotificationsEnabled, notificationPermission, lastFeed })
 
   const headerProps: AppHeaderProps = { view, syncStatus, theme, settingsOpen, setView, setTheme, setSettingsOpen }
-  const medicineReminderProps: MedicineReminderBannerProps = { medicineReminder, showMedicineReminder, dismissMedicineReminder: setDismissedMedicineReminderId, logMedicine }
+  const medicineReminderProps: MedicineReminderBannerProps = { medicineReminder, medicineReminders, showMedicineReminder, dismissMedicineReminder: (id) => setDismissedMedicineReminderIds((prev) => prev.includes(id) ? prev : [...prev, id]), logMedicine }
   const statsProps: StatsDashboardProps = { stats, trend, growthMeasurements, setGrowthMeasurements, babyDob }
   const trackViewProps: TrackViewProps = {
     heroRef,
