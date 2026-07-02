@@ -1,6 +1,6 @@
 import { formatDuration } from './feedingUtils'
 import { sideLabel } from './labels'
-import { DAY_MS } from './time'
+import { DAY_MS, localDayWindows } from './time'
 import type { DiaperEvent, Entry, MedicineEvent } from '../types'
 import { calculateDiaperAverages } from './statsDiapers'
 import { calculateSuggestedSide } from './statsSummary'
@@ -24,7 +24,8 @@ export const calculateStats = (
   trendDays: { label: string; count: number }[],
 ) => {
   const dayStartMs = startOfDayMs(now)
-  const weekStart = dayStartMs - 6 * DAY_MS
+  const weekWindows = localDayWindows(now, 7)
+  const weekStart = weekWindows[0]?.startMs ?? dayStartMs - 6 * DAY_MS
   const recentEntries = entriesSince(entries, weekStart)
   const totalNursing = recentEntries.reduce((sum, entry) => sum + nursingSeconds(entry), 0)
   const totalBottle = recentEntries.reduce((sum, entry) => sum + bottleOunces(entry), 0)
@@ -48,13 +49,12 @@ export const calculateStats = (
   const wetCount = countDiaperKind(diapers, recentEntries, 'wet', weekStart)
   const stoolCount = countDiaperKind(diapers, recentEntries, 'stool', weekStart)
   const sideDelta = Math.abs(totalLeft - totalRight)
-  const feedingHoursByDay = trendDays.map((day, index) => {
-    const start = weekStart + index * DAY_MS
-    const end = start + DAY_MS
+  const feedingHoursByDay = weekWindows.map((window, index) => {
+    const day = trendDays[index]
     const seconds = recentEntries
-      .filter((entry) => entry.endedAt >= start && entry.endedAt < end)
+      .filter((entry) => entry.endedAt >= window.startMs && entry.endedAt < window.endMs)
       .reduce((sum, entry) => sum + nursingSeconds(entry), 0)
-    return { label: day.label, seconds, hours: roundTenth(seconds / 3600) }
+    return { label: day?.label ?? window.label, seconds, hours: roundTenth(seconds / 3600), startMs: window.startMs, endMs: window.endMs }
   })
   const maxFeedingSeconds = Math.max(1, ...feedingHoursByDay.map((day) => day.seconds))
   const avgFeedingHoursPerDay = roundTenth(totalNursing / 3600 / 7)

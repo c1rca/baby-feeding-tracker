@@ -13,8 +13,16 @@ describe('growth percentile modeling', () => {
     const weight = BOY_GROWTH_STANDARDS.find((metric) => metric.key === 'weight')!
     const monthTwo = weight.standards.find((point) => point.month === 1.5)!
 
-    expect(estimatePercentile(weight, 1.5, monthTwo.p50)).toBe(50)
-    expect(estimatePercentile(weight, 1.5, monthTwo.p90)).toBe(90)
+    expect(estimatePercentile(weight, 1.5, monthTwo.p50)).toEqual({ kind: 'percentile', percentile: 50, label: '50th' })
+    expect(estimatePercentile(weight, 1.5, monthTwo.p90)).toEqual({ kind: 'percentile', percentile: 90, label: '90th' })
+  })
+
+  it('does not invent numeric percentiles outside the p3-p97 reference band', () => {
+    const weight = BOY_GROWTH_STANDARDS.find((metric) => metric.key === 'weight')!
+    const monthTwo = weight.standards.find((point) => point.month === 1.5)!
+
+    expect(estimatePercentile(weight, 1.5, monthTwo.p3 - 0.1)).toEqual({ kind: 'below-range', percentile: null, label: '<3rd', reason: 'below-p3' })
+    expect(estimatePercentile(weight, 1.5, monthTwo.p97 + 0.1)).toEqual({ kind: 'above-range', percentile: null, label: '>97th', reason: 'above-p97' })
   })
 
   it('builds latest chart models from normalized measurements', () => {

@@ -59,7 +59,7 @@ const draftFromMeasurement = (measurement: GrowthMeasurement): GrowthDraft => {
   }
 }
 const sortMeasurements = (measurements: GrowthMeasurement[]) => [...measurements].sort((a, b) => b.measuredAt - a.measuredAt)
-const formatPercentile = (percentile: number) => `${percentile}${percentile === 1 ? 'st' : percentile === 2 ? 'nd' : percentile === 3 ? 'rd' : 'th'}`
+const formatPercentileEstimate = (estimate: { label: string }) => estimate.label
 
 export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, babyDob }: GrowthDashboardProps) {
   const [draft, setDraft] = useState<GrowthDraft>(emptyDraft)
@@ -120,7 +120,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
         <div className="growth-hero-copy">
           <p className="eyebrow">Growth clinic</p>
           <h2>Percentile tracking, beautifully organized.</h2>
-          <p>Chart weight, length, and head circumference against WHO/CDC boys 0–24 month standards with one focused clinical view.</p>
+          <p>Chart weight, length, and head circumference against the currently loaded WHO/CDC male 0–24 month reference curves. If baby is not male, use the plotted measurements only until female standards are configured.</p>
           <div className="growth-hero-actions">
             <button className="primary growth-open-modal" type="button" onClick={openAddModal}><Plus size={16} /> Add measurement</button>
             <span>{GROWTH_REFERENCE_SOURCE}</span>
@@ -128,7 +128,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
         </div>
         <div className="growth-hero-metric" aria-label="Latest growth snapshot">
           <span>{activeModel.metric.label}</span>
-          <strong>{activeModel.latest ? formatPercentile(activeModel.latest.percentile) : '—'}</strong>
+          <strong>{activeModel.latest ? formatPercentileEstimate(activeModel.latest.percentileEstimate) : '—'}</strong>
           <small>{activeModel.latest ? `${activeModel.metric.key === 'weight' ? formatWeight(activeModel.latest.value) : `${activeModel.latest.value} ${activeModel.metric.unit}`} · ${activeModel.latest.ageMonths} mo` : 'No measurement yet'}</small>
         </div>
       </div>
@@ -141,7 +141,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
               <button key={metric.key} type="button" role="tab" aria-selected={activeMetric === metric.key} className={activeMetric === metric.key ? 'active' : ''} onClick={() => setActiveMetric(metric.key)}>
                 <Icon size={17} />
                 <span>{metric.label}</span>
-                <strong>{latest ? formatPercentile(latest.percentile) : 'No data'}</strong>
+                <strong>{latest ? formatPercentileEstimate(latest.percentileEstimate) : 'No data'}</strong>
               </button>
             )
           })}
@@ -162,7 +162,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
         {models.map(({ metric, latest }) => (
           <article className="card growth-latest" key={metric.key}>
             <span>{metric.label}</span>
-            <strong>{latest ? `${formatPercentile(latest.percentile)} percentile` : 'No data yet'}</strong>
+            <strong>{latest ? `${formatPercentileEstimate(latest.percentileEstimate)} percentile` : 'No data yet'}</strong>
             <small>{latest ? `${metric.key === 'weight' ? formatWeight(latest.value) : `${latest.value} ${metric.unit}`} at ${latest.ageMonths} mo` : 'Add a measurement to plot the baby dot.'}</small>
           </article>
         ))}
@@ -239,7 +239,7 @@ function GrowthChart({ model }: GrowthChartProps) {
         const last = metric.standards.at(-1)!
         return <text className="percentile-label" key={line} x="616" y={y(last[line]) + 3}>{lineLabels[line]}</text>
       })}
-      {babyPoints.map((point) => <circle key={point.measurement.id} className="baby-point" cx={x(point.ageMonths)} cy={y(point.value)} r="7"><title>{`${metric.key === 'weight' ? formatWeight(point.value) : `${point.value} ${metric.unit}`}, ${formatPercentile(point.percentile)} percentile`}</title></circle>)}
+      {babyPoints.map((point) => <circle key={point.measurement.id} className="baby-point" cx={x(point.ageMonths)} cy={y(point.value)} r="7"><title>{`${metric.key === 'weight' ? formatWeight(point.value) : `${point.value} ${metric.unit}`}, ${formatPercentileEstimate(point.percentileEstimate)} percentile`}</title></circle>)}
     </svg>
   )
 }

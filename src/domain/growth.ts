@@ -2,7 +2,7 @@ import { BOY_GROWTH_STANDARDS } from './growthStandards'
 import type { GrowthMeasurement, GrowthMetric, GrowthMetricKey, GrowthStandardPoint } from './growthTypes'
 
 export const GROWTH_PERCENTILE_LINES = ['p3', 'p10', 'p25', 'p50', 'p75', 'p90', 'p97'] as const
-export const GROWTH_REFERENCE_SOURCE = 'WHO Child Growth Standards for boys 0–24 months via CDC LMS tables'
+export const GROWTH_REFERENCE_SOURCE = 'WHO Child Growth Standards for boys 0–24 months via CDC LMS tables; sex-specific percentiles require a male reference selection.'
 const AVERAGE_DAYS_PER_MONTH = 365.2425 / 12
 
 export function calculateAgeMonths(babyDob: string, measuredAt: number) {
@@ -33,17 +33,26 @@ const interpolate = (points: GrowthStandardPoint[], ageMonths: number, percentil
   return lower[percentile] + (upper[percentile] - lower[percentile]) * ratio
 }
 
-export function estimatePercentile(metric: GrowthMetric, ageMonths: number, value: number) {
+export type PercentileEstimate =
+  | { kind: 'percentile'; percentile: number; label: string }
+  | { kind: 'below-range'; percentile: null; label: '<3rd'; reason: 'below-p3' }
+  | { kind: 'above-range'; percentile: null; label: '>97th'; reason: 'above-p97' }
+
+const ordinalPercentile = (percentile: number) => `${percentile}${percentile === 1 ? 'st' : percentile === 2 ? 'nd' : percentile === 3 ? 'rd' : 'th'}`
+
+export function estimatePercentile(metric: GrowthMetric, ageMonths: number, value: number): PercentileEstimate {
   const bands = ['p3', 'p5', 'p10', 'p25', 'p50', 'p75', 'p90', 'p95', 'p97'] as const
   const values = bands.map((band) => ({ band, numeric: Number(band.slice(1)), value: interpolate(metric.standards, ageMonths, band) }))
-  if (value <= values[0].value) return Math.max(1, Math.round((value / values[0].value) * 3))
+  if (value < values[0].value) return { kind: 'below-range', percentile: null, label: '<3rd', reason: 'below-p3' }
   const last = values.at(-1)!
-  if (value >= last.value) return Math.min(99, Math.round(97 + ((value - last.value) / last.value) * 3))
+  if (value > last.value) return { kind: 'above-range', percentile: null, label: '>97th', reason: 'above-p97' }
   const upperIndex = values.findIndex((point) => point.value >= value)
   const upper = values[upperIndex]
   const lower = values[upperIndex - 1]
+  if (!lower) return { kind: 'percentile', percentile: upper.numeric, label: ordinalPercentile(upper.numeric) }
   const ratio = (value - lower.value) / (upper.value - lower.value)
-  return Math.round(lower.numeric + (upper.numeric - lower.numeric) * ratio)
+  const percentile = Math.round(lower.numeric + (upper.numeric - lower.numeric) * ratio)
+  return { kind: 'percentile', percentile, label: ordinalPercentile(percentile) }
 }
 
 export function buildGrowthMetricModels(measurements: GrowthMeasurement[]) {
@@ -57,7 +66,7 @@ export function buildGrowthMetricModels(measurements: GrowthMeasurement[]) {
           measurement,
           ageMonths: measurement.ageMonths,
           value: value as number,
-          percentile: estimatePercentile(metric, measurement.ageMonths, value as number),
+          percentileEstimate: estimatePercentile(metric, measurement.ageMonths, value as number),
         }
       })
       .filter((point): point is NonNullable<typeof point> => Boolean(point))

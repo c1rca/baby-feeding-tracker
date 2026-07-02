@@ -1,5 +1,5 @@
 import { oppositeSide } from './labels'
-import { DAY_MS } from './time'
+import { localDayWindows } from './time'
 import type { DiaperEvent, Entry, Side } from '../types'
 import { bottleOunces, countDiaperKind, entriesSince, nursingSeconds, startOfDayMs } from './statsUtils'
 
@@ -21,14 +21,9 @@ export const calculateTodaySummary = (entries: Entry[], diapers: DiaperEvent[], 
 }
 
 export const calculateTrend = (entries: Entry[], now = new Date().getTime()) => {
-  const days = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(now)
-    d.setHours(0, 0, 0, 0)
-    d.setDate(d.getDate() - (6 - i))
-    const start = d.getTime()
-    const end = start + DAY_MS
-    const dayEntries = entries.filter((entry) => entry.endedAt >= start && entry.endedAt < end)
-    return { label: d.toLocaleDateString([], { weekday: 'short' }), count: dayEntries.length }
+  const days = localDayWindows(now, 7).map(({ startMs, endMs, label }) => {
+    const dayEntries = entries.filter((entry) => entry.endedAt >= startMs && entry.endedAt < endMs)
+    return { label, count: dayEntries.length, startMs, endMs }
   })
   const max = Math.max(1, ...days.map((day) => day.count))
   return { days, max }

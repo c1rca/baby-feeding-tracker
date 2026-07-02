@@ -2,6 +2,27 @@ const DAY_MS = 24 * 60 * 60 * 1000
 
 export { DAY_MS }
 
+export const startOfLocalDay = (timestamp: number) => {
+  const date = new Date(timestamp)
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+export const addLocalDays = (date: Date, days: number) => {
+  const next = new Date(date)
+  next.setDate(next.getDate() + days)
+  return next
+}
+
+export const localDayWindow = (timestamp: number, offsetDays = 0) => {
+  const start = addLocalDays(startOfLocalDay(timestamp), offsetDays)
+  const end = addLocalDays(start, 1)
+  return { start, end, startMs: start.getTime(), endMs: end.getTime(), label: start.toLocaleDateString([], { weekday: 'short' }) }
+}
+
+export const localDayWindows = (timestamp: number, days: number) =>
+  Array.from({ length: days }, (_, index) => localDayWindow(timestamp, index - (days - 1)))
+
 export const formatTime = (timestamp: number) => new Date(timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
 export const formatShortTimeRange = (start: number, end: number) => {
