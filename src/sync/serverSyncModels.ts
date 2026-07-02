@@ -1,7 +1,7 @@
 import { normalizeSession } from '../domain/trackerDomain'
 import { normalizeGrowthMeasurements } from '../domain/growth'
 import type { GrowthMeasurement } from '../domain/growthTypes'
-import type { DiaperEvent, Entry, MedicineEvent, ServerState } from '../types'
+import type { DiaperEvent, Entry, MedicineEvent, ServerState, TummyTimeEvent } from '../types'
 import type { ServerSyncPayload } from './serverSyncTypes'
 
 export function sortEntries(entries: Entry[]) {
@@ -14,6 +14,10 @@ export function sortDiapers(diapers: DiaperEvent[]) {
 
 export function sortMedicines(medicines: MedicineEvent[]) {
   return [...medicines].sort((a, b) => b.at - a.at)
+}
+
+export function sortTummyTimes(tummyTimes: TummyTimeEvent[]) {
+  return [...tummyTimes].sort((a, b) => b.startedAt - a.startedAt)
 }
 
 export function sortGrowthMeasurements(growthMeasurements: GrowthMeasurement[]) {
@@ -34,6 +38,8 @@ export function buildPendingSyncPayload(serverState: ServerState, localPayload: 
     entries: sortEntries(mergeById(serverState.entries, localPayload.entries)),
     diapers: sortDiapers(mergeById(serverState.diapers, localPayload.diapers)),
     medicines: sortMedicines(mergeById(serverState.medicines, localPayload.medicines)),
+    tummyTimes: sortTummyTimes(mergeById(serverState.tummyTimes, localPayload.tummyTimes)),
+    tummySession: serverState.tummySession ?? localPayload.tummySession,
     growthMeasurements: sortGrowthMeasurements(mergeById(serverState.growthMeasurements, localPayload.growthMeasurements)),
     babyDob: serverState.babyDob || localPayload.babyDob || '2026-06-03',
     session: serverSession ?? localPayload.session,
@@ -50,6 +56,8 @@ export function buildApiStatePayload(
     entries: overrides.entries ?? currentPayload.entries,
     diapers: overrides.diapers ?? currentPayload.diapers,
     medicines: overrides.medicines ?? currentPayload.medicines,
+    tummyTimes: overrides.tummyTimes ?? currentPayload.tummyTimes,
+    tummySession: overrides.tummySession ?? currentPayload.tummySession,
     growthMeasurements: overrides.growthMeasurements ?? currentPayload.growthMeasurements,
     babyDob: overrides.babyDob ?? currentPayload.babyDob,
     session: overrides.session ?? currentPayload.session,

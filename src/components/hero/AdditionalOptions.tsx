@@ -1,9 +1,9 @@
-import { Baby, CalendarDays, Pill } from 'lucide-react'
+import { Baby, CalendarDays, Dumbbell, Pill } from 'lucide-react'
 import type { HeroPanelProps } from './HeroPanel.types'
 
-type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'setAdditionalOptionsOpen' | 'setBottleOpen' | 'setManualOpen' | 'setSession' | 'logMedicine'>
+type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'tummySession' | 'setTummySession' | 'setAdditionalOptionsOpen' | 'setBottleOpen' | 'setManualOpen' | 'setSession' | 'logMedicine' | 'logTummyTimeMinutes' | 'startTummyTime' | 'stopTummyTime'>
 
-export function AdditionalOptions({ session, additionalOptionsOpen, setAdditionalOptionsOpen, setBottleOpen, setManualOpen, setSession, logMedicine }: AdditionalOptionsProps) {
+export function AdditionalOptions({ session, additionalOptionsOpen, tummySession, setTummySession, setAdditionalOptionsOpen, setBottleOpen, setManualOpen, setSession, logMedicine, logTummyTimeMinutes, startTummyTime, stopTummyTime }: AdditionalOptionsProps) {
   return (
     <div className="additional-options-shell">
       <button type="button" className="additional-options-toggle" aria-label="Additional options" aria-expanded={additionalOptionsOpen} onClick={() => setAdditionalOptionsOpen((open) => !open)}>
@@ -11,6 +11,22 @@ export function AdditionalOptions({ session, additionalOptionsOpen, setAdditiona
       </button>
       {additionalOptionsOpen ? (
         <div className="additional-options-panel">
+          <div className="medicine-panel" role="group" aria-label="Tummy Time">
+            <span className="diaper-panel-label">Tummy Time</span>
+            {tummySession ? (
+              <>
+                <button type="button" className="success" aria-label="Stop Tummy Time" onClick={stopTummyTime}><Dumbbell size={14} /> Stop Tummy Time</button>
+                <label>Tummy note<input value={tummySession.note} onChange={(event) => setTummySession({ ...tummySession, note: event.target.value })} placeholder="optional note" /></label>
+              </>
+            ) : (
+              <>
+                <div className="row tummy-quick-row" aria-label="Tummy Time quick add">
+                  {[5, 10, 15, 20].map((minutes) => <button key={minutes} type="button" aria-label={`Add ${minutes} min Tummy Time`} onClick={() => logTummyTimeMinutes(minutes)}>{minutes} min</button>)}
+                </div>
+                <button type="button" aria-label="Start Tummy Time" onClick={startTummyTime}><Dumbbell size={14} /> Start</button>
+              </>
+            )}
+          </div>
           <div className="medicine-panel" role="group" aria-label="Bottle feed">
             <span className="diaper-panel-label">Bottle</span>
             <button type="button" aria-label={session ? 'Add bottle to this feed' : 'Log bottle-only feed'} onClick={() => setBottleOpen(true)}><Baby size={14} /> Bottle</button>

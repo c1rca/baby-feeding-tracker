@@ -7,6 +7,8 @@ const UNDO_TOAST_TEXT = {
   'diaper-delete': 'Diaper deleted',
   'medicine-log': 'Medicine logged',
   'medicine-delete': 'Medicine deleted',
+  'tummy-log': 'Tummy Time saved',
+  'tummy-delete': 'Tummy Time deleted',
   delete: 'Entry deleted',
 } as const
 
@@ -17,6 +19,8 @@ const UNDO_LABELS = {
   'diaper-delete': 'Undo diaper delete',
   'medicine-log': 'Undo medicine log',
   'medicine-delete': 'Undo medicine delete',
+  'tummy-log': 'Undo Tummy Time log',
+  'tummy-delete': 'Undo Tummy Time delete',
   delete: 'Undo delete',
 } as const
 

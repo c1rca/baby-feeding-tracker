@@ -76,19 +76,23 @@ export const createStateRouter = ({
         entries: Array.isArray(req.body?.entries) ? req.body.entries : [],
         diapers: Array.isArray(req.body?.diapers) ? req.body.diapers : [],
         medicines: Array.isArray(req.body?.medicines) ? req.body.medicines : [],
+        tummyTimes: Array.isArray(req.body?.tummyTimes) ? req.body.tummyTimes : [],
+        tummySession: req.body?.tummySession ?? null,
         growthMeasurements: Array.isArray(req.body?.growthMeasurements) ? req.body.growthMeasurements : [],
         babyDob: typeof req.body?.babyDob === 'string' ? req.body.babyDob : '2026-06-03',
         session: req.body?.session ?? null,
         theme: req.body?.theme === 'dark' ? 'dark' : 'light',
         updatedAt: req.body?.updatedAt,
       }, deletedItemOptions())
-      const { entries, diapers, medicines, growthMeasurements, babyDob, session, theme } = incoming
+      const { entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session, theme } = incoming
       const updatedAt = new Date().toISOString()
 
       upsertState.run({
         entries_json: JSON.stringify(entries),
         diapers_json: JSON.stringify(diapers),
         medicines_json: JSON.stringify(medicines),
+        tummy_times_json: JSON.stringify(tummyTimes),
+        tummy_session_json: tummySession ? JSON.stringify(tummySession) : null,
         growth_measurements_json: JSON.stringify(growthMeasurements),
         baby_dob: babyDob,
         session_json: session ? JSON.stringify(session) : null,
@@ -96,17 +100,17 @@ export const createStateRouter = ({
         updated_at: updatedAt,
       })
 
-      const audit = buildStateAudit(existingRow, { entries, diapers, medicines, growthMeasurements, babyDob, session, theme }, {
+      const audit = buildStateAudit(existingRow, { entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session, theme }, {
         staleWriteMerged: incoming.stale,
         clientUpdatedAt: req.body?.updatedAt,
         nextUpdatedAt: updatedAt,
       })
       recordDeletedItems(audit, updatedAt)
       appendEventLog('state_write_audit', audit)
-      appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines, growthMeasurements, babyDob), staleWriteMerged: incoming.stale, entries, diapers, medicines, growthMeasurements, babyDob, session })
+      appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines, growthMeasurements, babyDob, tummyTimes, tummySession), staleWriteMerged: incoming.stale, entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session })
       notificationScheduler?.evaluate()
 
-      const responseState = { entries, diapers, medicines, growthMeasurements, babyDob, session, theme, updatedAt }
+      const responseState = { entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session, theme, updatedAt }
       broadcastStateChange(responseState)
       res.json({ ok: true, updatedAt, staleWriteMerged: incoming.stale, state: responseState })
     })

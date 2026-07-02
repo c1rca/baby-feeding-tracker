@@ -29,6 +29,8 @@ for (const [index, line] of lines.entries()) {
       entries: record.entries,
       diapers: Array.isArray(record.diapers) ? record.diapers : [],
       medicines: Array.isArray(record.medicines) ? record.medicines : [],
+      tummyTimes: Array.isArray(record.tummyTimes) ? record.tummyTimes : [],
+      tummySession: record.tummySession ?? null,
       session: record.session ?? null,
       theme: record.theme === 'dark' ? 'dark' : 'light',
       updatedAt: record.at,
@@ -61,6 +63,8 @@ try {
       theme TEXT NOT NULL DEFAULT 'light',
       diapers_json TEXT NOT NULL DEFAULT '[]',
       medicines_json TEXT NOT NULL DEFAULT '[]',
+      tummy_times_json TEXT NOT NULL DEFAULT '[]',
+      tummy_session_json TEXT,
       updated_at TEXT NOT NULL
     );
 
@@ -78,13 +82,15 @@ try {
     );
   `)
   db.prepare(`
-    INSERT INTO app_state (id, entries_json, session_json, theme, diapers_json, medicines_json, updated_at)
-    VALUES (1, @entries_json, @session_json, @theme, @diapers_json, @medicines_json, @updated_at)
+    INSERT INTO app_state (id, entries_json, session_json, theme, diapers_json, medicines_json, tummy_times_json, tummy_session_json, updated_at)
+    VALUES (1, @entries_json, @session_json, @theme, @diapers_json, @medicines_json, @tummy_times_json, @tummy_session_json, @updated_at)
   `).run({
     entries_json: JSON.stringify(latestState.entries),
     session_json: latestState.session ? JSON.stringify(latestState.session) : null,
     diapers_json: JSON.stringify(latestState.diapers),
     medicines_json: JSON.stringify(latestState.medicines),
+    tummy_times_json: JSON.stringify(latestState.tummyTimes),
+    tummy_session_json: latestState.tummySession ? JSON.stringify(latestState.tummySession) : null,
     theme: latestState.theme,
     updated_at: latestState.updatedAt,
   })
@@ -100,3 +106,4 @@ console.log(`Recreated database: ${dbPath}`)
 console.log(`Entries: ${latestState.entries.length}`)
 console.log(`Diapers: ${latestState.diapers.length}`)
 console.log(`Medicines: ${latestState.medicines.length}`)
+console.log(`Tummy times: ${latestState.tummyTimes.length}`)

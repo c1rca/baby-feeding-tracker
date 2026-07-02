@@ -1,7 +1,7 @@
 import { normalizeGrowthMeasurements } from '../domain/growth'
 import { normalizeSession } from '../domain/trackerDomain'
 import type { GrowthMeasurement } from '../domain/growthTypes'
-import type { DiaperEvent, Entry, LegacySession, MedicineEvent, Theme } from '../types'
+import type { DiaperEvent, Entry, LegacySession, MedicineEvent, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
 
 export const TRACKER_STORAGE_KEYS = {
   entries: 'baby-feeding-tracker:v1:entries',
@@ -11,6 +11,8 @@ export const TRACKER_STORAGE_KEYS = {
   feedingNotifications: 'baby-feeding-tracker:v1:feeding-notifications',
   diapers: 'baby-feeding-tracker:v1:diapers',
   medicines: 'baby-feeding-tracker:v1:medicines',
+  tummyTimes: 'baby-feeding-tracker:v1:tummy-times',
+  tummySession: 'baby-feeding-tracker:v1:tummy-session',
   growthMeasurements: 'baby-feeding-tracker:v1:growth-measurements',
   babyDob: 'baby-feeding-tracker:v1:baby-dob',
 } as const
@@ -40,6 +42,13 @@ export const readSortedMedicines = () => {
   const parsed = safeJsonParse<MedicineEvent[]>(localStorage.getItem(TRACKER_STORAGE_KEYS.medicines)) ?? []
   return parsed.sort((a, b) => b.at - a.at)
 }
+
+export const readSortedTummyTimes = () => {
+  const parsed = safeJsonParse<TummyTimeEvent[]>(localStorage.getItem(TRACKER_STORAGE_KEYS.tummyTimes)) ?? []
+  return parsed.sort((a, b) => b.startedAt - a.startedAt)
+}
+
+export const readTummySession = () => safeJsonParse<TummyTimeSession>(localStorage.getItem(TRACKER_STORAGE_KEYS.tummySession))
 
 export const readSortedGrowthMeasurements = () => {
   const parsed = safeJsonParse<GrowthMeasurement[]>(localStorage.getItem(TRACKER_STORAGE_KEYS.growthMeasurements)) ?? []

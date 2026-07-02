@@ -1,4 +1,4 @@
-import type { DiaperKind, MedicineKind, Session, Side } from '../../types'
+import type { DiaperKind, MedicineKind, Session, Side, TummyTimeSession } from '../../types'
 
 export type HeroPanelProps = {
   session: Session | null
@@ -20,6 +20,8 @@ export type HeroPanelProps = {
   selectedDiapers: DiaperKind[]
   availableSelectedDiapers: DiaperKind[]
   additionalOptionsOpen: boolean
+  tummySession: TummyTimeSession | null
+  setTummySession: (updater: TummyTimeSession | ((session: TummyTimeSession | null) => TummyTimeSession | null) | null) => void
   setStartOffsetOpen: (updater: (open: boolean) => boolean) => void
   setStartInputMode: (mode: 'clock' | 'minutes') => void
   setStartClockText: (value: string) => void
@@ -37,4 +39,7 @@ export type HeroPanelProps = {
   toggleDiaperSelection: (kind: DiaperKind) => void
   logSelectedDiapers: () => void
   logMedicine: (kind: MedicineKind) => void
+  logTummyTimeMinutes: (minutes: number) => void
+  startTummyTime: () => void
+  stopTummyTime: () => void
 }

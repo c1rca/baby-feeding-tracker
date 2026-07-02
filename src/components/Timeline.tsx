@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { DiaperTimelineItem } from './timeline/DiaperTimelineItem'
 import { EntryTimelineItem } from './timeline/EntryTimelineItem'
 import { MedicineTimelineItem } from './timeline/MedicineTimelineItem'
+import { TummyTimeTimelineItem } from './timeline/TummyTimeTimelineItem'
 import type { TimelineActions, TimelineItem, TimelineProps } from './timeline/timelineTypes'
 import { timelineItems } from './timeline/timelineUtils'
 
@@ -14,23 +15,24 @@ function TimelineList({ items, actions }: { items: TimelineItem[]; actions: Time
       {items.map((item, index) => {
         if (item.kind === 'medicine') return <MedicineTimelineItem key={item.medicine.id} medicine={item.medicine} actions={actions} />
         if (item.kind === 'diaper') return <DiaperTimelineItem key={item.diaper.id} diaper={item.diaper} actions={actions} />
+        if (item.kind === 'tummy') return <TummyTimeTimelineItem key={item.tummyTime.id} tummyTime={item.tummyTime} actions={actions} />
         return <EntryTimelineItem key={item.entry.id} entry={item.entry} index={index} actions={actions} />
       })}
     </ul>
   )
 }
 
-export function Timeline({ now, entries, diapers, medicines, editing, editingDiaper, editingMedicine, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, deleteEntry, deleteDiaper, deleteMedicine, startMedicineEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, showToast }: TimelineProps) {
+export function Timeline({ now, entries, diapers, medicines, tummyTimes, editing, editingDiaper, editingMedicine, editingTummyTime, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setEditingTummyTime, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, deleteEntry, deleteDiaper, deleteMedicine, deleteTummyTime, startMedicineEdit, startTummyTimeEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, saveTummyTimeEdit, showToast }: TimelineProps) {
   const [olderPage, setOlderPage] = useState(0)
   const [showAll, setShowAll] = useState(false)
-  const items = timelineItems(entries, diapers, medicines)
+  const items = timelineItems(entries, diapers, medicines, tummyTimes)
   const cutoff = now - RECENT_TIMELINE_WINDOW_MS
   const recentItems = items.filter((item) => item.time >= cutoff)
   const olderItems = items.filter((item) => item.time < cutoff)
   const visibleOlderItems = showAll ? olderItems : olderItems.slice(olderPage * TIMELINE_PAGE_SIZE, (olderPage + 1) * TIMELINE_PAGE_SIZE)
   const visibleItems = useMemo(() => [...recentItems, ...visibleOlderItems], [recentItems, visibleOlderItems])
   const totalOlderPages = Math.max(1, Math.ceil(olderItems.length / TIMELINE_PAGE_SIZE))
-  const actions: TimelineActions = { editing, editingDiaper, editingMedicine, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, deleteEntry, deleteDiaper, deleteMedicine, startMedicineEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, showToast }
+  const actions: TimelineActions = { editing, editingDiaper, editingMedicine, editingTummyTime, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setEditingTummyTime, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, deleteEntry, deleteDiaper, deleteMedicine, deleteTummyTime, startMedicineEdit, startTummyTimeEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, saveTummyTimeEdit, showToast }
 
   return (
     <section className="card timeline-card">

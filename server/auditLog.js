@@ -44,6 +44,13 @@ export const compactMedicine = (medicine) => pickDefined({
   kind: medicine?.kind,
 })
 
+export const compactTummyTime = (tummyTime) => pickDefined({
+  id: tummyTime?.id,
+  startedAt: tummyTime?.startedAt,
+  endedAt: tummyTime?.endedAt,
+  note: tummyTime?.note || undefined,
+})
+
 export const compactSession = (session) => session ? pickDefined({
   startedAt: session.startedAt,
   activeSide: session.activeSide,
@@ -77,14 +84,17 @@ export function buildStateAudit(existingRow, nextState, options = {}) {
     entries: parseJsonArray(existingRow.entries_json),
     diapers: parseJsonArray(existingRow.diapers_json),
     medicines: parseJsonArray(existingRow.medicines_json),
+    tummyTimes: parseJsonArray(existingRow.tummy_times_json),
     session: parseJsonValue(existingRow.session_json, null),
+    tummySession: parseJsonValue(existingRow.tummy_session_json, null),
     theme: existingRow.theme || 'light',
     updatedAt: existingRow.updated_at,
-  } : { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: null }
+  } : { entries: [], diapers: [], medicines: [], tummyTimes: [], session: null, tummySession: null, theme: 'light', updatedAt: null }
 
-  const entries = changedItems(before.entries, nextState.entries, compactEntry)
-  const diapers = changedItems(before.diapers, nextState.diapers, compactDiaper)
-  const medicines = changedItems(before.medicines, nextState.medicines, compactMedicine)
+  const entries = changedItems(before.entries, nextState.entries ?? [], compactEntry)
+  const diapers = changedItems(before.diapers, nextState.diapers ?? [], compactDiaper)
+  const medicines = changedItems(before.medicines, nextState.medicines ?? [], compactMedicine)
+  const tummyTimes = changedItems(before.tummyTimes, nextState.tummyTimes ?? [], compactTummyTime)
   const beforeSession = compactSession(before.session)
   const afterSession = compactSession(nextState.session)
   const sessionChanged = JSON.stringify(beforeSession) !== JSON.stringify(afterSession)
@@ -98,13 +108,16 @@ export function buildStateAudit(existingRow, nextState, options = {}) {
     entries,
     diapers,
     medicines,
+    tummyTimes,
     session: sessionChanged ? { before: beforeSession, after: afterSession } : undefined,
     theme: before.theme !== nextState.theme ? { before: before.theme, after: nextState.theme } : undefined,
     counts: {
-      entries: nextState.entries.length,
-      diapers: nextState.diapers.length,
-      medicines: nextState.medicines.length,
+      entries: (nextState.entries ?? []).length,
+      diapers: (nextState.diapers ?? []).length,
+      medicines: (nextState.medicines ?? []).length,
+      tummyTimes: (nextState.tummyTimes ?? []).length,
       hasSession: Boolean(nextState.session),
+      hasTummySession: Boolean(nextState.tummySession),
     },
   }
 }

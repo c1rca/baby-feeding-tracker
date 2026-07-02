@@ -2,7 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GrowthMeasurement } from '../domain/growthTypes'
-import type { DiaperEvent, Entry, MedicineEvent, Session, Theme } from '../types'
+import type { DiaperEvent, Entry, MedicineEvent, Session, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
 import { useServerSync } from './useServerSync'
 
 const entry = (id: string, endedAt: number): Entry => ({
@@ -43,11 +43,13 @@ function Harness({ initialEntries = [] as Entry[], initialSession = null as Sess
   const [entries, setEntries] = useState<Entry[]>(initialEntries)
   const [diapers, setDiapers] = useState<DiaperEvent[]>([])
   const [medicines, setMedicines] = useState<MedicineEvent[]>([])
+  const [tummyTimes, setTummyTimes] = useState<TummyTimeEvent[]>([])
+  const [tummySession, setTummySession] = useState<TummyTimeSession | null>(null)
   const [growthMeasurements, setGrowthMeasurements] = useState<GrowthMeasurement[]>([])
   const [babyDob, setBabyDob] = useState('2026-06-03')
   const [sessionState, setSession] = useState<Session | null>(initialSession)
   const [theme, setTheme] = useState<Theme>('light')
-  const { syncStatus } = useServerSync({ entries, diapers, medicines, growthMeasurements, babyDob, session: sessionState, theme, setEntries, setDiapers, setMedicines, setGrowthMeasurements, setBabyDob, setSession, setTheme })
+  const { syncStatus } = useServerSync({ entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session: sessionState, theme, setEntries, setDiapers, setMedicines, setTummyTimes, setTummySession, setGrowthMeasurements, setBabyDob, setSession, setTheme })
 
   return (
     <div>
