@@ -63,13 +63,16 @@ export function createNotificationScheduler({
 
   const sendDueReminder = async (freshReminder) => {
     if (freshReminder.kind === 'medicine') {
+      const channelSends = [
+        sendGotify ? sendGotify(buildMedicineNotificationPayload(freshReminder)) : null,
+        sendTextEmail ? sendTextEmail(buildMedicineNotificationPayload(freshReminder)) : null,
+      ].filter(Boolean)
+      const results = await Promise.allSettled(channelSends)
+      if (results.length === 0) throw new Error('No medicine notification channels configured')
+      const failures = results.filter((result) => result.status === 'rejected')
+      if (failures.length === results.length) throw failures[0].reason
+      if (failures.length > 0) logger.warn?.('Medicine notification channel failed', failures[0].reason)
       markHandled(freshReminder)
-      const results = await Promise.allSettled([
-        sendGotify ? sendGotify(buildMedicineNotificationPayload(freshReminder)) : Promise.resolve(),
-        sendTextEmail ? sendTextEmail(buildMedicineNotificationPayload(freshReminder)) : Promise.resolve(),
-      ])
-      const failed = results.find((result) => result.status === 'rejected')
-      if (failed) logger.warn?.('Medicine notification channel failed', failed.reason)
       return
     }
 

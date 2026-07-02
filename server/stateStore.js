@@ -35,13 +35,15 @@ export const createDeletedItemOptionsReader = (selectDeletedItems) => () => {
   const deletedDiaperIds = []
   const deletedMedicineIds = []
   const deletedTummyTimeIds = []
+  const deletedGrowthMeasurementIds = []
   for (const row of selectDeletedItems.all()) {
     if (row.collection === 'entries') deletedEntryIds.push(row.item_id)
     if (row.collection === 'diapers') deletedDiaperIds.push(row.item_id)
     if (row.collection === 'medicines') deletedMedicineIds.push(row.item_id)
     if (row.collection === 'tummyTimes') deletedTummyTimeIds.push(row.item_id)
+    if (row.collection === 'growthMeasurements') deletedGrowthMeasurementIds.push(row.item_id)
   }
-  return { deletedEntryIds, deletedDiaperIds, deletedMedicineIds, deletedTummyTimeIds }
+  return { deletedEntryIds, deletedDiaperIds, deletedMedicineIds, deletedTummyTimeIds, deletedGrowthMeasurementIds }
 }
 
 export const createDeletedItemRecorder = (upsertDeletedItem) => (audit, deletedAt) => {
@@ -49,4 +51,5 @@ export const createDeletedItemRecorder = (upsertDeletedItem) => (audit, deletedA
   for (const diaper of audit.diapers?.removed || []) upsertDeletedItem.run({ item_id: diaper.id, collection: 'diapers', deleted_at: deletedAt })
   for (const medicine of audit.medicines?.removed || []) upsertDeletedItem.run({ item_id: medicine.id, collection: 'medicines', deleted_at: deletedAt })
   for (const tummyTime of audit.tummyTimes?.removed || []) upsertDeletedItem.run({ item_id: tummyTime.id, collection: 'tummyTimes', deleted_at: deletedAt })
+  for (const measurement of audit.growthMeasurements?.removed || []) upsertDeletedItem.run({ item_id: measurement.id, collection: 'growthMeasurements', deleted_at: deletedAt })
 }

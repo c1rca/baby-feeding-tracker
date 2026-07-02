@@ -7,6 +7,8 @@ test('resolveIncomingState preserves server-only entities when stale writes omit
     entries_json: JSON.stringify([{ id: 'server-feed', endedAt: 10 }]),
     diapers_json: JSON.stringify([{ id: 'server-diaper', kinds: ['wet'], at: 20 }]),
     medicines_json: JSON.stringify([{ id: 'server-med', kind: 'tylenol', at: 30 }]),
+    tummy_times_json: JSON.stringify([]),
+    growth_measurements_json: JSON.stringify([{ id: 'growth-server', at: 40, weightKg: 4.2 }]),
     session_json: null,
     theme: 'light',
     updated_at: 'server-v2',
@@ -16,6 +18,8 @@ test('resolveIncomingState preserves server-only entities when stale writes omit
     entries: [],
     diapers: [],
     medicines: [],
+    tummyTimes: [],
+    growthMeasurements: [],
     session: null,
     theme: 'light',
     updatedAt: 'server-v1',
@@ -25,6 +29,7 @@ test('resolveIncomingState preserves server-only entities when stale writes omit
   assert.deepEqual(resolved.entries.map((entry) => entry.id), ['server-feed'])
   assert.deepEqual(resolved.diapers.map((diaper) => diaper.id), ['server-diaper'])
   assert.deepEqual(resolved.medicines.map((medicine) => medicine.id), ['server-med'])
+  assert.deepEqual(resolved.growthMeasurements.map((measurement) => measurement.id), ['growth-server'])
 })
 
 test('resolveIncomingState does not resurrect stale entries that were already deleted on the server', () => {

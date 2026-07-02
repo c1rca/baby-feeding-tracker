@@ -31,6 +31,8 @@ for (const [index, line] of lines.entries()) {
       medicines: Array.isArray(record.medicines) ? record.medicines : [],
       tummyTimes: Array.isArray(record.tummyTimes) ? record.tummyTimes : [],
       tummySession: record.tummySession ?? null,
+      growthMeasurements: Array.isArray(record.growthMeasurements) ? record.growthMeasurements : [],
+      babyDob: typeof record.babyDob === 'string' ? record.babyDob : '2026-06-03',
       session: record.session ?? null,
       theme: record.theme === 'dark' ? 'dark' : 'light',
       updatedAt: record.at,
@@ -65,6 +67,8 @@ try {
       medicines_json TEXT NOT NULL DEFAULT '[]',
       tummy_times_json TEXT NOT NULL DEFAULT '[]',
       tummy_session_json TEXT,
+      growth_measurements_json TEXT NOT NULL DEFAULT '[]',
+      baby_dob TEXT NOT NULL DEFAULT '2026-06-03',
       updated_at TEXT NOT NULL
     );
 
@@ -82,8 +86,8 @@ try {
     );
   `)
   db.prepare(`
-    INSERT INTO app_state (id, entries_json, session_json, theme, diapers_json, medicines_json, tummy_times_json, tummy_session_json, updated_at)
-    VALUES (1, @entries_json, @session_json, @theme, @diapers_json, @medicines_json, @tummy_times_json, @tummy_session_json, @updated_at)
+    INSERT INTO app_state (id, entries_json, session_json, theme, diapers_json, medicines_json, tummy_times_json, tummy_session_json, growth_measurements_json, baby_dob, updated_at)
+    VALUES (1, @entries_json, @session_json, @theme, @diapers_json, @medicines_json, @tummy_times_json, @tummy_session_json, @growth_measurements_json, @baby_dob, @updated_at)
   `).run({
     entries_json: JSON.stringify(latestState.entries),
     session_json: latestState.session ? JSON.stringify(latestState.session) : null,
@@ -91,6 +95,8 @@ try {
     medicines_json: JSON.stringify(latestState.medicines),
     tummy_times_json: JSON.stringify(latestState.tummyTimes),
     tummy_session_json: latestState.tummySession ? JSON.stringify(latestState.tummySession) : null,
+    growth_measurements_json: JSON.stringify(latestState.growthMeasurements),
+    baby_dob: latestState.babyDob,
     theme: latestState.theme,
     updated_at: latestState.updatedAt,
   })
@@ -107,3 +113,5 @@ console.log(`Entries: ${latestState.entries.length}`)
 console.log(`Diapers: ${latestState.diapers.length}`)
 console.log(`Medicines: ${latestState.medicines.length}`)
 console.log(`Tummy times: ${latestState.tummyTimes.length}`)
+console.log(`Growth measurements: ${latestState.growthMeasurements.length}`)
+console.log(`Baby DOB: ${latestState.babyDob}`)

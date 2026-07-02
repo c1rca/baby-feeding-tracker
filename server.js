@@ -64,6 +64,10 @@ const notificationScheduler = createTrackerNotificationScheduler({
 
 const deletedItemOptions = createDeletedItemOptionsReader(selectDeletedItems)
 const recordDeletedItems = createDeletedItemRecorder(upsertDeletedItem)
+const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt) => {
+  upsertState.run(statePayload)
+  recordDeletedItems(audit, updatedAt)
+})
 const { broadcastStateChange, handleStateEvents } = createStateEventHub({ selectState, serializeState })
 const createBackupOnStart = createStartupBackup({ db, backupDir: config.backupDir, appendEventLog, redactError })
 
@@ -88,7 +92,7 @@ createStateRouter({
   resolveIncomingState,
   deletedItemOptions,
   buildStateAudit,
-  recordDeletedItems,
+  writeStateAndDeletedItems,
   appendEventLog,
   summarizeState,
   notificationScheduler,

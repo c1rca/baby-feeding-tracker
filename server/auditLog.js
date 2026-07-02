@@ -51,6 +51,14 @@ export const compactTummyTime = (tummyTime) => pickDefined({
   note: tummyTime?.note || undefined,
 })
 
+export const compactGrowthMeasurement = (measurement) => pickDefined({
+  id: measurement?.id,
+  at: measurement?.at,
+  weightKg: measurement?.weightKg,
+  lengthCm: measurement?.lengthCm,
+  headCircumferenceCm: measurement?.headCircumferenceCm,
+})
+
 export const compactSession = (session) => session ? pickDefined({
   startedAt: session.startedAt,
   activeSide: session.activeSide,
@@ -85,16 +93,18 @@ export function buildStateAudit(existingRow, nextState, options = {}) {
     diapers: parseJsonArray(existingRow.diapers_json),
     medicines: parseJsonArray(existingRow.medicines_json),
     tummyTimes: parseJsonArray(existingRow.tummy_times_json),
+    growthMeasurements: parseJsonArray(existingRow.growth_measurements_json),
     session: parseJsonValue(existingRow.session_json, null),
     tummySession: parseJsonValue(existingRow.tummy_session_json, null),
     theme: existingRow.theme || 'light',
     updatedAt: existingRow.updated_at,
-  } : { entries: [], diapers: [], medicines: [], tummyTimes: [], session: null, tummySession: null, theme: 'light', updatedAt: null }
+  } : { entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], session: null, tummySession: null, theme: 'light', updatedAt: null }
 
   const entries = changedItems(before.entries, nextState.entries ?? [], compactEntry)
   const diapers = changedItems(before.diapers, nextState.diapers ?? [], compactDiaper)
   const medicines = changedItems(before.medicines, nextState.medicines ?? [], compactMedicine)
   const tummyTimes = changedItems(before.tummyTimes, nextState.tummyTimes ?? [], compactTummyTime)
+  const growthMeasurements = changedItems(before.growthMeasurements, nextState.growthMeasurements ?? [], compactGrowthMeasurement)
   const beforeSession = compactSession(before.session)
   const afterSession = compactSession(nextState.session)
   const sessionChanged = JSON.stringify(beforeSession) !== JSON.stringify(afterSession)
@@ -109,6 +119,7 @@ export function buildStateAudit(existingRow, nextState, options = {}) {
     diapers,
     medicines,
     tummyTimes,
+    growthMeasurements,
     session: sessionChanged ? { before: beforeSession, after: afterSession } : undefined,
     theme: before.theme !== nextState.theme ? { before: before.theme, after: nextState.theme } : undefined,
     counts: {
@@ -116,6 +127,7 @@ export function buildStateAudit(existingRow, nextState, options = {}) {
       diapers: (nextState.diapers ?? []).length,
       medicines: (nextState.medicines ?? []).length,
       tummyTimes: (nextState.tummyTimes ?? []).length,
+      growthMeasurements: (nextState.growthMeasurements ?? []).length,
       hasSession: Boolean(nextState.session),
       hasTummySession: Boolean(nextState.tummySession),
     },

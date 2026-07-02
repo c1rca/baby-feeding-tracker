@@ -92,7 +92,7 @@ test('event log replay recreates latest app state', () => {
   const targetPath = path.join(tmp, 'data', 'feeding-tracker.db')
   const older = { at: '2026-01-01T00:00:00.000Z', event: 'state_replace', theme: 'light', entries: [{ id: 'old-feed' }], session: null }
   const settings = { at: '2026-01-01T00:01:00.000Z', event: 'settings_update', key: 'gotify_reminders_enabled', value: '1' }
-  const latest = { at: '2026-01-01T00:02:00.000Z', event: 'state_replace', theme: 'dark', entries: [{ id: 'new-feed', type: 'bottle', bottleOunces: 3 }], session: { startedAt: 123, activeSide: null, segmentStart: null, segments: [], bottleOunces: 0, note: '' } }
+  const latest = { at: '2026-01-01T00:02:00.000Z', event: 'state_replace', theme: 'dark', entries: [{ id: 'new-feed', type: 'bottle', bottleOunces: 3 }], diapers: [{ id: 'diaper-1', kinds: ['wet'], at: 100 }], medicines: [{ id: 'med-1', kind: 'vitamin_d', at: 150 }], tummyTimes: [{ id: 'tummy-1', startedAt: 200, endedAt: 500 }], growthMeasurements: [{ id: 'growth-1', at: 250, weightKg: 4.4 }], babyDob: '2026-06-04', session: { startedAt: 123, activeSide: null, segmentStart: null, segments: [], bottleOunces: 0, note: '' } }
   fs.writeFileSync(logPath, [older, settings, latest].map((record) => JSON.stringify(record)).join('\n'))
 
   const result = spawnSync(process.execPath, [path.join(rootDir, 'scripts', 'replay-event-log.mjs'), logPath], {
@@ -103,12 +103,17 @@ test('event log replay recreates latest app state', () => {
 
   assert.equal(result.status, 0, result.stderr)
   const restored = new Database(targetPath, { readonly: true })
-  const row = restored.prepare('SELECT entries_json, session_json, theme FROM app_state WHERE id = 1').get()
+  const row = restored.prepare('SELECT entries_json, session_json, theme, diapers_json, medicines_json, tummy_times_json, growth_measurements_json, baby_dob FROM app_state WHERE id = 1').get()
   const setting = restored.prepare('SELECT value FROM app_settings WHERE key = ?').get('gotify_reminders_enabled')
   restored.close()
   assert.equal(row.theme, 'dark')
   assert.match(row.entries_json, /new-feed/)
   assert.doesNotMatch(row.entries_json, /old-feed/)
   assert.match(row.session_json, /startedAt/)
+  assert.match(row.diapers_json, /diaper-1/)
+  assert.match(row.medicines_json, /med-1/)
+  assert.match(row.tummy_times_json, /tummy-1/)
+  assert.match(row.growth_measurements_json, /growth-1/)
+  assert.equal(row.baby_dob, '2026-06-04')
   assert.equal(setting.value, '1')
 })

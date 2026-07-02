@@ -56,12 +56,17 @@ export const createStateRouter = ({
   deletedItemOptions,
   buildStateAudit,
   recordDeletedItems,
+  writeStateAndDeletedItems,
   appendEventLog,
   summarizeState,
   notificationScheduler,
   broadcastStateChange,
   handleStateEvents,
 }) => {
+  const persistStateAndDeletedItems = writeStateAndDeletedItems ?? ((statePayload, audit, updatedAt) => {
+    upsertState.run(statePayload)
+    recordDeletedItems(audit, updatedAt)
+  })
   const router = (app) => {
     app.get('/api/state', (_req, res) => {
       res.set('Cache-Control', 'no-store')
@@ -87,7 +92,7 @@ export const createStateRouter = ({
       const { entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session, theme } = incoming
       const updatedAt = new Date().toISOString()
 
-      upsertState.run({
+      const statePayload = {
         entries_json: JSON.stringify(entries),
         diapers_json: JSON.stringify(diapers),
         medicines_json: JSON.stringify(medicines),
@@ -98,14 +103,14 @@ export const createStateRouter = ({
         session_json: session ? JSON.stringify(session) : null,
         theme,
         updated_at: updatedAt,
-      })
+      }
 
       const audit = buildStateAudit(existingRow, { entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session, theme }, {
         staleWriteMerged: incoming.stale,
         clientUpdatedAt: req.body?.updatedAt,
         nextUpdatedAt: updatedAt,
       })
-      recordDeletedItems(audit, updatedAt)
+      persistStateAndDeletedItems(statePayload, audit, updatedAt)
       appendEventLog('state_write_audit', audit)
       appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines, growthMeasurements, babyDob, tummyTimes, tummySession), staleWriteMerged: incoming.stale, entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session })
       notificationScheduler?.evaluate()
