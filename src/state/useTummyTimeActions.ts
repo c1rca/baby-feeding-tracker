@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { formatClockInput, parseClockTimeToday } from '../domain/trackerDomain'
+import { formatClockInput, makeId, parseClockTimeToday } from '../domain/trackerDomain'
 import type { EditingTummyTimeState, TummyTimeEvent, TummyTimeSession, UndoState } from '../types'
 
 type Options = {
@@ -18,7 +18,7 @@ type Options = {
 export function useTummyTimeActions({ tummySession, setTummySession, setTummyTimes, editingTummyTime, setEditingTummyTime, setAdditionalOptionsOpen, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
   const logTummyTimeMinutes = (minutes: number) => {
     const endedAt = new Date().getTime()
-    const tummyTime = { id: crypto.randomUUID(), startedAt: endedAt - minutes * 60_000, endedAt, note: '' }
+    const tummyTime = { id: makeId(), startedAt: endedAt - minutes * 60_000, endedAt, note: '' }
     setTummyTimes((prev) => [tummyTime, ...prev].sort((a, b) => b.startedAt - a.startedAt))
     setAdditionalOptionsOpen(false)
     clearUndoTimeout()
@@ -28,7 +28,7 @@ export function useTummyTimeActions({ tummySession, setTummySession, setTummyTim
   }
 
   const startTummyTime = () => {
-    setTummySession({ id: crypto.randomUUID(), startedAt: new Date().getTime(), note: '' })
+    setTummySession({ id: makeId(), startedAt: new Date().getTime(), note: '' })
     setAdditionalOptionsOpen(true)
     showToast('Tummy Time started')
   }

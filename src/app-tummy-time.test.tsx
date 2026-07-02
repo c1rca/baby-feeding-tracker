@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { setupAppTestEnvironment } from './appTestSetup'
 import { shouldShowTummyTimeReminder } from './domain/tummyTime'
@@ -51,6 +51,24 @@ describe('Tummy Time tracking', () => {
       expect(saved[0].endedAt).toBeGreaterThanOrEqual(saved[0].startedAt)
     })
     expect(JSON.parse(localStorage.getItem(TUMMY_SESSION_STORAGE_KEY) ?? 'null')).toBeNull()
+  })
+
+  it('falls back when crypto.randomUUID is unavailable so buttons still work on plain HTTP clients', async () => {
+    const user = userEvent.setup()
+    const originalRandomUUID = globalThis.crypto.randomUUID
+    Object.defineProperty(globalThis.crypto, 'randomUUID', { configurable: true, value: undefined })
+    try {
+      render(<App />)
+      await user.click(screen.getByRole('button', { name: /Additional options/i }))
+      await user.click(screen.getByRole('button', { name: /Add 5 min Tummy Time/i }))
+      await waitFor(() => expect(JSON.parse(localStorage.getItem(TUMMY_STORAGE_KEY) ?? '[]')).toHaveLength(1))
+      await user.click(screen.getByRole('button', { name: /Additional options/i }))
+      await user.click(screen.getByRole('button', { name: /^Start Tummy Time$/i }))
+      expect(JSON.parse(localStorage.getItem(TUMMY_SESSION_STORAGE_KEY) ?? 'null')).toMatchObject({ note: '' })
+    } finally {
+      Object.defineProperty(globalThis.crypto, 'randomUUID', { configurable: true, value: originalRandomUUID })
+      vi.restoreAllMocks()
+    }
   })
 
   it('reminds only when behind the four-per-day cadence', () => {
