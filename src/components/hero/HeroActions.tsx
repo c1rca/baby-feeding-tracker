@@ -4,7 +4,7 @@ import type { HeroPanelProps } from './HeroPanel.types'
 
 type HeroActionsProps = Pick<
   HeroPanelProps,
-  'session' | 'activeSide' | 'activeOppositeSide' | 'suggestedSide' | 'startSession' | 'switchSide' | 'resume' | 'endSession'
+  'session' | 'tummySession' | 'activeSide' | 'activeOppositeSide' | 'suggestedSide' | 'startSession' | 'switchSide' | 'resume' | 'endSession'
 > & {
   clearConfirming: boolean
   requestClearSession: () => void
@@ -13,6 +13,7 @@ type HeroActionsProps = Pick<
 
 export function HeroActions({
   session,
+  tummySession,
   activeSide,
   activeOppositeSide,
   suggestedSide,
@@ -26,7 +27,7 @@ export function HeroActions({
 }: HeroActionsProps) {
   return (
     <div className="row hero-actions">
-      {!session ? (
+      {tummySession ? null : !session ? (
         <>
           <button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button>
           <button onClick={() => startSession(oppositeSide(suggestedSide))}>Start {sideLabel(oppositeSide(suggestedSide))}</button>

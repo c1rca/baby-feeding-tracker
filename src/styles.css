@@ -48,6 +48,7 @@ body { margin: 0; }
 .hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap:10px; margin-bottom: 8px; }
 .pill { border: 1px solid #cbd5e1; border-radius: 999px; padding: 4px 10px; font-size: .8rem; background: #fff; color: #334155; font-weight:600; }
 .timer-cluster { display:flex; align-items:center; gap:12px; width:fit-content; max-width:100%; margin: 12px 0 6px; }
+.timer-mode-pill { display:inline-flex; align-items:center; border:1px solid rgba(14,116,144,.24); border-radius:999px; padding:5px 10px; background:rgba(240,253,250,.78); color:#0f766e; font-size:.78rem; font-weight:900; letter-spacing:.02em; text-transform:uppercase; box-shadow:0 8px 18px rgba(14,116,144,.10); }
 .timer { font-size: clamp(3.1rem, 11vw, 5.8rem); font-weight: 900; letter-spacing: .015em; line-height: .88; font-variant-numeric: tabular-nums; }
 .transport-toggle { display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; min-height:42px; padding:0; border-radius:999px; border:1px solid rgba(148,163,184,.32); background:rgba(255,255,255,.62); color:#64748b; box-shadow:0 10px 22px rgba(15,23,42,.08), inset 0 1px 0 rgba(255,255,255,.72); opacity:.86; transform:none; }
 .transport-toggle:hover { transform:none; color:#334155; border-color:#94a3b8; background:rgba(255,255,255,.84); box-shadow:0 12px 24px rgba(15,23,42,.12), inset 0 1px 0 rgba(255,255,255,.82); }
@@ -317,6 +318,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 [data-theme='dark'] .next-window .next-feed-side { color:#22d3ee; border-color:#22d3ee; background:rgba(34,211,238,.1); box-shadow:0 0 0 1px rgba(34,211,238,.08), 0 0 18px rgba(34,211,238,.22); }
 [data-theme='dark'] .hero-micro-meta { color:#94a3b8; }
 [data-theme='dark'] .transport-toggle { background:rgba(15,23,42,.66); border-color:#334155; color:#94a3b8; box-shadow:0 10px 22px rgba(0,0,0,.24), inset 0 1px 0 rgba(255,255,255,.06); }
+[data-theme='dark'] .timer-mode-pill { background:rgba(20,83,45,.32); border-color:rgba(45,212,191,.28); color:#99f6e4; box-shadow:0 10px 22px rgba(0,0,0,.20); }
 [data-theme='dark'] .transport-toggle:hover { background:rgba(30,41,59,.82); border-color:#475569; color:#e2e8f0; box-shadow:0 12px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.08); }
 [data-theme='dark'] .transport-toggle.is-paused { color:#93c5fd; border-color:rgba(96,165,250,.36); background:rgba(30,58,138,.34); }
 [data-theme='dark'] .diaper-panel { background:transparent; border-color:transparent; box-shadow:none; }

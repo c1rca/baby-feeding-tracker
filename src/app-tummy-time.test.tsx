@@ -33,15 +33,18 @@ describe('Tummy Time tracking', () => {
     expect(screen.getByText(/10m 00s/i)).toBeTruthy()
   })
 
-  it('starts and stops a Tummy Time timer without changing the nursing side buttons', async () => {
+  it('starts Tummy Time as the active top timer and hides feed start buttons', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
     await user.click(screen.getByRole('button', { name: /^Start Tummy Time$/i }))
     expect(JSON.parse(localStorage.getItem(TUMMY_SESSION_STORAGE_KEY) ?? 'null')).toMatchObject({ note: '' })
+    expect(screen.getAllByText(/^Tummy Time$/i).length).toBeGreaterThan(1)
+    expect(screen.getAllByText('0m 00s').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: /^Stop Tummy Time$/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Start suggested side/i })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Start suggested side/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^Start (Left|Right)$/i })).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /^Stop Tummy Time$/i }))
 

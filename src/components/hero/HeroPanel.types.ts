@@ -21,6 +21,7 @@ export type HeroPanelProps = {
   availableSelectedDiapers: DiaperKind[]
   additionalOptionsOpen: boolean
   tummySession: TummyTimeSession | null
+  tummyActiveSeconds: number
   setTummySession: (updater: TummyTimeSession | ((session: TummyTimeSession | null) => TummyTimeSession | null) | null) => void
   setStartOffsetOpen: (updater: (open: boolean) => boolean) => void
   setStartInputMode: (mode: 'clock' | 'minutes') => void
