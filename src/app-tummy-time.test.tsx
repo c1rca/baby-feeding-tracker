@@ -56,6 +56,20 @@ describe('Tummy Time tracking', () => {
     expect(JSON.parse(localStorage.getItem(TUMMY_SESSION_STORAGE_KEY) ?? 'null')).toBeNull()
   })
 
+  it('keeps Tummy Time start unavailable while a feed session is active', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Start suggested side/i }))
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+
+    const group = screen.getByRole('group', { name: /Tummy Time/i })
+    expect(within(group).queryByRole('button', { name: /^Start Tummy Time$/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /End feed/i })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Stop Tummy Time$/i })).toBeNull()
+    expect(JSON.parse(localStorage.getItem(TUMMY_SESSION_STORAGE_KEY) ?? 'null')).toBeNull()
+  })
+
   it('falls back when crypto.randomUUID is unavailable so buttons still work on plain HTTP clients', async () => {
     const user = userEvent.setup()
     const originalRandomUUID = globalThis.crypto.randomUUID

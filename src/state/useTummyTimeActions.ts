@@ -1,9 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { formatClockInput, makeId, parseClockTimeToday } from '../domain/trackerDomain'
-import type { EditingTummyTimeState, TummyTimeEvent, TummyTimeSession, UndoState } from '../types'
+import type { EditingTummyTimeState, Session, TummyTimeEvent, TummyTimeSession, UndoState } from '../types'
 
 type Options = {
   tummySession: TummyTimeSession | null
+  feedSession: Session | null
   setTummySession: Dispatch<SetStateAction<TummyTimeSession | null>>
   setTummyTimes: Dispatch<SetStateAction<TummyTimeEvent[]>>
   editingTummyTime: EditingTummyTimeState
@@ -15,7 +16,7 @@ type Options = {
   showToast: (message: string) => void
 }
 
-export function useTummyTimeActions({ tummySession, setTummySession, setTummyTimes, editingTummyTime, setEditingTummyTime, setAdditionalOptionsOpen, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
+export function useTummyTimeActions({ tummySession, feedSession, setTummySession, setTummyTimes, editingTummyTime, setEditingTummyTime, setAdditionalOptionsOpen, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
   const logTummyTimeMinutes = (minutes: number) => {
     const endedAt = new Date().getTime()
     const tummyTime = { id: makeId(), startedAt: endedAt - minutes * 60_000, endedAt, note: '' }
@@ -28,6 +29,10 @@ export function useTummyTimeActions({ tummySession, setTummySession, setTummyTim
   }
 
   const startTummyTime = () => {
+    if (feedSession) {
+      showToast('Save or clear the active feed before starting Tummy Time')
+      return
+    }
     setTummySession({ id: makeId(), startedAt: new Date().getTime(), note: '' })
     setAdditionalOptionsOpen(true)
     showToast('Tummy Time started')

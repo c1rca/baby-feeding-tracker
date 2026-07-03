@@ -23,7 +23,7 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
                 <div className="row tummy-quick-row" aria-label="Tummy Time quick add">
                   {[5, 10, 15, 20].map((minutes) => <button key={minutes} type="button" aria-label={`Add ${minutes} min Tummy Time`} onClick={() => logTummyTimeMinutes(minutes)}>{minutes} min</button>)}
                 </div>
-                <button type="button" aria-label="Start Tummy Time" onClick={startTummyTime}><Dumbbell size={14} /> Start</button>
+                {session ? <p className="muted">Save or clear the active feed before starting Tummy Time.</p> : <button type="button" aria-label="Start Tummy Time" onClick={startTummyTime}><Dumbbell size={14} /> Start</button>}
               </>
             )}
           </div>
