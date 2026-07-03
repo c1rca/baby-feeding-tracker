@@ -15,6 +15,14 @@ if (!fs.existsSync(source)) {
 const lines = fs.readFileSync(source, 'utf8').split('\n').filter(Boolean)
 let latestState = null
 let gotifyEnabled = null
+const tombstones = new Map()
+const collectRemovedItems = (record, collection) => {
+  const removed = record[collection]?.removed
+  if (!Array.isArray(removed)) return
+  for (const item of removed) {
+    if (item?.id) tombstones.set(`${collection}:${item.id}`, { item_id: item.id, collection, deleted_at: record.at })
+  }
+}
 for (const [index, line] of lines.entries()) {
   let record
   try {
@@ -37,6 +45,9 @@ for (const [index, line] of lines.entries()) {
       theme: record.theme === 'dark' ? 'dark' : 'light',
       updatedAt: record.at,
     }
+  }
+  if (record.event === 'state_write_audit') {
+    for (const collection of ['entries', 'diapers', 'medicines', 'tummyTimes', 'growthMeasurements']) collectRemovedItems(record, collection)
   }
   if (record.event === 'settings_update' && record.key === 'gotify_reminders_enabled') {
     gotifyEnabled = record.value === '1' || record.value === true
@@ -79,6 +90,13 @@ try {
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS deleted_items (
+      item_id TEXT NOT NULL,
+      collection TEXT NOT NULL,
+      deleted_at TEXT NOT NULL,
+      PRIMARY KEY (item_id, collection)
+    );
+
     CREATE TABLE IF NOT EXISTS app_settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL,
@@ -103,6 +121,8 @@ try {
   if (gotifyEnabled !== null) {
     db.prepare('INSERT INTO app_settings (key, value, updated_at) VALUES (?, ?, ?)').run('gotify_reminders_enabled', gotifyEnabled ? '1' : '0', latestState.updatedAt)
   }
+  const upsertTombstone = db.prepare('INSERT OR REPLACE INTO deleted_items (item_id, collection, deleted_at) VALUES (@item_id, @collection, @deleted_at)')
+  for (const tombstone of tombstones.values()) upsertTombstone.run(tombstone)
 } finally {
   db.close()
 }
@@ -115,3 +135,4 @@ console.log(`Medicines: ${latestState.medicines.length}`)
 console.log(`Tummy times: ${latestState.tummyTimes.length}`)
 console.log(`Growth measurements: ${latestState.growthMeasurements.length}`)
 console.log(`Baby DOB: ${latestState.babyDob}`)
+console.log(`Deleted item tombstones: ${tombstones.size}`)

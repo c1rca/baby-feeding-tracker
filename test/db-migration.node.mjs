@@ -5,6 +5,8 @@ import path from 'node:path'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import Database from 'better-sqlite3'
+import { createDeletedItemOptionsReader } from '../server/stateStore.js'
+import { resolveIncomingState } from '../server/stateMerge.js'
 
 const rootDir = path.resolve(new URL('..', import.meta.url).pathname)
 
@@ -116,4 +118,47 @@ test('event log replay recreates latest app state', () => {
   assert.match(row.growth_measurements_json, /growth-1/)
   assert.equal(row.baby_dob, '2026-06-04')
   assert.equal(setting.value, '1')
+})
+
+test('event log replay restores tombstones so stale writes cannot resurrect deleted items', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'feeding-replay-tombstones-'))
+  const logPath = path.join(tmp, 'feeding-tracker-events.jsonl')
+  const targetPath = path.join(tmp, 'data', 'feeding-tracker.db')
+  const deletedEntry = { id: 'deleted-feed', endedAt: 100 }
+  const records = [
+    { at: '2026-01-01T00:00:00.000Z', event: 'state_replace', theme: 'light', entries: [deletedEntry], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: '2026-06-03', session: null },
+    { at: '2026-01-01T00:01:00.000Z', event: 'state_write_audit', entries: { removed: [deletedEntry] }, diapers: { removed: [] }, medicines: { removed: [] }, tummyTimes: { removed: [] }, growthMeasurements: { removed: [] } },
+    { at: '2026-01-01T00:02:00.000Z', event: 'state_replace', theme: 'light', entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: '2026-06-03', session: null },
+  ]
+  fs.writeFileSync(logPath, records.map((record) => JSON.stringify(record)).join('\n'))
+
+  const result = spawnSync(process.execPath, [path.join(rootDir, 'scripts', 'replay-event-log.mjs'), logPath], {
+    cwd: rootDir,
+    env: { ...process.env, DB_PATH: targetPath },
+    encoding: 'utf8',
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  const restored = new Database(targetPath, { readonly: true })
+  const tombstones = restored.prepare('SELECT item_id, collection FROM deleted_items').all()
+  const row = restored.prepare('SELECT entries_json, diapers_json, medicines_json, tummy_times_json, growth_measurements_json, session_json, tummy_session_json, baby_dob, updated_at FROM app_state WHERE id = 1').get()
+  const deletedOptions = createDeletedItemOptionsReader({ all: () => tombstones })()
+  restored.close()
+
+  assert.deepEqual(tombstones, [{ item_id: 'deleted-feed', collection: 'entries' }])
+  const resolved = resolveIncomingState(row, {
+    entries: [deletedEntry, { id: 'offline-new-feed', endedAt: 200 }],
+    diapers: [],
+    medicines: [],
+    tummyTimes: [],
+    tummySession: null,
+    growthMeasurements: [],
+    babyDob: '2026-06-03',
+    session: null,
+    theme: 'light',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+  }, deletedOptions)
+
+  assert.equal(resolved.stale, true)
+  assert.deepEqual(resolved.entries.map((entry) => entry.id), ['offline-new-feed'])
 })
