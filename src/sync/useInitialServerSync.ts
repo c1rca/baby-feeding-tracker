@@ -3,19 +3,13 @@ import type { MutableRefObject } from 'react'
 import type { ServerState } from '../types'
 import { loadServerState } from './serverSyncApi'
 import { buildPendingSyncPayload } from './serverSyncModels'
-import { KEY_PENDING_SYNC, type ServerSyncPayload, type SyncStatus } from './serverSyncTypes'
+import { KEY_PENDING_SYNC, type ServerSyncPayload, type SyncStatus, type SyncToApiOverrides } from './serverSyncTypes'
 
 type InitialServerSyncOptions = {
   latestPayloadRef: MutableRefObject<ServerSyncPayload>
   serverUpdatedAtRef: MutableRefObject<string | null>
   applyServerState: (data: ServerState) => void
-  syncToApi: (
-    nextEntries?: ServerSyncPayload['entries'],
-    nextSession?: ServerSyncPayload['session'],
-    nextTheme?: ServerSyncPayload['theme'],
-    nextDiapers?: ServerSyncPayload['diapers'],
-    nextMedicines?: ServerSyncPayload['medicines'],
-  ) => Promise<void>
+  syncToApi: (overrides?: SyncToApiOverrides) => Promise<void>
   setHasHydrated: (hasHydrated: boolean) => void
   setSyncStatus: (status: SyncStatus) => void
 }
@@ -38,7 +32,7 @@ export function useInitialServerSync({
           const mergedPayload = buildPendingSyncPayload(serverState, localPayload)
           if (serverState.updatedAt) serverUpdatedAtRef.current = serverState.updatedAt
           setHasHydrated(true)
-          await syncToApi(mergedPayload.entries, mergedPayload.session, mergedPayload.theme, mergedPayload.diapers, mergedPayload.medicines)
+          await syncToApi(mergedPayload)
           return
         }
         applyServerState(serverState)

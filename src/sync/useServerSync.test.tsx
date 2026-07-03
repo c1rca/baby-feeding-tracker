@@ -39,13 +39,13 @@ class MockEventSource {
   close() {}
 }
 
-function Harness({ initialEntries = [] as Entry[], initialSession = null as Session | null }) {
+function Harness({ initialEntries = [] as Entry[], initialSession = null as Session | null, initialTummyTimes = [] as TummyTimeEvent[], initialGrowthMeasurements = [] as GrowthMeasurement[] }) {
   const [entries, setEntries] = useState<Entry[]>(initialEntries)
   const [diapers, setDiapers] = useState<DiaperEvent[]>([])
   const [medicines, setMedicines] = useState<MedicineEvent[]>([])
-  const [tummyTimes, setTummyTimes] = useState<TummyTimeEvent[]>([])
+  const [tummyTimes, setTummyTimes] = useState<TummyTimeEvent[]>(initialTummyTimes)
   const [tummySession, setTummySession] = useState<TummyTimeSession | null>(null)
-  const [growthMeasurements, setGrowthMeasurements] = useState<GrowthMeasurement[]>([])
+  const [growthMeasurements, setGrowthMeasurements] = useState<GrowthMeasurement[]>(initialGrowthMeasurements)
   const [babyDob, setBabyDob] = useState('2026-06-03')
   const [sessionState, setSession] = useState<Session | null>(initialSession)
   const [theme, setTheme] = useState<Theme>('light')
@@ -102,6 +102,27 @@ describe('useServerSync', () => {
     expect(fetchMock.mock.calls[0]).toEqual(['/api/state', expect.objectContaining({ cache: 'no-store' })])
     expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
     expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
+  })
+
+  it('replays pending local tummy time and growth changes without dropping server-side records', async () => {
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync', '1')
+    const serverTummyTime: TummyTimeEvent = { id: 'server-tummy', startedAt: 5000, endedAt: 5600, note: 'server' }
+    const localTummyTime: TummyTimeEvent = { id: 'local-tummy', startedAt: 3000, endedAt: 3600, note: 'local' }
+    const serverGrowth: GrowthMeasurement = { id: 'server-growth', measuredAt: 5000, ageMonths: 0.5, weightLb: 8, lengthCm: null, headCm: null }
+    const localGrowth: GrowthMeasurement = { id: 'local-growth', measuredAt: 3000, ageMonths: 0.5, weightLb: 7.5, lengthCm: null, headCm: null }
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init || init.method !== 'PUT') return { ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], tummyTimes: [serverTummyTime], tummySession: null, growthMeasurements: [serverGrowth], babyDob: '2026-06-03', session: null, theme: 'light', updatedAt: 'server-new' }) }
+      return { ok: true, json: async () => ({ updatedAt: 'server-merged', state: JSON.parse(String(init.body)) }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness initialTummyTimes={[localTummyTime]} initialGrowthMeasurements={[localGrowth]} />)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' })))
+    const putCall = fetchMock.mock.calls.find((call) => call[1]?.method === 'PUT')
+    const payload = JSON.parse(String(putCall?.[1]?.body))
+    expect(payload.tummyTimes.map((item: TummyTimeEvent) => item.id).sort()).toEqual(['local-tummy', 'server-tummy'])
+    expect(payload.growthMeasurements.map((item: GrowthMeasurement) => item.id).sort()).toEqual(['local-growth', 'server-growth'])
   })
 
   it('preserves server session when replaying pending local changes', async () => {

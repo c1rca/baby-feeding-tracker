@@ -19,6 +19,8 @@ export type ServerSyncPayload = {
   theme: Theme
 }
 
+export type SyncToApiOverrides = Partial<ServerSyncPayload>
+
 export type UseServerSyncOptions = ServerSyncPayload & {
   setEntries: Dispatch<SetStateAction<Entry[]>>
   setDiapers: Dispatch<SetStateAction<DiaperEvent[]>>

@@ -1,8 +1,7 @@
 import { useCallback, useState } from 'react'
-import type { Entry, Session, Theme } from '../types'
 import { saveServerState } from './serverSyncApi'
 import { buildApiStatePayload } from './serverSyncModels'
-import { KEY_PENDING_SYNC, type ServerSyncPayload, type SyncStatus, type UseServerSyncOptions } from './serverSyncTypes'
+import { KEY_PENDING_SYNC, type SyncStatus, type SyncToApiOverrides, type UseServerSyncOptions } from './serverSyncTypes'
 import { useInitialServerSync } from './useInitialServerSync'
 import { useLatestServerPayload, useServerStateApplier } from './useServerStateApplier'
 import { usePendingSyncRetry, usePersistLocalChanges } from './useServerSyncEffects'
@@ -14,18 +13,11 @@ export const useServerSync = (options: UseServerSyncOptions) => {
   const latestPayloadRef = useLatestServerPayload(options)
   const { applyServerState, applyingServerStateRef, serverUpdatedAtRef, skipNextSyncRef } = useServerStateApplier(options)
 
-  const syncToApi = useCallback(async (nextEntries?: Entry[], nextSession?: Session | null, nextTheme?: Theme, nextDiapers?: ServerSyncPayload['diapers'], nextMedicines?: ServerSyncPayload['medicines'], nextGrowthMeasurements?: ServerSyncPayload['growthMeasurements']) => {
+  const syncToApi = useCallback(async (overrides: SyncToApiOverrides = {}) => {
     const payload = latestPayloadRef.current
     setSyncStatus('syncing')
     try {
-      const data = await saveServerState(buildApiStatePayload(payload, serverUpdatedAtRef.current, {
-        entries: nextEntries,
-        diapers: nextDiapers,
-        medicines: nextMedicines,
-        growthMeasurements: nextGrowthMeasurements,
-        session: nextSession,
-        theme: nextTheme,
-      }))
+      const data = await saveServerState(buildApiStatePayload(payload, serverUpdatedAtRef.current, overrides))
       if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
       if (data.state) applyServerState(data.state)
       localStorage.removeItem(KEY_PENDING_SYNC)
