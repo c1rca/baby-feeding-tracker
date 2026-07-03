@@ -52,6 +52,37 @@ test('resolveIncomingState preserves existing server session on stale old-sessio
   assert.deepEqual(resolved.session, existingSession)
 })
 
+test('resolveIncomingState keeps tummySession server-authoritative on stale writes after server has ended it', () => {
+  const staleTummySession = { id: 'stale-tummy-session', startedAt: 1000, note: 'stale active timer' }
+  const existingRow = {
+    entries_json: JSON.stringify([]),
+    diapers_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([]),
+    tummy_times_json: JSON.stringify([]),
+    tummy_session_json: null,
+    growth_measurements_json: JSON.stringify([]),
+    session_json: null,
+    theme: 'light',
+    updated_at: 'server-after-tummy-ended',
+  }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [],
+    diapers: [],
+    medicines: [],
+    tummyTimes: [],
+    tummySession: staleTummySession,
+    growthMeasurements: [],
+    babyDob: '2026-06-03',
+    session: null,
+    theme: 'light',
+    updatedAt: 'server-before-tummy-ended',
+  })
+
+  assert.equal(resolved.stale, true)
+  assert.equal(resolved.tummySession, null)
+})
+
 test('resolveIncomingState dedupes stale duplicate feed entries by source session id', () => {
   const existingRow = {
     entries_json: JSON.stringify([{ id: 'current-feed', sourceSessionId: 'session-1', type: 'breast', startedAt: 1000, endedAt: 2000, leftSeconds: 10, rightSeconds: 0, bottleOunces: null }]),
