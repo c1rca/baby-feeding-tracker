@@ -109,7 +109,7 @@ export function useTrackerAppController() {
   const headerProps: AppHeaderProps = { view, syncStatus, theme, settingsOpen, setView, setTheme, setSettingsOpen }
   const medicineReminderProps: MedicineReminderBannerProps = { medicineReminder, medicineReminders, showMedicineReminder, dismissMedicineReminder: (id) => setDismissedMedicineReminderIds((prev) => prev.includes(id) ? prev : [...prev, id]), logMedicine }
   const tummyTimeReminder = shouldShowTummyTimeReminder(tummyTimes, tummySession, now) ? { copy: tummyTimeReminderCopy(tummyTimes, now) } : null
-  const tummyTimeReminderProps: TummyTimeReminderBannerProps = { reminder: tummyTimeReminder, openAdditionalOptions: () => setAdditionalOptionsOpen(true) }
+  const tummyTimeReminderProps: TummyTimeReminderBannerProps = { reminder: tummyTimeReminder, startTummyTime }
   const statsProps: StatsDashboardProps = { stats, trend, growthMeasurements, setGrowthMeasurements, babyDob }
   const tummyActiveSeconds = tummySession ? Math.max(0, Math.floor((now - tummySession.startedAt) / 1000)) : 0
   const trackViewProps: TrackViewProps = {
