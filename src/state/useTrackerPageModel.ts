@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { DiaperEvent, Entry, MedicineEvent, Session, Side } from '../types'
+import type { DiaperEvent, Entry, MedicineEvent, Session, Side, TummyTimeEvent } from '../types'
 import {
   calculateAvgGapMinutes,
   calculateStats,
@@ -20,16 +20,17 @@ type TrackerPageModelOptions = {
   entries: Entry[]
   diapers: DiaperEvent[]
   medicines: MedicineEvent[]
+  tummyTimes?: TummyTimeEvent[]
   session: Session | null
   now: number
   dismissedMedicineReminderIds: string[]
   medicineReminderSettings?: MedicineReminderSettings | null
 }
 
-export function useTrackerPageModel({ entries, diapers, medicines, session, now, dismissedMedicineReminderIds, medicineReminderSettings }: TrackerPageModelOptions) {
+export function useTrackerPageModel({ entries, diapers, medicines, tummyTimes = [], session, now, dismissedMedicineReminderIds, medicineReminderSettings }: TrackerPageModelOptions) {
   const today = useMemo(() => calculateTodaySummary(entries, diapers, now), [entries, diapers, now])
   const trend = useMemo(() => calculateTrend(entries, now), [entries, now])
-  const stats = useMemo(() => calculateStats(entries, diapers, medicines, now, today, trend.days), [entries, diapers, medicines, now, today, trend.days])
+  const stats = useMemo(() => calculateStats(entries, diapers, medicines, now, today, trend.days, tummyTimes), [entries, diapers, medicines, tummyTimes, now, today, trend.days])
   const avgGapMinutes = useMemo(() => calculateAvgGapMinutes(entries), [entries])
   const suggestedSide = useMemo<Side>(() => calculateSuggestedSide(entries, today), [entries, today])
 

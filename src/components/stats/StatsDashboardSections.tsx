@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { Activity, Baby, BarChart3, CalendarDays, Clock3, Droplets, HeartPulse, Sparkles, Target, Trophy, Waves } from 'lucide-react'
+import { Activity, Baby, BarChart3, CalendarDays, Clock3, Droplets, Dumbbell, HeartPulse, Sparkles, Target, Trophy, Waves } from 'lucide-react'
 import { formatDuration } from '../../domain/feedingUtils'
 import type { calculateStats, calculateTrend } from '../../domain/trackerDomain'
 
@@ -90,6 +90,36 @@ export function FeedingHoursCard({ stats }: { stats: Stats }) {
               <div style={{ height: `${Math.max(day.seconds ? 12 : 0, (day.seconds / stats.maxFeedingSeconds) * 100)}%` }} />
             </div>
             <strong>{day.hours ? `${day.hours}h` : '—'}</strong>
+            <span>{day.label}</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+export function TummyTimeStatsCard({ stats }: { stats: Stats }) {
+  const hasTummyTime = stats.tummyTotalMinutes > 0 || stats.tummyMinutesToday > 0
+  return (
+    <section className="card tummy-stats-card" aria-label="Tummy Time stats">
+      <div className="tummy-stats-copy">
+        <span className="stats-kicker"><Dumbbell size={15} /> Tummy Time</span>
+        <h2>{hasTummyTime ? `${stats.tummyMinutesToday}/20 min today` : 'Tummy Time starts here'}</h2>
+        <p>{hasTummyTime ? `${stats.tummyTotalMinutes} minutes captured this week · ${stats.tummyGoalDays} goal ${stats.tummyGoalDays === 1 ? 'day' : 'days'}.` : 'Log quick adds or use the timer to see daily progress, weekly consistency, and best-day momentum.'}</p>
+      </div>
+      <div className="tummy-progress-orb" style={{ '--progress': `${stats.tummyGoalPercentToday}%` } as CSSProperties} aria-label={`Today Tummy Time progress ${stats.tummyGoalPercentToday}%`}>
+        <strong>{stats.tummyGoalPercentToday}%</strong>
+        <span>today</span>
+      </div>
+      <div className="tummy-mini-stats" aria-label="Tummy Time summary">
+        <div><span>Daily avg</span><strong>{stats.tummyAverageMinutesPerDay}m</strong></div>
+        <div><span>Best day</span><strong>{stats.tummyBestDay.minutes ? `${stats.tummyBestDay.label} · ${stats.tummyBestDay.minutes}m` : '—'}</strong></div>
+      </div>
+      <div className="tummy-week-bars" aria-label="Tummy Time last 7 days">
+        {stats.tummyDays.map((day) => (
+          <div key={day.label} className="tummy-week-day">
+            <div className="tummy-week-track" aria-label={`${day.label}: ${day.minutes} Tummy Time minutes`}><div style={{ height: `${Math.max(day.minutes ? 12 : 0, day.goalPercent)}%` }} /></div>
+            <strong>{day.minutes ? `${day.minutes}m` : '—'}</strong>
             <span>{day.label}</span>
           </div>
         ))}

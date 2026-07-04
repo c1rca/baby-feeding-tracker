@@ -24,6 +24,10 @@ describe('App interactions', () => {
     )
     localStorage.setItem(STORAGE_DIAPERS_KEY, JSON.stringify([{ id: 'diaper-1', kinds: ['wet', 'stool'], at: now - 60 * 60 * 1000, context: 'standalone' }]))
     localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'vitamin-today', kind: 'vitamin_d', at: now - 3 * 60 * 60 * 1000 }]))
+    localStorage.setItem('baby-feeding-tracker:v1:tummy-times', JSON.stringify([
+      { id: 'tummy-today', startedAt: now - 90 * 60 * 1000, endedAt: now - 78 * 60 * 1000, note: '' },
+      { id: 'tummy-yesterday', startedAt: now - 24 * 60 * 60 * 1000, endedAt: now - 24 * 60 * 60 * 1000 + 20 * 60 * 1000, note: '' },
+    ]))
 
     const user = userEvent.setup()
     render(<App />)
@@ -47,6 +51,12 @@ describe('App interactions', () => {
     expect(screen.getAllByText(/Vitamin D/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Taken today/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/1 dose this week/i)).toBeTruthy()
+    expect(screen.getByRole('region', { name: /Tummy Time stats/i })).toBeTruthy()
+    expect(screen.getByText(/12\/20 min today/i)).toBeTruthy()
+    expect(screen.getByText(/32 minutes captured this week · 1 goal day/i)).toBeTruthy()
+    expect(screen.getByText(/Daily avg/i)).toBeTruthy()
+    expect(screen.getByText(/Best day/i)).toBeTruthy()
+    expect(screen.getByText(/60%/i)).toBeTruthy()
     expect(screen.getAllByText(/wet/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/stool/i).length).toBeGreaterThan(0)
     expect(screen.queryByRole('heading', { name: /Timeline/i })).toBeNull()
