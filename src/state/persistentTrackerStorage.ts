@@ -76,6 +76,11 @@ export const readTheme = (): Theme => {
   return getCookieTheme() || (stored === 'dark' || stored === 'light' ? stored : null) || 'light'
 }
 
+export const hasPersistedThemePreference = () => {
+  const stored = localStorage.getItem(TRACKER_STORAGE_KEYS.theme)
+  return getCookieTheme() !== null || stored === 'dark' || stored === 'light'
+}
+
 export const persistTheme = (theme: Theme) => {
   localStorage.setItem(TRACKER_STORAGE_KEYS.theme, theme)
   document.cookie = `${THEME_COOKIE}=${encodeURIComponent(theme)}; path=/; max-age=31536000; samesite=lax`

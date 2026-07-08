@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { normalizeSession } from '../domain/trackerDomain'
 import type { ServerState } from '../types'
+import { hasPersistedThemePreference } from '../state/persistentTrackerStorage'
 import { sortDiapers, sortEntries, sortGrowthMeasurements, sortMedicines, sortTummyTimes } from './serverSyncModels'
 import type { UseServerSyncOptions } from './serverSyncTypes'
 
@@ -35,7 +36,7 @@ export function useServerStateApplier({
     if (Array.isArray(data.growthMeasurements)) setGrowthMeasurements(sortGrowthMeasurements(data.growthMeasurements))
     if (typeof data.babyDob === 'string') setBabyDob(data.babyDob)
     if (data.session !== undefined) setSession(normalizeSession(data.session))
-    if (data.theme === 'light' || data.theme === 'dark') setTheme(data.theme)
+    if ((data.theme === 'light' || data.theme === 'dark') && !hasPersistedThemePreference()) setTheme(data.theme)
     if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
     window.setTimeout(() => { applyingServerStateRef.current = false }, 0)
   }, [setBabyDob, setDiapers, setEntries, setGrowthMeasurements, setMedicines, setSession, setTheme, setTummySession, setTummyTimes])

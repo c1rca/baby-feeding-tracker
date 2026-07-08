@@ -106,4 +106,20 @@ describe('App interactions', () => {
     await new Promise((resolve) => window.setTimeout(resolve, 10))
     expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
   })
+
+  it('keeps this device theme preference after server hydration', async () => {
+    localStorage.setItem('baby-feeding-tracker:v1:theme', 'light')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
+      if (String(input) === '/api/state' && !init?.method) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: null, theme: 'dark', updatedAt: 'server-1' }), { status: 200 })
+      return new Response(JSON.stringify({ ok: true, updatedAt: 'server-2' }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' })))
+
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light')
+    expect(screen.getByRole('button', { name: /Enable dark mode/i })).toBeTruthy()
+  })
 })
