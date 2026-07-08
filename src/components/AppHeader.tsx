@@ -23,7 +23,7 @@ const syncLabel: Record<SyncStatus, string> = {
 export function AppHeader({ view, syncStatus, theme, settingsOpen, setView, setTheme, setSettingsOpen }: AppHeaderProps) {
   return (
     <header className="top">
-      <h1><Baby size={20} /> Baby Feeding Tracker</h1>
+      <h1><span className="brand-mark"><Baby size={22} /></span> Baby Feeding Tracker</h1>
       <div className="top-actions">
         <span className={`sync-pill sync-${syncStatus}`} aria-label={`Sync status: ${syncLabel[syncStatus]}`}>{syncLabel[syncStatus]}</span>
         <button className={`icon-plain view-icon-toggle ${view === 'stats' ? 'active' : ''}`} aria-label={view === 'stats' ? 'Show tracker' : 'Show stats'} title={view === 'stats' ? 'Show tracker' : 'Show stats'} onClick={() => setView((current) => current === 'stats' ? 'track' : 'stats')}>

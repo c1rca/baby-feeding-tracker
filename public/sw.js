@@ -1,4 +1,4 @@
-const CACHE_NAME = 'baby-feeding-tracker-v1'
+const CACHE_NAME = 'baby-feeding-tracker-lullaby-v2'
 const APP_SHELL = ['/', '/manifest.webmanifest', '/app-icon.svg', '/favicon.svg']
 
 self.addEventListener('install', (event) => {

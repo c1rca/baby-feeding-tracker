@@ -1,7 +1,11 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import './styles.css'
+import '@fontsource-variable/nunito/index.css'
+import '@fontsource-variable/inter/index.css'
+import { applySkin, readSkin } from './skin'
 import App from './App.tsx'
+
+applySkin(readSkin())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

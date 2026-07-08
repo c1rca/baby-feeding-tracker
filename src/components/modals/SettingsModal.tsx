@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { ModalFrame } from './ModalFrame'
 import type { TrackerModalsProps } from './modalTypes'
 import { BrowserReminderSetting } from './BrowserReminderSetting'
 import { GotifyReminderSetting } from './GotifyReminderSetting'
 import { SettingsDataControls } from './SettingsDataControls'
+import { applySkin, readSkin, skinLabel } from '../../skin'
 
 type SettingsModalProps = Pick<
   TrackerModalsProps,
@@ -27,6 +29,30 @@ type SettingsModalProps = Pick<
   | 'setMedicineReminderSettings'
   | 'showToast'
 >
+
+function AppearanceSetting() {
+  const [skin, setSkin] = useState(readSkin)
+  const nextSkin = skin === 'lullaby' ? 'classic' : 'lullaby'
+
+  return (
+    <div className="setting-row">
+      <span>
+        <strong>Design</strong>
+        <small>Current: {skinLabel[skin]}. Switch between the new Lullaby design and the classic look on this device.</small>
+      </span>
+      <button
+        type="button"
+        aria-label={`Switch to ${skinLabel[nextSkin]} design`}
+        onClick={() => {
+          applySkin(nextSkin)
+          setSkin(nextSkin)
+        }}
+      >
+        Use {skinLabel[nextSkin]}
+      </button>
+    </div>
+  )
+}
 
 export function SettingsModal({ entries, diapers, babyDob, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, showToast }: SettingsModalProps) {
   const closeSettings = () => setSettingsOpen(false)
@@ -53,6 +79,7 @@ export function SettingsModal({ entries, diapers, babyDob, feedingNotificationsE
         setGotifyReminders={setGotifyReminders}
         setMedicineReminderSettings={setMedicineReminderSettings}
       />
+      <AppearanceSetting />
       <label className="setting-row">
         <span>
           <strong>Baby date of birth</strong>

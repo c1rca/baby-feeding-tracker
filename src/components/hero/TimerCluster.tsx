@@ -7,10 +7,14 @@ type TimerClusterProps = Pick<HeroPanelProps, 'session' | 'activeSeconds' | 'act
 
 export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide, tummySession, tummyActiveSeconds, pause, resume }: TimerClusterProps) {
   const displaySeconds = tummySession ? tummyActiveSeconds : activeSeconds
+  const timerState = tummySession || (session && activeSide) ? 'is-live' : session ? 'is-paused' : 'is-idle'
   return (
     <div className="timer-cluster">
       {tummySession ? <span className="timer-mode-pill">Tummy Time</span> : null}
-      <div className="timer">{formatDuration(displaySeconds)}</div>
+      <div className={`timer-shell ${timerState}`}>
+        <div className="timer-halo" aria-hidden="true" />
+        <div className="timer">{formatDuration(displaySeconds)}</div>
+      </div>
       {session && !tummySession ? (
         <button
           type="button"
