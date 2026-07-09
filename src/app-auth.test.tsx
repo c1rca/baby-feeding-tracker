@@ -44,8 +44,8 @@ describe('App auth shell', () => {
       const url = String(input)
       if (url === '/api/auth/login' && init?.method === 'POST') {
         const body = JSON.parse(String(init.body)) as { email?: string; password?: string }
-        if (body.email === 'parent@example.com' && body.password === 'hunter22') {
-          return jsonResponse({ ok: true, token: issuedToken, user: { id: 'default-user', email: body.email, displayName: 'Parent' } })
+        if (body.email === 'mom' && body.password === 'hunter22') {
+          return jsonResponse({ ok: true, token: issuedToken, user: { id: 'default-user', email: body.email, displayName: 'Mom' } })
         }
         return jsonResponse({ ok: false, error: 'Invalid email or password' }, 401)
       }
@@ -59,8 +59,10 @@ describe('App auth shell', () => {
     render(<App />)
 
     await waitFor(() => expect(screen.getByRole('heading', { name: /Sign in/i })).toBeTruthy())
+    expect(screen.getByText(/Forgot password/i)).toBeTruthy()
+    expect(screen.getByText(/Use username mom or data in dev/i)).toBeTruthy()
 
-    await user.type(screen.getByLabelText(/Email/i), 'parent@example.com')
+    await user.type(screen.getByLabelText(/Username or email/i), 'mom')
     await user.type(screen.getByLabelText(/Password/i), 'hunter22')
     await user.click(screen.getByRole('button', { name: /Sign in/i }))
 
@@ -93,6 +95,39 @@ describe('App auth shell', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/Invalid email or password/i))
     expect(screen.getByRole('heading', { name: /Sign in/i })).toBeTruthy()
     expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull()
+  })
+
+  it('lets a signed-in caregiver change password from polished account settings', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem(AUTH_TOKEN_KEY, 'token-123')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/auth/me') return jsonResponse({ ok: true, user: { ...sessionModeUser, email: 'mom', displayName: 'Mom' } })
+      if (url === '/api/auth/password' && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body)) as { currentPassword?: string; newPassword?: string }
+        if (body.currentPassword === '1' && body.newPassword === 'new-secure-password') return jsonResponse({ ok: true })
+        return jsonResponse({ ok: false, error: 'Current password is incorrect' }, 401)
+      }
+      if (url === '/api/babies') return jsonResponse({ babies: [{ id: 'default-baby', name: 'Ryan' }] })
+      if (url === '/api/notification-settings') return jsonResponse({ available: false, gotifyRemindersEnabled: false })
+      if (url === '/api/state' && !init?.method) return jsonResponse(emptyServerState)
+      return jsonResponse({ ok: true, updatedAt: 'server-2' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await user.click(await screen.findByLabelText(/Show settings/i))
+    expect(screen.getByText(/Account security/i)).toBeTruthy()
+    expect(screen.getByText(/Signed in as mom/i)).toBeTruthy()
+    await user.type(screen.getByLabelText(/Current password/i), '1')
+    await user.type(screen.getByLabelText(/New password/i), 'new-secure-password')
+    await user.click(screen.getByRole('button', { name: /Update password/i }))
+
+    await waitFor(() => expect(screen.getAllByRole('status').some((node) => /Password updated/i.test(node.textContent || ''))).toBe(true))
+    const passwordCall = fetchMock.mock.calls.find(([input, callInit]) => String(input) === '/api/auth/password' && callInit?.method === 'POST')
+    expect(passwordCall).toBeTruthy()
+    expect(bearerOf(passwordCall?.[1])).toBe('Bearer token-123')
   })
 
   it('signs out of an authenticated session, revokes it, and returns to login', async () => {

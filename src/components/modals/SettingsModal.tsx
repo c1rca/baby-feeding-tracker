@@ -6,6 +6,7 @@ import { GotifyReminderSetting } from './GotifyReminderSetting'
 import { SettingsDataControls } from './SettingsDataControls'
 import { applySkin, readSkin, skinLabel } from '../../skin'
 import { normalizeTummyTimeGoalMinutes } from '../../domain/tummyTime'
+import { changePassword } from '../../auth/authApi'
 
 type SettingsModalProps = Pick<
   TrackerModalsProps,
@@ -59,6 +60,59 @@ function AppearanceSetting() {
         Use {skinLabel[nextSkin]}
       </button>
     </div>
+  )
+}
+
+function AccountSecuritySetting({ authUser, showToast }: { authUser: SettingsModalProps['authUser']; showToast: (message: string) => void }) {
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [pending, setPending] = useState(false)
+  const [message, setMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
+  const canChangePassword = authUser?.mode === 'session'
+  const identity = authUser?.email || authUser?.displayName || authUser?.id || 'Local caregiver'
+
+  const submitPassword = async () => {
+    if (!canChangePassword || pending) return
+    if (newPassword.length < 12) {
+      setMessage({ kind: 'error', text: 'Use at least 12 characters.' })
+      return
+    }
+    setPending(true)
+    setMessage(null)
+    const result = await changePassword(currentPassword, newPassword)
+    setPending(false)
+    if (result.ok) {
+      setCurrentPassword('')
+      setNewPassword('')
+      setMessage({ kind: 'success', text: 'Password updated' })
+      showToast('Password updated')
+    } else {
+      setMessage({ kind: 'error', text: result.error })
+    }
+  }
+
+  return (
+    <section className="account-security-card" aria-labelledby="account-security-title">
+      <div className="account-security-copy">
+        <span className="settings-kicker">Account</span>
+        <h3 id="account-security-title">Account security</h3>
+        <p>{canChangePassword ? `Signed in as ${identity}. Update the shared caregiver password without disrupting this device.` : 'Authentication is bypassed or disabled on this device.'}</p>
+      </div>
+      {canChangePassword ? (
+        <div className="account-password-form">
+          <label>
+            <span>Current password</span>
+            <input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
+          </label>
+          <label>
+            <span>New password</span>
+            <input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
+          </label>
+          {message ? <p className={`account-security-message ${message.kind === 'success' ? 'is-success' : 'is-error'}`} role={message.kind === 'error' ? 'alert' : 'status'}>{message.text}</p> : null}
+          <button type="button" onClick={submitPassword} disabled={pending || !currentPassword || !newPassword}>{pending ? 'Updating…' : 'Update password'}</button>
+        </div>
+      ) : null}
+    </section>
   )
 }
 
@@ -138,6 +192,7 @@ export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, fee
         setMedicineReminderSettings={setMedicineReminderSettings}
       />
       <AppearanceSetting />
+      <AccountSecuritySetting authUser={authUser} showToast={showToast} />
       <BabyManagementSetting babies={babies} selectedBabyId={selectedBabyId} role={authUser?.role} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} showToast={showToast} />
       <label className="setting-row">
         <span>

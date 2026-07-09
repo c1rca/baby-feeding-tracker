@@ -5,7 +5,9 @@ export type AuthUser = {
   householdId?: string
   babyId?: string
   role?: string
-  mode?: 'local' | 'session'
+  mode?: 'local' | 'session' | 'auth-bypass'
+  email?: string
+  displayName?: string
 }
 
 export type AuthSessionResult =
@@ -37,6 +39,23 @@ export async function loginWithPassword(email: string, password: string): Promis
     const data = await response.json().catch(() => null) as { token?: string; error?: string } | null
     if (!response.ok || !data?.token) return { ok: false, error: data?.error || 'Sign in failed' }
     return { ok: true, token: data.token }
+  } catch {
+    return { ok: false, error: 'Could not reach the server' }
+  }
+}
+
+export type PasswordChangeResult = { ok: true } | { ok: false; error: string }
+
+export async function changePassword(currentPassword: string, newPassword: string): Promise<PasswordChangeResult> {
+  try {
+    const response = await authFetch('/api/auth/password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+    const data = await response.json().catch(() => null) as { error?: string } | null
+    if (!response.ok) return { ok: false, error: data?.error || 'Could not update password' }
+    return { ok: true }
   } catch {
     return { ok: false, error: 'Could not reach the server' }
   }

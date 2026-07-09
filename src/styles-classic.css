@@ -660,10 +660,31 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 
 /* Auth / login screen */
 .auth-screen { min-height: 100dvh; align-content: center; justify-items: center; }
-.login-card { width: min(92vw, 400px); display: grid; gap: 14px; padding: 26px; }
-.login-card h1 { margin: 0; font-size: 1.25rem; display: flex; align-items: center; gap: 10px; }
+.login-card { width: min(94vw, 460px); display: grid; gap: 16px; padding: 30px; border-radius: 24px; box-shadow: 0 20px 50px -28px rgba(15,23,42,.42); }
+.login-card h1 { margin: 0; font-size: 1.35rem; display: flex; align-items: center; gap: 10px; }
 .login-card h2 { margin: 0; font-size: 1.05rem; }
+.login-meta { margin: -8px 0 0; color:#64748b; font-size:.9rem; font-weight:650; }
+.login-help { display:grid; gap:3px; padding:11px 12px; border:1px solid #e2e8f0; border-radius:14px; background:#f8fafc; color:#64748b; font-size:.84rem; font-weight:650; }
+.login-help strong { color:#0f172a; }
 .login-card form { display: grid; gap: 12px; }
 .login-card label { display: grid; gap: 6px; font-size: .85rem; font-weight: 700; }
-.login-card input { width: 100%; }
-.login-error { margin: 0; font-size: .9rem; font-weight: 650; color: #e11d48; }
+.login-card input { width: 100%; min-height: 44px; border-radius: 12px; }
+.login-card button[type='submit'] { justify-content:center; min-height:44px; }
+.login-error { margin: 0; padding: 9px 11px; border-radius: 12px; background:#fff1f2; font-size: .9rem; font-weight: 700; color: #e11d48; }
+.account-security-card { display:grid; gap:12px; padding:14px; border:1px solid #e2e8f0; border-radius:16px; background:#f8fafc; }
+.account-security-copy { display:grid; gap:4px; }
+.settings-kicker { color:#64748b; font-size:.68rem; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+.account-security-copy h3 { margin:0; font-size:1rem; }
+.account-security-copy p { margin:0; color:#64748b; font-size:.86rem; }
+.account-password-form { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)) auto; gap:10px; align-items:end; }
+.account-password-form label { display:grid; gap:5px; color:#64748b; font-size:.78rem; font-weight:800; }
+.account-password-form input { width:100%; min-height:40px; }
+.account-password-form button { min-height:40px; white-space:nowrap; }
+.account-security-message { grid-column:1/-1; margin:0; font-size:.84rem; font-weight:800; }
+.account-security-message.is-success { color:#059669; }
+.account-security-message.is-error { color:#e11d48; }
+[data-theme='dark'] .login-meta, [data-theme='dark'] .login-help, [data-theme='dark'] .account-security-copy p, [data-theme='dark'] .account-password-form label { color:#94a3b8; }
+[data-theme='dark'] .login-help, [data-theme='dark'] .account-security-card { background:#111827; border-color:#334155; }
+[data-theme='dark'] .login-help strong { color:#e2e8f0; }
+[data-theme='dark'] .account-security-card { background:#111827; border-color:#334155; }
+@media (max-width: 640px) { .account-password-form { grid-template-columns:1fr; } .account-password-form button { width:100%; justify-content:center; } }
