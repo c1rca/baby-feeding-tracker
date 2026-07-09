@@ -117,6 +117,67 @@ describe('App auth shell', () => {
     expect(window.location.search).not.toContain('auth_error')
   })
 
+  it('creates a new household from the sign-up form and hydrates the signed-in app', async () => {
+    const user = userEvent.setup()
+    const issuedToken = 'signup-token'
+    const authorized = (init?: RequestInit) => bearerOf(init) === `Bearer ${issuedToken}`
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/auth/google/status') return jsonResponse({ ok: true, available: false })
+      if (url === '/api/auth/me') return authorized(init) ? jsonResponse({ ok: true, user: sessionModeUser }) : jsonResponse({ ok: false }, 401)
+      if (url === '/api/auth/signup' && init?.method === 'POST') return jsonResponse({ ok: true, token: issuedToken, user: { id: 'new-user' } }, 201)
+      if (url === '/api/babies') return authorized(init) ? jsonResponse({ babies: [{ id: 'baby-new', name: 'Ryan' }] }) : jsonResponse({ ok: false }, 401)
+      if (url === '/api/notification-settings') return jsonResponse({ available: false, gotifyRemindersEnabled: false })
+      if (url === '/api/state' && !init?.method) return authorized(init) ? jsonResponse(emptyServerState) : jsonResponse({ ok: false }, 401)
+      return jsonResponse({ ok: true, updatedAt: 'server-2' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await user.click(await screen.findByRole('button', { name: /Create account/i }))
+    await user.type(screen.getByLabelText(/Email/i), 'new@example.com')
+    await user.type(screen.getByLabelText(/^Password/i), 'strong-password')
+    await user.type(screen.getByLabelText(/Your name/i), 'New Parent')
+    await user.type(screen.getByLabelText(/Household name/i), 'Home')
+    await user.type(screen.getByLabelText(/Baby name/i), 'Ryan')
+    await user.type(screen.getByLabelText(/Baby date of birth/i), '2026-06-03')
+    await user.click(screen.getByRole('button', { name: /Start tracking/i }))
+
+    await waitFor(() => expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe(issuedToken))
+    const signupCall = fetchMock.mock.calls.find(([input, callInit]) => String(input) === '/api/auth/signup' && callInit?.method === 'POST')
+    expect(signupCall).toBeTruthy()
+    expect(JSON.parse(String(signupCall?.[1]?.body))).toEqual({ email: 'new@example.com', password: 'strong-password', displayName: 'New Parent', householdName: 'Home', babyName: 'Ryan', babyDob: '2026-06-03' })
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store', headers: expect.any(Headers) })))
+  })
+
+  it('onboards an authenticated householdless user before loading tracker state', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem(AUTH_TOKEN_KEY, 'token-123')
+    let onboarded = false
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/auth/me') return jsonResponse({ ok: true, user: onboarded ? sessionModeUser : { id: 'new-user', mode: 'session', email: 'new@example.com', needsOnboarding: true } })
+      if (url === '/api/households' && init?.method === 'POST') { onboarded = true; return jsonResponse({ ok: true, household: { id: 'hh-new', name: 'Home' }, baby: { id: 'baby-new', name: 'Ryan', dob: '2026-06-03' } }, 201) }
+      if (url === '/api/babies') return jsonResponse({ babies: [{ id: 'baby-new', name: 'Ryan' }] })
+      if (url === '/api/notification-settings') return jsonResponse({ available: false, gotifyRemindersEnabled: false })
+      if (url === '/api/state' && !init?.method) return onboarded ? jsonResponse(emptyServerState) : jsonResponse({ ok: false, error: 'needs_household' }, 403)
+      return jsonResponse({ ok: true, updatedAt: 'server-2' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: /Set up your household/i })).toBeTruthy())
+    await user.type(screen.getByLabelText(/Household name/i), 'Home')
+    await user.type(screen.getByLabelText(/Baby name/i), 'Ryan')
+    await user.type(screen.getByLabelText(/Baby date of birth/i), '2026-06-03')
+    await user.click(screen.getByRole('button', { name: /Create household/i }))
+
+    await waitFor(() => expect(onboarded).toBe(true))
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store', headers: expect.any(Headers) })))
+  })
+
   it('keeps the login form up with an error message after a failed login', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

@@ -6,11 +6,17 @@ type LoginScreenProps = {
   pending: boolean
   error: string | null
   onLogin: (email: string, password: string) => void
+  onSignup: (input: { email: string; password: string; displayName: string; householdName: string; babyName: string; babyDob: string }) => void
 }
 
-export function LoginScreen({ pending, error, onLogin }: LoginScreenProps) {
+export function LoginScreen({ pending, error, onLogin, onSignup }: LoginScreenProps) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [householdName, setHouseholdName] = useState('')
+  const [babyName, setBabyName] = useState('')
+  const [babyDob, setBabyDob] = useState('')
   const [googleAvailable, setGoogleAvailable] = useState(false)
 
   useEffect(() => {
@@ -23,7 +29,8 @@ export function LoginScreen({ pending, error, onLogin }: LoginScreenProps) {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    onLogin(email, password)
+    if (mode === 'signup') onSignup({ email, password, displayName, householdName, babyName, babyDob })
+    else onLogin(email, password)
   }
 
   return (
@@ -37,7 +44,7 @@ export function LoginScreen({ pending, error, onLogin }: LoginScreenProps) {
       </div>
       <section className="card login-card">
         <h1><span className="brand-mark"><Baby size={22} /></span> Baby Feeding Tracker</h1>
-        <h2>Sign in</h2>
+        <h2>{mode === 'signup' ? 'Create account' : 'Sign in'}</h2>
         <p className="login-meta">Private, synced care notes for your household.</p>
         {googleAvailable ? (
           <a className="google-sign-in-button" href="/api/auth/google/start" aria-label="Sign in with Google">
@@ -47,11 +54,20 @@ export function LoginScreen({ pending, error, onLogin }: LoginScreenProps) {
         ) : null}
         {googleAvailable ? <div className="login-divider"><span>or use password</span></div> : null}
         <form onSubmit={handleSubmit}>
-          <label>Username or email<input type="text" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-          <label>Password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          <label>{mode === 'signup' ? 'Email' : 'Username or email'}<input type="text" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+          <label>Password<input type="password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+          {mode === 'signup' ? (
+            <>
+              <label>Your name<input type="text" autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} required /></label>
+              <label>Household name<input type="text" value={householdName} onChange={(event) => setHouseholdName(event.target.value)} required /></label>
+              <label>Baby name<input type="text" value={babyName} onChange={(event) => setBabyName(event.target.value)} required /></label>
+              <label>Baby date of birth<input type="date" value={babyDob} onChange={(event) => setBabyDob(event.target.value)} required /></label>
+            </>
+          ) : null}
           {error ? <p className="login-error" role="alert">{error}</p> : null}
-          <button type="submit" disabled={pending}>{pending ? 'Signing in…' : 'Sign in'}</button>
+          <button type="submit" disabled={pending}>{pending ? (mode === 'signup' ? 'Creating account…' : 'Signing in…') : (mode === 'signup' ? 'Start tracking' : 'Sign in')}</button>
         </form>
+        <button className="auth-mode-toggle" type="button" onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')}>{mode === 'signup' ? 'I already have an account' : 'Create account'}</button>
         <div className="login-help">
           <strong>Forgot password?</strong>
           <span>Ask the server admin to run the documented reset/recovery path.</span>

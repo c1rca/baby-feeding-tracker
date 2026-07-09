@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { fetchAuthSession, loginWithPassword, logoutSession, type AuthUser } from './authApi'
+import { fetchAuthSession, loginWithPassword, logoutSession, signupWithPassword, type AuthUser, type SignupInput } from './authApi'
 import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken, consumeAuthCodeFromUrl, consumeAuthErrorFromUrl, hasPendingAuth, storeAuthToken } from './authSession'
 
 type AuthGateStatus = 'checking' | 'ready' | 'login'
@@ -52,20 +52,12 @@ export function useAuthGate() {
     return () => window.removeEventListener(AUTH_UNAUTHORIZED_EVENT, requireLogin)
   }, [requireLogin])
 
-  const login = useCallback(async (email: string, password: string) => {
-    setPending(true)
-    setError(null)
-    const result = await loginWithPassword(email, password)
-    if (!result.ok) {
-      setError(result.error)
-      setPending(false)
-      return
-    }
-    storeAuthToken(result.token)
+  const completeTokenLogin = useCallback(async (token: string, fallbackError: string) => {
+    storeAuthToken(token)
     const session = await fetchAuthSession()
     if (session.kind === 'unauthorized') {
       clearAuthToken()
-      setError('Sign in failed')
+      setError(fallbackError)
       setPending(false)
       return
     }
@@ -76,10 +68,41 @@ export function useAuthGate() {
     setEpoch((value) => value + 1)
   }, [])
 
+  const login = useCallback(async (email: string, password: string) => {
+    setPending(true)
+    setError(null)
+    const result = await loginWithPassword(email, password)
+    if (!result.ok) {
+      setError(result.error)
+      setPending(false)
+      return
+    }
+    await completeTokenLogin(result.token, 'Sign in failed')
+  }, [completeTokenLogin])
+
+  const signup = useCallback(async (input: SignupInput) => {
+    setPending(true)
+    setError(null)
+    const result = await signupWithPassword(input)
+    if (!result.ok) {
+      setError(result.error)
+      setPending(false)
+      return
+    }
+    await completeTokenLogin(result.token, 'Account created, but sign in failed')
+  }, [completeTokenLogin])
+
+  const refreshAuth = useCallback(async () => {
+    const session = await fetchAuthSession()
+    if (session.kind === 'unauthorized') requireLogin()
+    else if (session.kind === 'ok') setAuthUser(session.user)
+    setEpoch((value) => value + 1)
+  }, [requireLogin])
+
   const logout = useCallback(async () => {
     await logoutSession()
     requireLogin()
   }, [requireLogin])
 
-  return { status, authUser, epoch, pending, error, login, logout }
+  return { status, authUser, epoch, pending, error, login, signup, logout, refreshAuth }
 }

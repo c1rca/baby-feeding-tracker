@@ -8,6 +8,7 @@ export type AuthUser = {
   mode?: 'local' | 'session' | 'auth-bypass'
   email?: string
   displayName?: string
+  needsOnboarding?: boolean
 }
 
 export type AuthSessionResult =
@@ -28,6 +29,40 @@ export async function fetchAuthSession(): Promise<AuthSessionResult> {
 }
 
 export type LoginResult = { ok: true; token: string } | { ok: false; error: string }
+export type SignupInput = { email: string; password: string; displayName: string; householdName: string; babyName: string; babyDob: string }
+
+export async function signupWithPassword(input: SignupInput): Promise<LoginResult> {
+  try {
+    const response = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    const data = await response.json().catch(() => null) as { token?: string; error?: string } | null
+    if (!response.ok || !data?.token) return { ok: false, error: data?.error || 'Could not create account' }
+    return { ok: true, token: data.token }
+  } catch {
+    return { ok: false, error: 'Could not reach the server' }
+  }
+}
+
+export type OnboardingInput = { householdName: string; babyName: string; babyDob: string }
+export type OnboardingResult = { ok: true } | { ok: false; error: string }
+
+export async function createHouseholdForOnboarding(input: OnboardingInput): Promise<OnboardingResult> {
+  try {
+    const response = await authFetch('/api/households', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    const data = await response.json().catch(() => null) as { error?: string } | null
+    if (!response.ok) return { ok: false, error: data?.error || 'Could not create household' }
+    return { ok: true }
+  } catch {
+    return { ok: false, error: 'Could not reach the server' }
+  }
+}
 
 export async function loginWithPassword(email: string, password: string): Promise<LoginResult> {
   try {
