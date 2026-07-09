@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createAuthMiddleware, createAuthRouter, createAuthSessionRouter } from './server/auth.js'
 import { buildStateAudit } from './server/auditLog.js'
-import { createHealthRouter, createNotificationSettingsRouter, createStateRouter, createBabyRouter } from './server/apiRoutes.js'
+import { createDiagnosticsRouter, createHealthRouter, createNotificationSettingsRouter, createStateRouter, createBabyRouter } from './server/apiRoutes.js'
 import { openTrackerDatabase, prepareTrackerStatements, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './server/database.js'
 import { createEventLogger, redactError } from './server/eventLog.js'
 import { createTrackerNotificationScheduler } from './server/notificationRuntime.js'
@@ -75,13 +75,23 @@ const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt
 const { broadcastStateChange, handleStateEvents } = createStateEventHub({ selectState, serializeState })
 const createBackupOnStart = createStartupBackup({ db, backupDir: config.backupDir, appendEventLog, redactError })
 
+const checkDatabaseReady = () => {
+  try {
+    selectState.get()
+    return true
+  } catch {
+    return false
+  }
+}
+
 app.use(express.json({ limit: '1mb' }))
+createHealthRouter({ checkDatabaseReady })(app)
 createAuthRouter({ authRequired: config.authRequired, selectUserByEmail, insertSession, appendEventLog })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, selectSessionContext }))
 createAuthSessionRouter({ revokeSession, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)
 
-createHealthRouter({ config, getGotifyRemindersEnabled })(app)
+createDiagnosticsRouter({ config, getGotifyRemindersEnabled })(app)
 createNotificationSettingsRouter({
   config,
   getGotifyRemindersEnabled,

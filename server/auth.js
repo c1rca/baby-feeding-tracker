@@ -22,7 +22,18 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, selectUserByEmail = null, insertSession = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, now = () => new Date() } = {}) => {
+export const createAuthRouter = ({ authRequired = false, selectUserByEmail = null, insertSession = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000 } = {}) => {
+  const loginFailures = new Map()
+  const failureKey = (req, email) => `${req.ip || req.socket?.remoteAddress || 'unknown'}|${email}`
+  const failuresFor = (key) => {
+    const record = loginFailures.get(key)
+    if (record && now().getTime() - record.firstAt > loginWindowMs) {
+      loginFailures.delete(key)
+      return null
+    }
+    return record ?? null
+  }
+
   const router = (app) => {
     app.post('/api/auth/login', (req, res) => {
       if (!authRequired) {
@@ -32,11 +43,22 @@ export const createAuthRouter = ({ authRequired = false, selectUserByEmail = nul
 
       const email = normalizeEmail(req.body?.email)
       const password = String(req.body?.password || '')
+      const key = failureKey(req, email)
+      if ((failuresFor(key)?.count ?? 0) >= maxLoginAttempts) {
+        appendEventLog('auth_login_rate_limited', { email })
+        res.status(429).json({ ok: false, error: 'Too many login attempts. Try again later.' })
+        return
+      }
+
       const user = email ? selectUserByEmail?.get(email) : null
       if (!user?.password_hash || !verifyPassword(password, user.password_hash)) {
+        const record = failuresFor(key)
+        if (record) record.count += 1
+        else loginFailures.set(key, { count: 1, firstAt: now().getTime() })
         res.status(401).json({ ok: false, error: 'Invalid email or password' })
         return
       }
+      loginFailures.delete(key)
 
       const createdAt = now()
       const expiresAt = addDays(createdAt, 30)

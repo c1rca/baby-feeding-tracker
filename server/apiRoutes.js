@@ -7,9 +7,22 @@ const normalizeTummyGoalMinutes = (value) => {
   return Math.min(240, Math.max(1, Math.round(numeric)))
 }
 
-export const createHealthRouter = ({ config, getGotifyRemindersEnabled }) => {
+export const createHealthRouter = ({ checkDatabaseReady = () => true } = {}) => {
   const router = (app) => {
     app.get('/api/health', (_req, res) => {
+      if (!checkDatabaseReady()) {
+        res.status(503).json({ ok: false })
+        return
+      }
+      res.json({ ok: true })
+    })
+  }
+  return router
+}
+
+export const createDiagnosticsRouter = ({ config, getGotifyRemindersEnabled }) => {
+  const router = (app) => {
+    app.get('/api/diagnostics', (_req, res) => {
       res.json({
         ok: true,
         dbPath: config.dbPath,

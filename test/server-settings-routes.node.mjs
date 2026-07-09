@@ -1,11 +1,32 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createHealthRouter, createNotificationSettingsRouter } from '../server/apiRoutes.js'
+import { createDiagnosticsRouter, createHealthRouter, createNotificationSettingsRouter } from '../server/apiRoutes.js'
 import { createFakeApp, createJsonResponse } from './server-test-helpers.mjs'
 
-test('health route reports runtime availability and current reminder enablement', () => {
+test('public health route reports readiness without leaking configuration', () => {
   const app = createFakeApp()
-  createHealthRouter({
+  createHealthRouter({ checkDatabaseReady: () => true })(app)
+
+  const res = createJsonResponse()
+  app.route('GET', '/api/health')({}, res)
+
+  assert.deepEqual(res.body, { ok: true })
+})
+
+test('public health route reports 503 when the database is not readable', () => {
+  const app = createFakeApp()
+  createHealthRouter({ checkDatabaseReady: () => false })(app)
+
+  const res = createJsonResponse()
+  app.route('GET', '/api/health')({}, res)
+
+  assert.equal(res.statusCode, 503)
+  assert.deepEqual(res.body, { ok: false })
+})
+
+test('authenticated diagnostics route reports runtime availability and reminder enablement', () => {
+  const app = createFakeApp()
+  createDiagnosticsRouter({
     config: {
       dbPath: '/data/app.db',
       notificationChannelsAvailable: true,
@@ -16,7 +37,7 @@ test('health route reports runtime availability and current reminder enablement'
   })(app)
 
   const res = createJsonResponse()
-  app.route('GET', '/api/health')({}, res)
+  app.route('GET', '/api/diagnostics')({}, res)
 
   assert.deepEqual(res.body, {
     ok: true,
