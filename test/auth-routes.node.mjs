@@ -253,6 +253,64 @@ test('google exchange rejects an unknown code', () => {
   assert.equal(res.statusCode, 401)
 })
 
+test('password signup creates an allow-listed account, household, first baby, and session', () => {
+  const calls = { users: [], households: [], sessions: [], events: [] }
+  const ids = ['user-new', 'household-new', 'baby-new', 'session-new']
+  let idIndex = 0
+  const app = mountRouter({
+    authRequired: true,
+    allowedEmails: ['new@example.com'],
+    selectUserByEmail: { get: () => null },
+    insertPasswordUser: { run: (user) => calls.users.push(user) },
+    createSignupHousehold: (payload) => calls.households.push(payload),
+    insertSession: { run: (session) => calls.sessions.push(session) },
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+    idFactory: () => ids[idIndex++],
+    tokenFactory: () => 'signup-session-token',
+    now: () => new Date('2026-01-01T00:00:00.000Z'),
+  })
+  const res = createJsonResponse()
+
+  app.route('POST', '/api/auth/signup')({ body: { email: ' New@Example.com ', password: 'strong-password', displayName: 'New Parent', householdName: 'New House', babyName: 'Ryan', babyDob: '2026-06-03' } }, res)
+
+  assert.equal(res.statusCode, 201)
+  assert.equal(res.body.ok, true)
+  assert.equal(res.body.token, 'signup-session-token')
+  assert.deepEqual(res.body.user, { id: 'user-new', email: 'new@example.com', displayName: 'New Parent' })
+  assert.equal(calls.users[0].email, 'new@example.com')
+  assert.equal(verifyPassword('strong-password', calls.users[0].password_hash), true)
+  assert.deepEqual(calls.households[0], { userId: 'user-new', householdId: 'household-new', householdName: 'New House', babyId: 'baby-new', babyName: 'Ryan', babyDob: '2026-06-03', createdAt: '2026-01-01T00:00:00.000Z' })
+  assert.equal(calls.sessions[0].user_id, 'user-new')
+  assert.deepEqual(calls.events, [{ event: 'auth_signup', payload: { userId: 'user-new', email: 'new@example.com', householdId: 'household-new' } }])
+})
+
+test('password signup rejects closed allow-list, duplicate email, and weak passwords', () => {
+  const calls = { users: 0, sessions: 0 }
+  const app = mountRouter({
+    authRequired: true,
+    allowedEmails: ['allowed@example.com', 'taken@example.com'],
+    selectUserByEmail: { get: (email) => email === 'taken@example.com' ? { id: 'taken' } : null },
+    insertPasswordUser: { run: () => { calls.users += 1 } },
+    insertSession: { run: () => { calls.sessions += 1 } },
+    appendEventLog: () => {},
+  })
+
+  const offList = createJsonResponse()
+  app.route('POST', '/api/auth/signup')({ body: { email: 'off@example.com', password: 'strong-password' } }, offList)
+  assert.equal(offList.statusCode, 403)
+  assert.equal(offList.body.error, 'not_invited')
+
+  const weak = createJsonResponse()
+  app.route('POST', '/api/auth/signup')({ body: { email: 'allowed@example.com', password: 'short' } }, weak)
+  assert.equal(weak.statusCode, 400)
+
+  const duplicate = createJsonResponse()
+  app.route('POST', '/api/auth/signup')({ body: { email: 'taken@example.com', password: 'strong-password' } }, duplicate)
+  assert.equal(duplicate.statusCode, 409)
+  assert.equal(calls.users, 0)
+  assert.equal(calls.sessions, 0)
+})
+
 test('login route stays unavailable until auth is enabled', () => {
   const app = mountRouter({ authRequired: false })
   const res = createJsonResponse()

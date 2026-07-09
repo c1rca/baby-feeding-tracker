@@ -20,6 +20,7 @@ export const isEmailAllowed = (email, allowedEmails = []) => {
 const defaultTokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', '')
 const defaultIdFactory = () => globalThis.crypto.randomUUID()
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
+const isValidDob = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))
 const isGoogleAuthAvailable = (authRequired, googleAuth = {}) => Boolean(authRequired && googleAuth.clientId && googleAuth.clientSecret && googleAuth.redirectUri)
 const defaultGoogleStateFactory = ({ secret, now = () => new Date() }) => {
   const payload = Buffer.from(JSON.stringify({ nonce: defaultTokenFactory(), exp: now().getTime() + 10 * 60 * 1000 })).toString('base64url')
@@ -59,7 +60,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, selectUserById = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000 } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, createSignupHousehold = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, selectUserById = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000 } = {}) => {
   const loginFailures = new Map()
   const failureKey = (req, email) => `${req.ip || req.socket?.remoteAddress || 'unknown'}|${email}`
   const failuresFor = (key) => {
@@ -123,6 +124,52 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
           displayName: user.display_name,
         },
       })
+    })
+
+    app.post('/api/auth/signup', (req, res) => {
+      if (!authRequired) {
+        res.status(404).json({ ok: false, error: 'Authentication is not enabled' })
+        return
+      }
+      const email = normalizeEmail(req.body?.email)
+      const password = String(req.body?.password || '')
+      const displayName = String(req.body?.displayName || '').trim() || email
+      const householdName = String(req.body?.householdName || '').trim() || 'My household'
+      const babyName = String(req.body?.babyName || '').trim()
+      const babyDob = String(req.body?.babyDob || '').trim()
+      if (!email) {
+        res.status(400).json({ ok: false, error: 'Email is required' })
+        return
+      }
+      if (!isEmailAllowed(email, allowedEmails)) {
+        res.status(403).json({ ok: false, error: 'not_invited' })
+        return
+      }
+      if (password.length < 12) {
+        res.status(400).json({ ok: false, error: 'Password must be at least 12 characters' })
+        return
+      }
+      if (selectUserByEmail?.get(email)) {
+        res.status(409).json({ ok: false, error: 'email_exists' })
+        return
+      }
+      if (babyName && !isValidDob(babyDob)) {
+        res.status(400).json({ ok: false, error: 'Baby date of birth must use YYYY-MM-DD' })
+        return
+      }
+      if (!babyName) {
+        res.status(400).json({ ok: false, error: 'Baby name is required' })
+        return
+      }
+      const userId = idFactory()
+      const householdId = idFactory()
+      const babyId = idFactory()
+      const createdAt = now().toISOString()
+      insertPasswordUser?.run({ id: userId, email, display_name: displayName, password_hash: hashPassword(password), google_sub: null, created_at: createdAt })
+      createSignupHousehold?.({ userId, householdId, householdName, babyId, babyName, babyDob, createdAt })
+      const token = createSession({ id: userId })
+      appendEventLog('auth_signup', { userId, email, householdId })
+      res.status(201).json({ ok: true, token, user: { id: userId, email, displayName } })
     })
 
     app.get('/api/auth/google/status', (req, res) => {

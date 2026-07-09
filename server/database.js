@@ -236,6 +236,10 @@ export function prepareTrackerStatements(db) {
       VALUES (@id, @email, @display_name, NULL, @google_sub, @created_at)
       ON CONFLICT(email) DO UPDATE SET google_sub = excluded.google_sub, display_name = excluded.display_name
     `),
+    insertPasswordUser: db.prepare(`
+      INSERT INTO users (id, email, display_name, password_hash, google_sub, created_at)
+      VALUES (@id, @email, @display_name, @password_hash, @google_sub, @created_at)
+    `),
     upsertGoogleHouseholdMember: db.prepare(`
       INSERT INTO household_members (user_id, household_id, role, created_at)
       VALUES (@user_id, @household_id, @role, @created_at)

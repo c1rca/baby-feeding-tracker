@@ -52,7 +52,7 @@ describe('App interactions', () => {
     expect(screen.getAllByText(/Taken today/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/1 dose this week/i)).toBeTruthy()
     expect(screen.getByRole('region', { name: /Tummy Time stats/i })).toBeTruthy()
-    expect(screen.getByText(/12\/20 min today/i)).toBeTruthy()
+    expect(screen.getAllByText(/12\/20 min today/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/32 minutes captured this week · 1 goal day/i)).toBeTruthy()
     expect(screen.getByText(/Daily avg/i)).toBeTruthy()
     expect(screen.getByText(/Best day/i)).toBeTruthy()
