@@ -45,6 +45,10 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean)
   const bootstrapPassword = env.AUTH_BOOTSTRAP_PASSWORD || ''
+  const isProduction = env.NODE_ENV === 'production'
+  // Number of proxy hops to trust for req.ip (so rate-limit keys use the real
+  // client IP, not the reverse proxy's). Empty = don't trust any proxy.
+  const trustProxy = env.TRUST_PROXY || ''
 
   return {
     port,
@@ -70,5 +74,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     googleAuth,
     allowedEmails,
     bootstrapPassword,
+    isProduction,
+    trustProxy,
   }
 }

@@ -10,6 +10,7 @@ import { createEventLogger, redactError } from './server/eventLog.js'
 import { createTrackerNotificationScheduler } from './server/notificationRuntime.js'
 import { normalizeMedicineReminderSettings } from './server/notificationModels.js'
 import { createRuntimeConfig } from './server/runtimeConfig.js'
+import { createSecurityHeaders } from './server/securityHeaders.js'
 import { createDeletedItemOptionsReader, createDeletedItemRecorder, serializeState, summarizeState } from './server/stateStore.js'
 import { createStateEventHub } from './server/stateEvents.js'
 import { resolveIncomingState } from './server/stateMerge.js'
@@ -84,6 +85,10 @@ const checkDatabaseReady = () => {
   }
 }
 
+// Trust the reverse proxy (if configured) so req.ip reflects the real client
+// for rate-limit keys instead of the proxy's address.
+if (config.trustProxy) app.set('trust proxy', /^\d+$/.test(config.trustProxy) ? Number(config.trustProxy) : config.trustProxy)
+app.use(createSecurityHeaders({ hsts: config.isProduction }))
 app.use(express.json({ limit: '1mb' }))
 createHealthRouter({ checkDatabaseReady })(app)
 createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, selectUserById, appendEventLog })(app)
