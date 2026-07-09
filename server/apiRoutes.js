@@ -7,6 +7,9 @@ const normalizeTummyGoalMinutes = (value) => {
   return Math.min(240, Math.max(1, Math.round(numeric)))
 }
 
+const canMutate = (auth) => auth?.role !== 'viewer'
+const rejectForbidden = (res) => res.status(403).json({ ok: false, error: 'Insufficient permissions' })
+
 export const createHealthRouter = ({ checkDatabaseReady = () => true } = {}) => {
   const router = (app) => {
     app.get('/api/health', (_req, res) => {
@@ -86,6 +89,10 @@ export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = 
     })
 
     app.post('/api/babies', (req, res) => {
+      if (!canMutate(req.auth)) {
+        rejectForbidden(res)
+        return
+      }
       const householdId = req.auth?.householdId || DEFAULT_HOUSEHOLD_ID
       const name = String(req.body?.name || '').trim()
       const dob = String(req.body?.dob || '').trim()
@@ -112,6 +119,10 @@ export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = 
     })
 
     app.delete('/api/babies/:id', (req, res) => {
+      if (!canMutate(req.auth)) {
+        rejectForbidden(res)
+        return
+      }
       const householdId = req.auth?.householdId || DEFAULT_HOUSEHOLD_ID
       const babyId = String(req.params?.id || '').trim()
       const archivedAt = now().toISOString()
@@ -177,6 +188,10 @@ export const createStateRouter = ({
     app.get('/api/state/events', handleStateEvents)
 
     app.put('/api/state', (req, res) => {
+      if (!canMutate(req.auth)) {
+        rejectForbidden(res)
+        return
+      }
       const existingRow = selectScopedState(requestScope(req))
       const incoming = resolveIncomingState(existingRow, {
         entries: Array.isArray(req.body?.entries) ? req.body.entries : [],

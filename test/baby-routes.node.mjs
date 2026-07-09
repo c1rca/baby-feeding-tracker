@@ -72,6 +72,24 @@ test('baby create route rejects invalid names and DOBs', () => {
   assert.equal(calls.inserts, 0)
 })
 
+test('baby create route rejects viewer role without inserting', () => {
+  const calls = { inserts: 0, events: 0 }
+  const app = mountRouter({
+    insertBaby: { run: () => { calls.inserts += 1 } },
+    appendEventLog: () => { calls.events += 1 },
+  })
+  const res = createJsonResponse()
+
+  app.route('POST', '/api/babies')({
+    auth: { userId: 'viewer-1', householdId: 'household-1', role: 'viewer' },
+    body: { name: 'Riley', dob: '2026-02-14' },
+  }, res)
+
+  assert.equal(res.statusCode, 403)
+  assert.deepEqual(res.body, { ok: false, error: 'Insufficient permissions' })
+  assert.deepEqual(calls, { inserts: 0, events: 0 })
+})
+
 test('baby archive route archives only babies in the authenticated household', () => {
   const calls = { archives: [], events: [] }
   const app = mountRouter({
@@ -105,4 +123,19 @@ test('baby archive route returns 404 for cross-household or missing babies', () 
   assert.equal(res.statusCode, 404)
   assert.deepEqual(res.body, { ok: false, error: 'Baby not found' })
   assert.equal(calls.events, 0)
+})
+
+test('baby archive route rejects viewer role without archiving', () => {
+  const calls = { archives: 0, events: 0 }
+  const app = mountRouter({
+    archiveBaby: { run: () => { calls.archives += 1; return { changes: 1 } } },
+    appendEventLog: () => { calls.events += 1 },
+  })
+  const res = createJsonResponse()
+
+  app.route('DELETE', '/api/babies/:id')({ params: { id: 'baby-1' }, auth: { householdId: 'household-1', role: 'viewer' } }, res)
+
+  assert.equal(res.statusCode, 403)
+  assert.deepEqual(res.body, { ok: false, error: 'Insufficient permissions' })
+  assert.deepEqual(calls, { archives: 0, events: 0 })
 })

@@ -92,3 +92,33 @@ test('state route rejects writes for babies outside the authenticated household'
   assert.deepEqual(res.body, { ok: false, error: 'Baby not found' })
   assert.deepEqual(calls, { upserts: 0, events: 0, evaluations: 0, broadcasts: 0 })
 })
+
+test('state route rejects viewer writes before resolving or persisting state', () => {
+  const app = createFakeApp()
+  const calls = { resolved: 0, upserts: 0, events: 0, evaluations: 0, broadcasts: 0 }
+  createStateRouter({
+    selectState: { get: () => ({ household_id: 'household-1', baby_id: 'baby-1', updated_at: 'server-old' }) },
+    upsertState: { run: () => { calls.upserts += 1 } },
+    serializeState: () => ({ entries: [] }),
+    resolveIncomingState: () => { calls.resolved += 1; return {} },
+    deletedItemOptions: () => ({}),
+    buildStateAudit: () => ({}),
+    recordDeletedItems: () => {},
+    appendEventLog: () => { calls.events += 1 },
+    summarizeState: () => ({}),
+    notificationScheduler: { evaluate: () => { calls.evaluations += 1 } },
+    broadcastStateChange: () => { calls.broadcasts += 1 },
+    handleStateEvents: () => {},
+    selectBabyForHousehold: { get: () => ({ id: 'baby-1', household_id: 'household-1' }) },
+  })(app)
+
+  const res = createJsonResponse()
+  app.route('PUT', '/api/state')({
+    auth: { householdId: 'household-1', babyId: 'baby-1', role: 'viewer' },
+    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-old' },
+  }, res)
+
+  assert.equal(res.statusCode, 403)
+  assert.deepEqual(res.body, { ok: false, error: 'Insufficient permissions' })
+  assert.deepEqual(calls, { resolved: 0, upserts: 0, events: 0, evaluations: 0, broadcasts: 0 })
+})
