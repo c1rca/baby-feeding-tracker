@@ -13,6 +13,7 @@ export type ServerSyncPayload = {
   medicines: MedicineEvent[]
   tummyTimes: TummyTimeEvent[]
   tummySession: TummyTimeSession | null
+  tummyGoalMinutes: number
   growthMeasurements: GrowthMeasurement[]
   babyDob: string
   session: Session | null
@@ -27,6 +28,7 @@ export type UseServerSyncOptions = ServerSyncPayload & {
   setMedicines: Dispatch<SetStateAction<MedicineEvent[]>>
   setTummyTimes: Dispatch<SetStateAction<TummyTimeEvent[]>>
   setTummySession: Dispatch<SetStateAction<TummyTimeSession | null>>
+  setTummyGoalMinutes: Dispatch<SetStateAction<number>>
   setGrowthMeasurements: Dispatch<SetStateAction<GrowthMeasurement[]>>
   setBabyDob: Dispatch<SetStateAction<string>>
   setSession: Dispatch<SetStateAction<Session | null>>

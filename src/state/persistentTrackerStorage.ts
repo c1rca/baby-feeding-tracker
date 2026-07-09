@@ -1,5 +1,6 @@
 import { normalizeGrowthMeasurements } from '../domain/growth'
 import { normalizeSession } from '../domain/trackerDomain'
+import { normalizeTummyTimeGoalMinutes, TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES } from '../domain/tummyTime'
 import type { GrowthMeasurement } from '../domain/growthTypes'
 import type { DiaperEvent, Entry, LegacySession, MedicineEvent, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
 
@@ -13,6 +14,7 @@ export const TRACKER_STORAGE_KEYS = {
   medicines: 'baby-feeding-tracker:v1:medicines',
   tummyTimes: 'baby-feeding-tracker:v1:tummy-times',
   tummySession: 'baby-feeding-tracker:v1:tummy-session',
+  tummyGoalMinutes: 'baby-feeding-tracker:v1:tummy-goal-minutes',
   growthMeasurements: 'baby-feeding-tracker:v1:growth-measurements',
   babyDob: 'baby-feeding-tracker:v1:baby-dob',
 } as const
@@ -63,6 +65,7 @@ export const readSession = () => {
 export const readFeedingNotificationsEnabled = () => localStorage.getItem(TRACKER_STORAGE_KEYS.feedingNotifications) === '1'
 
 export const readBabyDob = () => localStorage.getItem(TRACKER_STORAGE_KEYS.babyDob) || '2026-06-03'
+export const readTummyGoalMinutes = () => normalizeTummyTimeGoalMinutes(localStorage.getItem(TRACKER_STORAGE_KEYS.tummyGoalMinutes) ?? TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES)
 
 const getCookieTheme = (): Theme | null => {
   const match = document.cookie.match(/(?:^|; )baby_feeding_theme=([^;]+)/)

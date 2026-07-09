@@ -1,5 +1,11 @@
 import { normalizeMedicineReminderSettings } from './notificationModels.js'
 
+const normalizeTummyGoalMinutes = (value) => {
+  const numeric = Number(value)
+  if (!Number.isFinite(numeric)) return 20
+  return Math.min(240, Math.max(1, Math.round(numeric)))
+}
+
 export const createHealthRouter = ({ config, getGotifyRemindersEnabled }) => {
   const router = (app) => {
     app.get('/api/health', (_req, res) => {
@@ -83,13 +89,14 @@ export const createStateRouter = ({
         medicines: Array.isArray(req.body?.medicines) ? req.body.medicines : [],
         tummyTimes: Array.isArray(req.body?.tummyTimes) ? req.body.tummyTimes : [],
         tummySession: req.body?.tummySession ?? null,
+        tummyGoalMinutes: normalizeTummyGoalMinutes(req.body?.tummyGoalMinutes),
         growthMeasurements: Array.isArray(req.body?.growthMeasurements) ? req.body.growthMeasurements : [],
         babyDob: typeof req.body?.babyDob === 'string' ? req.body.babyDob : '2026-06-03',
         session: req.body?.session ?? null,
         theme: req.body?.theme === 'dark' ? 'dark' : 'light',
         updatedAt: req.body?.updatedAt,
       }, deletedItemOptions())
-      const { entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session, theme } = incoming
+      const { entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme } = incoming
       const updatedAt = new Date().toISOString()
 
       const statePayload = {
@@ -98,6 +105,7 @@ export const createStateRouter = ({
         medicines_json: JSON.stringify(medicines),
         tummy_times_json: JSON.stringify(tummyTimes),
         tummy_session_json: tummySession ? JSON.stringify(tummySession) : null,
+        tummy_goal_minutes: tummyGoalMinutes,
         growth_measurements_json: JSON.stringify(growthMeasurements),
         baby_dob: babyDob,
         session_json: session ? JSON.stringify(session) : null,
@@ -105,17 +113,17 @@ export const createStateRouter = ({
         updated_at: updatedAt,
       }
 
-      const audit = buildStateAudit(existingRow, { entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session, theme }, {
+      const audit = buildStateAudit(existingRow, { entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme }, {
         staleWriteMerged: incoming.stale,
         clientUpdatedAt: req.body?.updatedAt,
         nextUpdatedAt: updatedAt,
       })
       persistStateAndDeletedItems(statePayload, audit, updatedAt)
       appendEventLog('state_write_audit', audit)
-      appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines, growthMeasurements, babyDob, tummyTimes, tummySession), staleWriteMerged: incoming.stale, entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session })
+      appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines, growthMeasurements, babyDob, tummyTimes, tummySession), staleWriteMerged: incoming.stale, entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session })
       notificationScheduler?.evaluate()
 
-      const responseState = { entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session, theme, updatedAt }
+      const responseState = { entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, updatedAt }
       broadcastStateChange(responseState)
       res.json({ ok: true, updatedAt, staleWriteMerged: incoming.stale, state: responseState })
     })

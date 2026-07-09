@@ -15,6 +15,7 @@ export type TrackerModalsProps = {
   entries: Entry[]
   diapers: DiaperEvent[]
   babyDob: string
+  tummyGoalMinutes: number
   feedingNotificationsEnabled: boolean
   notificationPermission: NotificationPermission
   gotifyAvailable: boolean
@@ -29,6 +30,7 @@ export type TrackerModalsProps = {
   setEntries: (updater: Entry[] | ((prev: Entry[]) => Entry[])) => void
   setDiapers: (updater: DiaperEvent[] | ((prev: DiaperEvent[]) => DiaperEvent[])) => void
   setBabyDob: (dob: string) => void
+  setTummyGoalMinutes: (minutes: number) => void
   setSession: (session: Session | null) => void
   setUndoState: (state: null) => void
   setFeedingNotificationsEnabled: (enabled: boolean) => void

@@ -11,6 +11,7 @@ type PersistLocalChangesOptions = {
   medicines: ServerSyncPayload['medicines']
   tummyTimes: ServerSyncPayload['tummyTimes']
   tummySession: ServerSyncPayload['tummySession']
+  tummyGoalMinutes: ServerSyncPayload['tummyGoalMinutes']
   growthMeasurements: ServerSyncPayload['growthMeasurements']
   babyDob: ServerSyncPayload['babyDob']
   session: ServerSyncPayload['session']
@@ -27,6 +28,7 @@ export function usePersistLocalChanges({
   medicines,
   tummyTimes,
   tummySession,
+  tummyGoalMinutes,
   growthMeasurements,
   babyDob,
   session,
@@ -42,7 +44,7 @@ export function usePersistLocalChanges({
 
     localStorage.setItem(KEY_PENDING_SYNC, '1')
     window.setTimeout(() => void syncToApi(), 0)
-  }, [hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session, theme])
+  }, [hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme])
 }
 
 export function usePendingSyncRetry(syncToApi: (overrides?: SyncToApiOverrides) => Promise<void>) {

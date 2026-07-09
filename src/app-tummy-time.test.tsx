@@ -8,6 +8,7 @@ import type { TummyTimeEvent } from './types'
 
 const TUMMY_STORAGE_KEY = 'baby-feeding-tracker:v1:tummy-times'
 const TUMMY_SESSION_STORAGE_KEY = 'baby-feeding-tracker:v1:tummy-session'
+const TUMMY_GOAL_STORAGE_KEY = 'baby-feeding-tracker:v1:tummy-goal-minutes'
 
 describe('Tummy Time tracking', () => {
   setupAppTestEnvironment()
@@ -102,13 +103,36 @@ describe('Tummy Time tracking', () => {
     }
   })
 
-  it('reminds against a 20-minute daily goal with spacing after partial sessions', () => {
+  it('lets settings change the Tummy Time daily goal and shows today progress above diapers', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 5, 10, 12, 0))
+    localStorage.setItem(TUMMY_STORAGE_KEY, JSON.stringify([
+      { id: 'tummy-1', startedAt: new Date(2026, 5, 10, 9, 0).getTime(), endedAt: new Date(2026, 5, 10, 9, 12).getTime() },
+    ] satisfies TummyTimeEvent[]))
+    const user = userEvent.setup()
+    render(<App />)
+
+    expect(screen.getByRole('heading', { name: /Tummy Time today/i })).toBeTruthy()
+    expect(screen.getByText(/12\/20 min/i)).toBeTruthy()
+    expect(screen.getByText(/60% of goal/i)).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    const goalInput = screen.getByLabelText(/Tummy Time daily goal/i)
+    await user.clear(goalInput)
+    await user.type(goalInput, '45')
+
+    expect(localStorage.getItem(TUMMY_GOAL_STORAGE_KEY)).toBe('45')
+    expect(screen.getByText(/12\/45 min/i)).toBeTruthy()
+    expect(screen.getByText(/27% of goal/i)).toBeTruthy()
+  })
+
+  it('reminds against a configurable daily goal with spacing after partial sessions', () => {
     const at = (hour: number, minutes = 10): TummyTimeEvent => ({ id: `tummy-${hour}`, startedAt: new Date(2026, 5, 10, hour).getTime(), endedAt: new Date(2026, 5, 10, hour, minutes).getTime() })
-    expect(shouldShowTummyTimeReminder([], null, new Date(2026, 5, 10, 7).getTime())).toBe(false)
-    expect(shouldShowTummyTimeReminder([], null, new Date(2026, 5, 10, 9).getTime())).toBe(true)
-    expect(shouldShowTummyTimeReminder([at(8, 8)], null, new Date(2026, 5, 10, 10).getTime())).toBe(false)
-    expect(shouldShowTummyTimeReminder([at(8, 8)], null, new Date(2026, 5, 10, 13).getTime())).toBe(true)
-    expect(shouldShowTummyTimeReminder([at(16, 8)], null, new Date(2026, 5, 10, 18).getTime())).toBe(true)
-    expect(shouldShowTummyTimeReminder([at(8), at(14)], null, new Date(2026, 5, 10, 18).getTime())).toBe(false)
+    expect(shouldShowTummyTimeReminder([], null, new Date(2026, 5, 10, 7).getTime(), 30)).toBe(false)
+    expect(shouldShowTummyTimeReminder([], null, new Date(2026, 5, 10, 9).getTime(), 30)).toBe(true)
+    expect(shouldShowTummyTimeReminder([at(8, 8)], null, new Date(2026, 5, 10, 10).getTime(), 30)).toBe(false)
+    expect(shouldShowTummyTimeReminder([at(8, 8)], null, new Date(2026, 5, 10, 13).getTime(), 30)).toBe(true)
+    expect(shouldShowTummyTimeReminder([at(16, 8)], null, new Date(2026, 5, 10, 18).getTime(), 30)).toBe(true)
+    expect(shouldShowTummyTimeReminder([at(8), at(14), at(15)], null, new Date(2026, 5, 10, 18).getTime(), 30)).toBe(false)
   })
 })

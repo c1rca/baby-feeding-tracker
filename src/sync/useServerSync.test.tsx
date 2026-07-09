@@ -45,11 +45,12 @@ function Harness({ initialEntries = [] as Entry[], initialSession = null as Sess
   const [medicines, setMedicines] = useState<MedicineEvent[]>([])
   const [tummyTimes, setTummyTimes] = useState<TummyTimeEvent[]>(initialTummyTimes)
   const [tummySession, setTummySession] = useState<TummyTimeSession | null>(null)
+  const [tummyGoalMinutes, setTummyGoalMinutes] = useState(20)
   const [growthMeasurements, setGrowthMeasurements] = useState<GrowthMeasurement[]>(initialGrowthMeasurements)
   const [babyDob, setBabyDob] = useState('2026-06-03')
   const [sessionState, setSession] = useState<Session | null>(initialSession)
   const [theme, setTheme] = useState<Theme>('light')
-  const { syncStatus } = useServerSync({ entries, diapers, medicines, tummyTimes, tummySession, growthMeasurements, babyDob, session: sessionState, theme, setEntries, setDiapers, setMedicines, setTummyTimes, setTummySession, setGrowthMeasurements, setBabyDob, setSession, setTheme })
+  const { syncStatus } = useServerSync({ entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session: sessionState, theme, setEntries, setDiapers, setMedicines, setTummyTimes, setTummySession, setTummyGoalMinutes, setGrowthMeasurements, setBabyDob, setSession, setTheme })
 
   return (
     <div>

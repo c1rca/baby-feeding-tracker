@@ -12,6 +12,7 @@ import {
   readSortedMedicines,
   readSortedTummyTimes,
   readTummySession,
+  readTummyGoalMinutes,
   readTheme,
 } from './persistentTrackerStorage'
 
@@ -22,6 +23,7 @@ export function usePersistentTrackerState() {
   const [medicines, setMedicines] = useState<MedicineEvent[]>(readSortedMedicines)
   const [tummyTimes, setTummyTimes] = useState<TummyTimeEvent[]>(readSortedTummyTimes)
   const [tummySession, setTummySession] = useState<TummyTimeSession | null>(readTummySession)
+  const [tummyGoalMinutes, setTummyGoalMinutes] = useState(readTummyGoalMinutes)
   const [growthMeasurements, setGrowthMeasurements] = useState(readSortedGrowthMeasurements)
   const [babyDob, setBabyDob] = useState(readBabyDob)
   const [theme, setTheme] = useState<Theme>(readTheme)
@@ -33,6 +35,7 @@ export function usePersistentTrackerState() {
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.medicines, JSON.stringify(medicines)), [medicines])
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.tummyTimes, JSON.stringify(tummyTimes)), [tummyTimes])
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.tummySession, JSON.stringify(tummySession)), [tummySession])
+  useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.tummyGoalMinutes, String(tummyGoalMinutes)), [tummyGoalMinutes])
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.growthMeasurements, JSON.stringify(growthMeasurements)), [growthMeasurements])
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.babyDob, babyDob), [babyDob])
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.session, JSON.stringify(session)), [session])
@@ -53,6 +56,8 @@ export function usePersistentTrackerState() {
     setTummyTimes,
     tummySession,
     setTummySession,
+    tummyGoalMinutes,
+    setTummyGoalMinutes,
     growthMeasurements,
     setGrowthMeasurements,
     babyDob,

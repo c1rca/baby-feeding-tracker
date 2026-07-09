@@ -1,5 +1,5 @@
 export const serializeState = (row) => {
-  if (!row) return { entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: '2026-06-03', session: null, tummySession: null, theme: 'light', updatedAt: null }
+  if (!row) return { entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: '2026-06-03', tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'light', updatedAt: null }
   return {
     entries: JSON.parse(row.entries_json),
     diapers: JSON.parse(row.diapers_json || '[]'),
@@ -7,6 +7,7 @@ export const serializeState = (row) => {
     tummyTimes: JSON.parse(row.tummy_times_json || '[]'),
     growthMeasurements: JSON.parse(row.growth_measurements_json || '[]'),
     babyDob: row.baby_dob || '2026-06-03',
+    tummyGoalMinutes: Number.isFinite(Number(row.tummy_goal_minutes)) ? Math.min(240, Math.max(1, Math.round(Number(row.tummy_goal_minutes)))) : 20,
     session: row.session_json ? JSON.parse(row.session_json) : null,
     tummySession: row.tummy_session_json ? JSON.parse(row.tummy_session_json) : null,
     theme: row.theme || 'light',

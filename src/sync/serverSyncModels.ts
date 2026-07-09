@@ -1,4 +1,5 @@
 import { normalizeSession } from '../domain/trackerDomain'
+import { normalizeTummyTimeGoalMinutes } from '../domain/tummyTime'
 import { normalizeGrowthMeasurements } from '../domain/growth'
 import type { GrowthMeasurement } from '../domain/growthTypes'
 import type { DiaperEvent, Entry, MedicineEvent, ServerState, TummyTimeEvent } from '../types'
@@ -40,6 +41,7 @@ export function buildPendingSyncPayload(serverState: ServerState, localPayload: 
     medicines: sortMedicines(mergeById(serverState.medicines, localPayload.medicines)),
     tummyTimes: sortTummyTimes(mergeById(serverState.tummyTimes, localPayload.tummyTimes)),
     tummySession: serverState.tummySession ?? localPayload.tummySession,
+    tummyGoalMinutes: normalizeTummyTimeGoalMinutes(serverState.tummyGoalMinutes ?? localPayload.tummyGoalMinutes),
     growthMeasurements: sortGrowthMeasurements(mergeById(serverState.growthMeasurements, localPayload.growthMeasurements)),
     babyDob: serverState.babyDob || localPayload.babyDob || '2026-06-03',
     session: serverSession ?? localPayload.session,
@@ -58,6 +60,7 @@ export function buildApiStatePayload(
     medicines: overrides.medicines ?? currentPayload.medicines,
     tummyTimes: overrides.tummyTimes ?? currentPayload.tummyTimes,
     tummySession: overrides.tummySession ?? currentPayload.tummySession,
+    tummyGoalMinutes: normalizeTummyTimeGoalMinutes(overrides.tummyGoalMinutes ?? currentPayload.tummyGoalMinutes),
     growthMeasurements: overrides.growthMeasurements ?? currentPayload.growthMeasurements,
     babyDob: overrides.babyDob ?? currentPayload.babyDob,
     session: overrides.session ?? currentPayload.session,

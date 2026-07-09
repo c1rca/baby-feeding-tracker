@@ -5,12 +5,14 @@ import { BrowserReminderSetting } from './BrowserReminderSetting'
 import { GotifyReminderSetting } from './GotifyReminderSetting'
 import { SettingsDataControls } from './SettingsDataControls'
 import { applySkin, readSkin, skinLabel } from '../../skin'
+import { normalizeTummyTimeGoalMinutes } from '../../domain/tummyTime'
 
 type SettingsModalProps = Pick<
   TrackerModalsProps,
   | 'entries'
   | 'diapers'
   | 'babyDob'
+  | 'tummyGoalMinutes'
   | 'feedingNotificationsEnabled'
   | 'notificationPermission'
   | 'gotifyAvailable'
@@ -21,6 +23,7 @@ type SettingsModalProps = Pick<
   | 'setEntries'
   | 'setDiapers'
   | 'setBabyDob'
+  | 'setTummyGoalMinutes'
   | 'setSession'
   | 'setUndoState'
   | 'setFeedingNotificationsEnabled'
@@ -54,7 +57,8 @@ function AppearanceSetting() {
   )
 }
 
-export function SettingsModal({ entries, diapers, babyDob, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, showToast }: SettingsModalProps) {
+export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, showToast }: SettingsModalProps) {
+  const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
   const closeSettings = () => setSettingsOpen(false)
 
   return (
@@ -86,6 +90,29 @@ export function SettingsModal({ entries, diapers, babyDob, feedingNotificationsE
           <small>Used to auto-calculate growth chart age.</small>
         </span>
         <input type="date" value={babyDob} onChange={(event) => setBabyDob(event.target.value)} />
+      </label>
+      <label className="setting-row">
+        <span>
+          <strong>Tummy Time daily goal</strong>
+          <small>Used for today progress, Stats, and reminder timing.</small>
+        </span>
+        <input
+          type="number"
+          min="1"
+          max="240"
+          step="1"
+          inputMode="numeric"
+          value={tummyGoalDraft}
+          onChange={(event) => {
+            setTummyGoalDraft(event.target.value)
+            if (event.target.value !== '') setTummyGoalMinutes(normalizeTummyTimeGoalMinutes(event.target.value))
+          }}
+          onBlur={() => {
+            const normalized = normalizeTummyTimeGoalMinutes(tummyGoalDraft)
+            setTummyGoalDraft(String(normalized))
+            setTummyGoalMinutes(normalized)
+          }}
+        />
       </label>
       <SettingsDataControls
         entries={entries}

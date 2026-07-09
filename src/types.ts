@@ -59,6 +59,7 @@ export type ServerState = {
   medicines?: MedicineEvent[]
   tummyTimes?: TummyTimeEvent[]
   tummySession?: TummyTimeSession | null
+  tummyGoalMinutes?: number
   growthMeasurements?: GrowthMeasurement[]
   babyDob?: string
   session?: LegacySession | null

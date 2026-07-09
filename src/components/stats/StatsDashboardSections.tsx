@@ -104,7 +104,7 @@ export function TummyTimeStatsCard({ stats }: { stats: Stats }) {
     <section className="card tummy-stats-card" aria-label="Tummy Time stats">
       <div className="tummy-stats-copy">
         <span className="stats-kicker"><Dumbbell size={15} /> Tummy Time</span>
-        <h2>{hasTummyTime ? `${stats.tummyMinutesToday}/20 min today` : 'Tummy Time starts here'}</h2>
+        <h2>{hasTummyTime ? `${stats.tummyMinutesToday}/${stats.tummyDailyGoalMinutes} min today` : 'Tummy Time starts here'}</h2>
         <p>{hasTummyTime ? `${stats.tummyTotalMinutes} minutes captured this week · ${stats.tummyGoalDays} goal ${stats.tummyGoalDays === 1 ? 'day' : 'days'}.` : 'Log quick adds or use the timer to see daily progress, weekly consistency, and best-day momentum.'}</p>
       </div>
       <div className="tummy-progress-orb" style={{ '--progress': `${stats.tummyGoalPercentToday}%` } as CSSProperties} aria-label={`Today Tummy Time progress ${stats.tummyGoalPercentToday}%`}>

@@ -21,16 +21,17 @@ type TrackerPageModelOptions = {
   diapers: DiaperEvent[]
   medicines: MedicineEvent[]
   tummyTimes?: TummyTimeEvent[]
+  tummyGoalMinutes?: number
   session: Session | null
   now: number
   dismissedMedicineReminderIds: string[]
   medicineReminderSettings?: MedicineReminderSettings | null
 }
 
-export function useTrackerPageModel({ entries, diapers, medicines, tummyTimes = [], session, now, dismissedMedicineReminderIds, medicineReminderSettings }: TrackerPageModelOptions) {
+export function useTrackerPageModel({ entries, diapers, medicines, tummyTimes = [], tummyGoalMinutes, session, now, dismissedMedicineReminderIds, medicineReminderSettings }: TrackerPageModelOptions) {
   const today = useMemo(() => calculateTodaySummary(entries, diapers, now), [entries, diapers, now])
   const trend = useMemo(() => calculateTrend(entries, now), [entries, now])
-  const stats = useMemo(() => calculateStats(entries, diapers, medicines, now, today, trend.days, tummyTimes), [entries, diapers, medicines, tummyTimes, now, today, trend.days])
+  const stats = useMemo(() => calculateStats(entries, diapers, medicines, now, today, trend.days, tummyTimes, tummyGoalMinutes), [entries, diapers, medicines, tummyTimes, tummyGoalMinutes, now, today, trend.days])
   const avgGapMinutes = useMemo(() => calculateAvgGapMinutes(entries), [entries])
   const suggestedSide = useMemo<Side>(() => calculateSuggestedSide(entries, today), [entries, today])
 

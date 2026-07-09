@@ -1,6 +1,6 @@
 import { formatDuration } from './feedingUtils'
 import { sideLabel } from './labels'
-import { TUMMY_TIME_DAILY_GOAL_MINUTES, tummyTimeDurationSeconds, tummyTimeMinutesToday } from './tummyTime'
+import { TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES, normalizeTummyTimeGoalMinutes, tummyTimeDurationSeconds, tummyTimeMinutesToday } from './tummyTime'
 import { DAY_MS, localDayWindows } from './time'
 import type { DiaperEvent, Entry, MedicineEvent, TummyTimeEvent } from '../types'
 import { calculateDiaperAverages } from './statsDiapers'
@@ -24,7 +24,9 @@ export const calculateStats = (
   today: { left: number; right: number; wet: number; stool: number },
   trendDays: { label: string; count: number }[],
   tummyTimes: TummyTimeEvent[] = [],
+  tummyGoalMinutes = TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES,
 ) => {
+  const tummyDailyGoalMinutes = normalizeTummyTimeGoalMinutes(tummyGoalMinutes)
   const dayStartMs = startOfDayMs(now)
   const weekWindows = localDayWindows(now, 7)
   const weekStart = weekWindows[0]?.startMs ?? dayStartMs - 6 * DAY_MS
@@ -73,10 +75,10 @@ export const calculateStats = (
     const minutes = tummyTimes
       .filter((event) => event.startedAt >= window.startMs && event.startedAt < window.endMs)
       .reduce((sum, event) => sum + Math.round(tummyTimeDurationSeconds(event) / 60), 0)
-    return { label: window.label, minutes, goalPercent: Math.min(100, Math.round((minutes / TUMMY_TIME_DAILY_GOAL_MINUTES) * 100)), startMs: window.startMs, endMs: window.endMs }
+    return { label: window.label, minutes, goalPercent: Math.min(100, Math.round((minutes / tummyDailyGoalMinutes) * 100)), startMs: window.startMs, endMs: window.endMs }
   })
-  const tummyGoalPercentToday = Math.min(100, Math.round((tummyMinutesToday / TUMMY_TIME_DAILY_GOAL_MINUTES) * 100))
-  const tummyGoalDays = tummyDays.filter((day) => day.minutes >= TUMMY_TIME_DAILY_GOAL_MINUTES).length
+  const tummyGoalPercentToday = Math.min(100, Math.round((tummyMinutesToday / tummyDailyGoalMinutes) * 100))
+  const tummyGoalDays = tummyDays.filter((day) => day.minutes >= tummyDailyGoalMinutes).length
   const tummyAverageMinutesPerDay = roundTenth(tummyTotalMinutes / 7)
   const tummyBestDay = tummyDays.reduce((best, day) => (day.minutes > best.minutes ? day : best), tummyDays[0] ?? { label: '—', minutes: 0, goalPercent: 0 })
 
@@ -104,6 +106,7 @@ export const calculateStats = (
     latestVitaminD,
     vitaminDTakenToday,
     tummyMinutesToday,
+    tummyDailyGoalMinutes,
     tummyTotalMinutes,
     tummyGoalPercentToday,
     tummyGoalDays,
