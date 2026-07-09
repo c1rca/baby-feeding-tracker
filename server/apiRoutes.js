@@ -241,7 +241,7 @@ export const createStateRouter = ({
       notificationScheduler?.evaluate()
 
       const responseState = { entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, updatedAt }
-      broadcastStateChange(responseState)
+      broadcastStateChange(responseState, scope)
       res.json({ ok: true, updatedAt, staleWriteMerged: incoming.stale, state: responseState })
     })
   }

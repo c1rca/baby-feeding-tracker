@@ -36,7 +36,7 @@ test('state route writes resolved canonical state, audit/event logs it, evaluate
       theme,
     }),
     notificationScheduler: { evaluate: () => { calls.evaluations += 1 } },
-    broadcastStateChange: (payload) => calls.broadcasts.push(payload),
+    broadcastStateChange: (payload, scope) => calls.broadcasts.push({ payload, scope }),
     handleStateEvents: () => {},
     selectBabyForHousehold: { get: (babyId, householdId) => ({ id: babyId, household_id: householdId }) },
   })(app)
@@ -58,7 +58,7 @@ test('state route writes resolved canonical state, audit/event logs it, evaluate
   assert.equal(calls.events[1].event, 'state_replace')
   assert.equal(calls.events[1].payload.staleWriteMerged, true)
   assert.equal(calls.evaluations, 1)
-  assert.deepEqual(calls.broadcasts, [res.body.state])
+  assert.deepEqual(calls.broadcasts, [{ payload: res.body.state, scope: { householdId: 'household-2', babyId: 'baby-2' } }])
   assert.equal(res.body.ok, true)
   assert.equal(res.body.staleWriteMerged, true)
 })

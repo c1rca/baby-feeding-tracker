@@ -72,7 +72,7 @@ const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt
   if (statePayload.household_id === DEFAULT_HOUSEHOLD_ID && statePayload.baby_id === DEFAULT_BABY_ID) upsertState.run(statePayload)
   recordDeletedItems(audit, updatedAt)
 })
-const { broadcastStateChange, handleStateEvents } = createStateEventHub({ selectState, serializeState })
+const { broadcastStateChange, handleStateEvents } = createStateEventHub({ selectState, selectStateForBaby, serializeState })
 const createBackupOnStart = createStartupBackup({ db, backupDir: config.backupDir, appendEventLog, redactError })
 
 const checkDatabaseReady = () => {

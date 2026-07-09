@@ -183,5 +183,5 @@ Before broad/public exposure:
 - Add password/admin reset flow beyond one-time bootstrap.
 - Decide reverse proxy + `trust proxy` behavior for rate limiting.
 - Add CSRF protection before any cookie-based session migration.
-- Audit scheduler/SSE/startup snapshot behavior for scoped-state assumptions.
+- Extend reminders from default-baby-only to an explicit multi-baby notification model when needed.
 - Add off-host encrypted backups and monitoring.
