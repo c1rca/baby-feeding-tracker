@@ -199,6 +199,46 @@ describe('App auth shell', () => {
     expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBeNull()
   })
 
+  it('lets an owner invite caregivers, revoke pending invites, and demote members from settings', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem(AUTH_TOKEN_KEY, 'token-123')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/auth/me') return jsonResponse({ ok: true, user: { ...sessionModeUser, email: 'owner@example.com', displayName: 'Owner' } })
+      if (url === '/api/babies') return jsonResponse({ babies: [{ id: 'default-baby', name: 'Ryan' }] })
+      if (url === '/api/household-members') return jsonResponse({ members: [
+        { userId: 'owner', email: 'owner@example.com', displayName: 'Owner', role: 'owner', createdAt: '2026-01-01T00:00:00.000Z' },
+        { userId: 'helper', email: 'helper@example.com', displayName: 'Helper', role: 'caregiver', createdAt: '2026-01-02T00:00:00.000Z' },
+      ] })
+      if (url === '/api/household-invites' && !init?.method) return jsonResponse({ invites: [{ id: 'invite-1', email: 'old@example.com', role: 'viewer', expiresAt: '2026-12-01T00:00:00.000Z' }] })
+      if (url === '/api/household-invites' && init?.method === 'POST') return jsonResponse({ ok: true, invite: { id: 'invite-2', email: 'new@example.com', role: 'caregiver', token: 'invite-token', expiresAt: '2026-12-02T00:00:00.000Z' } }, 201)
+      if (url === '/api/household-invites/invite-1' && init?.method === 'DELETE') return jsonResponse({ ok: true })
+      if (url === '/api/household-members/helper' && init?.method === 'PATCH') return jsonResponse({ ok: true })
+      if (url === '/api/notification-settings') return jsonResponse({ available: false, gotifyRemindersEnabled: false })
+      if (url === '/api/state' && !init?.method) return jsonResponse(emptyServerState)
+      return jsonResponse({ ok: true, updatedAt: 'server-2' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await user.click(await screen.findByLabelText(/Show settings/i))
+    expect(await screen.findByText(/Household access/i)).toBeTruthy()
+    expect(screen.getByText(/old@example.com/i)).toBeTruthy()
+    await user.type(screen.getByLabelText(/Invite email/i), 'new@example.com')
+    await user.selectOptions(screen.getByLabelText(/Invite role/i), 'caregiver')
+    await user.click(screen.getByRole('button', { name: /Send invite/i }))
+    await waitFor(() => expect(screen.getByText(/invite-token/i)).toBeTruthy())
+    await user.click(screen.getByRole('button', { name: /Revoke invite for old@example.com/i }))
+    await user.selectOptions(screen.getByLabelText(/Role for helper@example.com/i), 'viewer')
+
+    expect(fetchMock.mock.calls.some(([input, init]) => String(input) === '/api/household-invites' && init?.method === 'POST' && bearerOf(init) === 'Bearer token-123')).toBe(true)
+    expect(fetchMock.mock.calls.some(([input, init]) => String(input) === '/api/household-invites/invite-1' && init?.method === 'DELETE')).toBe(true)
+    const roleCall = fetchMock.mock.calls.find(([input, init]) => String(input) === '/api/household-members/helper' && init?.method === 'PATCH')
+    expect(roleCall).toBeTruthy()
+    expect(JSON.parse(String(roleCall?.[1]?.body))).toEqual({ role: 'viewer' })
+  })
+
   it('lets a signed-in caregiver change password from polished account settings', async () => {
     const user = userEvent.setup()
     localStorage.setItem(AUTH_TOKEN_KEY, 'token-123')

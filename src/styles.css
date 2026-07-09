@@ -1375,6 +1375,11 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .login-help { position: relative; display: grid; gap: 3px; padding: 12px 13px; border: 1px solid var(--border); border-radius: 16px; background: var(--well); color: var(--ink-soft); font-size: .83rem; font-weight: 700; line-height: 1.35; }
 .auth-mode-toggle { position: relative; min-height: 40px; justify-content: center; background: transparent; color: var(--berry); box-shadow: none; border: 1px solid transparent; font-size: .9rem; }
 .auth-mode-toggle:hover { border-color: var(--border); background: var(--well); transform: none; box-shadow: none; }
+.settings-access-list { display: grid; gap: 8px; margin-top: 8px; }
+.settings-access-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border: 1px solid var(--border); border-radius: 14px; background: var(--well); }
+.settings-access-row span { display: grid; gap: 2px; min-width: 0; }
+.settings-access-row small { color: var(--ink-faint); font-weight: 800; text-transform: capitalize; }
+.household-invite-form { align-items: end; }
 .login-help strong { color: var(--ink); font-size: .88rem; }
 @media (max-width: 640px) {
   .account-password-form { grid-template-columns: 1fr; }

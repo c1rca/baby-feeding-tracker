@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ModalFrame } from './ModalFrame'
 import type { TrackerModalsProps } from './modalTypes'
 import { BrowserReminderSetting } from './BrowserReminderSetting'
@@ -7,6 +7,7 @@ import { SettingsDataControls } from './SettingsDataControls'
 import { applySkin, readSkin, skinLabel } from '../../skin'
 import { normalizeTummyTimeGoalMinutes } from '../../domain/tummyTime'
 import { changePassword } from '../../auth/authApi'
+import { createHouseholdInvite, fetchHouseholdAccess, revokeHouseholdInvite, updateHouseholdMemberRole, type HouseholdInvite, type HouseholdMember } from '../../household/accessApi'
 
 type SettingsModalProps = Pick<
   TrackerModalsProps,
@@ -116,6 +117,90 @@ function AccountSecuritySetting({ authUser, showToast }: { authUser: SettingsMod
   )
 }
 
+function HouseholdAccessSetting({ role, showToast }: { role?: string; showToast: (message: string) => void }) {
+  const [members, setMembers] = useState<HouseholdMember[]>([])
+  const [invites, setInvites] = useState<HouseholdInvite[]>([])
+  const [email, setEmail] = useState('')
+  const [inviteRole, setInviteRole] = useState<'caregiver' | 'viewer'>('caregiver')
+  const [lastToken, setLastToken] = useState('')
+  const [message, setMessage] = useState<string | null>(null)
+  const canManage = role === 'owner'
+
+  useEffect(() => {
+    let cancelled = false
+    const loadAccess = async () => {
+      if (!role || role === 'viewer') return
+      const result = await fetchHouseholdAccess()
+      if (cancelled) return
+      if (result.ok) {
+        setMembers(result.members)
+        setInvites(result.invites)
+      } else {
+        setMessage(result.error)
+      }
+    }
+    void loadAccess()
+    return () => { cancelled = true }
+  }, [role])
+
+  const sendInvite = async () => {
+    const trimmedEmail = email.trim()
+    if (!trimmedEmail || !canManage) return
+    const result = await createHouseholdInvite(trimmedEmail, inviteRole)
+    if (result.ok) {
+      setInvites((current) => [...current, result.invite])
+      setLastToken(result.invite.token || '')
+      setEmail('')
+      showToast('Invite created')
+    } else {
+      setMessage(result.error)
+    }
+  }
+
+  const revokeInvite = async (invite: HouseholdInvite) => {
+    const result = await revokeHouseholdInvite(invite.id)
+    if (result.ok) {
+      setInvites((current) => current.filter((item) => item.id !== invite.id))
+      showToast('Invite revoked')
+    } else setMessage(result.error)
+  }
+
+  const updateRole = async (member: HouseholdMember, nextRole: 'caregiver' | 'viewer') => {
+    const result = await updateHouseholdMemberRole(member.userId, nextRole)
+    if (result.ok) {
+      setMembers((current) => current.map((item) => item.userId === member.userId ? { ...item, role: nextRole } : item))
+      showToast('Member role updated')
+    } else setMessage(result.error)
+  }
+
+  if (!role || role === 'viewer') return null
+  return (
+    <section className="account-security-card household-access-card" aria-labelledby="household-access-title">
+      <div className="account-security-copy">
+        <span className="settings-kicker">Household</span>
+        <h3 id="household-access-title">Household access</h3>
+        <p>{canManage ? 'Invite caregivers and manage roles for this household.' : 'View household caregivers and pending invites.'}</p>
+      </div>
+      {canManage ? (
+        <div className="settings-inline-form household-invite-form">
+          <label><span>Invite email</span><input aria-label="Invite email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="caregiver@example.com" /></label>
+          <label><span>Invite role</span><select aria-label="Invite role" value={inviteRole} onChange={(event) => setInviteRole(event.target.value as 'caregiver' | 'viewer')}><option value="caregiver">Caregiver</option><option value="viewer">Viewer</option></select></label>
+          <button type="button" onClick={sendInvite} disabled={!email.trim()}>Send invite</button>
+        </div>
+      ) : null}
+      {lastToken ? <p className="account-security-message is-success" role="status">Invite token: <code>{lastToken}</code></p> : null}
+      {message ? <p className="account-security-message is-error" role="alert">{message}</p> : null}
+      <div className="settings-access-list">
+        {members.map((member) => {
+          const label = member.email || member.displayName || member.userId
+          return <div className="settings-access-row" key={member.userId}><span><strong>{label}</strong><small>{member.role}</small></span>{canManage && member.role !== 'owner' ? <select aria-label={`Role for ${label}`} value={member.role} onChange={(event) => updateRole(member, event.target.value as 'caregiver' | 'viewer')}><option value="caregiver">Caregiver</option><option value="viewer">Viewer</option></select> : null}</div>
+        })}
+        {invites.map((invite) => <div className="settings-access-row" key={invite.id}><span><strong>{invite.email}</strong><small>Pending {invite.role}</small></span>{canManage ? <button type="button" className="danger" aria-label={`Revoke invite for ${invite.email}`} onClick={() => revokeInvite(invite)}>Revoke</button> : null}</div>)}
+      </div>
+    </section>
+  )
+}
+
 function BabyManagementSetting({ babies = [], selectedBabyId = '', role, onCreateBaby, onArchiveBaby, showToast }: { babies?: SettingsModalProps['babies']; selectedBabyId?: string; role?: string; onCreateBaby?: SettingsModalProps['onCreateBaby']; onArchiveBaby?: SettingsModalProps['onArchiveBaby']; showToast: (message: string) => void }) {
   const [name, setName] = useState('')
   const [dob, setDob] = useState('')
@@ -193,6 +278,7 @@ export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, fee
       />
       <AppearanceSetting />
       <AccountSecuritySetting authUser={authUser} showToast={showToast} />
+      <HouseholdAccessSetting role={authUser?.role} showToast={showToast} />
       <BabyManagementSetting babies={babies} selectedBabyId={selectedBabyId} role={authUser?.role} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} showToast={showToast} />
       <label className="setting-row">
         <span>
