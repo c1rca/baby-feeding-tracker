@@ -3,6 +3,9 @@ import Database from 'better-sqlite3'
 
 export const DEFAULT_HOUSEHOLD_ID = 'default-household'
 export const DEFAULT_BABY_ID = 'default-baby'
+export const DEFAULT_USER_ID = 'default-user'
+export const DEFAULT_USER_EMAIL = 'local@baby-feeding-tracker.invalid'
+export const DEFAULT_USER_DISPLAY_NAME = 'Local caregiver'
 export const DEFAULT_HOUSEHOLD_NAME = 'My household'
 export const DEFAULT_BABY_NAME = 'Baby'
 export const DEFAULT_BABY_DOB = '2026-06-03'
@@ -15,10 +18,38 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath }) {
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   db.exec(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      display_name TEXT NOT NULL,
+      password_hash TEXT,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS households (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS household_members (
+      user_id TEXT NOT NULL,
+      household_id TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('owner', 'caregiver', 'viewer')),
+      created_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, household_id),
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (household_id) REFERENCES households(id)
+    );
+
+    CREATE TABLE IF NOT EXISTS auth_sessions (
+      id TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      token_hash TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
     CREATE TABLE IF NOT EXISTS babies (
@@ -88,7 +119,9 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath }) {
   if (!hasTummyGoalColumn) db.exec("ALTER TABLE app_state ADD COLUMN tummy_goal_minutes INTEGER NOT NULL DEFAULT 20")
 
   const now = new Date().toISOString()
+  db.prepare('INSERT OR IGNORE INTO users (id, email, display_name, created_at) VALUES (?, ?, ?, ?)').run(DEFAULT_USER_ID, DEFAULT_USER_EMAIL, DEFAULT_USER_DISPLAY_NAME, now)
   db.prepare('INSERT OR IGNORE INTO households (id, name, created_at) VALUES (?, ?, ?)').run(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_NAME, now)
+  db.prepare('INSERT OR IGNORE INTO household_members (user_id, household_id, role, created_at) VALUES (?, ?, ?, ?)').run(DEFAULT_USER_ID, DEFAULT_HOUSEHOLD_ID, 'owner', now)
   db.prepare('INSERT OR IGNORE INTO babies (id, household_id, name, dob, created_at) VALUES (?, ?, ?, ?, ?)').run(DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID, DEFAULT_BABY_NAME, DEFAULT_BABY_DOB, now)
   db.prepare('UPDATE app_state SET household_id = COALESCE(NULLIF(household_id, \'\'), ?), baby_id = COALESCE(NULLIF(baby_id, \'\'), ?) WHERE id = 1').run(DEFAULT_HOUSEHOLD_ID, DEFAULT_BABY_ID)
 

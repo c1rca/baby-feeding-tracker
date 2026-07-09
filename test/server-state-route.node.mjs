@@ -42,11 +42,14 @@ test('state route writes resolved canonical state, audit/event logs it, evaluate
 
   const res = createJsonResponse()
   app.route('PUT', '/api/state')({
+    auth: { householdId: 'household-2', babyId: 'baby-2' },
     body: { entries: 'bad', diapers: [], medicines: [], session: null, theme: 'dark', updatedAt: 'client-old' },
   }, res)
 
   assert.equal(calls.upserts.length, 1)
   assert.equal(calls.upserts[0].entries_json, '[{"id":"feed-1"}]')
+  assert.equal(calls.upserts[0].household_id, 'household-2')
+  assert.equal(calls.upserts[0].baby_id, 'baby-2')
   assert.equal(calls.upserts[0].session_json, null)
   assert.equal(calls.upserts[0].theme, 'dark')
   assert.equal(calls.audits.length, 1)

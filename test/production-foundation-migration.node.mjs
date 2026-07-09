@@ -43,11 +43,17 @@ test('legacy single-family app_state migrates into the default household and bab
 
   const household = db.prepare('SELECT id, name FROM households WHERE id = ?').get(DEFAULT_HOUSEHOLD_ID)
   const baby = db.prepare('SELECT id, household_id, name, dob FROM babies WHERE id = ?').get(DEFAULT_BABY_ID)
+  const user = db.prepare('SELECT id, email, display_name FROM users WHERE id = ?').get('default-user')
+  const membership = db.prepare('SELECT user_id, household_id, role FROM household_members WHERE user_id = ? AND household_id = ?').get('default-user', DEFAULT_HOUSEHOLD_ID)
+  const sessionColumns = db.prepare("SELECT name FROM pragma_table_info('auth_sessions') ORDER BY cid").all().map((row) => row.name)
   const stateRow = db.prepare('SELECT household_id, baby_id, entries_json, session_json, theme, updated_at FROM app_state WHERE id = 1').get()
   db.close()
 
   assert.deepEqual(household, { id: DEFAULT_HOUSEHOLD_ID, name: 'My household' })
   assert.deepEqual(baby, { id: DEFAULT_BABY_ID, household_id: DEFAULT_HOUSEHOLD_ID, name: 'Baby', dob: '2026-06-03' })
+  assert.deepEqual(user, { id: 'default-user', email: 'local@baby-feeding-tracker.invalid', display_name: 'Local caregiver' })
+  assert.deepEqual(membership, { user_id: 'default-user', household_id: DEFAULT_HOUSEHOLD_ID, role: 'owner' })
+  assert.deepEqual(sessionColumns, ['id', 'user_id', 'token_hash', 'created_at', 'expires_at', 'revoked_at'])
   assert.equal(stateRow.household_id, DEFAULT_HOUSEHOLD_ID)
   assert.equal(stateRow.baby_id, DEFAULT_BABY_ID)
   assert.match(stateRow.entries_json, /feed-1/)

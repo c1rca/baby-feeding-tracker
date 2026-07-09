@@ -75,6 +75,11 @@ export const createStateRouter = ({
     recordDeletedItems(audit, updatedAt)
   })
   const router = (app) => {
+    const requestScope = (req, existingRow = null) => ({
+      householdId: req.auth?.householdId || existingRow?.household_id || DEFAULT_HOUSEHOLD_ID,
+      babyId: req.auth?.babyId || existingRow?.baby_id || DEFAULT_BABY_ID,
+    })
+
     app.get('/api/state', (_req, res) => {
       res.set('Cache-Control', 'no-store')
       res.json(serializeState(selectState.get()))
@@ -98,11 +103,12 @@ export const createStateRouter = ({
         updatedAt: req.body?.updatedAt,
       }, deletedItemOptions())
       const { entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme } = incoming
+      const scope = requestScope(req, existingRow)
       const updatedAt = new Date().toISOString()
 
       const statePayload = {
-        household_id: existingRow?.household_id || DEFAULT_HOUSEHOLD_ID,
-        baby_id: existingRow?.baby_id || DEFAULT_BABY_ID,
+        household_id: scope.householdId,
+        baby_id: scope.babyId,
         entries_json: JSON.stringify(entries),
         diapers_json: JSON.stringify(diapers),
         medicines_json: JSON.stringify(medicines),
