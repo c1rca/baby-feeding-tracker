@@ -181,7 +181,10 @@ describe('App interactions', () => {
       body: JSON.stringify({ name: 'Morgan', dob: '2026-03-15' }),
     }))
 
-    await user.click(screen.getByRole('button', { name: /Archive Riley/i }))
+    // Creating a baby switches to it and remounts the tracker (per-baby isolation),
+    // which closes the settings panel; reopen it to manage the roster.
+    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(await screen.findByRole('button', { name: /Archive Riley/i }))
     await waitFor(() => expect(screen.queryByRole('button', { name: /Archive Riley/i })).toBeNull())
     expect(fetchMock).toHaveBeenCalledWith('/api/babies/baby-2', expect.objectContaining({ method: 'DELETE' }))
   })

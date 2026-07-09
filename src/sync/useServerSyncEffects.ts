@@ -1,11 +1,12 @@
 import { useEffect } from 'react'
-import { KEY_PENDING_SYNC, type ServerSyncPayload, type SyncToApiOverrides } from './serverSyncTypes'
+import { hasPendingSync, markPendingSync, type ServerSyncPayload, type SyncToApiOverrides } from './serverSyncTypes'
 
 type PersistLocalChangesOptions = {
   hasHydrated: boolean
   isApplyingServerState: () => boolean
   consumeSkipNextSync: () => boolean
   syncToApi: (overrides?: SyncToApiOverrides) => Promise<void>
+  selectedBabyId?: string | null
   entries: ServerSyncPayload['entries']
   diapers: ServerSyncPayload['diapers']
   medicines: ServerSyncPayload['medicines']
@@ -23,6 +24,7 @@ export function usePersistLocalChanges({
   isApplyingServerState,
   consumeSkipNextSync,
   syncToApi,
+  selectedBabyId,
   entries,
   diapers,
   medicines,
@@ -42,15 +44,15 @@ export function usePersistLocalChanges({
     }
     if (consumeSkipNextSync()) return
 
-    localStorage.setItem(KEY_PENDING_SYNC, '1')
+    markPendingSync(selectedBabyId)
     window.setTimeout(() => void syncToApi(), 0)
-  }, [hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme])
+  }, [hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme])
 }
 
 export function usePendingSyncRetry(syncToApi: (overrides?: SyncToApiOverrides) => Promise<void>) {
   useEffect(() => {
     const retrySync = () => {
-      if (localStorage.getItem(KEY_PENDING_SYNC) === '1') void syncToApi()
+      if (hasPendingSync()) void syncToApi()
     }
 
     window.addEventListener('online', retrySync)

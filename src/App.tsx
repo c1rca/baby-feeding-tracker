@@ -108,7 +108,11 @@ function App() {
 
   if (status === 'checking') return null
   if (status === 'login') return <LoginScreen pending={pending} error={error} onLogin={login} />
-  return <TrackerApp key={epoch} authUser={authUser} onLogout={logout} babies={babies} selectedBabyId={selectedBabyId} onSelectedBabyIdChange={handleSelectedBabyIdChange} onCreateBaby={handleCreateBaby} onArchiveBaby={handleArchiveBaby} />
+  // Resolve the transient empty id to the session's baby so the key does not
+  // churn (and remount) when selectedBabyId settles from '' to that same baby
+  // after /api/babies loads. A genuine baby switch still changes the key.
+  const keyBabyId = selectedBabyId || authUser?.babyId || 'default'
+  return <TrackerApp key={`${epoch}:${keyBabyId}`} authUser={authUser} onLogout={logout} babies={babies} selectedBabyId={selectedBabyId} onSelectedBabyIdChange={handleSelectedBabyIdChange} onCreateBaby={handleCreateBaby} onArchiveBaby={handleArchiveBaby} />
 }
 
 export default App

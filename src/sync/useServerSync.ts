@@ -1,14 +1,14 @@
 import { useCallback, useState } from 'react'
 import { saveServerState } from './serverSyncApi'
 import { buildApiStatePayload } from './serverSyncModels'
-import { KEY_PENDING_SYNC, type SyncStatus, type SyncToApiOverrides, type UseServerSyncOptions } from './serverSyncTypes'
+import { clearPendingSync, hasPendingSync, markPendingSync, type SyncStatus, type SyncToApiOverrides, type UseServerSyncOptions } from './serverSyncTypes'
 import { useInitialServerSync } from './useInitialServerSync'
 import { useLatestServerPayload, useServerStateApplier } from './useServerStateApplier'
 import { usePendingSyncRetry, usePersistLocalChanges } from './useServerSyncEffects'
 
 export const useServerSync = (options: UseServerSyncOptions) => {
   const { entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, selectedBabyId } = options
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => (localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'synced'))
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => (hasPendingSync() ? 'offline' : 'synced'))
   const [hasHydrated, setHasHydrated] = useState(false)
   const latestPayloadRef = useLatestServerPayload(options)
   const { applyServerState, applyingServerStateRef, serverUpdatedAtRef, skipNextSyncRef } = useServerStateApplier(options)
@@ -20,10 +20,10 @@ export const useServerSync = (options: UseServerSyncOptions) => {
       const data = await saveServerState(buildApiStatePayload(payload, serverUpdatedAtRef.current, overrides), { babyId: selectedBabyId })
       if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
       if (data.state) applyServerState(data.state)
-      localStorage.removeItem(KEY_PENDING_SYNC)
+      clearPendingSync()
       setSyncStatus('synced')
     } catch {
-      localStorage.setItem(KEY_PENDING_SYNC, '1')
+      markPendingSync(selectedBabyId)
       setSyncStatus('offline')
     }
   }, [applyServerState, latestPayloadRef, selectedBabyId, serverUpdatedAtRef])
@@ -36,7 +36,7 @@ export const useServerSync = (options: UseServerSyncOptions) => {
   }, [skipNextSyncRef])
 
   useInitialServerSync({ latestPayloadRef, serverUpdatedAtRef, applyServerState, syncToApi, selectedBabyId, setHasHydrated, setSyncStatus })
-  usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme })
+  usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme })
   usePendingSyncRetry(syncToApi)
 
   return { syncStatus, hasHydrated }

@@ -3,7 +3,7 @@ import type { MutableRefObject } from 'react'
 import type { ServerState } from '../types'
 import { loadServerState } from './serverSyncApi'
 import { buildPendingSyncPayload } from './serverSyncModels'
-import { KEY_PENDING_SYNC, type ServerSyncPayload, type SyncStatus, type SyncToApiOverrides } from './serverSyncTypes'
+import { hasPendingSync, pendingSyncMatchesBaby, type ServerSyncPayload, type SyncStatus, type SyncToApiOverrides } from './serverSyncTypes'
 
 type InitialServerSyncOptions = {
   latestPayloadRef: MutableRefObject<ServerSyncPayload>
@@ -26,11 +26,13 @@ export function useInitialServerSync({
 }: InitialServerSyncOptions) {
   useEffect(() => {
     const loadFromApi = async () => {
-      const hasPendingSync = localStorage.getItem(KEY_PENDING_SYNC) === '1'
+      // Only replay a pending change if it belongs to the baby we are loading;
+      // a change queued for another baby must not be pushed into this scope.
+      const pendingForThisBaby = hasPendingSync() && pendingSyncMatchesBaby(selectedBabyId)
       const localPayload = latestPayloadRef.current
       try {
         const serverState = await loadServerState({ babyId: selectedBabyId })
-        if (hasPendingSync) {
+        if (pendingForThisBaby) {
           const mergedPayload = buildPendingSyncPayload(serverState, localPayload)
           if (serverState.updatedAt) serverUpdatedAtRef.current = serverState.updatedAt
           setHasHydrated(true)
@@ -38,14 +40,14 @@ export function useInitialServerSync({
           return
         }
         applyServerState(serverState)
-        setSyncStatus('synced')
+        setSyncStatus(hasPendingSync() ? 'offline' : 'synced')
       } catch {
-        if (hasPendingSync) {
+        if (pendingForThisBaby) {
           setHasHydrated(true)
           await syncToApi()
           return
         }
-        setSyncStatus(localStorage.getItem(KEY_PENDING_SYNC) === '1' ? 'offline' : 'issue')
+        setSyncStatus(hasPendingSync() ? 'offline' : 'issue')
       } finally {
         setHasHydrated(true)
       }

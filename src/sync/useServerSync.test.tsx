@@ -39,7 +39,7 @@ class MockEventSource {
   close() {}
 }
 
-function Harness({ initialEntries = [] as Entry[], initialSession = null as Session | null, initialTummyTimes = [] as TummyTimeEvent[], initialGrowthMeasurements = [] as GrowthMeasurement[] }) {
+function Harness({ initialEntries = [] as Entry[], initialSession = null as Session | null, initialTummyTimes = [] as TummyTimeEvent[], initialGrowthMeasurements = [] as GrowthMeasurement[], selectedBabyId = undefined as string | undefined }) {
   const [entries, setEntries] = useState<Entry[]>(initialEntries)
   const [diapers, setDiapers] = useState<DiaperEvent[]>([])
   const [medicines, setMedicines] = useState<MedicineEvent[]>([])
@@ -50,7 +50,7 @@ function Harness({ initialEntries = [] as Entry[], initialSession = null as Sess
   const [babyDob, setBabyDob] = useState('2026-06-03')
   const [sessionState, setSession] = useState<Session | null>(initialSession)
   const [theme, setTheme] = useState<Theme>('light')
-  const { syncStatus } = useServerSync({ entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session: sessionState, theme, setEntries, setDiapers, setMedicines, setTummyTimes, setTummySession, setTummyGoalMinutes, setGrowthMeasurements, setBabyDob, setSession, setTheme })
+  const { syncStatus } = useServerSync({ entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session: sessionState, theme, selectedBabyId, setEntries, setDiapers, setMedicines, setTummyTimes, setTummySession, setTummyGoalMinutes, setGrowthMeasurements, setBabyDob, setSession, setTheme })
 
   return (
     <div>
@@ -103,6 +103,26 @@ describe('useServerSync', () => {
     expect(fetchMock.mock.calls[0]).toEqual(['/api/state', expect.objectContaining({ cache: 'no-store' })])
     expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
     expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
+  })
+
+  it('does not replay a pending change queued for another baby into the current baby', async () => {
+    // Baby A has an unsynced offline change; we mount for baby B.
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync', '1')
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync-baby', 'baby-A')
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init || init.method !== 'PUT') return { ok: true, json: async () => ({ entries: [entry('baby-b-server', 6000)], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-b' }) }
+      return { ok: true, json: async () => ({ updatedAt: 'server-merged', state: JSON.parse(String(init.body)) }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness initialEntries={[entry('baby-a-pending', 3000)]} selectedBabyId="baby-B" />)
+
+    // Baby B's server state loads, and baby A's pending payload is never PUT.
+    await waitFor(() => expect(screen.getByTestId('entries').textContent).toBe('baby-b-server'))
+    expect(fetchMock.mock.calls.some((call) => call[1]?.method === 'PUT')).toBe(false)
+    // Baby A's pending flag is preserved for when the user switches back.
+    expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBe('1')
+    expect(screen.getByTestId('status').textContent).toBe('offline')
   })
 
   it('replays pending local tummy time and growth changes without dropping server-side records', async () => {
