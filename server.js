@@ -22,7 +22,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectBabiesByHousehold, insertBaby, insertSession, revokeSession } = statements
+const { selectState, upsertState, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectBabiesByHousehold, insertBaby, archiveBaby, insertSession, revokeSession } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 
 const readBooleanSetting = (key, fallback) => {
@@ -76,7 +76,7 @@ app.use(express.json({ limit: '1mb' }))
 createAuthRouter({ authRequired: config.authRequired, selectUserByEmail, insertSession, appendEventLog })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, selectSessionContext }))
 createAuthSessionRouter({ revokeSession, appendEventLog })(app)
-createBabyRouter({ selectBabiesByHousehold, insertBaby, appendEventLog })(app)
+createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)
 
 createHealthRouter({ config, getGotifyRemindersEnabled })(app)
 createNotificationSettingsRouter({

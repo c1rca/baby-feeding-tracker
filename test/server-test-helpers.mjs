@@ -12,6 +12,9 @@ export const createFakeApp = () => {
     post(path, handler) {
       routes.set(`POST ${path}`, handler)
     },
+    delete(path, handler) {
+      routes.set(`DELETE ${path}`, handler)
+    },
     route(method, path) {
       const handler = routes.get(`${method} ${path}`)
       assert.equal(typeof handler, 'function', `${method} ${path} was not registered`)

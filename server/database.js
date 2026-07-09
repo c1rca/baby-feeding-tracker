@@ -170,6 +170,11 @@ export function prepareTrackerStatements(db) {
       INSERT INTO babies (id, household_id, name, dob, archived_at, created_at)
       VALUES (@id, @household_id, @name, @dob, @archived_at, @created_at)
     `),
+    archiveBaby: db.prepare(`
+      UPDATE babies
+      SET archived_at = @archived_at
+      WHERE id = @id AND household_id = @household_id AND archived_at IS NULL
+    `),
     insertSession: db.prepare(`
       INSERT INTO auth_sessions (id, user_id, token_hash, created_at, expires_at, revoked_at)
       VALUES (@id, @user_id, @token_hash, @created_at, @expires_at, @revoked_at)

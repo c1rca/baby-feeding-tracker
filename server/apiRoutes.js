@@ -55,7 +55,7 @@ export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEna
   return router
 }
 
-export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), now = () => new Date() } = {}) => {
+export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = null, archiveBaby = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), now = () => new Date() } = {}) => {
   const toBabyPayload = (row) => ({
     id: row.id,
     householdId: row.household_id,
@@ -96,6 +96,19 @@ export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = 
       insertBaby?.run(row)
       appendEventLog('baby_create', { babyId: row.id, householdId, userId: req.auth?.userId ?? null })
       res.status(201).json({ ok: true, baby: toBabyPayload(row) })
+    })
+
+    app.delete('/api/babies/:id', (req, res) => {
+      const householdId = req.auth?.householdId || DEFAULT_HOUSEHOLD_ID
+      const babyId = String(req.params?.id || '').trim()
+      const archivedAt = now().toISOString()
+      const result = archiveBaby?.run({ id: babyId, household_id: householdId, archived_at: archivedAt }) || { changes: 0 }
+      if (!result.changes) {
+        res.status(404).json({ ok: false, error: 'Baby not found' })
+        return
+      }
+      appendEventLog('baby_archive', { babyId, householdId, userId: req.auth?.userId ?? null })
+      res.status(200).json({ ok: true })
     })
   }
   return router

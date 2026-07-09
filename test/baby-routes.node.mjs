@@ -71,3 +71,38 @@ test('baby create route rejects invalid names and DOBs', () => {
   assert.deepEqual(badDob.body, { ok: false, error: 'Baby date of birth must use YYYY-MM-DD' })
   assert.equal(calls.inserts, 0)
 })
+
+test('baby archive route archives only babies in the authenticated household', () => {
+  const calls = { archives: [], events: [] }
+  const app = mountRouter({
+    archiveBaby: { run: (payload) => ({ changes: payload.id === 'baby-1' && payload.household_id === 'household-1' ? (calls.archives.push(payload), 1) : 0 }) },
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+    now: () => new Date('2026-04-01T00:00:00.000Z'),
+  })
+  const res = createJsonResponse()
+
+  app.route('DELETE', '/api/babies/:id')({
+    params: { id: 'baby-1' },
+    auth: { userId: 'user-1', householdId: 'household-1' },
+  }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.deepEqual(res.body, { ok: true })
+  assert.deepEqual(calls.archives, [{ id: 'baby-1', household_id: 'household-1', archived_at: '2026-04-01T00:00:00.000Z' }])
+  assert.deepEqual(calls.events, [{ event: 'baby_archive', payload: { babyId: 'baby-1', householdId: 'household-1', userId: 'user-1' } }])
+})
+
+test('baby archive route returns 404 for cross-household or missing babies', () => {
+  const calls = { events: 0 }
+  const app = mountRouter({
+    archiveBaby: { run: () => ({ changes: 0 }) },
+    appendEventLog: () => { calls.events += 1 },
+  })
+  const res = createJsonResponse()
+
+  app.route('DELETE', '/api/babies/:id')({ params: { id: 'other-baby' }, auth: { householdId: 'household-1' } }, res)
+
+  assert.equal(res.statusCode, 404)
+  assert.deepEqual(res.body, { ok: false, error: 'Baby not found' })
+  assert.equal(calls.events, 0)
+})
