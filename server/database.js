@@ -331,6 +331,15 @@ export function prepareTrackerStatements(db) {
       LIMIT 1
     `),
     selectMembershipsByUser: db.prepare('SELECT household_id, role FROM household_members WHERE user_id = ? ORDER BY created_at ASC'),
+    selectMembersByHousehold: db.prepare(`
+      SELECT household_members.user_id, users.email, users.display_name, household_members.role, household_members.created_at
+      FROM household_members
+      JOIN users ON users.id = household_members.user_id
+      WHERE household_members.household_id = ?
+      ORDER BY household_members.created_at ASC
+    `),
+    updateMemberRole: db.prepare("UPDATE household_members SET role = @role WHERE household_id = @household_id AND user_id = @user_id AND role != 'owner'"),
+    removeMember: db.prepare("DELETE FROM household_members WHERE household_id = @household_id AND user_id = @user_id AND role != 'owner'"),
     insertHousehold: db.prepare('INSERT INTO households (id, name, created_at) VALUES (@id, @name, @created_at)'),
     insertHouseholdMember: db.prepare('INSERT INTO household_members (user_id, household_id, role, created_at) VALUES (@user_id, @household_id, @role, @created_at)'),
     insertEmptyBabyState: db.prepare("INSERT INTO baby_state (household_id, baby_id, entries_json, updated_at) VALUES (@household_id, @baby_id, '[]', @updated_at)"),

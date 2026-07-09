@@ -144,6 +144,61 @@ const isValidDob = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) &&
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase()
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
 const invitePayload = (row) => ({ id: row.id, email: row.email, role: row.role, createdAt: row.created_at, expiresAt: row.expires_at })
+const memberPayload = (row) => ({ userId: row.user_id, email: row.email, displayName: row.display_name, role: row.role, createdAt: row.created_at })
+
+export const createMemberRouter = ({ selectMembersByHousehold = null, updateMemberRole = null, removeMember = null, appendEventLog = () => {} } = {}) => {
+  const requireOwner = (req, res) => {
+    if (req.auth?.role !== 'owner' || !req.auth?.householdId) {
+      rejectForbidden(res)
+      return false
+    }
+    return true
+  }
+  const router = (app) => {
+    app.get('/api/household-members', (req, res) => {
+      if (!req.auth?.householdId) {
+        res.status(403).json({ ok: false, error: 'Household required' })
+        return
+      }
+      const members = selectMembersByHousehold?.all(req.auth.householdId).map(memberPayload) || []
+      res.status(200).json({ ok: true, members })
+    })
+
+    app.patch('/api/household-members/:userId', (req, res) => {
+      if (!requireOwner(req, res)) return
+      const userId = String(req.params?.userId || '')
+      const role = String(req.body?.role || '').trim()
+      if (!['caregiver', 'viewer'].includes(role)) {
+        res.status(400).json({ ok: false, error: 'Role must be caregiver or viewer' })
+        return
+      }
+      const result = updateMemberRole?.run({ household_id: req.auth.householdId, user_id: userId, role }) || { changes: 0 }
+      if (!result.changes) {
+        res.status(404).json({ ok: false, error: 'Member not found' })
+        return
+      }
+      appendEventLog('member_role_update', { householdId: req.auth.householdId, targetUserId: userId, role, userId: req.auth.userId })
+      res.status(200).json({ ok: true })
+    })
+
+    app.delete('/api/household-members/:userId', (req, res) => {
+      if (!requireOwner(req, res)) return
+      const userId = String(req.params?.userId || '')
+      if (userId === req.auth.userId) {
+        res.status(400).json({ ok: false, error: 'Cannot remove yourself' })
+        return
+      }
+      const result = removeMember?.run({ household_id: req.auth.householdId, user_id: userId }) || { changes: 0 }
+      if (!result.changes) {
+        res.status(404).json({ ok: false, error: 'Member not found' })
+        return
+      }
+      appendEventLog('member_remove', { householdId: req.auth.householdId, targetUserId: userId, userId: req.auth.userId })
+      res.status(200).json({ ok: true })
+    })
+  }
+  return router
+}
 
 export const createInviteRouter = ({ selectActiveInvitesByHousehold = null, selectInviteByEmail = null, insertInvite = null, revokeInvite = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), tokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', ''), now = () => new Date() } = {}) => {
   const router = (app) => {

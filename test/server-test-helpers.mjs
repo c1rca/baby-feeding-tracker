@@ -9,6 +9,9 @@ export const createFakeApp = () => {
     put(path, handler) {
       routes.set(`PUT ${path}`, handler)
     },
+    patch(path, handler) {
+      routes.set(`PATCH ${path}`, handler)
+    },
     post(path, handler) {
       routes.set(`POST ${path}`, handler)
     },
