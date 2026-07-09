@@ -21,6 +21,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   const notificationChannelsAvailable = gotifyAvailable || textEmailAvailable
   const notificationsDefaultEnabled = env.NOTIFICATIONS_ENABLED === '1' && notificationChannelsAvailable
   const authRequired = env.AUTH_REQUIRED === '1'
+  const authBypass = env.AUTH_BYPASS === '1'
   const bootstrapPassword = env.AUTH_BOOTSTRAP_PASSWORD || ''
 
   return {
@@ -43,6 +44,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     notificationChannelsAvailable,
     notificationsDefaultEnabled,
     authRequired,
+    authBypass,
     bootstrapPassword,
   }
 }

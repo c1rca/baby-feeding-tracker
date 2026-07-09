@@ -38,6 +38,21 @@ test('auth middleware preserves local single-family mode when auth is disabled',
   })
 })
 
+test('auth middleware can bypass required auth as a local super-admin context', () => {
+  const middleware = createAuthMiddleware({ authRequired: true, authBypass: true, selectSessionContext: { get: () => null } })
+
+  const result = runMiddleware(middleware, { headers: {} })
+
+  assert.equal(result.nextCalled, true)
+  assert.deepEqual(result.req.auth, {
+    userId: DEFAULT_USER_ID,
+    householdId: DEFAULT_HOUSEHOLD_ID,
+    babyId: DEFAULT_BABY_ID,
+    role: 'owner',
+    mode: 'auth-bypass',
+  })
+})
+
 test('auth middleware resolves a bearer session to user household and default baby context', () => {
   const token = 'session-token-123'
   const middleware = createAuthMiddleware({

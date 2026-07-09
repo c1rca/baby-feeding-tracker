@@ -3,12 +3,12 @@ import { hashPassword, hashSessionToken, verifyPassword } from './authCrypto.js'
 
 export { hashPassword, hashSessionToken, verifyPassword }
 
-const localAuthContext = () => ({
+const localAuthContext = (mode = 'local') => ({
   userId: DEFAULT_USER_ID,
   householdId: DEFAULT_HOUSEHOLD_ID,
   babyId: DEFAULT_BABY_ID,
   role: 'owner',
-  mode: 'local',
+  mode,
 })
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
@@ -140,7 +140,12 @@ export const createAuthSessionRouter = ({ revokeSession = null, revokeOtherUserS
 
 const requestedBabyId = (req) => String(req.headers?.['x-baby-id'] || req.headers?.['X-Baby-Id'] || '').trim()
 
-export const createAuthMiddleware = ({ authRequired = false, selectSessionContext = null, selectBabyForHousehold = null } = {}) => (req, res, next) => {
+export const createAuthMiddleware = ({ authRequired = false, authBypass = false, selectSessionContext = null, selectBabyForHousehold = null } = {}) => (req, res, next) => {
+  if (authBypass) {
+    req.auth = localAuthContext('auth-bypass')
+    next()
+    return
+  }
   if (!authRequired) {
     req.auth = localAuthContext()
     next()
