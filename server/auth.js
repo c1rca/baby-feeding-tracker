@@ -80,6 +80,34 @@ export const createAuthRouter = ({ authRequired = false, selectUserByEmail = nul
   return router
 }
 
+export const createAuthSessionRouter = ({ revokeSession = null, appendEventLog = () => {}, now = () => new Date() } = {}) => {
+  const router = (app) => {
+    app.get('/api/auth/me', (req, res) => {
+      const auth = req.auth || localAuthContext()
+      res.status(200).json({
+        ok: true,
+        user: {
+          id: auth.userId,
+          householdId: auth.householdId,
+          babyId: auth.babyId,
+          role: auth.role,
+          mode: auth.mode,
+        },
+      })
+    })
+
+    app.post('/api/auth/logout', (req, res) => {
+      const auth = req.auth || localAuthContext()
+      if (auth.tokenHash) {
+        revokeSession?.run({ token_hash: auth.tokenHash, revoked_at: now().toISOString() })
+        appendEventLog('auth_logout', { userId: auth.userId })
+      }
+      res.status(200).json({ ok: true })
+    })
+  }
+  return router
+}
+
 export const createAuthMiddleware = ({ authRequired = false, selectSessionContext = null } = {}) => (req, res, next) => {
   if (!authRequired) {
     req.auth = localAuthContext()
@@ -93,7 +121,8 @@ export const createAuthMiddleware = ({ authRequired = false, selectSessionContex
     return
   }
 
-  const row = selectSessionContext?.get(hashSessionToken(token))
+  const tokenHash = hashSessionToken(token)
+  const row = selectSessionContext?.get(tokenHash)
   if (!row) {
     res.status(401).json({ ok: false, error: 'Invalid or expired session' })
     return
@@ -105,6 +134,7 @@ export const createAuthMiddleware = ({ authRequired = false, selectSessionContex
     babyId: row.baby_id || DEFAULT_BABY_ID,
     role: row.role,
     mode: 'session',
+    tokenHash,
   }
   next()
 }

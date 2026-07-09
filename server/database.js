@@ -164,6 +164,11 @@ export function prepareTrackerStatements(db) {
       INSERT INTO auth_sessions (id, user_id, token_hash, created_at, expires_at, revoked_at)
       VALUES (@id, @user_id, @token_hash, @created_at, @expires_at, @revoked_at)
     `),
+    revokeSession: db.prepare(`
+      UPDATE auth_sessions
+      SET revoked_at = @revoked_at
+      WHERE token_hash = @token_hash AND revoked_at IS NULL
+    `),
     upsertSetting: db.prepare(`
       INSERT INTO app_settings (key, value, updated_at)
       VALUES (@key, @value, @updated_at)

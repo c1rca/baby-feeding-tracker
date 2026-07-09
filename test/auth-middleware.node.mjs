@@ -64,6 +64,7 @@ test('auth middleware resolves a bearer session to user household and default ba
     babyId: 'baby-1',
     role: 'caregiver',
     mode: 'session',
+    tokenHash: hashSessionToken(token),
   })
 })
 
