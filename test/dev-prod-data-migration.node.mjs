@@ -20,9 +20,9 @@ test('dev prod-data migration creates mom/data accounts and moves legacy data un
   `).run(JSON.stringify([{ id: 'prod-feed-1', type: 'bottle', bottleOunces: 4 }]), new Date().toISOString())
   db.close()
 
-  const result = spawnSync(process.execPath, [path.join(rootDir, 'scripts', 'migrate-dev-prod-data.mjs')], {
+  const result = spawnSync(process.execPath, [path.join(rootDir, 'scripts', 'migrate-dev-prod-data.mjs'), '--db', dbPath, '--force', '--password', '1'], {
     cwd: rootDir,
-    env: { ...process.env, DB_PATH: dbPath, DEV_ACCOUNT_PASSWORD: '1' },
+    env: { ...process.env, NODE_ENV: 'development' },
     encoding: 'utf8',
   })
 
@@ -40,4 +40,16 @@ test('dev prod-data migration creates mom/data accounts and moves legacy data un
   assert.match(appState.entries_json, /prod-feed-1/)
   assert.equal(scopedState.theme, 'dark')
   assert.match(scopedState.entries_json, /prod-feed-1/)
+})
+
+test('dev prod-data migration refuses to run without the required safety flags', () => {
+  const script = path.join(rootDir, 'scripts', 'migrate-dev-prod-data.mjs')
+  const run = (args, env = {}) => spawnSync(process.execPath, [script, ...args], { cwd: rootDir, env: { ...process.env, NODE_ENV: 'development', ...env }, encoding: 'utf8' })
+
+  // Missing --db, missing --force, and missing password are each fatal.
+  assert.notEqual(run(['--force', '--password', '1']).status, 0)
+  assert.notEqual(run(['--db', '/tmp/whatever.db', '--password', '1']).status, 0)
+  assert.notEqual(run(['--db', '/tmp/whatever.db', '--force'], { DEV_ACCOUNT_PASSWORD: '' }).status, 0)
+  // Production is refused outright even with every flag present.
+  assert.notEqual(run(['--db', '/tmp/whatever.db', '--force', '--password', '1'], { NODE_ENV: 'production' }).status, 0)
 })

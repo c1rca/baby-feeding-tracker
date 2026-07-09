@@ -4,11 +4,38 @@ import path from 'node:path'
 import { hashPassword } from '../server/authCrypto.js'
 import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID, openTrackerDatabase } from '../server/database.js'
 
-const rootDir = path.resolve(new URL('..', import.meta.url).pathname)
-const dbPath = process.env.DB_PATH || path.join(rootDir, 'data-dev', 'feeding-tracker-dev.db')
-const password = process.env.DEV_ACCOUNT_PASSWORD || '1'
+// This script destructively rewrites accounts and data. It is a local dev tool
+// only: it refuses to run in production, demands an explicit target database and
+// an explicit --force, and never falls back to a hardcoded password.
+const args = process.argv.slice(2)
+const readOption = (name) => {
+  const idx = args.indexOf(name)
+  return idx !== -1 ? args[idx + 1] : undefined
+}
+
+const dbArg = readOption('--db')
+const force = args.includes('--force')
+const password = readOption('--password') || process.env.DEV_ACCOUNT_PASSWORD || ''
 const now = new Date().toISOString()
 
+if (process.env.NODE_ENV === 'production') {
+  console.error('Refusing to run the dev data migration with NODE_ENV=production.')
+  process.exit(1)
+}
+if (!dbArg) {
+  console.error('Refusing to run without an explicit --db <path>. This script rewrites accounts and data in that database; DB_PATH is intentionally not honored.')
+  process.exit(1)
+}
+if (!force) {
+  console.error('Refusing to run without --force. This is a destructive rewrite; pass --force to confirm.')
+  process.exit(1)
+}
+if (!password) {
+  console.error('No account password provided. Pass --password <pw> or set DEV_ACCOUNT_PASSWORD.')
+  process.exit(1)
+}
+
+const dbPath = path.resolve(dbArg)
 if (!fs.existsSync(dbPath)) {
   console.error(`Database not found: ${dbPath}`)
   process.exit(1)
