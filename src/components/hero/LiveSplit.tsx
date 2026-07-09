@@ -6,6 +6,14 @@ type LiveSplitProps = Pick<HeroPanelProps, 'session' | 'activeSplit'>
 export function LiveSplit({ session, activeSplit }: LiveSplitProps) {
   if (!session) return null
 
+  const hasLeft = activeSplit.left > 0
+  const hasRight = activeSplit.right > 0
+  const hasBottle = session.bottleOunces > 0
+  const hasNursing = hasLeft || hasRight
+  const shouldShowSplit = (hasLeft && hasRight) || (hasNursing && hasBottle)
+
+  if (!shouldShowSplit) return null
+
   return (
     <div className="live-split" aria-label="Live split">
       <div className="split-title">Live split</div>

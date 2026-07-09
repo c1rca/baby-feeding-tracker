@@ -51,15 +51,27 @@ describe('App interactions', () => {
     expect(screen.getByText(/On left/i)).toBeTruthy()
   })
 
-  it('shows a live left-right split while a feed is active', async () => {
+  it('hides the live split until an active feed has multiple tracked inputs', async () => {
+    vi.setSystemTime(new Date('2026-06-05T12:45:00'))
     const user = userEvent.setup()
     render(<App />)
 
+    await user.click(screen.getByRole('button', { name: /Adjust start time/i }))
+    const startTime = screen.getByLabelText(/Session start time/i) as HTMLInputElement
+    await user.clear(startTime)
+    await user.type(startTime, '12:40pm')
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
 
-    expect(screen.getByText(/Live split/i)).toBeTruthy()
-    expect(screen.getByText(/^Left$/i).nextElementSibling?.textContent).toMatch(/0m/)
-    expect(screen.getByText(/^Right$/i).nextElementSibling?.textContent).toMatch(/0m/)
+    expect(screen.queryByLabelText(/Live split/i)).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    await user.click(screen.getByRole('button', { name: /Add bottle to this feed/i }))
+    await user.click(screen.getByRole('button', { name: /2\.0 oz/i }))
+
+    const liveSplit = screen.getByLabelText(/Live split/i)
+    expect(liveSplit).toBeTruthy()
+    expect(liveSplit.textContent).toMatch(/Left.*5m 00s/i)
+    expect(liveSplit.textContent).toMatch(/Bottle.*2\.0 oz/i)
   })
 
   it('starts a session from a typed clock time and shows elapsed minutes', async () => {
