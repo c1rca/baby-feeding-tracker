@@ -1,3 +1,4 @@
+import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './database.js'
 import { normalizeMedicineReminderSettings } from './notificationModels.js'
 
 const normalizeTummyGoalMinutes = (value) => {
@@ -100,6 +101,8 @@ export const createStateRouter = ({
       const updatedAt = new Date().toISOString()
 
       const statePayload = {
+        household_id: existingRow?.household_id || DEFAULT_HOUSEHOLD_ID,
+        baby_id: existingRow?.baby_id || DEFAULT_BABY_ID,
         entries_json: JSON.stringify(entries),
         diapers_json: JSON.stringify(diapers),
         medicines_json: JSON.stringify(medicines),

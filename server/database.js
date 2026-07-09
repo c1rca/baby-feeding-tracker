@@ -1,6 +1,12 @@
 import fs from 'node:fs'
 import Database from 'better-sqlite3'
 
+export const DEFAULT_HOUSEHOLD_ID = 'default-household'
+export const DEFAULT_BABY_ID = 'default-baby'
+export const DEFAULT_HOUSEHOLD_NAME = 'My household'
+export const DEFAULT_BABY_NAME = 'Baby'
+export const DEFAULT_BABY_DOB = '2026-06-03'
+
 export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath }) {
   fs.mkdirSync(dbDir, { recursive: true })
   fs.mkdirSync(backupDir, { recursive: true })
@@ -9,8 +15,26 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath }) {
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   db.exec(`
+    CREATE TABLE IF NOT EXISTS households (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS babies (
+      id TEXT PRIMARY KEY,
+      household_id TEXT NOT NULL,
+      name TEXT NOT NULL,
+      dob TEXT NOT NULL,
+      archived_at TEXT,
+      created_at TEXT NOT NULL,
+      FOREIGN KEY (household_id) REFERENCES households(id)
+    );
+
     CREATE TABLE IF NOT EXISTS app_state (
       id INTEGER PRIMARY KEY CHECK (id = 1),
+      household_id TEXT NOT NULL DEFAULT 'default-household',
+      baby_id TEXT NOT NULL DEFAULT 'default-baby',
       entries_json TEXT NOT NULL,
       session_json TEXT,
       theme TEXT NOT NULL DEFAULT 'light',
@@ -44,6 +68,10 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath }) {
     );
   `)
 
+  const hasHouseholdColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'household_id'").get().count > 0
+  if (!hasHouseholdColumn) db.exec("ALTER TABLE app_state ADD COLUMN household_id TEXT NOT NULL DEFAULT 'default-household'")
+  const hasBabyIdColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'baby_id'").get().count > 0
+  if (!hasBabyIdColumn) db.exec("ALTER TABLE app_state ADD COLUMN baby_id TEXT NOT NULL DEFAULT 'default-baby'")
   const hasDiapersColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'diapers_json'").get().count > 0
   if (!hasDiapersColumn) db.exec("ALTER TABLE app_state ADD COLUMN diapers_json TEXT NOT NULL DEFAULT '[]'")
   const hasMedicinesColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'medicines_json'").get().count > 0
@@ -59,16 +87,23 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath }) {
   const hasTummyGoalColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'tummy_goal_minutes'").get().count > 0
   if (!hasTummyGoalColumn) db.exec("ALTER TABLE app_state ADD COLUMN tummy_goal_minutes INTEGER NOT NULL DEFAULT 20")
 
+  const now = new Date().toISOString()
+  db.prepare('INSERT OR IGNORE INTO households (id, name, created_at) VALUES (?, ?, ?)').run(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_NAME, now)
+  db.prepare('INSERT OR IGNORE INTO babies (id, household_id, name, dob, created_at) VALUES (?, ?, ?, ?, ?)').run(DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID, DEFAULT_BABY_NAME, DEFAULT_BABY_DOB, now)
+  db.prepare('UPDATE app_state SET household_id = COALESCE(NULLIF(household_id, \'\'), ?), baby_id = COALESCE(NULLIF(baby_id, \'\'), ?) WHERE id = 1').run(DEFAULT_HOUSEHOLD_ID, DEFAULT_BABY_ID)
+
   return db
 }
 
 export function prepareTrackerStatements(db) {
   return {
-    selectState: db.prepare('SELECT entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM app_state WHERE id = 1'),
+    selectState: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM app_state WHERE id = 1'),
     upsertState: db.prepare(`
-      INSERT INTO app_state (id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
-      VALUES (1, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @tummy_session_json, @tummy_goal_minutes, @growth_measurements_json, @baby_dob, @session_json, @theme, @updated_at)
+      INSERT INTO app_state (id, household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
+      VALUES (1, @household_id, @baby_id, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @tummy_session_json, @tummy_goal_minutes, @growth_measurements_json, @baby_dob, @session_json, @theme, @updated_at)
       ON CONFLICT(id) DO UPDATE SET
+        household_id = excluded.household_id,
+        baby_id = excluded.baby_id,
         entries_json = excluded.entries_json,
         diapers_json = excluded.diapers_json,
         medicines_json = excluded.medicines_json,

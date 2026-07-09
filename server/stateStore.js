@@ -1,12 +1,16 @@
+import { DEFAULT_BABY_DOB, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './database.js'
+
 export const serializeState = (row) => {
-  if (!row) return { entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: '2026-06-03', tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'light', updatedAt: null }
+  if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'light', updatedAt: null }
   return {
+    householdId: row.household_id || DEFAULT_HOUSEHOLD_ID,
+    babyId: row.baby_id || DEFAULT_BABY_ID,
     entries: JSON.parse(row.entries_json),
     diapers: JSON.parse(row.diapers_json || '[]'),
     medicines: JSON.parse(row.medicines_json || '[]'),
     tummyTimes: JSON.parse(row.tummy_times_json || '[]'),
     growthMeasurements: JSON.parse(row.growth_measurements_json || '[]'),
-    babyDob: row.baby_dob || '2026-06-03',
+    babyDob: row.baby_dob || DEFAULT_BABY_DOB,
     tummyGoalMinutes: Number.isFinite(Number(row.tummy_goal_minutes)) ? Math.min(240, Math.max(1, Math.round(Number(row.tummy_goal_minutes)))) : 20,
     session: row.session_json ? JSON.parse(row.session_json) : null,
     tummySession: row.tummy_session_json ? JSON.parse(row.tummy_session_json) : null,
