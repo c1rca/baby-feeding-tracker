@@ -1,5 +1,6 @@
-import { Baby, BarChart3, ClipboardList, Moon, Settings, Sun } from 'lucide-react'
+import { Baby, BarChart3, ClipboardList, LogOut, Moon, Settings, Sun } from 'lucide-react'
 import type { Dispatch, SetStateAction } from 'react'
+import type { AuthUser } from '../auth/authApi'
 import type { View } from '../types'
 type SyncStatus = 'syncing' | 'synced' | 'offline' | 'issue'
 
@@ -11,6 +12,8 @@ type AppHeaderProps = {
   setView: Dispatch<SetStateAction<View>>
   setTheme: Dispatch<SetStateAction<'light' | 'dark'>>
   setSettingsOpen: Dispatch<SetStateAction<boolean>>
+  authUser?: AuthUser | null
+  onLogout?: () => void
 }
 
 const syncLabel: Record<SyncStatus, string> = {
@@ -20,7 +23,7 @@ const syncLabel: Record<SyncStatus, string> = {
   issue: 'Connection issue',
 }
 
-export function AppHeader({ view, syncStatus, theme, settingsOpen, setView, setTheme, setSettingsOpen }: AppHeaderProps) {
+export function AppHeader({ view, syncStatus, theme, settingsOpen, setView, setTheme, setSettingsOpen, authUser = null, onLogout }: AppHeaderProps) {
   return (
     <header className="top">
       <h1><span className="brand-mark"><Baby size={22} /></span> Baby Feeding Tracker</h1>
@@ -35,6 +38,11 @@ export function AppHeader({ view, syncStatus, theme, settingsOpen, setView, setT
         <button className="icon-plain" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
           {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
         </button>
+        {authUser?.mode === 'session' && onLogout ? (
+          <button className="icon-plain" aria-label="Sign out" title="Sign out" onClick={onLogout}>
+            <LogOut size={17} />
+          </button>
+        ) : null}
       </div>
     </header>
   )

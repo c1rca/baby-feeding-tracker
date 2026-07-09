@@ -1,3 +1,6 @@
+import { LoginScreen } from './auth/LoginScreen'
+import { useAuthGate } from './auth/useAuthGate'
+import type { AuthUser } from './auth/authApi'
 import { AppHeader } from './components/AppHeader'
 import { AppToast } from './components/AppToast'
 import { MedicineReminderBanner } from './components/MedicineReminderBanner'
@@ -7,7 +10,12 @@ import { TrackerModals } from './components/TrackerModals'
 import { TrackView } from './components/TrackView'
 import { useTrackerAppController } from './state/useTrackerAppController'
 
-function App() {
+type TrackerAppProps = {
+  authUser: AuthUser | null
+  onLogout: () => void
+}
+
+function TrackerApp({ authUser, onLogout }: TrackerAppProps) {
   const { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps } = useTrackerAppController()
 
   return (
@@ -19,7 +27,7 @@ function App() {
         <div className="stars" />
         <div className="stars stars-2" />
       </div>
-      <AppHeader {...headerProps} />
+      <AppHeader {...headerProps} authUser={authUser} onLogout={onLogout} />
       <MedicineReminderBanner {...medicineReminderProps} />
       <TummyTimeReminderBanner {...tummyTimeReminderProps} />
       {view === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
@@ -27,6 +35,13 @@ function App() {
       <AppToast {...toastProps} />
     </main>
   )
+}
+
+function App() {
+  const { status, authUser, epoch, pending, error, login, logout } = useAuthGate()
+
+  if (status === 'login') return <LoginScreen pending={pending} error={error} onLogin={login} />
+  return <TrackerApp key={epoch} authUser={authUser} onLogout={logout} />
 }
 
 export default App
