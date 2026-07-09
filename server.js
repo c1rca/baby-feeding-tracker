@@ -23,7 +23,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, selectStateForBaby, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions } = statements
+const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 
 const readBooleanSetting = (key, fallback) => {
@@ -56,6 +56,7 @@ const setMedicineReminderSettings = (settings) => {
 const notificationScheduler = createTrackerNotificationScheduler({
   config,
   selectState,
+  selectAllStates: selectAllBabyStates,
   getNotificationState,
   upsertNotificationState,
   gotifyRemindersEnabled,

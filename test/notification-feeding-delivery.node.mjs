@@ -68,6 +68,36 @@ test('notification scheduler formats feeding windows in configured app time zone
   assert.match(sent[0].message, /Next feeding window is open \(10:40 AM–11:40 AM\)\./)
 })
 
+test('notification scheduler scans tenant baby states and sends the earliest unsent reminder', async () => {
+  const now = new Date('2026-06-05T10:00:00Z').getTime()
+  const rows = [
+    { household_id: 'household-a', baby_id: 'baby-a', entries_json: JSON.stringify([{ id: 'feed-a', endedAt: now - 2 * 60 * 60 * 1000 }]) },
+    { household_id: 'household-b', baby_id: 'baby-b', entries_json: JSON.stringify([{ id: 'feed-b', endedAt: now - 150 * 60 * 1000 }]) },
+  ]
+  const sent = []
+  const handled = new Map()
+  const timers = []
+
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => { throw new Error('legacy app_state should not be used when tenant states are available') } },
+    selectAllStates: { all: () => rows },
+    getNotificationState: { get: (id) => handled.get(id) },
+    upsertNotificationState: { run: (state) => handled.set(state.entry_id, state) },
+    sendGotify: async (payload) => sent.push(payload),
+    now: () => now,
+    setTimer: (fn, delay) => { timers.push({ fn, delay }); return timers.length },
+    clearTimer: () => {},
+    logger: { warn: () => {} },
+  })
+
+  scheduler.evaluate()
+  assert.equal(timers[0].delay, 0)
+  await timers[0].fn()
+
+  assert.equal(sent.length, 1)
+  assert.deepEqual([...handled.keys()], ['feed-b'])
+})
+
 function formatTestTime(timestamp) {
   return formatTime(timestamp)
 }
