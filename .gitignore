@@ -45,6 +45,7 @@ implementation_plan.md
 *implementation_plan*.md
 plans/
 docs/plans/
+docs/plans/prod-readiness-agent-handoff.md
 
 # Docker/local overrides
 compose.override.yml
