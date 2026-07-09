@@ -22,6 +22,17 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   const notificationsDefaultEnabled = env.NOTIFICATIONS_ENABLED === '1' && notificationChannelsAvailable
   const authRequired = env.AUTH_REQUIRED === '1'
   const authBypass = env.AUTH_BYPASS === '1'
+  // Production must never boot without auth. ALLOW_INSECURE_LOCAL_MODE is the
+  // deliberate, explicit escape hatch for local diagnostics against a
+  // prod-like NODE_ENV; it is never set in the deployed environment.
+  if (env.NODE_ENV === 'production' && env.ALLOW_INSECURE_LOCAL_MODE !== '1') {
+    if (!authRequired) {
+      throw new Error('AUTH_REQUIRED must be 1 in production (set ALLOW_INSECURE_LOCAL_MODE=1 to override for local diagnostics)')
+    }
+    if (authBypass) {
+      throw new Error('AUTH_BYPASS must not be enabled in production (set ALLOW_INSECURE_LOCAL_MODE=1 to override for local diagnostics)')
+    }
+  }
   const googleAuth = {
     clientId: env.GOOGLE_CLIENT_ID || '',
     clientSecret: env.GOOGLE_CLIENT_SECRET || '',
