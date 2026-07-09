@@ -1,5 +1,6 @@
 import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './database.js'
 import { normalizeMedicineReminderSettings } from './notificationModels.js'
+import { validateStatePayload } from './stateValidation.js'
 
 const normalizeTummyGoalMinutes = (value) => {
   const numeric = Number(value)
@@ -190,6 +191,11 @@ export const createStateRouter = ({
     app.put('/api/state', (req, res) => {
       if (!canMutate(req.auth)) {
         rejectForbidden(res)
+        return
+      }
+      const validation = validateStatePayload(req.body)
+      if (!validation.ok) {
+        res.status(400).json({ ok: false, error: validation.error })
         return
       }
       const existingRow = selectScopedState(requestScope(req))
