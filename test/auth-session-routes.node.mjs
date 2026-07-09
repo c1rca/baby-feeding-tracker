@@ -33,7 +33,39 @@ test('session me route returns the authenticated user and household context', ()
       role: 'caregiver',
       mode: 'session',
     },
+    memberships: [],
+    needsOnboarding: false,
   })
+})
+
+test('session me route reports needsOnboarding and memberships for a householdless session', () => {
+  const app = mountRouter({
+    selectMembershipsByUser: { all: (userId) => userId === 'user-9' ? [] : [{ household_id: 'other', role: 'owner' }] },
+  })
+  const res = createJsonResponse()
+
+  app.route('GET', '/api/auth/me')({
+    auth: { userId: 'user-9', householdId: null, babyId: null, role: null, mode: 'session' },
+  }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.equal(res.body.needsOnboarding, true)
+  assert.deepEqual(res.body.memberships, [])
+  assert.equal(res.body.user.householdId, null)
+})
+
+test('session me route lists memberships and clears needsOnboarding once in a household', () => {
+  const app = mountRouter({
+    selectMembershipsByUser: { all: () => [{ household_id: 'household-1', role: 'caregiver' }] },
+  })
+  const res = createJsonResponse()
+
+  app.route('GET', '/api/auth/me')({
+    auth: { userId: 'user-1', householdId: 'household-1', babyId: 'baby-1', role: 'caregiver', mode: 'session' },
+  }, res)
+
+  assert.equal(res.body.needsOnboarding, false)
+  assert.deepEqual(res.body.memberships, [{ householdId: 'household-1', role: 'caregiver' }])
 })
 
 test('password change route updates the current user password and revokes other sessions', () => {

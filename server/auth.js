@@ -238,10 +238,13 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
   return router
 }
 
-export const createAuthSessionRouter = ({ revokeSession = null, revokeOtherUserSessions = null, selectUserById = null, updateUserPassword = null, appendEventLog = () => {}, now = () => new Date() } = {}) => {
+export const createAuthSessionRouter = ({ revokeSession = null, revokeOtherUserSessions = null, selectUserById = null, selectMembershipsByUser = null, updateUserPassword = null, appendEventLog = () => {}, now = () => new Date() } = {}) => {
   const router = (app) => {
     app.get('/api/auth/me', (req, res) => {
       const auth = req.auth || localAuthContext()
+      const memberships = auth.mode === 'session' && selectMembershipsByUser
+        ? selectMembershipsByUser.all(auth.userId).map((row) => ({ householdId: row.household_id, role: row.role }))
+        : []
       res.status(200).json({
         ok: true,
         user: {
@@ -251,6 +254,9 @@ export const createAuthSessionRouter = ({ revokeSession = null, revokeOtherUserS
           role: auth.role,
           mode: auth.mode,
         },
+        memberships,
+        // A signed-in user with no household still needs to create or join one.
+        needsOnboarding: auth.mode === 'session' && !auth.householdId,
       })
     })
 
@@ -292,6 +298,15 @@ export const createAuthSessionRouter = ({ revokeSession = null, revokeOtherUserS
 
 const requestedBabyId = (req) => String(req.headers?.['x-baby-id'] || req.headers?.['X-Baby-Id'] || '').trim()
 
+// Routes a session without a household may still reach: read its own identity,
+// log out, change password, create a household, or accept an invite. Matched by
+// path suffix so it works whether or not Express has stripped the /api mount.
+const HOUSEHOLDLESS_ALLOW_SET = ['/auth/me', '/auth/logout', '/auth/password', '/households', '/auth/invites/accept']
+const isHouseholdlessAllowed = (req) => {
+  const path = String(req.path || req.url || '')
+  return HOUSEHOLDLESS_ALLOW_SET.some((allowed) => path === allowed || path.endsWith(allowed))
+}
+
 export const createAuthMiddleware = ({ authRequired = false, authBypass = false, selectSessionContext = null, selectBabyForHousehold = null } = {}) => (req, res, next) => {
   if (authBypass) {
     req.auth = localAuthContext('auth-bypass')
@@ -314,6 +329,18 @@ export const createAuthMiddleware = ({ authRequired = false, authBypass = false,
   const row = selectSessionContext?.get(tokenHash)
   if (!row) {
     res.status(401).json({ ok: false, error: 'Invalid or expired session' })
+    return
+  }
+
+  // A valid session with no household membership yet: allow only onboarding and
+  // identity routes; everything tenant-scoped is 403 until a household exists.
+  if (!row.household_id) {
+    if (!isHouseholdlessAllowed(req)) {
+      res.status(403).json({ ok: false, error: 'needs_household' })
+      return
+    }
+    req.auth = { userId: row.user_id, householdId: null, babyId: null, role: null, mode: 'session', tokenHash }
+    next()
     return
   }
 

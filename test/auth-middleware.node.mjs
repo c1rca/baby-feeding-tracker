@@ -111,6 +111,38 @@ test('auth middleware rejects a requested baby outside the authenticated househo
   assert.deepEqual(result.res.body, { ok: false, error: 'Baby not found' })
 })
 
+test('auth middleware lets a householdless session reach onboarding/identity routes', () => {
+  const middleware = createAuthMiddleware({
+    authRequired: true,
+    selectSessionContext: { get: () => ({ user_id: 'user-9', household_id: null, role: null, baby_id: null }) },
+  })
+
+  const result = runMiddleware(middleware, { headers: { authorization: 'Bearer token' }, path: '/api/auth/me' })
+
+  assert.equal(result.nextCalled, true)
+  assert.deepEqual(result.req.auth, {
+    userId: 'user-9',
+    householdId: null,
+    babyId: null,
+    role: null,
+    mode: 'session',
+    tokenHash: hashSessionToken('token'),
+  })
+})
+
+test('auth middleware blocks a householdless session from tenant-scoped routes with 403 needs_household', () => {
+  const middleware = createAuthMiddleware({
+    authRequired: true,
+    selectSessionContext: { get: () => ({ user_id: 'user-9', household_id: null, role: null, baby_id: null }) },
+  })
+
+  const result = runMiddleware(middleware, { headers: { authorization: 'Bearer token' }, path: '/api/state' })
+
+  assert.equal(result.nextCalled, false)
+  assert.equal(result.res.statusCode, 403)
+  assert.deepEqual(result.res.body, { ok: false, error: 'needs_household' })
+})
+
 test('auth middleware rejects missing or invalid bearer sessions when auth is required', () => {
   const missing = runMiddleware(createAuthMiddleware({ authRequired: true, selectSessionContext: { get: () => null } }), { headers: {} })
   assert.equal(missing.nextCalled, false)

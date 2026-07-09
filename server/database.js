@@ -286,17 +286,21 @@ export function prepareTrackerStatements(db) {
         updated_at = excluded.updated_at
     `),
     selectDeletedItems: db.prepare('SELECT item_id, collection FROM deleted_items WHERE household_id = ? AND baby_id = ?'),
+    // LEFT JOINs so a valid session still resolves when the user has no
+    // membership yet (needs onboarding) or a household has zero babies — both
+    // return a row with NULL household/baby instead of a hard 401.
     selectSessionContext: db.prepare(`
       SELECT auth_sessions.user_id, household_members.household_id, household_members.role, babies.id AS baby_id
       FROM auth_sessions
-      JOIN household_members ON household_members.user_id = auth_sessions.user_id
-      JOIN babies ON babies.household_id = household_members.household_id AND babies.archived_at IS NULL
+      LEFT JOIN household_members ON household_members.user_id = auth_sessions.user_id
+      LEFT JOIN babies ON babies.household_id = household_members.household_id AND babies.archived_at IS NULL
       WHERE auth_sessions.token_hash = ?
         AND auth_sessions.revoked_at IS NULL
         AND auth_sessions.expires_at > datetime('now')
       ORDER BY babies.created_at ASC
       LIMIT 1
     `),
+    selectMembershipsByUser: db.prepare('SELECT household_id, role FROM household_members WHERE user_id = ? ORDER BY created_at ASC'),
     upsertDeletedItem: db.prepare(`
       INSERT INTO deleted_items (item_id, collection, household_id, baby_id, deleted_at)
       VALUES (@item_id, @collection, @household_id, @baby_id, @deleted_at)

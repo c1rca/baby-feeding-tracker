@@ -23,7 +23,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, selectStateForBaby, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, revokeSession, revokeOtherUserSessions } = statements
+const { selectState, upsertState, selectStateForBaby, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, revokeSession, revokeOtherUserSessions } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 
 const readBooleanSetting = (key, fallback) => {
@@ -93,7 +93,7 @@ app.use(express.json({ limit: '1mb' }))
 createHealthRouter({ checkDatabaseReady })(app)
 createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, selectUserById, appendEventLog })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, authBypass: config.authBypass, selectSessionContext, selectBabyForHousehold }))
-createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, updateUserPassword, appendEventLog })(app)
+createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, selectMembershipsByUser, updateUserPassword, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)
 
 createDiagnosticsRouter({ config, getGotifyRemindersEnabled })(app)
