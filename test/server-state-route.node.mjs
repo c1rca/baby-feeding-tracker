@@ -38,6 +38,7 @@ test('state route writes resolved canonical state, audit/event logs it, evaluate
     notificationScheduler: { evaluate: () => { calls.evaluations += 1 } },
     broadcastStateChange: (payload) => calls.broadcasts.push(payload),
     handleStateEvents: () => {},
+    selectBabyForHousehold: { get: (babyId, householdId) => ({ id: babyId, household_id: householdId }) },
   })(app)
 
   const res = createJsonResponse()
@@ -60,4 +61,34 @@ test('state route writes resolved canonical state, audit/event logs it, evaluate
   assert.deepEqual(calls.broadcasts, [res.body.state])
   assert.equal(res.body.ok, true)
   assert.equal(res.body.staleWriteMerged, true)
+})
+
+test('state route rejects writes for babies outside the authenticated household', () => {
+  const app = createFakeApp()
+  const calls = { upserts: 0, events: 0, evaluations: 0, broadcasts: 0 }
+  createStateRouter({
+    selectState: { get: () => ({ household_id: 'household-1', baby_id: 'baby-1', updated_at: 'server-old' }) },
+    upsertState: { run: () => { calls.upserts += 1 } },
+    serializeState: () => ({ entries: [] }),
+    resolveIncomingState: () => ({ entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], session: null, tummySession: null, tummyGoalMinutes: 20, babyDob: '2026-06-03', theme: 'light', stale: false }),
+    deletedItemOptions: () => ({}),
+    buildStateAudit: () => ({}),
+    recordDeletedItems: () => {},
+    appendEventLog: () => { calls.events += 1 },
+    summarizeState: () => ({}),
+    notificationScheduler: { evaluate: () => { calls.evaluations += 1 } },
+    broadcastStateChange: () => { calls.broadcasts += 1 },
+    handleStateEvents: () => {},
+    selectBabyForHousehold: { get: () => null },
+  })(app)
+
+  const res = createJsonResponse()
+  app.route('PUT', '/api/state')({
+    auth: { householdId: 'household-1', babyId: 'other-baby' },
+    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-old' },
+  }, res)
+
+  assert.equal(res.statusCode, 404)
+  assert.deepEqual(res.body, { ok: false, error: 'Baby not found' })
+  assert.deepEqual(calls, { upserts: 0, events: 0, evaluations: 0, broadcasts: 0 })
 })

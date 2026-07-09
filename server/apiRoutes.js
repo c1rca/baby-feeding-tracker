@@ -128,6 +128,7 @@ export const createStateRouter = ({
   notificationScheduler,
   broadcastStateChange,
   handleStateEvents,
+  selectBabyForHousehold = null,
 }) => {
   const persistStateAndDeletedItems = writeStateAndDeletedItems ?? ((statePayload, audit, updatedAt) => {
     upsertState.run(statePayload)
@@ -163,6 +164,10 @@ export const createStateRouter = ({
       }, deletedItemOptions())
       const { entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme } = incoming
       const scope = requestScope(req, existingRow)
+      if (selectBabyForHousehold && !selectBabyForHousehold.get(scope.babyId, scope.householdId)) {
+        res.status(404).json({ ok: false, error: 'Baby not found' })
+        return
+      }
       const updatedAt = new Date().toISOString()
 
       const statePayload = {

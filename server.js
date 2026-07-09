@@ -22,7 +22,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectBabiesByHousehold, insertBaby, archiveBaby, insertSession, revokeSession } = statements
+const { selectState, upsertState, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, revokeSession } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 
 const readBooleanSetting = (key, fallback) => {
@@ -103,6 +103,7 @@ createStateRouter({
   notificationScheduler,
   broadcastStateChange,
   handleStateEvents,
+  selectBabyForHousehold,
 })(app)
 
 const distPath = path.join(__dirname, 'dist')
