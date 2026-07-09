@@ -4,7 +4,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createAuthMiddleware, createAuthRouter, createAuthSessionRouter } from './server/auth.js'
 import { buildStateAudit } from './server/auditLog.js'
-import { createDiagnosticsRouter, createHealthRouter, createNotificationSettingsRouter, createStateRouter, createBabyRouter } from './server/apiRoutes.js'
+import { createDiagnosticsRouter, createHealthRouter, createHouseholdRouter, createNotificationSettingsRouter, createStateRouter, createBabyRouter } from './server/apiRoutes.js'
 import { openTrackerDatabase, prepareTrackerStatements, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './server/database.js'
 import { createEventLogger, redactError } from './server/eventLog.js'
 import { createTrackerNotificationScheduler } from './server/notificationRuntime.js'
@@ -23,7 +23,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, selectStateForBaby, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, revokeSession, revokeOtherUserSessions } = statements
+const { selectState, upsertState, selectStateForBaby, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, revokeSession, revokeOtherUserSessions } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 
 const readBooleanSetting = (key, fallback) => {
@@ -95,6 +95,13 @@ createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleA
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, authBypass: config.authBypass, selectSessionContext, selectBabyForHousehold }))
 createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, selectMembershipsByUser, updateUserPassword, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)
+const createHousehold = db.transaction(({ userId, householdId, householdName, babyId, babyName, babyDob, createdAt }) => {
+  insertHousehold.run({ id: householdId, name: householdName, created_at: createdAt })
+  insertHouseholdMember.run({ user_id: userId, household_id: householdId, role: 'owner', created_at: createdAt })
+  insertBaby.run({ id: babyId, household_id: householdId, name: babyName, dob: babyDob, archived_at: null, created_at: createdAt })
+  insertEmptyBabyState.run({ household_id: householdId, baby_id: babyId, updated_at: createdAt })
+})
+createHouseholdRouter({ selectMembershipsByUser, createHousehold, appendEventLog })(app)
 
 createDiagnosticsRouter({ config, getGotifyRemindersEnabled })(app)
 createNotificationSettingsRouter({

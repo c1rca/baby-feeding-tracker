@@ -301,6 +301,9 @@ export function prepareTrackerStatements(db) {
       LIMIT 1
     `),
     selectMembershipsByUser: db.prepare('SELECT household_id, role FROM household_members WHERE user_id = ? ORDER BY created_at ASC'),
+    insertHousehold: db.prepare('INSERT INTO households (id, name, created_at) VALUES (@id, @name, @created_at)'),
+    insertHouseholdMember: db.prepare('INSERT INTO household_members (user_id, household_id, role, created_at) VALUES (@user_id, @household_id, @role, @created_at)'),
+    insertEmptyBabyState: db.prepare("INSERT INTO baby_state (household_id, baby_id, entries_json, updated_at) VALUES (@household_id, @baby_id, '[]', @updated_at)"),
     upsertDeletedItem: db.prepare(`
       INSERT INTO deleted_items (item_id, collection, household_id, baby_id, deleted_at)
       VALUES (@item_id, @collection, @household_id, @baby_id, @deleted_at)

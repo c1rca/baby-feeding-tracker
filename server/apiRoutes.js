@@ -139,6 +139,50 @@ export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = 
   return router
 }
 
+const isValidDob = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))
+
+export const createHouseholdRouter = ({ selectMembershipsByUser = null, createHousehold = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), now = () => new Date() } = {}) => {
+  const router = (app) => {
+    app.post('/api/households', (req, res) => {
+      const auth = req.auth
+      if (auth?.mode !== 'session') {
+        res.status(403).json({ ok: false, error: 'Authentication required' })
+        return
+      }
+      // Beta rule: a user belongs to exactly one household, so onboarding is a
+      // one-time action. Already-provisioned users get a 409.
+      const memberships = selectMembershipsByUser?.all(auth.userId) || []
+      if (memberships.length > 0) {
+        res.status(409).json({ ok: false, error: 'already_in_household' })
+        return
+      }
+      const householdName = String(req.body?.householdName || '').trim() || 'My household'
+      const babyName = String(req.body?.babyName || '').trim()
+      const babyDob = String(req.body?.babyDob || '').trim()
+      if (!babyName) {
+        res.status(400).json({ ok: false, error: 'Baby name is required' })
+        return
+      }
+      if (!isValidDob(babyDob)) {
+        res.status(400).json({ ok: false, error: 'Baby date of birth must use YYYY-MM-DD' })
+        return
+      }
+
+      const householdId = idFactory()
+      const babyId = idFactory()
+      const createdAt = now().toISOString()
+      createHousehold({ userId: auth.userId, householdId, householdName, babyId, babyName, babyDob, createdAt })
+      appendEventLog('household_create', { householdId, babyId, userId: auth.userId })
+      res.status(201).json({
+        ok: true,
+        household: { id: householdId, name: householdName },
+        baby: { id: babyId, householdId, name: babyName, dob: babyDob },
+      })
+    })
+  }
+  return router
+}
+
 export const createStateRouter = ({
   selectState,
   upsertState,
