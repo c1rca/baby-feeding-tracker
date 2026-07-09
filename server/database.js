@@ -137,6 +137,9 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
   if (!hasBabyDobColumn) db.exec("ALTER TABLE app_state ADD COLUMN baby_dob TEXT NOT NULL DEFAULT '2026-06-03'")
   const hasTummyGoalColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'tummy_goal_minutes'").get().count > 0
   if (!hasTummyGoalColumn) db.exec("ALTER TABLE app_state ADD COLUMN tummy_goal_minutes INTEGER NOT NULL DEFAULT 20")
+  const hasGoogleSubColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('users') WHERE name = 'google_sub'").get().count > 0
+  if (!hasGoogleSubColumn) db.exec('ALTER TABLE users ADD COLUMN google_sub TEXT')
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL')
 
   const now = new Date().toISOString()
   db.prepare('INSERT OR IGNORE INTO users (id, email, display_name, created_at) VALUES (?, ?, ?, ?)').run(DEFAULT_USER_ID, DEFAULT_USER_EMAIL, DEFAULT_USER_DISPLAY_NAME, now)
@@ -208,8 +211,19 @@ export function prepareTrackerStatements(db) {
         updated_at = excluded.updated_at
     `),
     selectSetting: db.prepare('SELECT value FROM app_settings WHERE key = ?'),
-    selectUserByEmail: db.prepare('SELECT id, email, display_name, password_hash FROM users WHERE email = ?'),
-    selectUserById: db.prepare('SELECT id, email, display_name, password_hash FROM users WHERE id = ?'),
+    selectUserByEmail: db.prepare('SELECT id, email, display_name, password_hash, google_sub FROM users WHERE email = ?'),
+    selectUserByGoogleSub: db.prepare('SELECT id, email, display_name, password_hash, google_sub FROM users WHERE google_sub = ?'),
+    upsertGoogleUser: db.prepare(`
+      INSERT INTO users (id, email, display_name, password_hash, google_sub, created_at)
+      VALUES (@id, @email, @display_name, NULL, @google_sub, @created_at)
+      ON CONFLICT(email) DO UPDATE SET google_sub = excluded.google_sub, display_name = excluded.display_name
+    `),
+    upsertGoogleHouseholdMember: db.prepare(`
+      INSERT INTO household_members (user_id, household_id, role, created_at)
+      VALUES (@user_id, @household_id, @role, @created_at)
+      ON CONFLICT(user_id, household_id) DO UPDATE SET role = household_members.role
+    `),
+    selectUserById: db.prepare('SELECT id, email, display_name, password_hash, google_sub FROM users WHERE id = ?'),
     updateUserPassword: db.prepare('UPDATE users SET password_hash = @password_hash WHERE id = @user_id'),
     selectBabiesByHousehold: db.prepare('SELECT id, household_id, name, dob, archived_at FROM babies WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at ASC'),
     selectBabyForHousehold: db.prepare('SELECT id, household_id, name, dob, archived_at FROM babies WHERE id = ? AND household_id = ? AND archived_at IS NULL'),

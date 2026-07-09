@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID, DEFAULT_USER_ID } from './database.js'
 import { hashPassword, hashSessionToken, verifyPassword } from './authCrypto.js'
 
@@ -15,6 +16,38 @@ const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
 const defaultTokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', '')
 const defaultIdFactory = () => globalThis.crypto.randomUUID()
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
+const isGoogleAuthAvailable = (authRequired, googleAuth = {}) => Boolean(authRequired && googleAuth.clientId && googleAuth.clientSecret && googleAuth.redirectUri)
+const defaultGoogleStateFactory = ({ secret, now = () => new Date() }) => {
+  const payload = Buffer.from(JSON.stringify({ nonce: defaultTokenFactory(), exp: now().getTime() + 10 * 60 * 1000 })).toString('base64url')
+  const sig = crypto.createHmac('sha256', secret).update(payload).digest('base64url')
+  return `${payload}.${sig}`
+}
+const defaultGoogleStateVerifier = (state, { secret, now = () => new Date() }) => {
+  const [payload, sig] = String(state || '').split('.')
+  if (!payload || !sig) return false
+  const expected = crypto.createHmac('sha256', secret).update(payload).digest('base64url')
+  if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) return false
+  try {
+    const parsed = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))
+    return Number(parsed.exp || 0) >= now().getTime()
+  } catch {
+    return false
+  }
+}
+const defaultGoogleCodeExchange = async (code, googleAuth) => {
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ code, client_id: googleAuth.clientId, client_secret: googleAuth.clientSecret, redirect_uri: googleAuth.redirectUri, grant_type: 'authorization_code' }),
+  })
+  if (!response.ok) throw new Error('Google token exchange failed')
+  return response.json()
+}
+const defaultGoogleProfileFetch = async (accessToken) => {
+  const response = await fetch('https://openidconnect.googleapis.com/v1/userinfo', { headers: { Authorization: `Bearer ${accessToken}` } })
+  if (!response.ok) throw new Error('Google profile fetch failed')
+  return response.json()
+}
 
 const bearerToken = (req) => {
   const header = req.headers?.authorization || req.headers?.Authorization || ''
@@ -22,7 +55,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, selectUserByEmail = null, insertSession = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000 } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, upsertGoogleHouseholdMember = null, insertSession = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000 } = {}) => {
   const loginFailures = new Map()
   const failureKey = (req, email) => `${req.ip || req.socket?.remoteAddress || 'unknown'}|${email}`
   const failuresFor = (key) => {
@@ -32,6 +65,21 @@ export const createAuthRouter = ({ authRequired = false, selectUserByEmail = nul
       return null
     }
     return record ?? null
+  }
+
+  const createSession = (user) => {
+    const createdAt = now()
+    const expiresAt = addDays(createdAt, 30)
+    const token = tokenFactory()
+    insertSession.run({
+      id: idFactory(),
+      user_id: user.id,
+      token_hash: hashSessionToken(token),
+      created_at: createdAt.toISOString(),
+      expires_at: expiresAt.toISOString(),
+      revoked_at: null,
+    })
+    return token
   }
 
   const router = (app) => {
@@ -60,17 +108,7 @@ export const createAuthRouter = ({ authRequired = false, selectUserByEmail = nul
       }
       loginFailures.delete(key)
 
-      const createdAt = now()
-      const expiresAt = addDays(createdAt, 30)
-      const token = tokenFactory()
-      insertSession.run({
-        id: idFactory(),
-        user_id: user.id,
-        token_hash: hashSessionToken(token),
-        created_at: createdAt.toISOString(),
-        expires_at: expiresAt.toISOString(),
-        revoked_at: null,
-      })
+      const token = createSession(user)
       appendEventLog('auth_login', { userId: user.id })
       res.status(200).json({
         ok: true,
@@ -81,6 +119,68 @@ export const createAuthRouter = ({ authRequired = false, selectUserByEmail = nul
           displayName: user.display_name,
         },
       })
+    })
+
+    app.get('/api/auth/google/status', (req, res) => {
+      res.status(200).json({ ok: true, available: isGoogleAuthAvailable(authRequired, googleAuth) })
+    })
+
+    app.get('/api/auth/google/start', (req, res) => {
+      if (!isGoogleAuthAvailable(authRequired, googleAuth)) {
+        res.status(404).json({ ok: false, error: 'Google sign-in is not enabled' })
+        return
+      }
+      const state = stateFactory ? stateFactory() : defaultGoogleStateFactory({ secret: googleAuth.clientSecret, now })
+      const url = new URL('https://accounts.google.com/o/oauth2/v2/auth')
+      url.searchParams.set('client_id', googleAuth.clientId)
+      url.searchParams.set('redirect_uri', googleAuth.redirectUri)
+      url.searchParams.set('response_type', 'code')
+      url.searchParams.set('scope', 'openid email profile')
+      url.searchParams.set('state', state)
+      url.searchParams.set('prompt', 'select_account')
+      res.redirect(302, url.toString())
+    })
+
+    app.get('/api/auth/google/callback', async (req, res) => {
+      if (!isGoogleAuthAvailable(authRequired, googleAuth)) {
+        res.redirect(302, '/?auth_error=google_unavailable')
+        return
+      }
+      const code = String(req.query?.code || '')
+      const state = String(req.query?.state || '')
+      const stateOk = verifyGoogleState ? verifyGoogleState(state) : defaultGoogleStateVerifier(state, { secret: googleAuth.clientSecret, now })
+      if (!code || !stateOk) {
+        res.redirect(302, '/?auth_error=google_state')
+        return
+      }
+      try {
+        const tokenPayload = await exchangeGoogleCode(code, googleAuth)
+        const profile = await fetchGoogleProfile(tokenPayload.access_token)
+        const email = normalizeEmail(profile.email)
+        if (!profile.sub || !email || profile.email_verified === false) {
+          res.redirect(302, '/?auth_error=google_profile')
+          return
+        }
+        const existingBySub = selectUserByGoogleSub?.get(profile.sub)
+        const existingByEmail = existingBySub ? null : selectUserByEmail?.get(email)
+        const user = existingBySub || existingByEmail || { id: idFactory(), email, display_name: profile.name || email }
+        upsertGoogleUser?.run({
+          id: user.id,
+          email,
+          display_name: profile.name || user.display_name || email,
+          google_sub: profile.sub,
+          household_id: DEFAULT_HOUSEHOLD_ID,
+          role: 'owner',
+          created_at: now().toISOString(),
+        })
+        upsertGoogleHouseholdMember?.run({ user_id: user.id, household_id: DEFAULT_HOUSEHOLD_ID, role: 'owner', created_at: now().toISOString() })
+        const googleToken = createSession({ id: user.id })
+        appendEventLog('auth_google_login', { userId: user.id })
+        res.redirect(302, `/?auth_token=${encodeURIComponent(googleToken)}`)
+      } catch (error) {
+        appendEventLog('auth_google_error', { error: error?.message || 'Google sign-in failed' })
+        res.redirect(302, '/?auth_error=google_failed')
+      }
     })
   }
   return router

@@ -22,7 +22,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, selectStateForBaby, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, revokeSession, revokeOtherUserSessions } = statements
+const { selectState, upsertState, selectStateForBaby, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, upsertGoogleHouseholdMember, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, revokeSession, revokeOtherUserSessions } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 
 const readBooleanSetting = (key, fallback) => {
@@ -86,7 +86,7 @@ const checkDatabaseReady = () => {
 
 app.use(express.json({ limit: '1mb' }))
 createHealthRouter({ checkDatabaseReady })(app)
-createAuthRouter({ authRequired: config.authRequired, selectUserByEmail, insertSession, appendEventLog })(app)
+createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, upsertGoogleHouseholdMember, insertSession, appendEventLog })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, authBypass: config.authBypass, selectSessionContext, selectBabyForHousehold }))
 createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, updateUserPassword, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)

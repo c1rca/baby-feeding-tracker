@@ -38,6 +38,10 @@ export const createJsonResponse = () => {
       response.statusCode = code
       return response
     },
+    redirect(codeOrUrl, maybeUrl) {
+      response.statusCode = typeof codeOrUrl === 'number' ? codeOrUrl : 302
+      response.redirectUrl = typeof codeOrUrl === 'number' ? maybeUrl : codeOrUrl
+    },
     json(payload) {
       response.body = payload
     },

@@ -42,6 +42,7 @@ describe('App auth shell', () => {
     const authorized = (init?: RequestInit) => bearerOf(init) === `Bearer ${issuedToken}`
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
+      if (url === '/api/auth/google/status') return jsonResponse({ ok: true, available: true })
       if (url === '/api/auth/login' && init?.method === 'POST') {
         const body = JSON.parse(String(init.body)) as { email?: string; password?: string }
         if (body.email === 'mom' && body.password === 'hunter22') {
@@ -59,6 +60,7 @@ describe('App auth shell', () => {
     render(<App />)
 
     await waitFor(() => expect(screen.getByRole('heading', { name: /Sign in/i })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('link', { name: /Sign in with Google/i }).getAttribute('href')).toBe('/api/auth/google/start'))
     expect(screen.getByText(/Forgot password/i)).toBeTruthy()
     expect(screen.getByText(/Use username mom or data in dev/i)).toBeTruthy()
 
@@ -74,6 +76,25 @@ describe('App auth shell', () => {
       expect(authedStateCall).toBeTruthy()
     })
     expect(screen.queryByLabelText(/Email/i)).toBeNull()
+  })
+
+  it('stores a Google callback token from the URL and hydrates the authenticated app', async () => {
+    window.history.replaceState({}, '', '/?auth_token=google-token')
+    const authorized = (init?: RequestInit) => bearerOf(init) === 'Bearer google-token'
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/auth/me') return authorized(init) ? jsonResponse({ ok: true, user: sessionModeUser }) : jsonResponse({ ok: false }, 401)
+      if (url === '/api/notification-settings') return jsonResponse({ available: false, gotifyRemindersEnabled: false })
+      if (url === '/api/state' && !init?.method) return authorized(init) ? jsonResponse(emptyServerState) : jsonResponse({ ok: false }, 401)
+      return jsonResponse({ ok: true, updatedAt: 'server-2' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await waitFor(() => expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('google-token'))
+    expect(window.location.search).not.toContain('auth_token')
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store', headers: expect.any(Headers) })))
   })
 
   it('keeps the login form up with an error message after a failed login', async () => {

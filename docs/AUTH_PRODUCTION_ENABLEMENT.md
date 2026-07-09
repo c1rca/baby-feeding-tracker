@@ -73,6 +73,7 @@ Security notes:
 - `AUTH_BOOTSTRAP_PASSWORD` sets the default caregiver password only if no password hash exists yet.
 - After first successful authenticated login is verified, remove or rotate the bootstrap value from the runtime environment before future restarts.
 - Known-password changes use authenticated `POST /api/auth/password` with `currentPassword` and `newPassword`; changing a password revokes the user's other active sessions.
+- Google sign-in is optional and appears only when authentication is required and `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI` are configured. Register `GOOGLE_REDIRECT_URI` in Google Cloud as the app's `/api/auth/google/callback` URL.
 - Current auth token storage is browser `localStorage` bearer-token based. If moving to cookies later, add CSRF protection first.
 - If running behind a reverse proxy, decide and test `trust proxy` behavior before relying on IP-based rate limits.
 

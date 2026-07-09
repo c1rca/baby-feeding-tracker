@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchAuthSession, loginWithPassword, logoutSession, type AuthUser } from './authApi'
-import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken, storeAuthToken } from './authSession'
+import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken, consumeAuthTokenFromUrl, storeAuthToken } from './authSession'
 
 type AuthGateStatus = 'ready' | 'login'
 
 export function useAuthGate() {
-  const [status, setStatus] = useState<AuthGateStatus>('ready')
+  const [status, setStatus] = useState<AuthGateStatus>(() => {
+    consumeAuthTokenFromUrl()
+    return 'ready'
+  })
   const [authUser, setAuthUser] = useState<AuthUser | null>(null)
   const [epoch, setEpoch] = useState(0)
   const [pending, setPending] = useState(false)

@@ -25,6 +25,21 @@ export const clearAuthToken = () => {
   }
 }
 
+export const consumeAuthTokenFromUrl = (): boolean => {
+  try {
+    const url = new URL(window.location.href)
+    const token = url.searchParams.get('auth_token')
+    if (!token) return false
+    storeAuthToken(token)
+    url.searchParams.delete('auth_token')
+    url.searchParams.delete('auth_error')
+    window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+    return true
+  } catch {
+    return false
+  }
+}
+
 // Without a stored token, calls pass through to fetch with identical arguments
 // so local no-auth mode behaves exactly as before the auth shell existed.
 export async function authFetch(input: RequestInfo | URL, init?: RequestInit) {

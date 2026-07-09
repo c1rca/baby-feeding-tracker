@@ -22,6 +22,11 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   const notificationsDefaultEnabled = env.NOTIFICATIONS_ENABLED === '1' && notificationChannelsAvailable
   const authRequired = env.AUTH_REQUIRED === '1'
   const authBypass = env.AUTH_BYPASS === '1'
+  const googleAuth = {
+    clientId: env.GOOGLE_CLIENT_ID || '',
+    clientSecret: env.GOOGLE_CLIENT_SECRET || '',
+    redirectUri: env.GOOGLE_REDIRECT_URI || '',
+  }
   const bootstrapPassword = env.AUTH_BOOTSTRAP_PASSWORD || ''
 
   return {
@@ -45,6 +50,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     notificationsDefaultEnabled,
     authRequired,
     authBypass,
+    googleAuth,
     bootstrapPassword,
   }
 }

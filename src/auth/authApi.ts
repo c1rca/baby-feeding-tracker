@@ -68,3 +68,14 @@ export async function logoutSession() {
     // The local token is cleared regardless, so a network failure only delays server-side revocation.
   }
 }
+
+export async function fetchGoogleAuthStatus(): Promise<boolean> {
+  try {
+    const response = await fetch('/api/auth/google/status', { cache: 'no-store' })
+    if (!response.ok) return false
+    const data = await response.json() as { available?: boolean }
+    return data.available === true
+  } catch {
+    return false
+  }
+}

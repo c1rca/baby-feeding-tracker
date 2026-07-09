@@ -1364,6 +1364,12 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .login-card label { display: grid; gap: 7px; color: var(--ink-soft); font-size: .82rem; font-weight: 900; }
 .login-card input { width: 100%; min-height: 48px; padding-inline: 14px; border-radius: 16px; background: color-mix(in srgb, var(--card-solid) 78%, transparent); font-size: 1rem; }
 .login-card button[type='submit'] { min-height: 48px; justify-content: center; margin-top: 2px; font-size: .98rem; }
+.google-sign-in-button { position: relative; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 0 16px; border: 1px solid var(--border-strong); border-radius: 16px; background: var(--card-solid); color: var(--ink); box-shadow: 0 8px 20px -16px rgba(42, 36, 64, .35); font-weight: 900; text-decoration: none; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.google-sign-in-button:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--berry) 28%, var(--border-strong)); box-shadow: 0 14px 26px -18px rgba(42, 36, 64, .42); }
+.google-g-mark { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 999px; background: #fff; color: #4285f4; border: 1px solid rgba(66, 133, 244, .22); font-family: var(--font-numeric); font-weight: 900; }
+.login-divider { position: relative; display: grid; place-items: center; color: var(--ink-faint); font-size: .72rem; font-weight: 900; letter-spacing: .09em; text-transform: uppercase; }
+.login-divider::before { content: ''; position: absolute; left: 0; right: 0; height: 1px; background: var(--border); }
+.login-divider span { position: relative; padding: 0 10px; background: color-mix(in srgb, var(--card-solid) 84%, transparent); }
 .login-error { margin: 0; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--rose) 24%, transparent); border-radius: 14px; background: color-mix(in srgb, var(--rose) 9%, transparent); font-size: .9rem; font-weight: 800; color: var(--rose); }
 .login-meta { position: relative; margin: 0; color: var(--ink-faint); font-size: .82rem; font-weight: 750; line-height: 1.35; }
 .login-help { position: relative; display: grid; gap: 3px; padding: 12px 13px; border: 1px solid var(--border); border-radius: 16px; background: var(--well); color: var(--ink-soft); font-size: .83rem; font-weight: 700; line-height: 1.35; }
