@@ -22,7 +22,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, selectStateForBaby, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, revokeSession } = statements
+const { selectState, upsertState, selectStateForBaby, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, revokeSession, revokeOtherUserSessions } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 
 const readBooleanSetting = (key, fallback) => {
@@ -88,7 +88,7 @@ app.use(express.json({ limit: '1mb' }))
 createHealthRouter({ checkDatabaseReady })(app)
 createAuthRouter({ authRequired: config.authRequired, selectUserByEmail, insertSession, appendEventLog })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, selectSessionContext, selectBabyForHousehold }))
-createAuthSessionRouter({ revokeSession, appendEventLog })(app)
+createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, updateUserPassword, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)
 
 createDiagnosticsRouter({ config, getGotifyRemindersEnabled })(app)

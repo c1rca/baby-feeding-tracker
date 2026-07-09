@@ -209,6 +209,8 @@ export function prepareTrackerStatements(db) {
     `),
     selectSetting: db.prepare('SELECT value FROM app_settings WHERE key = ?'),
     selectUserByEmail: db.prepare('SELECT id, email, display_name, password_hash FROM users WHERE email = ?'),
+    selectUserById: db.prepare('SELECT id, email, display_name, password_hash FROM users WHERE id = ?'),
+    updateUserPassword: db.prepare('UPDATE users SET password_hash = @password_hash WHERE id = @user_id'),
     selectBabiesByHousehold: db.prepare('SELECT id, household_id, name, dob, archived_at FROM babies WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at ASC'),
     selectBabyForHousehold: db.prepare('SELECT id, household_id, name, dob, archived_at FROM babies WHERE id = ? AND household_id = ? AND archived_at IS NULL'),
     insertBaby: db.prepare(`
@@ -228,6 +230,11 @@ export function prepareTrackerStatements(db) {
       UPDATE auth_sessions
       SET revoked_at = @revoked_at
       WHERE token_hash = @token_hash AND revoked_at IS NULL
+    `),
+    revokeOtherUserSessions: db.prepare(`
+      UPDATE auth_sessions
+      SET revoked_at = @revoked_at
+      WHERE user_id = @user_id AND token_hash != @token_hash AND revoked_at IS NULL
     `),
     upsertSetting: db.prepare(`
       INSERT INTO app_settings (key, value, updated_at)

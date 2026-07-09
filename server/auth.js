@@ -86,7 +86,7 @@ export const createAuthRouter = ({ authRequired = false, selectUserByEmail = nul
   return router
 }
 
-export const createAuthSessionRouter = ({ revokeSession = null, appendEventLog = () => {}, now = () => new Date() } = {}) => {
+export const createAuthSessionRouter = ({ revokeSession = null, revokeOtherUserSessions = null, selectUserById = null, updateUserPassword = null, appendEventLog = () => {}, now = () => new Date() } = {}) => {
   const router = (app) => {
     app.get('/api/auth/me', (req, res) => {
       const auth = req.auth || localAuthContext()
@@ -100,6 +100,30 @@ export const createAuthSessionRouter = ({ revokeSession = null, appendEventLog =
           mode: auth.mode,
         },
       })
+    })
+
+    app.post('/api/auth/password', (req, res) => {
+      const auth = req.auth || localAuthContext()
+      if (auth.mode !== 'session') {
+        res.status(404).json({ ok: false, error: 'Authentication is not enabled' })
+        return
+      }
+      const currentPassword = String(req.body?.currentPassword || '')
+      const newPassword = String(req.body?.newPassword || '')
+      if (newPassword.length < 12) {
+        res.status(400).json({ ok: false, error: 'New password must be at least 12 characters' })
+        return
+      }
+      const user = selectUserById?.get(auth.userId)
+      if (!user?.password_hash || !verifyPassword(currentPassword, user.password_hash)) {
+        res.status(401).json({ ok: false, error: 'Current password is incorrect' })
+        return
+      }
+      const updatedAt = now().toISOString()
+      updateUserPassword?.run({ user_id: auth.userId, password_hash: hashPassword(newPassword), updated_at: updatedAt })
+      revokeOtherUserSessions?.run({ user_id: auth.userId, token_hash: auth.tokenHash || '', revoked_at: updatedAt })
+      appendEventLog('auth_password_changed', { userId: auth.userId })
+      res.status(200).json({ ok: true })
     })
 
     app.post('/api/auth/logout', (req, res) => {
