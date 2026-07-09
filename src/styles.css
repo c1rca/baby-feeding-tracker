@@ -1233,8 +1233,9 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 
 /* ---------- 16. Responsive ---------- */
 @media (max-width: 760px) {
-  .top { align-items: center; gap: 10px; }
-  .top-actions { flex-wrap: wrap; justify-content: flex-end; }
+  .top { align-items: center; gap: 8px; }
+  .top h1 { min-width: 0; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .top-actions { flex: 0 0 auto; flex-wrap: nowrap; justify-content: flex-end; }
   .stats-hero { grid-template-columns: 1fr; min-height: unset; }
   .orbital-stat { width: 130px; height: 130px; justify-self: end; }
   .orbital-stat strong { font-size: 2.5rem; }
@@ -1248,7 +1249,15 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 }
 @media (max-width: 560px) {
   .app { padding: 10px 12px 80px; gap: 13px; }
-  .top { top: 6px; padding: 8px 10px; border-radius: 18px; }
+  .top { top: 6px; gap: 6px; padding: 8px 9px; border-radius: 18px; }
+  .top h1 { gap: 7px; font-size: clamp(.9rem, 4.1vw, 1rem); letter-spacing: -.035em; }
+  .brand-mark { width: 30px; height: 30px; border-radius: 10px; }
+  .brand-mark svg { width: 17px; height: 17px; }
+  .top-actions { gap: 2px; }
+  .sync-pill { min-height: 30px; gap: 4px; padding: 3px 7px; font-size: .64rem; letter-spacing: 0; }
+  .sync-pill::before { width: 6px; height: 6px; box-shadow: none; }
+  .top .icon-plain { min-height: 30px; width: 30px; border-radius: 10px; }
+  .top .icon-plain svg { width: 16px; height: 16px; }
   button { min-height: 46px; }
   .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
   .hero { padding: 18px 16px 14px; }
