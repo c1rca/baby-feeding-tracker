@@ -2,7 +2,7 @@ import express from 'express'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createAuthMiddleware } from './server/auth.js'
+import { createAuthMiddleware, createAuthRouter } from './server/auth.js'
 import { buildStateAudit } from './server/auditLog.js'
 import { createHealthRouter, createNotificationSettingsRouter, createStateRouter } from './server/apiRoutes.js'
 import { openTrackerDatabase, prepareTrackerStatements } from './server/database.js'
@@ -22,7 +22,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext } = statements
+const { selectState, upsertState, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, insertSession } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 
 const readBooleanSetting = (key, fallback) => {
@@ -73,6 +73,7 @@ const { broadcastStateChange, handleStateEvents } = createStateEventHub({ select
 const createBackupOnStart = createStartupBackup({ db, backupDir: config.backupDir, appendEventLog, redactError })
 
 app.use(express.json({ limit: '1mb' }))
+createAuthRouter({ authRequired: config.authRequired, selectUserByEmail, insertSession, appendEventLog })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, selectSessionContext }))
 
 createHealthRouter({ config, getGotifyRemindersEnabled })(app)

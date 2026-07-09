@@ -159,6 +159,11 @@ export function prepareTrackerStatements(db) {
         updated_at = excluded.updated_at
     `),
     selectSetting: db.prepare('SELECT value FROM app_settings WHERE key = ?'),
+    selectUserByEmail: db.prepare('SELECT id, email, display_name, password_hash FROM users WHERE email = ?'),
+    insertSession: db.prepare(`
+      INSERT INTO auth_sessions (id, user_id, token_hash, created_at, expires_at, revoked_at)
+      VALUES (@id, @user_id, @token_hash, @created_at, @expires_at, @revoked_at)
+    `),
     upsertSetting: db.prepare(`
       INSERT INTO app_settings (key, value, updated_at)
       VALUES (@key, @value, @updated_at)

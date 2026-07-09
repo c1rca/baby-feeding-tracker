@@ -9,6 +9,9 @@ export const createFakeApp = () => {
     put(path, handler) {
       routes.set(`PUT ${path}`, handler)
     },
+    post(path, handler) {
+      routes.set(`POST ${path}`, handler)
+    },
     route(method, path) {
       const handler = routes.get(`${method} ${path}`)
       assert.equal(typeof handler, 'function', `${method} ${path} was not registered`)
@@ -27,6 +30,10 @@ export const createJsonResponse = () => {
       } else {
         response.headers.set(key, value)
       }
+    },
+    status(code) {
+      response.statusCode = code
+      return response
     },
     json(payload) {
       response.body = payload
