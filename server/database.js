@@ -53,6 +53,15 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS auth_login_codes (
+      code_hash TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
     CREATE TABLE IF NOT EXISTS babies (
       id TEXT PRIMARY KEY,
       household_id TEXT NOT NULL,
@@ -239,6 +248,16 @@ export function prepareTrackerStatements(db) {
     insertSession: db.prepare(`
       INSERT INTO auth_sessions (id, user_id, token_hash, created_at, expires_at, revoked_at)
       VALUES (@id, @user_id, @token_hash, @created_at, @expires_at, @revoked_at)
+    `),
+    insertLoginCode: db.prepare(`
+      INSERT INTO auth_login_codes (code_hash, user_id, created_at, expires_at, consumed_at)
+      VALUES (@code_hash, @user_id, @created_at, @expires_at, NULL)
+    `),
+    selectLoginCode: db.prepare('SELECT code_hash, user_id, created_at, expires_at, consumed_at FROM auth_login_codes WHERE code_hash = ?'),
+    consumeLoginCode: db.prepare(`
+      UPDATE auth_login_codes
+      SET consumed_at = @consumed_at
+      WHERE code_hash = @code_hash AND consumed_at IS NULL
     `),
     revokeSession: db.prepare(`
       UPDATE auth_sessions

@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchAuthSession, loginWithPassword, logoutSession, type AuthUser } from './authApi'
-import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken, consumeAuthTokenFromUrl, storeAuthToken } from './authSession'
+import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken, consumeAuthCodeFromUrl, hasPendingAuth, storeAuthToken } from './authSession'
 
-type AuthGateStatus = 'ready' | 'login'
+type AuthGateStatus = 'checking' | 'ready' | 'login'
 
 export function useAuthGate() {
-  const [status, setStatus] = useState<AuthGateStatus>(() => {
-    consumeAuthTokenFromUrl()
-    return 'ready'
-  })
+  // When a token is stored or a Google handoff code is arriving, hold rendering
+  // until /api/auth/me resolves so the tracker never fires an unauthenticated
+  // request (whose 401 would wipe the token we are about to establish).
+  const [status, setStatus] = useState<AuthGateStatus>(() => (hasPendingAuth() ? 'checking' : 'ready'))
   const [authUser, setAuthUser] = useState<AuthUser | null>(null)
   const [epoch, setEpoch] = useState(0)
   const [pending, setPending] = useState(false)
@@ -22,11 +22,18 @@ export function useAuthGate() {
 
   useEffect(() => {
     let cancelled = false
-    void fetchAuthSession().then((result) => {
+    void (async () => {
+      // Exchange a Google handoff code (if present in the URL fragment) for a
+      // stored session token before asking the server who we are.
+      await consumeAuthCodeFromUrl()
+      const result = await fetchAuthSession()
       if (cancelled) return
       if (result.kind === 'unauthorized') requireLogin()
-      else if (result.kind === 'ok') setAuthUser(result.user)
-    })
+      else {
+        if (result.kind === 'ok') setAuthUser(result.user)
+        setStatus('ready')
+      }
+    })()
     return () => {
       cancelled = true
     }

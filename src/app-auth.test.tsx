@@ -78,11 +78,16 @@ describe('App auth shell', () => {
     expect(screen.queryByLabelText(/Email/i)).toBeNull()
   })
 
-  it('stores a Google callback token from the URL and hydrates the authenticated app', async () => {
-    window.history.replaceState({}, '', '/?auth_token=google-token')
+  it('exchanges a Google callback code from the URL fragment and hydrates the authenticated app', async () => {
+    window.history.replaceState({}, '', '/#auth_code=handoff-code')
     const authorized = (init?: RequestInit) => bearerOf(init) === 'Bearer google-token'
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
+      if (url === '/api/auth/google/exchange' && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body)) as { code?: string }
+        if (body.code === 'handoff-code') return jsonResponse({ ok: true, token: 'google-token', user: { id: 'default-user' } })
+        return jsonResponse({ ok: false, error: 'Invalid or expired code' }, 401)
+      }
       if (url === '/api/auth/me') return authorized(init) ? jsonResponse({ ok: true, user: sessionModeUser }) : jsonResponse({ ok: false }, 401)
       if (url === '/api/notification-settings') return jsonResponse({ available: false, gotifyRemindersEnabled: false })
       if (url === '/api/state' && !init?.method) return authorized(init) ? jsonResponse(emptyServerState) : jsonResponse({ ok: false }, 401)
@@ -93,7 +98,7 @@ describe('App auth shell', () => {
     render(<App />)
 
     await waitFor(() => expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('google-token'))
-    expect(window.location.search).not.toContain('auth_token')
+    expect(window.location.hash).not.toContain('auth_code')
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store', headers: expect.any(Headers) })))
   })
 

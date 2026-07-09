@@ -106,6 +106,7 @@ function App() {
     return true
   }
 
+  if (status === 'checking') return null
   if (status === 'login') return <LoginScreen pending={pending} error={error} onLogin={login} />
   return <TrackerApp key={epoch} authUser={authUser} onLogout={logout} babies={babies} selectedBabyId={selectedBabyId} onSelectedBabyIdChange={handleSelectedBabyIdChange} onCreateBaby={handleCreateBaby} onArchiveBaby={handleArchiveBaby} />
 }

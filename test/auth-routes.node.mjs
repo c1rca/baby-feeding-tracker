@@ -91,7 +91,7 @@ test('google start redirects to Google with a signed state', () => {
 })
 
 function googleCallbackDeps(overrides = {}) {
-  const calls = { users: [], members: [], sessions: [], events: [] }
+  const calls = { users: [], members: [], sessions: [], codes: [], events: [] }
   const usersByGoogleSub = new Map()
   const usersByEmail = new Map()
   const deps = {
@@ -109,8 +109,9 @@ function googleCallbackDeps(overrides = {}) {
       upsertGoogleUser: { run: (user) => { calls.users.push(user); usersByGoogleSub.set(user.google_sub, { id: user.id, email: user.email, display_name: user.display_name, password_hash: null }); usersByEmail.set(user.email, { id: user.id, email: user.email, display_name: user.display_name, password_hash: null }) } },
       upsertGoogleHouseholdMember: { run: (member) => calls.members.push(member) },
       insertSession: { run: (session) => calls.sessions.push(session) },
+      insertLoginCode: { run: (loginCode) => calls.codes.push(loginCode) },
       appendEventLog: (event, payload) => calls.events.push({ event, payload }),
-      tokenFactory: () => 'google-session-token',
+      tokenFactory: () => 'google-handoff-code',
       idFactory: () => calls.users.length ? 'session-id-1' : 'google-user-1',
       now: () => new Date('2026-01-01T00:00:00.000Z'),
       allowedEmails: ['mom@example.com'],
@@ -127,12 +128,18 @@ test('google callback provisions an account for an allow-listed new user without
   await app.route('GET', '/api/auth/google/callback')({ query: { code: 'auth-code', state: 'ok-state' } }, res)
 
   assert.equal(res.statusCode, 302)
-  assert.equal(res.redirectUrl, '/?auth_token=google-session-token')
+  // The token never rides in the URL: the browser gets a single-use code in the fragment.
+  assert.equal(res.redirectUrl, '/#auth_code=google-handoff-code')
   assert.equal(calls.users[0].email, 'mom@example.com')
   assert.equal(calls.users[0].google_sub, 'google-sub-1')
   // The core lockdown: a new Google account never becomes an owner of the shared household.
   assert.equal(calls.members.length, 0)
-  assert.equal(calls.sessions[0].token_hash, hashSessionToken('google-session-token'))
+  // No session is minted at the callback; only a short-lived handoff code.
+  assert.equal(calls.sessions.length, 0)
+  assert.equal(calls.codes.length, 1)
+  assert.equal(calls.codes[0].code_hash, hashSessionToken('google-handoff-code'))
+  assert.equal(calls.codes[0].user_id, 'google-user-1')
+  assert.equal(calls.codes[0].expires_at, '2026-01-01T00:01:00.000Z')
   assert.deepEqual(calls.events, [{ event: 'auth_google_login', payload: { userId: 'google-user-1' } }])
 })
 
@@ -147,6 +154,7 @@ test('google callback rejects an unknown off-allow-list email and creates no row
   assert.equal(calls.users.length, 0)
   assert.equal(calls.members.length, 0)
   assert.equal(calls.sessions.length, 0)
+  assert.equal(calls.codes.length, 0)
   assert.deepEqual(calls.events, [{ event: 'auth_google_denied', payload: { email: 'mom@example.com' } }])
 })
 
@@ -158,9 +166,9 @@ test('google callback logs in an existing google user even with an empty allow-l
   await app.route('GET', '/api/auth/google/callback')({ query: { code: 'auth-code', state: 'ok-state' } }, res)
 
   assert.equal(res.statusCode, 302)
-  assert.equal(res.redirectUrl, '/?auth_token=google-session-token')
+  assert.equal(res.redirectUrl, '/#auth_code=google-handoff-code')
   assert.equal(calls.members.length, 0)
-  assert.equal(calls.sessions[0].user_id, 'existing-user')
+  assert.equal(calls.codes[0].user_id, 'existing-user')
   assert.deepEqual(calls.events, [{ event: 'auth_google_login', payload: { userId: 'existing-user' } }])
 })
 
@@ -175,7 +183,74 @@ test('google callback links a google_sub onto an existing email user without an 
   assert.equal(calls.users[0].id, 'password-user')
   assert.equal(calls.users[0].google_sub, 'google-sub-1')
   assert.equal(calls.members.length, 0)
-  assert.equal(calls.sessions[0].user_id, 'password-user')
+  assert.equal(calls.codes[0].user_id, 'password-user')
+})
+
+function exchangeDeps(overrides = {}) {
+  const calls = { sessions: [], events: [], consumed: [] }
+  const codeRow = overrides.codeRow === undefined
+    ? { code_hash: hashSessionToken('handoff-code'), user_id: 'user-9', created_at: '2026-01-01T00:00:00.000Z', expires_at: '2026-01-01T00:01:00.000Z', consumed_at: null }
+    : overrides.codeRow
+  const router = {
+    authRequired: true,
+    selectLoginCode: { get: (hash) => (codeRow && hash === codeRow.code_hash ? codeRow : null) },
+    consumeLoginCode: { run: () => { if (codeRow.consumed_at) return { changes: 0 }; codeRow.consumed_at = '2026-01-01T00:00:30.000Z'; calls.consumed.push(codeRow.code_hash); return { changes: 1 } } },
+    selectUserById: { get: (id) => (id === 'user-9' ? { id: 'user-9', email: 'mom@example.com', display_name: 'Mom' } : null) },
+    insertSession: { run: (session) => calls.sessions.push(session) },
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+    tokenFactory: () => 'exchanged-session-token',
+    idFactory: () => 'session-x',
+    now: () => new Date('2026-01-01T00:00:30.000Z'),
+    ...overrides,
+  }
+  return { calls, router }
+}
+
+test('google exchange trades a valid code for a session token and marks it consumed', () => {
+  const { router, calls } = exchangeDeps()
+  const app = mountRouter(router)
+  const res = createJsonResponse()
+  app.route('POST', '/api/auth/google/exchange')({ body: { code: 'handoff-code' } }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.equal(res.body.ok, true)
+  assert.equal(res.body.token, 'exchanged-session-token')
+  assert.deepEqual(res.body.user, { id: 'user-9', email: 'mom@example.com', displayName: 'Mom' })
+  assert.equal(calls.sessions[0].user_id, 'user-9')
+  assert.equal(calls.consumed.length, 1)
+  assert.deepEqual(calls.events, [{ event: 'auth_google_exchange', payload: { userId: 'user-9' } }])
+})
+
+test('google exchange rejects a second use of the same code', () => {
+  const { router, calls } = exchangeDeps()
+  const app = mountRouter(router)
+  app.route('POST', '/api/auth/google/exchange')({ body: { code: 'handoff-code' } }, createJsonResponse())
+
+  const res = createJsonResponse()
+  app.route('POST', '/api/auth/google/exchange')({ body: { code: 'handoff-code' } }, res)
+
+  assert.equal(res.statusCode, 401)
+  assert.deepEqual(res.body, { ok: false, error: 'Invalid or expired code' })
+  assert.equal(calls.sessions.length, 1)
+})
+
+test('google exchange rejects an expired code', () => {
+  const { router } = exchangeDeps({ now: () => new Date('2026-01-01T00:02:00.000Z') })
+  const app = mountRouter(router)
+  const res = createJsonResponse()
+  app.route('POST', '/api/auth/google/exchange')({ body: { code: 'handoff-code' } }, res)
+
+  assert.equal(res.statusCode, 401)
+  assert.deepEqual(res.body, { ok: false, error: 'Invalid or expired code' })
+})
+
+test('google exchange rejects an unknown code', () => {
+  const { router } = exchangeDeps({ codeRow: null })
+  const app = mountRouter(router)
+  const res = createJsonResponse()
+  app.route('POST', '/api/auth/google/exchange')({ body: { code: 'nope' } }, res)
+
+  assert.equal(res.statusCode, 401)
 })
 
 test('login route stays unavailable until auth is enabled', () => {

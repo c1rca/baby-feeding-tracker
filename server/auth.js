@@ -59,7 +59,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertSession = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000 } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, selectUserById = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000 } = {}) => {
   const loginFailures = new Map()
   const failureKey = (req, email) => `${req.ip || req.socket?.remoteAddress || 'unknown'}|${email}`
   const failuresFor = (key) => {
@@ -184,13 +184,55 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
           google_sub: profile.sub,
           created_at: now().toISOString(),
         })
-        const googleToken = createSession({ id: user.id })
+        // Hand the browser a short-lived, single-use code in the URL *fragment*
+        // (never sent to the server, so it stays out of access logs/referrers).
+        // The SPA exchanges it for the real session token via POST.
+        const handoffCode = tokenFactory()
+        insertLoginCode?.run({
+          code_hash: hashSessionToken(handoffCode),
+          user_id: user.id,
+          created_at: now().toISOString(),
+          expires_at: new Date(now().getTime() + loginCodeTtlMs).toISOString(),
+        })
         appendEventLog('auth_google_login', { userId: user.id })
-        res.redirect(302, `/?auth_token=${encodeURIComponent(googleToken)}`)
+        res.redirect(302, `/#auth_code=${encodeURIComponent(handoffCode)}`)
       } catch (error) {
         appendEventLog('auth_google_error', { error: error?.message || 'Google sign-in failed' })
         res.redirect(302, '/?auth_error=google_failed')
       }
+    })
+
+    app.post('/api/auth/google/exchange', (req, res) => {
+      if (!authRequired) {
+        res.status(404).json({ ok: false, error: 'Authentication is not enabled' })
+        return
+      }
+      const code = String(req.body?.code || '')
+      if (!code) {
+        res.status(400).json({ ok: false, error: 'Missing code' })
+        return
+      }
+      const codeHash = hashSessionToken(code)
+      const row = selectLoginCode?.get(codeHash)
+      if (!row || row.consumed_at || new Date(row.expires_at).getTime() < now().getTime()) {
+        res.status(401).json({ ok: false, error: 'Invalid or expired code' })
+        return
+      }
+      // Single-use is enforced at the write: only the first exchange flips
+      // consumed_at, so a replayed code updates zero rows and is rejected.
+      const consumed = consumeLoginCode?.run({ code_hash: codeHash, consumed_at: now().toISOString() })
+      if (consumed && consumed.changes === 0) {
+        res.status(401).json({ ok: false, error: 'Invalid or expired code' })
+        return
+      }
+      const token = createSession({ id: row.user_id })
+      const user = selectUserById?.get(row.user_id)
+      appendEventLog('auth_google_exchange', { userId: row.user_id })
+      res.status(200).json({
+        ok: true,
+        token,
+        user: user ? { id: user.id, email: user.email, displayName: user.display_name } : { id: row.user_id },
+      })
     })
   }
   return router
