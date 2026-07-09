@@ -117,6 +117,8 @@ export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = 
 export const createStateRouter = ({
   selectState,
   upsertState,
+  selectStateForBaby = null,
+  upsertStateForBaby = null,
   serializeState,
   resolveIncomingState,
   deletedItemOptions,
@@ -130,8 +132,16 @@ export const createStateRouter = ({
   handleStateEvents,
   selectBabyForHousehold = null,
 }) => {
+  const isDefaultScope = (statePayload) => statePayload.household_id === DEFAULT_HOUSEHOLD_ID && statePayload.baby_id === DEFAULT_BABY_ID
   const persistStateAndDeletedItems = writeStateAndDeletedItems ?? ((statePayload, audit, updatedAt) => {
-    upsertState.run(statePayload)
+    if (upsertStateForBaby) {
+      upsertStateForBaby.run(statePayload)
+      // The legacy single row keeps mirroring the default baby so pre-scoping
+      // builds (and a prod rollback) still read current data.
+      if (isDefaultScope(statePayload)) upsertState.run(statePayload)
+    } else {
+      upsertState.run(statePayload)
+    }
     recordDeletedItems(audit, updatedAt)
   })
   const router = (app) => {
@@ -139,16 +149,22 @@ export const createStateRouter = ({
       householdId: req.auth?.householdId || existingRow?.household_id || DEFAULT_HOUSEHOLD_ID,
       babyId: req.auth?.babyId || existingRow?.baby_id || DEFAULT_BABY_ID,
     })
+    const selectScopedState = (scope) => selectStateForBaby ? selectStateForBaby.get(scope.householdId, scope.babyId) : selectState.get()
 
-    app.get('/api/state', (_req, res) => {
+    app.get('/api/state', (req, res) => {
       res.set('Cache-Control', 'no-store')
-      res.json(serializeState(selectState.get()))
+      const scope = requestScope(req)
+      if (selectBabyForHousehold && !selectBabyForHousehold.get(scope.babyId, scope.householdId)) {
+        res.status(404).json({ ok: false, error: 'Baby not found' })
+        return
+      }
+      res.json({ ...serializeState(selectScopedState(scope)), householdId: scope.householdId, babyId: scope.babyId })
     })
 
     app.get('/api/state/events', handleStateEvents)
 
     app.put('/api/state', (req, res) => {
-      const existingRow = selectState.get()
+      const existingRow = selectScopedState(requestScope(req))
       const incoming = resolveIncomingState(existingRow, {
         entries: Array.isArray(req.body?.entries) ? req.body.entries : [],
         diapers: Array.isArray(req.body?.diapers) ? req.body.diapers : [],

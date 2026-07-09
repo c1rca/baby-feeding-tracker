@@ -80,6 +80,25 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS baby_state (
+      household_id TEXT NOT NULL,
+      baby_id TEXT NOT NULL,
+      entries_json TEXT NOT NULL,
+      diapers_json TEXT NOT NULL DEFAULT '[]',
+      medicines_json TEXT NOT NULL DEFAULT '[]',
+      tummy_times_json TEXT NOT NULL DEFAULT '[]',
+      tummy_session_json TEXT,
+      tummy_goal_minutes INTEGER NOT NULL DEFAULT 20,
+      growth_measurements_json TEXT NOT NULL DEFAULT '[]',
+      baby_dob TEXT NOT NULL DEFAULT '2026-06-03',
+      session_json TEXT,
+      theme TEXT NOT NULL DEFAULT 'light',
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (household_id, baby_id),
+      FOREIGN KEY (household_id) REFERENCES households(id),
+      FOREIGN KEY (baby_id) REFERENCES babies(id)
+    );
+
     CREATE TABLE IF NOT EXISTS notification_state (
       entry_id TEXT PRIMARY KEY,
       due_at TEXT NOT NULL,
@@ -130,6 +149,14 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
   db.prepare('INSERT OR IGNORE INTO babies (id, household_id, name, dob, created_at) VALUES (?, ?, ?, ?, ?)').run(DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID, DEFAULT_BABY_NAME, DEFAULT_BABY_DOB, now)
   db.prepare('UPDATE app_state SET household_id = COALESCE(NULLIF(household_id, \'\'), ?), baby_id = COALESCE(NULLIF(baby_id, \'\'), ?) WHERE id = 1').run(DEFAULT_HOUSEHOLD_ID, DEFAULT_BABY_ID)
 
+  // Copy the legacy single-row state into its scoped row exactly once; later
+  // writes land in baby_state directly, so an existing scoped row always wins.
+  db.exec(`
+    INSERT OR IGNORE INTO baby_state (household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
+    SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at
+    FROM app_state WHERE id = 1
+  `)
+
   return db
 }
 
@@ -142,6 +169,23 @@ export function prepareTrackerStatements(db) {
       ON CONFLICT(id) DO UPDATE SET
         household_id = excluded.household_id,
         baby_id = excluded.baby_id,
+        entries_json = excluded.entries_json,
+        diapers_json = excluded.diapers_json,
+        medicines_json = excluded.medicines_json,
+        tummy_times_json = excluded.tummy_times_json,
+        tummy_session_json = excluded.tummy_session_json,
+        tummy_goal_minutes = excluded.tummy_goal_minutes,
+        growth_measurements_json = excluded.growth_measurements_json,
+        baby_dob = excluded.baby_dob,
+        session_json = excluded.session_json,
+        theme = excluded.theme,
+        updated_at = excluded.updated_at
+    `),
+    selectStateForBaby: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM baby_state WHERE household_id = ? AND baby_id = ?'),
+    upsertStateForBaby: db.prepare(`
+      INSERT INTO baby_state (household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
+      VALUES (@household_id, @baby_id, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @tummy_session_json, @tummy_goal_minutes, @growth_measurements_json, @baby_dob, @session_json, @theme, @updated_at)
+      ON CONFLICT(household_id, baby_id) DO UPDATE SET
         entries_json = excluded.entries_json,
         diapers_json = excluded.diapers_json,
         medicines_json = excluded.medicines_json,

@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url'
 import { createAuthMiddleware, createAuthRouter, createAuthSessionRouter } from './server/auth.js'
 import { buildStateAudit } from './server/auditLog.js'
 import { createHealthRouter, createNotificationSettingsRouter, createStateRouter, createBabyRouter } from './server/apiRoutes.js'
-import { openTrackerDatabase, prepareTrackerStatements } from './server/database.js'
+import { openTrackerDatabase, prepareTrackerStatements, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './server/database.js'
 import { createEventLogger, redactError } from './server/eventLog.js'
 import { createTrackerNotificationScheduler } from './server/notificationRuntime.js'
 import { normalizeMedicineReminderSettings } from './server/notificationModels.js'
@@ -22,7 +22,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, revokeSession } = statements
+const { selectState, upsertState, selectStateForBaby, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectUserByEmail, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, revokeSession } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 
 const readBooleanSetting = (key, fallback) => {
@@ -66,7 +66,10 @@ const notificationScheduler = createTrackerNotificationScheduler({
 const deletedItemOptions = createDeletedItemOptionsReader(selectDeletedItems)
 const recordDeletedItems = createDeletedItemRecorder(upsertDeletedItem)
 const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt) => {
-  upsertState.run(statePayload)
+  upsertStateForBaby.run(statePayload)
+  // The legacy single row keeps mirroring the default baby so pre-scoping
+  // builds (and a prod rollback) still read current data.
+  if (statePayload.household_id === DEFAULT_HOUSEHOLD_ID && statePayload.baby_id === DEFAULT_BABY_ID) upsertState.run(statePayload)
   recordDeletedItems(audit, updatedAt)
 })
 const { broadcastStateChange, handleStateEvents } = createStateEventHub({ selectState, serializeState })
@@ -93,6 +96,8 @@ createNotificationSettingsRouter({
 createStateRouter({
   selectState,
   upsertState,
+  selectStateForBaby,
+  upsertStateForBaby,
   serializeState,
   resolveIncomingState,
   deletedItemOptions,
