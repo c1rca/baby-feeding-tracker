@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react'
 import { LoginScreen } from './auth/LoginScreen'
 import { useAuthGate } from './auth/useAuthGate'
 import type { AuthUser } from './auth/authApi'
+import { fetchBabies, type BabySummary } from './babies/babyApi'
 import { AppHeader } from './components/AppHeader'
 import { AppToast } from './components/AppToast'
 import { MedicineReminderBanner } from './components/MedicineReminderBanner'
@@ -10,13 +12,23 @@ import { TrackerModals } from './components/TrackerModals'
 import { TrackView } from './components/TrackView'
 import { useTrackerAppController } from './state/useTrackerAppController'
 
+const SELECTED_BABY_STORAGE_KEY = 'baby-feeding-tracker:v1:selected-baby-id'
+
+const readSelectedBabyId = (fallback?: string | null) => {
+  if (typeof window === 'undefined') return fallback || ''
+  return window.localStorage.getItem(SELECTED_BABY_STORAGE_KEY) || fallback || ''
+}
+
 type TrackerAppProps = {
   authUser: AuthUser | null
   onLogout: () => void
+  babies: BabySummary[]
+  selectedBabyId: string
+  onSelectedBabyIdChange: (babyId: string) => void
 }
 
-function TrackerApp({ authUser, onLogout }: TrackerAppProps) {
-  const { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps } = useTrackerAppController()
+function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBabyIdChange }: TrackerAppProps) {
+  const { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps } = useTrackerAppController({ selectedBabyId })
 
   return (
     <main className="app">
@@ -27,7 +39,7 @@ function TrackerApp({ authUser, onLogout }: TrackerAppProps) {
         <div className="stars" />
         <div className="stars stars-2" />
       </div>
-      <AppHeader {...headerProps} authUser={authUser} onLogout={onLogout} />
+      <AppHeader {...headerProps} authUser={authUser} onLogout={onLogout} babies={babies} selectedBabyId={selectedBabyId} onSelectedBabyIdChange={onSelectedBabyIdChange} />
       <MedicineReminderBanner {...medicineReminderProps} />
       <TummyTimeReminderBanner {...tummyTimeReminderProps} />
       {view === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
@@ -39,9 +51,34 @@ function TrackerApp({ authUser, onLogout }: TrackerAppProps) {
 
 function App() {
   const { status, authUser, epoch, pending, error, login, logout } = useAuthGate()
+  const [babies, setBabies] = useState<BabySummary[]>([])
+  const [selectedBabyId, setSelectedBabyId] = useState(() => readSelectedBabyId(authUser?.babyId))
+
+  useEffect(() => {
+    if (!authUser) return
+    let cancelled = false
+    const loadBabies = async () => {
+      const nextBabies = await fetchBabies()
+      if (cancelled) return
+      setBabies(nextBabies)
+      setSelectedBabyId((current) => {
+        const fallback = authUser.babyId || nextBabies[0]?.id || ''
+        const next = nextBabies.some((baby) => baby.id === current) ? current : fallback
+        if (next) window.localStorage.setItem(SELECTED_BABY_STORAGE_KEY, next)
+        return next
+      })
+    }
+    void loadBabies()
+    return () => { cancelled = true }
+  }, [authUser])
+
+  const handleSelectedBabyIdChange = (babyId: string) => {
+    setSelectedBabyId(babyId)
+    window.localStorage.setItem(SELECTED_BABY_STORAGE_KEY, babyId)
+  }
 
   if (status === 'login') return <LoginScreen pending={pending} error={error} onLogin={login} />
-  return <TrackerApp key={epoch} authUser={authUser} onLogout={logout} />
+  return <TrackerApp key={epoch} authUser={authUser} onLogout={logout} babies={babies} selectedBabyId={selectedBabyId} onSelectedBabyIdChange={handleSelectedBabyIdChange} />
 }
 
 export default App

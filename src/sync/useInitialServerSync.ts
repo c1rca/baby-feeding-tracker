@@ -10,6 +10,7 @@ type InitialServerSyncOptions = {
   serverUpdatedAtRef: MutableRefObject<string | null>
   applyServerState: (data: ServerState) => void
   syncToApi: (overrides?: SyncToApiOverrides) => Promise<void>
+  selectedBabyId?: string | null
   setHasHydrated: (hasHydrated: boolean) => void
   setSyncStatus: (status: SyncStatus) => void
 }
@@ -19,6 +20,7 @@ export function useInitialServerSync({
   serverUpdatedAtRef,
   applyServerState,
   syncToApi,
+  selectedBabyId,
   setHasHydrated,
   setSyncStatus,
 }: InitialServerSyncOptions) {
@@ -27,7 +29,7 @@ export function useInitialServerSync({
       const hasPendingSync = localStorage.getItem(KEY_PENDING_SYNC) === '1'
       const localPayload = latestPayloadRef.current
       try {
-        const serverState = await loadServerState()
+        const serverState = await loadServerState({ babyId: selectedBabyId })
         if (hasPendingSync) {
           const mergedPayload = buildPendingSyncPayload(serverState, localPayload)
           if (serverState.updatedAt) serverUpdatedAtRef.current = serverState.updatedAt
@@ -50,5 +52,5 @@ export function useInitialServerSync({
     }
 
     void loadFromApi()
-  }, [applyServerState, latestPayloadRef, serverUpdatedAtRef, setHasHydrated, setSyncStatus, syncToApi])
+  }, [applyServerState, latestPayloadRef, selectedBabyId, serverUpdatedAtRef, setHasHydrated, setSyncStatus, syncToApi])
 }

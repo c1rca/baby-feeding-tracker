@@ -107,6 +107,40 @@ describe('App interactions', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
   })
 
+  it('switches babies and hydrates the selected baby with the scope header', async () => {
+    const user = userEvent.setup()
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const babyId = new Headers(init?.headers).get('x-baby-id')
+      if (url === '/api/auth/me') return new Response(JSON.stringify({ ok: true, user: { id: 'user-1', householdId: 'household-1', babyId: 'baby-1', role: 'caregiver', mode: 'session' } }), { status: 200 })
+      if (url === '/api/babies') return new Response(JSON.stringify({ ok: true, babies: [
+        { id: 'baby-1', name: 'Avery', dob: '2026-01-01' },
+        { id: 'baby-2', name: 'Riley', dob: '2026-02-14' },
+      ] }), { status: 200 })
+      if (url === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
+      if (url === '/api/state' && !init?.method) {
+        return new Response(JSON.stringify({ entries: babyId === 'baby-2' ? [{ id: 'feed-riley', type: 'bottle', startedAt: Date.now(), endedAt: Date.now(), ounces: 3 }] : [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: `server-${babyId || 'default'}` }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ ok: true, updatedAt: 'server-write' }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    const babySelect = await screen.findByLabelText(/Active baby/i)
+    expect((babySelect as HTMLSelectElement).value).toBe('baby-1')
+
+    await user.selectOptions(babySelect, 'baby-2')
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({
+        cache: 'no-store',
+        headers: { 'X-Baby-Id': 'baby-2' },
+      }))
+    })
+    expect(localStorage.getItem('baby-feeding-tracker:v1:selected-baby-id')).toBe('baby-2')
+  })
+
   it('keeps this device theme preference after server hydration', async () => {
     localStorage.setItem('baby-feeding-tracker:v1:theme', 'light')
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

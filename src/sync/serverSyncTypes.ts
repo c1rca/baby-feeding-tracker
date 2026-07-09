@@ -23,6 +23,7 @@ export type ServerSyncPayload = {
 export type SyncToApiOverrides = Partial<ServerSyncPayload>
 
 export type UseServerSyncOptions = ServerSyncPayload & {
+  selectedBabyId?: string | null
   setEntries: Dispatch<SetStateAction<Entry[]>>
   setDiapers: Dispatch<SetStateAction<DiaperEvent[]>>
   setMedicines: Dispatch<SetStateAction<MedicineEvent[]>>
