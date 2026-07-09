@@ -55,6 +55,52 @@ export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEna
   return router
 }
 
+export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), now = () => new Date() } = {}) => {
+  const toBabyPayload = (row) => ({
+    id: row.id,
+    householdId: row.household_id,
+    name: row.name,
+    dob: row.dob,
+    archivedAt: row.archived_at ?? null,
+  })
+  const validDob = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))
+
+  const router = (app) => {
+    app.get('/api/babies', (req, res) => {
+      const householdId = req.auth?.householdId || DEFAULT_HOUSEHOLD_ID
+      const babies = selectBabiesByHousehold?.all(householdId).map(toBabyPayload) || []
+      res.status(200).json({ ok: true, babies })
+    })
+
+    app.post('/api/babies', (req, res) => {
+      const householdId = req.auth?.householdId || DEFAULT_HOUSEHOLD_ID
+      const name = String(req.body?.name || '').trim()
+      const dob = String(req.body?.dob || '').trim()
+      if (!name) {
+        res.status(400).json({ ok: false, error: 'Baby name is required' })
+        return
+      }
+      if (!validDob(dob)) {
+        res.status(400).json({ ok: false, error: 'Baby date of birth must use YYYY-MM-DD' })
+        return
+      }
+
+      const row = {
+        id: idFactory(),
+        household_id: householdId,
+        name,
+        dob,
+        archived_at: null,
+        created_at: now().toISOString(),
+      }
+      insertBaby?.run(row)
+      appendEventLog('baby_create', { babyId: row.id, householdId, userId: req.auth?.userId ?? null })
+      res.status(201).json({ ok: true, baby: toBabyPayload(row) })
+    })
+  }
+  return router
+}
+
 export const createStateRouter = ({
   selectState,
   upsertState,

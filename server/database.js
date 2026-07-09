@@ -165,6 +165,11 @@ export function prepareTrackerStatements(db) {
     `),
     selectSetting: db.prepare('SELECT value FROM app_settings WHERE key = ?'),
     selectUserByEmail: db.prepare('SELECT id, email, display_name, password_hash FROM users WHERE email = ?'),
+    selectBabiesByHousehold: db.prepare('SELECT id, household_id, name, dob, archived_at FROM babies WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at ASC'),
+    insertBaby: db.prepare(`
+      INSERT INTO babies (id, household_id, name, dob, archived_at, created_at)
+      VALUES (@id, @household_id, @name, @dob, @archived_at, @created_at)
+    `),
     insertSession: db.prepare(`
       INSERT INTO auth_sessions (id, user_id, token_hash, created_at, expires_at, revoked_at)
       VALUES (@id, @user_id, @token_hash, @created_at, @expires_at, @revoked_at)
