@@ -4,6 +4,7 @@ import path from 'node:path'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import Database from 'better-sqlite3'
+import { verifyPassword } from '../server/auth.js'
 import { openTrackerDatabase, prepareTrackerStatements } from '../server/database.js'
 import { serializeState } from '../server/stateStore.js'
 
@@ -83,4 +84,33 @@ test('prepared state statement remains backwards-compatible and reads the defaul
   assert.equal(state.theme, 'dark')
   assert.equal(state.householdId, DEFAULT_HOUSEHOLD_ID)
   assert.equal(state.babyId, DEFAULT_BABY_ID)
+})
+
+test('bootstrap password sets the default local caregiver password once', () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'feeding-prod-foundation-password-'))
+  const dbPath = path.join(tmp, 'data', 'feeding-tracker.db')
+
+  const db = openTrackerDatabase({
+    dbDir: path.dirname(dbPath),
+    backupDir: path.join(tmp, 'backups'),
+    logDir: path.join(tmp, 'logs'),
+    dbPath,
+    bootstrapPassword: 'initial-password',
+  })
+  const firstHash = db.prepare('SELECT password_hash FROM users WHERE id = ?').get('default-user').password_hash
+  db.close()
+
+  const reopened = openTrackerDatabase({
+    dbDir: path.dirname(dbPath),
+    backupDir: path.join(tmp, 'backups'),
+    logDir: path.join(tmp, 'logs'),
+    dbPath,
+    bootstrapPassword: 'replacement-password',
+  })
+  const secondHash = reopened.prepare('SELECT password_hash FROM users WHERE id = ?').get('default-user').password_hash
+  reopened.close()
+
+  assert.equal(verifyPassword('initial-password', firstHash), true)
+  assert.equal(verifyPassword('replacement-password', firstHash), false)
+  assert.equal(secondHash, firstHash)
 })

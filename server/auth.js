@@ -1,5 +1,7 @@
-import crypto from 'node:crypto'
 import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID, DEFAULT_USER_ID } from './database.js'
+import { hashPassword, hashSessionToken, verifyPassword } from './authCrypto.js'
+
+export { hashPassword, hashSessionToken, verifyPassword }
 
 const localAuthContext = () => ({
   userId: DEFAULT_USER_ID,
@@ -9,27 +11,9 @@ const localAuthContext = () => ({
   mode: 'local',
 })
 
-export const hashSessionToken = (token) => crypto.createHash('sha256').update(String(token)).digest('hex')
-
-const PASSWORD_ALGORITHM = 'scrypt'
-const PASSWORD_KEY_LENGTH = 64
-
-export const hashPassword = (password, { salt = crypto.randomBytes(16).toString('hex') } = {}) => {
-  const key = crypto.scryptSync(String(password), salt, PASSWORD_KEY_LENGTH).toString('hex')
-  return `${PASSWORD_ALGORITHM}$${salt}$${key}`
-}
-
-export const verifyPassword = (password, storedHash) => {
-  const [algorithm, salt, expected] = String(storedHash || '').split('$')
-  if (algorithm !== PASSWORD_ALGORITHM || !salt || !expected) return false
-  const actual = crypto.scryptSync(String(password), salt, PASSWORD_KEY_LENGTH)
-  const expectedBuffer = Buffer.from(expected, 'hex')
-  return expectedBuffer.length === actual.length && crypto.timingSafeEqual(actual, expectedBuffer)
-}
-
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
-const defaultTokenFactory = () => crypto.randomBytes(32).toString('base64url')
-const defaultIdFactory = () => crypto.randomUUID()
+const defaultTokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', '')
+const defaultIdFactory = () => globalThis.crypto.randomUUID()
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
 
 const bearerToken = (req) => {

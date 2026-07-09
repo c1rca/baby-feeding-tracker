@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import Database from 'better-sqlite3'
+import { hashPassword } from './authCrypto.js'
 
 export const DEFAULT_HOUSEHOLD_ID = 'default-household'
 export const DEFAULT_BABY_ID = 'default-baby'
@@ -10,7 +11,7 @@ export const DEFAULT_HOUSEHOLD_NAME = 'My household'
 export const DEFAULT_BABY_NAME = 'Baby'
 export const DEFAULT_BABY_DOB = '2026-06-03'
 
-export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath }) {
+export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstrapPassword = '' }) {
   fs.mkdirSync(dbDir, { recursive: true })
   fs.mkdirSync(backupDir, { recursive: true })
   fs.mkdirSync(logDir, { recursive: true })
@@ -120,6 +121,10 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath }) {
 
   const now = new Date().toISOString()
   db.prepare('INSERT OR IGNORE INTO users (id, email, display_name, created_at) VALUES (?, ?, ?, ?)').run(DEFAULT_USER_ID, DEFAULT_USER_EMAIL, DEFAULT_USER_DISPLAY_NAME, now)
+  const password = String(bootstrapPassword || '').trim()
+  if (password) {
+    db.prepare('UPDATE users SET password_hash = ? WHERE id = ? AND password_hash IS NULL').run(hashPassword(password), DEFAULT_USER_ID)
+  }
   db.prepare('INSERT OR IGNORE INTO households (id, name, created_at) VALUES (?, ?, ?)').run(DEFAULT_HOUSEHOLD_ID, DEFAULT_HOUSEHOLD_NAME, now)
   db.prepare('INSERT OR IGNORE INTO household_members (user_id, household_id, role, created_at) VALUES (?, ?, ?, ?)').run(DEFAULT_USER_ID, DEFAULT_HOUSEHOLD_ID, 'owner', now)
   db.prepare('INSERT OR IGNORE INTO babies (id, household_id, name, dob, created_at) VALUES (?, ?, ?, ?, ?)').run(DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID, DEFAULT_BABY_NAME, DEFAULT_BABY_DOB, now)
