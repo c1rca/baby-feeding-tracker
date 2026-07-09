@@ -17,3 +17,27 @@ export async function fetchBabies(): Promise<BabySummary[]> {
     return []
   }
 }
+
+export async function createBaby(input: { name: string; dob?: string }): Promise<BabySummary | null> {
+  try {
+    const response = await authFetch('/api/babies', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: input.name, dob: input.dob || undefined }),
+    })
+    if (!response.ok) return null
+    const data = await response.json() as { baby?: BabySummary }
+    return data.baby && typeof data.baby.id === 'string' && typeof data.baby.name === 'string' ? data.baby : null
+  } catch {
+    return null
+  }
+}
+
+export async function archiveBaby(babyId: string): Promise<boolean> {
+  try {
+    const response = await authFetch(`/api/babies/${encodeURIComponent(babyId)}`, { method: 'DELETE' })
+    return response.ok
+  } catch {
+    return false
+  }
+}

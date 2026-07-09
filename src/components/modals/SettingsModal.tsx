@@ -18,6 +18,9 @@ type SettingsModalProps = Pick<
   | 'gotifyAvailable'
   | 'gotifyRemindersEnabled'
   | 'medicineReminderSettings'
+  | 'babies'
+  | 'selectedBabyId'
+  | 'authUser'
   | 'fileInputRef'
   | 'setSettingsOpen'
   | 'setEntries'
@@ -30,6 +33,8 @@ type SettingsModalProps = Pick<
   | 'enableFeedingNotifications'
   | 'setGotifyReminders'
   | 'setMedicineReminderSettings'
+  | 'onCreateBaby'
+  | 'onArchiveBaby'
   | 'showToast'
 >
 
@@ -57,7 +62,56 @@ function AppearanceSetting() {
   )
 }
 
-export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, showToast }: SettingsModalProps) {
+function BabyManagementSetting({ babies = [], selectedBabyId = '', role, onCreateBaby, onArchiveBaby, showToast }: { babies?: SettingsModalProps['babies']; selectedBabyId?: string; role?: string; onCreateBaby?: SettingsModalProps['onCreateBaby']; onArchiveBaby?: SettingsModalProps['onArchiveBaby']; showToast: (message: string) => void }) {
+  const [name, setName] = useState('')
+  const [dob, setDob] = useState('')
+  const canManage = role !== 'viewer' && !!onCreateBaby && !!onArchiveBaby
+
+  const submitBaby = async () => {
+    const trimmedName = name.trim()
+    if (!trimmedName || !canManage) return
+    const ok = await onCreateBaby({ name: trimmedName, dob: dob || undefined })
+    showToast(ok ? 'Baby added' : 'Could not add baby')
+    if (ok) {
+      setName('')
+      setDob('')
+    }
+  }
+
+  return (
+    <div className="setting-row baby-management-setting">
+      <span>
+        <strong>Babies</strong>
+        <small>{canManage ? 'Add or archive babies in this household.' : 'Your role can view babies but cannot manage them.'}</small>
+      </span>
+      <div className="setting-stack">
+        {canManage ? (
+          <div className="settings-inline-form">
+            <label>
+              <span className="sr-only">New baby name</span>
+              <input aria-label="New baby name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Baby name" />
+            </label>
+            <label>
+              <span className="sr-only">New baby date of birth</span>
+              <input aria-label="New baby date of birth" type="date" value={dob} onChange={(event) => setDob(event.target.value)} />
+            </label>
+            <button type="button" onClick={submitBaby} disabled={!name.trim()}>Add baby</button>
+          </div>
+        ) : null}
+        <div className="settings-baby-list">
+          {babies.map((baby) => (
+            <div key={baby.id} className="settings-baby-row">
+              <span>{baby.name}{baby.id === selectedBabyId ? ' · active' : ''}</span>
+              {canManage && babies.length > 1 ? <button type="button" className="danger" onClick={async () => { const ok = await onArchiveBaby(baby.id); showToast(ok ? 'Baby archived' : 'Could not archive baby') }} disabled={baby.id === selectedBabyId} aria-label={`Archive ${baby.name}`}>Archive</button> : null}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, babies = [], selectedBabyId = '', authUser = null, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
   const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
   const closeSettings = () => setSettingsOpen(false)
 
@@ -84,6 +138,7 @@ export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, fee
         setMedicineReminderSettings={setMedicineReminderSettings}
       />
       <AppearanceSetting />
+      <BabyManagementSetting babies={babies} selectedBabyId={selectedBabyId} role={authUser?.role} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} showToast={showToast} />
       <label className="setting-row">
         <span>
           <strong>Baby date of birth</strong>

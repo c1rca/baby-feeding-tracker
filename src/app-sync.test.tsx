@@ -141,6 +141,51 @@ describe('App interactions', () => {
     expect(localStorage.getItem('baby-feeding-tracker:v1:selected-baby-id')).toBe('baby-2')
   })
 
+  it('creates and archives babies from settings controls', async () => {
+    const user = userEvent.setup()
+    let babies = [
+      { id: 'baby-1', name: 'Avery', dob: '2026-01-01' },
+      { id: 'baby-2', name: 'Riley', dob: '2026-02-14' },
+    ]
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const method = init?.method || 'GET'
+      if (url === '/api/auth/me') return new Response(JSON.stringify({ ok: true, user: { id: 'user-1', householdId: 'household-1', babyId: 'baby-1', role: 'caregiver', mode: 'session' } }), { status: 200 })
+      if (url === '/api/babies' && method === 'GET') return new Response(JSON.stringify({ ok: true, babies }), { status: 200 })
+      if (url === '/api/babies' && method === 'POST') {
+        const body = JSON.parse(String(init?.body || '{}')) as { name?: string; dob?: string }
+        babies = [...babies, { id: 'baby-3', name: body.name || '', dob: body.dob || '' }]
+        return new Response(JSON.stringify({ ok: true, baby: babies[2] }), { status: 201 })
+      }
+      if (url === '/api/babies/baby-2' && method === 'DELETE') {
+        babies = babies.filter((baby) => baby.id !== 'baby-2')
+        return new Response(JSON.stringify({ ok: true }), { status: 200 })
+      }
+      if (url === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
+      if (url === '/api/state' && !init?.method) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
+      return new Response(JSON.stringify({ ok: true, updatedAt: 'server-write' }), { status: 200 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await screen.findByLabelText(/Active baby/i)
+    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.type(await screen.findByLabelText(/New baby name/i), 'Morgan')
+    await user.type(screen.getByLabelText(/New baby date of birth/i), '2026-03-15')
+    await user.click(screen.getByRole('button', { name: /Add baby/i }))
+
+    await waitFor(() => expect(screen.getByLabelText(/Active baby/i).textContent).toMatch(/Morgan/i))
+    expect(fetchMock).toHaveBeenCalledWith('/api/babies', expect.objectContaining({
+      method: 'POST',
+      body: JSON.stringify({ name: 'Morgan', dob: '2026-03-15' }),
+    }))
+
+    await user.click(screen.getByRole('button', { name: /Archive Riley/i }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: /Archive Riley/i })).toBeNull())
+    expect(fetchMock).toHaveBeenCalledWith('/api/babies/baby-2', expect.objectContaining({ method: 'DELETE' }))
+  })
+
   it('keeps this device theme preference after server hydration', async () => {
     localStorage.setItem('baby-feeding-tracker:v1:theme', 'light')
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
