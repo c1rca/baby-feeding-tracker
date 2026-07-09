@@ -655,7 +655,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .stat-nursing { --stat-hue: var(--hue-mixed); }
 .stat-bottle { --stat-hue: var(--hue-bottle); }
 .stat-split { --stat-hue: var(--azure); }
-.diaper-stat { --stat-hue: var(--hue-wet); grid-column: 1 / -1; }
+.diaper-stat { --stat-hue: var(--hue-wet); }
 .diaper-metric { background: color-mix(in srgb, var(--hue-wet) 12%, transparent); border-color: color-mix(in srgb, var(--hue-wet) 35%, transparent); color: var(--hue-wet); }
 .diaper-action { background: color-mix(in srgb, var(--hue-wet) 10%, transparent); border-color: color-mix(in srgb, var(--hue-wet) 32%, transparent); color: color-mix(in srgb, var(--hue-wet) 75%, var(--ink)); }
 
