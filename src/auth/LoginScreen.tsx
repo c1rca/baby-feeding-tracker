@@ -54,7 +54,7 @@ export function LoginScreen({ pending, error, onLogin }: LoginScreenProps) {
         </form>
         <div className="login-help">
           <strong>Forgot password?</strong>
-          <span>Ask the server admin to run the documented reset/recovery path. Use username mom or data in dev.</span>
+          <span>Ask the server admin to run the documented reset/recovery path.</span>
         </div>
       </section>
     </main>

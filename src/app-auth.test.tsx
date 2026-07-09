@@ -62,7 +62,7 @@ describe('App auth shell', () => {
     await waitFor(() => expect(screen.getByRole('heading', { name: /Sign in/i })).toBeTruthy())
     await waitFor(() => expect(screen.getByRole('link', { name: /Sign in with Google/i }).getAttribute('href')).toBe('/api/auth/google/start'))
     expect(screen.getByText(/Forgot password/i)).toBeTruthy()
-    expect(screen.getByText(/Use username mom or data in dev/i)).toBeTruthy()
+    expect(screen.queryByText(/Use username mom or data in dev/i)).toBeNull()
 
     await user.type(screen.getByLabelText(/Username or email/i), 'mom')
     await user.type(screen.getByLabelText(/Password/i), 'hunter22')
@@ -100,6 +100,21 @@ describe('App auth shell', () => {
     await waitFor(() => expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('google-token'))
     expect(window.location.hash).not.toContain('auth_code')
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store', headers: expect.any(Headers) })))
+  })
+
+  it('surfaces a Google sign-in error from the URL on the login screen', async () => {
+    window.history.replaceState({}, '', '/?auth_error=not_invited')
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/auth/google/status') return jsonResponse({ ok: true, available: true })
+      return jsonResponse({ ok: false, error: 'Authentication required' }, 401)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/not on the invite list/i))
+    expect(screen.getByRole('heading', { name: /Sign in/i })).toBeTruthy()
+    expect(window.location.search).not.toContain('auth_error')
   })
 
   it('keeps the login form up with an error message after a failed login', async () => {

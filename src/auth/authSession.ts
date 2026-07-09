@@ -49,6 +49,28 @@ const stripAuthParamsFromUrl = () => {
   }
 }
 
+const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  not_invited: 'This account is not on the invite list yet. Ask a household owner to invite you.',
+  google_state: 'Google sign-in expired or was interrupted. Please try again.',
+  google_profile: 'Google did not return a verified email. Try a different account.',
+  google_unavailable: 'Google sign-in is not available right now.',
+  google_failed: 'Google sign-in failed. Please try again.',
+}
+
+// Reads a Google sign-in error passed back in the query (e.g. ?auth_error=
+// not_invited) and returns a human-readable message, stripping it from the URL.
+export const consumeAuthErrorFromUrl = (): string | null => {
+  let code: string | null
+  try {
+    code = new URL(window.location.href).searchParams.get('auth_error')
+  } catch {
+    return null
+  }
+  if (!code) return null
+  stripAuthParamsFromUrl()
+  return AUTH_ERROR_MESSAGES[code] || 'Sign in failed. Please try again.'
+}
+
 // The Google callback returns a single-use code in the URL fragment (never sent
 // to the server). We exchange it for the real session token over POST so the
 // token itself never appears in a URL, browser history, or access log.

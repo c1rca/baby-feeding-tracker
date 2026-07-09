@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { fetchAuthSession, loginWithPassword, logoutSession, type AuthUser } from './authApi'
-import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken, consumeAuthCodeFromUrl, hasPendingAuth, storeAuthToken } from './authSession'
+import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken, consumeAuthCodeFromUrl, consumeAuthErrorFromUrl, hasPendingAuth, storeAuthToken } from './authSession'
 
 type AuthGateStatus = 'checking' | 'ready' | 'login'
 
@@ -23,6 +23,14 @@ export function useAuthGate() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
+      // A Google sign-in that bounced back with an error goes straight to the
+      // login screen with a human-readable reason.
+      const authError = consumeAuthErrorFromUrl()
+      if (authError) {
+        setError(authError)
+        requireLogin()
+        return
+      }
       // Exchange a Google handoff code (if present in the URL fragment) for a
       // stored session token before asking the server who we are.
       await consumeAuthCodeFromUrl()
