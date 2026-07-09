@@ -13,6 +13,10 @@ const localAuthContext = (mode = 'local') => ({
 })
 
 const normalizeEmail = (email) => String(email || '').trim().toLowerCase()
+export const isEmailAllowed = (email, allowedEmails = []) => {
+  const normalized = normalizeEmail(email)
+  return normalized.length > 0 && allowedEmails.some((allowed) => normalizeEmail(allowed) === normalized)
+}
 const defaultTokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', '')
 const defaultIdFactory = () => globalThis.crypto.randomUUID()
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
@@ -55,7 +59,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, upsertGoogleHouseholdMember = null, insertSession = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000 } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertSession = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000 } = {}) => {
   const loginFailures = new Map()
   const failureKey = (req, email) => `${req.ip || req.socket?.remoteAddress || 'unknown'}|${email}`
   const failuresFor = (key) => {
@@ -163,17 +167,23 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, select
         }
         const existingBySub = selectUserByGoogleSub?.get(profile.sub)
         const existingByEmail = existingBySub ? null : selectUserByEmail?.get(email)
-        const user = existingBySub || existingByEmail || { id: idFactory(), email, display_name: profile.name || email }
+        const existingUser = existingBySub || existingByEmail
+        // A brand-new account may only be created for an allow-listed email, and
+        // even then it gets no household/membership — no account auto-becomes an
+        // owner of the shared household. Onboarding (P1) grants a household later.
+        if (!existingUser && !isEmailAllowed(email, allowedEmails)) {
+          appendEventLog('auth_google_denied', { email })
+          res.redirect(302, '/?auth_error=not_invited')
+          return
+        }
+        const user = existingUser || { id: idFactory(), email, display_name: profile.name || email }
         upsertGoogleUser?.run({
           id: user.id,
           email,
           display_name: profile.name || user.display_name || email,
           google_sub: profile.sub,
-          household_id: DEFAULT_HOUSEHOLD_ID,
-          role: 'owner',
           created_at: now().toISOString(),
         })
-        upsertGoogleHouseholdMember?.run({ user_id: user.id, household_id: DEFAULT_HOUSEHOLD_ID, role: 'owner', created_at: now().toISOString() })
         const googleToken = createSession({ id: user.id })
         appendEventLog('auth_google_login', { userId: user.id })
         res.redirect(302, `/?auth_token=${encodeURIComponent(googleToken)}`)

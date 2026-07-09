@@ -90,25 +90,39 @@ test('google start redirects to Google with a signed state', () => {
   assert.equal(new URL(res.redirectUrl).searchParams.get('state'), 'signed-state')
 })
 
-test('google callback provisions a session for the matched or created user', async () => {
-  const calls = { users: [], sessions: [], events: [] }
+function googleCallbackDeps(overrides = {}) {
+  const calls = { users: [], members: [], sessions: [], events: [] }
   const usersByGoogleSub = new Map()
   const usersByEmail = new Map()
-  const app = mountRouter({
-    authRequired: true,
-    googleAuth: { clientId: 'client-id', clientSecret: 'secret', redirectUri: 'http://app.test/api/auth/google/callback' },
-    verifyGoogleState: (state) => state === 'ok-state',
-    exchangeGoogleCode: async (code) => ({ access_token: `access-${code}` }),
-    fetchGoogleProfile: async (token) => ({ sub: 'google-sub-1', email: 'mom@example.com', name: `Mom ${token}`, email_verified: true }),
-    selectUserByGoogleSub: { get: (sub) => usersByGoogleSub.get(sub) || null },
-    selectUserByEmail: { get: (email) => usersByEmail.get(email) || null },
-    upsertGoogleUser: { run: (user) => { calls.users.push(user); usersByGoogleSub.set(user.google_sub, { id: user.id, email: user.email, display_name: user.display_name, password_hash: null }); usersByEmail.set(user.email, { id: user.id, email: user.email, display_name: user.display_name, password_hash: null }) } },
-    insertSession: { run: (session) => calls.sessions.push(session) },
-    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
-    tokenFactory: () => 'google-session-token',
-    idFactory: () => calls.users.length ? 'session-id-1' : 'google-user-1',
-    now: () => new Date('2026-01-01T00:00:00.000Z'),
-  })
+  const deps = {
+    calls,
+    usersByGoogleSub,
+    usersByEmail,
+    router: {
+      authRequired: true,
+      googleAuth: { clientId: 'client-id', clientSecret: 'secret', redirectUri: 'http://app.test/api/auth/google/callback' },
+      verifyGoogleState: (state) => state === 'ok-state',
+      exchangeGoogleCode: async (code) => ({ access_token: `access-${code}` }),
+      fetchGoogleProfile: async (token) => ({ sub: 'google-sub-1', email: 'mom@example.com', name: `Mom ${token}`, email_verified: true }),
+      selectUserByGoogleSub: { get: (sub) => usersByGoogleSub.get(sub) || null },
+      selectUserByEmail: { get: (email) => usersByEmail.get(email) || null },
+      upsertGoogleUser: { run: (user) => { calls.users.push(user); usersByGoogleSub.set(user.google_sub, { id: user.id, email: user.email, display_name: user.display_name, password_hash: null }); usersByEmail.set(user.email, { id: user.id, email: user.email, display_name: user.display_name, password_hash: null }) } },
+      upsertGoogleHouseholdMember: { run: (member) => calls.members.push(member) },
+      insertSession: { run: (session) => calls.sessions.push(session) },
+      appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+      tokenFactory: () => 'google-session-token',
+      idFactory: () => calls.users.length ? 'session-id-1' : 'google-user-1',
+      now: () => new Date('2026-01-01T00:00:00.000Z'),
+      allowedEmails: ['mom@example.com'],
+      ...overrides,
+    },
+  }
+  return deps
+}
+
+test('google callback provisions an account for an allow-listed new user without granting household membership', async () => {
+  const { router, calls } = googleCallbackDeps()
+  const app = mountRouter(router)
   const res = createJsonResponse()
   await app.route('GET', '/api/auth/google/callback')({ query: { code: 'auth-code', state: 'ok-state' } }, res)
 
@@ -116,8 +130,52 @@ test('google callback provisions a session for the matched or created user', asy
   assert.equal(res.redirectUrl, '/?auth_token=google-session-token')
   assert.equal(calls.users[0].email, 'mom@example.com')
   assert.equal(calls.users[0].google_sub, 'google-sub-1')
+  // The core lockdown: a new Google account never becomes an owner of the shared household.
+  assert.equal(calls.members.length, 0)
   assert.equal(calls.sessions[0].token_hash, hashSessionToken('google-session-token'))
   assert.deepEqual(calls.events, [{ event: 'auth_google_login', payload: { userId: 'google-user-1' } }])
+})
+
+test('google callback rejects an unknown off-allow-list email and creates no rows', async () => {
+  const { router, calls } = googleCallbackDeps({ allowedEmails: ['someone@else.example'] })
+  const app = mountRouter(router)
+  const res = createJsonResponse()
+  await app.route('GET', '/api/auth/google/callback')({ query: { code: 'auth-code', state: 'ok-state' } }, res)
+
+  assert.equal(res.statusCode, 302)
+  assert.equal(res.redirectUrl, '/?auth_error=not_invited')
+  assert.equal(calls.users.length, 0)
+  assert.equal(calls.members.length, 0)
+  assert.equal(calls.sessions.length, 0)
+  assert.deepEqual(calls.events, [{ event: 'auth_google_denied', payload: { email: 'mom@example.com' } }])
+})
+
+test('google callback logs in an existing google user even with an empty allow-list', async () => {
+  const { router, calls, usersByGoogleSub } = googleCallbackDeps({ allowedEmails: [] })
+  usersByGoogleSub.set('google-sub-1', { id: 'existing-user', email: 'mom@example.com', display_name: 'Mom', password_hash: null, google_sub: 'google-sub-1' })
+  const app = mountRouter(router)
+  const res = createJsonResponse()
+  await app.route('GET', '/api/auth/google/callback')({ query: { code: 'auth-code', state: 'ok-state' } }, res)
+
+  assert.equal(res.statusCode, 302)
+  assert.equal(res.redirectUrl, '/?auth_token=google-session-token')
+  assert.equal(calls.members.length, 0)
+  assert.equal(calls.sessions[0].user_id, 'existing-user')
+  assert.deepEqual(calls.events, [{ event: 'auth_google_login', payload: { userId: 'existing-user' } }])
+})
+
+test('google callback links a google_sub onto an existing email user without an allow-list entry', async () => {
+  const { router, calls, usersByEmail } = googleCallbackDeps({ allowedEmails: [] })
+  usersByEmail.set('mom@example.com', { id: 'password-user', email: 'mom@example.com', display_name: 'Mom', password_hash: 'pw', google_sub: null })
+  const app = mountRouter(router)
+  const res = createJsonResponse()
+  await app.route('GET', '/api/auth/google/callback')({ query: { code: 'auth-code', state: 'ok-state' } }, res)
+
+  assert.equal(res.statusCode, 302)
+  assert.equal(calls.users[0].id, 'password-user')
+  assert.equal(calls.users[0].google_sub, 'google-sub-1')
+  assert.equal(calls.members.length, 0)
+  assert.equal(calls.sessions[0].user_id, 'password-user')
 })
 
 test('login route stays unavailable until auth is enabled', () => {

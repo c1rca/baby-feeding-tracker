@@ -38,6 +38,12 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     clientSecret: env.GOOGLE_CLIENT_SECRET || '',
     redirectUri: env.GOOGLE_REDIRECT_URI || '',
   }
+  // Beta gate: only these emails may create a brand-new account. Empty = signup
+  // closed (existing users always authenticate regardless of this list).
+  const allowedEmails = String(env.AUTH_ALLOWED_EMAILS || '')
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean)
   const bootstrapPassword = env.AUTH_BOOTSTRAP_PASSWORD || ''
 
   return {
@@ -62,6 +68,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     authRequired,
     authBypass,
     googleAuth,
+    allowedEmails,
     bootstrapPassword,
   }
 }
