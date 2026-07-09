@@ -124,6 +124,8 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
     CREATE TABLE IF NOT EXISTS deleted_items (
       item_id TEXT PRIMARY KEY,
       collection TEXT NOT NULL,
+      household_id TEXT NOT NULL DEFAULT 'default-household',
+      baby_id TEXT NOT NULL DEFAULT 'default-baby',
       deleted_at TEXT NOT NULL
     );
   `)
@@ -149,6 +151,13 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
   const hasGoogleSubColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('users') WHERE name = 'google_sub'").get().count > 0
   if (!hasGoogleSubColumn) db.exec('ALTER TABLE users ADD COLUMN google_sub TEXT')
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL')
+  // Tombstones are per-tenant: the DEFAULT clause backfills pre-scoping rows to
+  // the default household/baby so a legacy delete list keeps suppressing exactly
+  // the records it did before, and never leaks across households.
+  const hasDeletedHouseholdColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('deleted_items') WHERE name = 'household_id'").get().count > 0
+  if (!hasDeletedHouseholdColumn) db.exec("ALTER TABLE deleted_items ADD COLUMN household_id TEXT NOT NULL DEFAULT 'default-household'")
+  const hasDeletedBabyColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('deleted_items') WHERE name = 'baby_id'").get().count > 0
+  if (!hasDeletedBabyColumn) db.exec("ALTER TABLE deleted_items ADD COLUMN baby_id TEXT NOT NULL DEFAULT 'default-baby'")
 
   const now = new Date().toISOString()
   db.prepare('INSERT OR IGNORE INTO users (id, email, display_name, created_at) VALUES (?, ?, ?, ?)').run(DEFAULT_USER_ID, DEFAULT_USER_EMAIL, DEFAULT_USER_DISPLAY_NAME, now)
@@ -276,7 +285,7 @@ export function prepareTrackerStatements(db) {
         value = excluded.value,
         updated_at = excluded.updated_at
     `),
-    selectDeletedItems: db.prepare('SELECT item_id, collection FROM deleted_items'),
+    selectDeletedItems: db.prepare('SELECT item_id, collection FROM deleted_items WHERE household_id = ? AND baby_id = ?'),
     selectSessionContext: db.prepare(`
       SELECT auth_sessions.user_id, household_members.household_id, household_members.role, babies.id AS baby_id
       FROM auth_sessions
@@ -289,10 +298,12 @@ export function prepareTrackerStatements(db) {
       LIMIT 1
     `),
     upsertDeletedItem: db.prepare(`
-      INSERT INTO deleted_items (item_id, collection, deleted_at)
-      VALUES (@item_id, @collection, @deleted_at)
+      INSERT INTO deleted_items (item_id, collection, household_id, baby_id, deleted_at)
+      VALUES (@item_id, @collection, @household_id, @baby_id, @deleted_at)
       ON CONFLICT(item_id) DO UPDATE SET
         collection = excluded.collection,
+        household_id = excluded.household_id,
+        baby_id = excluded.baby_id,
         deleted_at = excluded.deleted_at
     `),
   }

@@ -35,13 +35,15 @@ export const summarizeState = (entries, session, theme, diapers = [], medicines 
   theme,
 })
 
-export const createDeletedItemOptionsReader = (selectDeletedItems) => () => {
+export const createDeletedItemOptionsReader = (selectDeletedItems) => (scope = {}) => {
+  const householdId = scope.householdId || DEFAULT_HOUSEHOLD_ID
+  const babyId = scope.babyId || DEFAULT_BABY_ID
   const deletedEntryIds = []
   const deletedDiaperIds = []
   const deletedMedicineIds = []
   const deletedTummyTimeIds = []
   const deletedGrowthMeasurementIds = []
-  for (const row of selectDeletedItems.all()) {
+  for (const row of selectDeletedItems.all(householdId, babyId)) {
     if (row.collection === 'entries') deletedEntryIds.push(row.item_id)
     if (row.collection === 'diapers') deletedDiaperIds.push(row.item_id)
     if (row.collection === 'medicines') deletedMedicineIds.push(row.item_id)
@@ -51,10 +53,13 @@ export const createDeletedItemOptionsReader = (selectDeletedItems) => () => {
   return { deletedEntryIds, deletedDiaperIds, deletedMedicineIds, deletedTummyTimeIds, deletedGrowthMeasurementIds }
 }
 
-export const createDeletedItemRecorder = (upsertDeletedItem) => (audit, deletedAt) => {
-  for (const entry of audit.entries?.removed || []) upsertDeletedItem.run({ item_id: entry.id, collection: 'entries', deleted_at: deletedAt })
-  for (const diaper of audit.diapers?.removed || []) upsertDeletedItem.run({ item_id: diaper.id, collection: 'diapers', deleted_at: deletedAt })
-  for (const medicine of audit.medicines?.removed || []) upsertDeletedItem.run({ item_id: medicine.id, collection: 'medicines', deleted_at: deletedAt })
-  for (const tummyTime of audit.tummyTimes?.removed || []) upsertDeletedItem.run({ item_id: tummyTime.id, collection: 'tummyTimes', deleted_at: deletedAt })
-  for (const measurement of audit.growthMeasurements?.removed || []) upsertDeletedItem.run({ item_id: measurement.id, collection: 'growthMeasurements', deleted_at: deletedAt })
+export const createDeletedItemRecorder = (upsertDeletedItem) => (audit, deletedAt, scope = {}) => {
+  const household_id = scope.householdId || DEFAULT_HOUSEHOLD_ID
+  const baby_id = scope.babyId || DEFAULT_BABY_ID
+  const record = (id, collection) => upsertDeletedItem.run({ item_id: id, collection, household_id, baby_id, deleted_at: deletedAt })
+  for (const entry of audit.entries?.removed || []) record(entry.id, 'entries')
+  for (const diaper of audit.diapers?.removed || []) record(diaper.id, 'diapers')
+  for (const medicine of audit.medicines?.removed || []) record(medicine.id, 'medicines')
+  for (const tummyTime of audit.tummyTimes?.removed || []) record(tummyTime.id, 'tummyTimes')
+  for (const measurement of audit.growthMeasurements?.removed || []) record(measurement.id, 'growthMeasurements')
 }

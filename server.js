@@ -71,7 +71,7 @@ const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt
   // The legacy single row keeps mirroring the default baby so pre-scoping
   // builds (and a prod rollback) still read current data.
   if (statePayload.household_id === DEFAULT_HOUSEHOLD_ID && statePayload.baby_id === DEFAULT_BABY_ID) upsertState.run(statePayload)
-  recordDeletedItems(audit, updatedAt)
+  recordDeletedItems(audit, updatedAt, { householdId: statePayload.household_id, babyId: statePayload.baby_id })
 })
 const { broadcastStateChange, handleStateEvents } = createStateEventHub({ selectState, selectStateForBaby, serializeState })
 const createBackupOnStart = createStartupBackup({ db, backupDir: config.backupDir, appendEventLog, redactError })

@@ -167,7 +167,7 @@ export const createStateRouter = ({
     } else {
       upsertState.run(statePayload)
     }
-    recordDeletedItems(audit, updatedAt)
+    recordDeletedItems(audit, updatedAt, { householdId: statePayload.household_id, babyId: statePayload.baby_id })
   })
   const router = (app) => {
     const requestScope = (req, existingRow = null) => ({
@@ -199,6 +199,7 @@ export const createStateRouter = ({
         return
       }
       const existingRow = selectScopedState(requestScope(req))
+      const scope = requestScope(req, existingRow)
       const incoming = resolveIncomingState(existingRow, {
         entries: Array.isArray(req.body?.entries) ? req.body.entries : [],
         diapers: Array.isArray(req.body?.diapers) ? req.body.diapers : [],
@@ -211,9 +212,8 @@ export const createStateRouter = ({
         session: req.body?.session ?? null,
         theme: req.body?.theme === 'dark' ? 'dark' : 'light',
         updatedAt: req.body?.updatedAt,
-      }, deletedItemOptions())
+      }, deletedItemOptions(scope))
       const { entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme } = incoming
-      const scope = requestScope(req, existingRow)
       if (selectBabyForHousehold && !selectBabyForHousehold.get(scope.babyId, scope.householdId)) {
         res.status(404).json({ ok: false, error: 'Baby not found' })
         return

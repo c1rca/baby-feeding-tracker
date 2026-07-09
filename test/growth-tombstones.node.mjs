@@ -29,7 +29,7 @@ test('growth measurement deletions are tombstoned and stale clients cannot resur
   })
   const deletedRows = []
   createDeletedItemRecorder({ run: (row) => deletedRows.push(row) })(audit, 'server-after-delete')
-  assert.deepEqual(deletedRows, [{ item_id: 'growth-deleted', collection: 'growthMeasurements', deleted_at: 'server-after-delete' }])
+  assert.deepEqual(deletedRows, [{ item_id: 'growth-deleted', collection: 'growthMeasurements', household_id: 'default-household', baby_id: 'default-baby', deleted_at: 'server-after-delete' }])
 
   const deletedOptions = createDeletedItemOptionsReader({ all: () => deletedRows.map(({ item_id, collection }) => ({ item_id, collection })) })()
   const resolved = resolveIncomingState({ ...existingRow, growth_measurements_json: JSON.stringify([]), updated_at: 'server-after-delete' }, {
