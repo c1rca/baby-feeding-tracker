@@ -15,6 +15,8 @@ There is no separate Postgres, Redis, uploads directory, or sidecar config to mi
 
 ## Fresh production deploy
 
+For auth + multi-baby promotion planning, read `docs/AUTH_PRODUCTION_ENABLEMENT.md` first. Do not enable protected auth mode or rebuild production without an explicit promotion window and backup.
+
 ```bash
 git clone <repo-url> baby-feeding-tracker
 cd baby-feeding-tracker
