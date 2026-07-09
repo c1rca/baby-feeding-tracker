@@ -1,4 +1,5 @@
 import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './database.js'
+import { hashSessionToken } from './authCrypto.js'
 import { normalizeMedicineReminderSettings } from './notificationModels.js'
 import { validateStatePayload } from './stateValidation.js'
 
@@ -140,6 +141,76 @@ export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = 
 }
 
 const isValidDob = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))
+const normalizeEmail = (value) => String(value || '').trim().toLowerCase()
+const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
+const invitePayload = (row) => ({ id: row.id, email: row.email, role: row.role, createdAt: row.created_at, expiresAt: row.expires_at })
+
+export const createInviteRouter = ({ selectActiveInvitesByHousehold = null, selectInviteByEmail = null, insertInvite = null, revokeInvite = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), tokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', ''), now = () => new Date() } = {}) => {
+  const router = (app) => {
+    app.get('/api/household-invites', (req, res) => {
+      if (!req.auth?.householdId) {
+        res.status(403).json({ ok: false, error: 'Household required' })
+        return
+      }
+      const invites = selectActiveInvitesByHousehold?.all(req.auth.householdId).map(invitePayload) || []
+      res.status(200).json({ ok: true, invites })
+    })
+
+    app.post('/api/household-invites', (req, res) => {
+      if (!canMutate(req.auth) || !req.auth?.householdId) {
+        rejectForbidden(res)
+        return
+      }
+      const email = normalizeEmail(req.body?.email)
+      const role = String(req.body?.role || 'caregiver').trim()
+      if (!email) {
+        res.status(400).json({ ok: false, error: 'Email is required' })
+        return
+      }
+      if (!['caregiver', 'viewer'].includes(role)) {
+        res.status(400).json({ ok: false, error: 'Invite role must be caregiver or viewer' })
+        return
+      }
+      if (selectInviteByEmail?.get(req.auth.householdId, email)) {
+        res.status(409).json({ ok: false, error: 'invite_exists' })
+        return
+      }
+      const createdAt = now()
+      const token = tokenFactory()
+      const row = {
+        id: idFactory(),
+        household_id: req.auth.householdId,
+        email,
+        role,
+        token_hash: hashSessionToken(token),
+        created_by: req.auth.userId,
+        created_at: createdAt.toISOString(),
+        expires_at: addDays(createdAt, 7).toISOString(),
+        accepted_at: null,
+        revoked_at: null,
+      }
+      insertInvite?.run(row)
+      appendEventLog('invite_create', { inviteId: row.id, householdId: row.household_id, email, role, createdBy: req.auth.userId })
+      res.status(201).json({ ok: true, invite: { ...invitePayload(row), token } })
+    })
+
+    app.delete('/api/household-invites/:id', (req, res) => {
+      if (!canMutate(req.auth) || !req.auth?.householdId) {
+        rejectForbidden(res)
+        return
+      }
+      const payload = { id: String(req.params?.id || ''), household_id: req.auth.householdId, revoked_at: now().toISOString() }
+      const result = revokeInvite?.run(payload) || { changes: 0 }
+      if (!result.changes) {
+        res.status(404).json({ ok: false, error: 'Invite not found' })
+        return
+      }
+      appendEventLog('invite_revoke', { inviteId: payload.id, householdId: payload.household_id, userId: req.auth.userId })
+      res.status(200).json({ ok: true })
+    })
+  }
+  return router
+}
 
 export const createHouseholdRouter = ({ selectMembershipsByUser = null, createHousehold = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), now = () => new Date() } = {}) => {
   const router = (app) => {

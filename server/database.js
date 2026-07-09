@@ -62,6 +62,23 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS household_invites (
+      id TEXT PRIMARY KEY,
+      household_id TEXT NOT NULL,
+      email TEXT NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('caregiver', 'viewer')),
+      token_hash TEXT NOT NULL UNIQUE,
+      created_by TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      accepted_at TEXT,
+      revoked_at TEXT,
+      FOREIGN KEY (household_id) REFERENCES households(id),
+      FOREIGN KEY (created_by) REFERENCES users(id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_household_invites_active_email ON household_invites(household_id, email) WHERE accepted_at IS NULL AND revoked_at IS NULL;
+
     CREATE TABLE IF NOT EXISTS babies (
       id TEXT PRIMARY KEY,
       household_id TEXT NOT NULL,
@@ -267,6 +284,15 @@ export function prepareTrackerStatements(db) {
       VALUES (@code_hash, @user_id, @created_at, @expires_at, NULL)
     `),
     selectLoginCode: db.prepare('SELECT code_hash, user_id, created_at, expires_at, consumed_at FROM auth_login_codes WHERE code_hash = ?'),
+    selectActiveInvitesByHousehold: db.prepare('SELECT id, email, role, created_at, expires_at FROM household_invites WHERE household_id = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > datetime(\'now\') ORDER BY created_at DESC'),
+    selectInviteByEmail: db.prepare('SELECT id FROM household_invites WHERE household_id = ? AND email = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > datetime(\'now\') LIMIT 1'),
+    selectInviteByToken: db.prepare('SELECT id, household_id, email, role, expires_at, accepted_at, revoked_at FROM household_invites WHERE token_hash = ?'),
+    insertInvite: db.prepare(`
+      INSERT INTO household_invites (id, household_id, email, role, token_hash, created_by, created_at, expires_at, accepted_at, revoked_at)
+      VALUES (@id, @household_id, @email, @role, @token_hash, @created_by, @created_at, @expires_at, @accepted_at, @revoked_at)
+    `),
+    acceptInvite: db.prepare('UPDATE household_invites SET accepted_at = @accepted_at WHERE id = @id AND accepted_at IS NULL AND revoked_at IS NULL'),
+    revokeInvite: db.prepare('UPDATE household_invites SET revoked_at = @revoked_at WHERE id = @id AND household_id = @household_id AND accepted_at IS NULL AND revoked_at IS NULL'),
     consumeLoginCode: db.prepare(`
       UPDATE auth_login_codes
       SET consumed_at = @consumed_at

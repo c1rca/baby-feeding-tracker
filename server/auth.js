@@ -60,7 +60,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, createSignupHousehold = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, selectUserById = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000 } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, createSignupHousehold = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, selectUserById = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000 } = {}) => {
   const loginFailures = new Map()
   const failureKey = (req, email) => `${req.ip || req.socket?.remoteAddress || 'unknown'}|${email}`
   const failuresFor = (key) => {
@@ -170,6 +170,48 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
       const token = createSession({ id: userId })
       appendEventLog('auth_signup', { userId, email, householdId })
       res.status(201).json({ ok: true, token, user: { id: userId, email, displayName } })
+    })
+
+    app.post('/api/auth/invites/accept', (req, res) => {
+      if (!authRequired) {
+        res.status(404).json({ ok: false, error: 'Authentication is not enabled' })
+        return
+      }
+      const inviteToken = String(req.body?.token || '').trim()
+      const email = normalizeEmail(req.body?.email)
+      const password = String(req.body?.password || '')
+      if (!inviteToken || !email) {
+        res.status(400).json({ ok: false, error: 'Invite token and email are required' })
+        return
+      }
+      const invite = selectInviteByToken?.get(hashSessionToken(inviteToken))
+      if (!invite || invite.revoked_at || invite.accepted_at || new Date(invite.expires_at).getTime() <= now().getTime()) {
+        res.status(401).json({ ok: false, error: 'Invalid or expired invite' })
+        return
+      }
+      if (normalizeEmail(invite.email) !== email) {
+        res.status(403).json({ ok: false, error: 'invite_email_mismatch' })
+        return
+      }
+      let user = selectUserByEmail?.get(email)
+      if (!user) {
+        if (password.length < 12) {
+          res.status(400).json({ ok: false, error: 'Password must be at least 12 characters' })
+          return
+        }
+        user = { id: idFactory(), email, display_name: String(req.body?.displayName || '').trim() || email }
+        insertPasswordUser?.run({ id: user.id, email, display_name: user.display_name, password_hash: hashPassword(password), google_sub: null, created_at: now().toISOString() })
+      }
+      const acceptedAt = now().toISOString()
+      const result = acceptInvite?.run({ id: invite.id, accepted_at: acceptedAt }) || { changes: 0 }
+      if (!result.changes) {
+        res.status(409).json({ ok: false, error: 'invite_already_used' })
+        return
+      }
+      insertHouseholdMember?.run({ user_id: user.id, household_id: invite.household_id, role: invite.role, created_at: acceptedAt })
+      const token = createSession({ id: user.id })
+      appendEventLog('invite_accept', { inviteId: invite.id, householdId: invite.household_id, userId: user.id })
+      res.status(200).json({ ok: true, token, user: { id: user.id, email, displayName: user.display_name } })
     })
 
     app.get('/api/auth/google/status', (req, res) => {
