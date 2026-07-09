@@ -167,6 +167,17 @@ export function prepareTrackerStatements(db) {
         updated_at = excluded.updated_at
     `),
     selectDeletedItems: db.prepare('SELECT item_id, collection FROM deleted_items'),
+    selectSessionContext: db.prepare(`
+      SELECT auth_sessions.user_id, household_members.household_id, household_members.role, babies.id AS baby_id
+      FROM auth_sessions
+      JOIN household_members ON household_members.user_id = auth_sessions.user_id
+      JOIN babies ON babies.household_id = household_members.household_id AND babies.archived_at IS NULL
+      WHERE auth_sessions.token_hash = ?
+        AND auth_sessions.revoked_at IS NULL
+        AND auth_sessions.expires_at > datetime('now')
+      ORDER BY babies.created_at ASC
+      LIMIT 1
+    `),
     upsertDeletedItem: db.prepare(`
       INSERT INTO deleted_items (item_id, collection, deleted_at)
       VALUES (@item_id, @collection, @deleted_at)

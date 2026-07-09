@@ -20,6 +20,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   const gotifyAvailable = Boolean(gotifyUrl && gotifyToken)
   const notificationChannelsAvailable = gotifyAvailable || textEmailAvailable
   const notificationsDefaultEnabled = env.NOTIFICATIONS_ENABLED === '1' && notificationChannelsAvailable
+  const authRequired = env.AUTH_REQUIRED === '1'
 
   return {
     port,
@@ -40,5 +41,6 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     gotifyAvailable,
     notificationChannelsAvailable,
     notificationsDefaultEnabled,
+    authRequired,
   }
 }
