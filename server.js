@@ -87,7 +87,7 @@ const checkDatabaseReady = () => {
 app.use(express.json({ limit: '1mb' }))
 createHealthRouter({ checkDatabaseReady })(app)
 createAuthRouter({ authRequired: config.authRequired, selectUserByEmail, insertSession, appendEventLog })(app)
-app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, selectSessionContext }))
+app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, selectSessionContext, selectBabyForHousehold }))
 createAuthSessionRouter({ revokeSession, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)
 

@@ -114,7 +114,9 @@ export const createAuthSessionRouter = ({ revokeSession = null, appendEventLog =
   return router
 }
 
-export const createAuthMiddleware = ({ authRequired = false, selectSessionContext = null } = {}) => (req, res, next) => {
+const requestedBabyId = (req) => String(req.headers?.['x-baby-id'] || req.headers?.['X-Baby-Id'] || '').trim()
+
+export const createAuthMiddleware = ({ authRequired = false, selectSessionContext = null, selectBabyForHousehold = null } = {}) => (req, res, next) => {
   if (!authRequired) {
     req.auth = localAuthContext()
     next()
@@ -134,10 +136,17 @@ export const createAuthMiddleware = ({ authRequired = false, selectSessionContex
     return
   }
 
+  const babyOverride = requestedBabyId(req)
+  const babyId = babyOverride || row.baby_id || DEFAULT_BABY_ID
+  if (babyOverride && selectBabyForHousehold && !selectBabyForHousehold.get(babyId, row.household_id)) {
+    res.status(404).json({ ok: false, error: 'Baby not found' })
+    return
+  }
+
   req.auth = {
     userId: row.user_id,
     householdId: row.household_id,
-    babyId: row.baby_id || DEFAULT_BABY_ID,
+    babyId,
     role: row.role,
     mode: 'session',
     tokenHash,
