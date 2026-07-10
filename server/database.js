@@ -24,6 +24,7 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
       email TEXT NOT NULL UNIQUE,
       display_name TEXT NOT NULL,
       password_hash TEXT,
+      phone TEXT,
       created_at TEXT NOT NULL
     );
 
@@ -176,6 +177,9 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
   if (!hasTummyGoalColumn) db.exec("ALTER TABLE app_state ADD COLUMN tummy_goal_minutes INTEGER NOT NULL DEFAULT 20")
   const hasGoogleSubColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('users') WHERE name = 'google_sub'").get().count > 0
   if (!hasGoogleSubColumn) db.exec('ALTER TABLE users ADD COLUMN google_sub TEXT')
+  const hasUserPhoneColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('users') WHERE name = 'phone'").get().count > 0
+  if (!hasUserPhoneColumn) db.exec('ALTER TABLE users ADD COLUMN phone TEXT')
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL')
   db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_sub ON users(google_sub) WHERE google_sub IS NOT NULL')
   // Tombstones are per-tenant: the DEFAULT clause backfills pre-scoping rows to
   // the default household/baby so a legacy delete list keeps suppressing exactly
@@ -256,23 +260,28 @@ export function prepareTrackerStatements(db) {
         updated_at = excluded.updated_at
     `),
     selectSetting: db.prepare('SELECT value FROM app_settings WHERE key = ?'),
-    selectUserByEmail: db.prepare('SELECT id, email, display_name, password_hash, google_sub FROM users WHERE email = ?'),
-    selectUserByGoogleSub: db.prepare('SELECT id, email, display_name, password_hash, google_sub FROM users WHERE google_sub = ?'),
+    selectUserByEmail: db.prepare('SELECT id, email, display_name, password_hash, google_sub, phone FROM users WHERE email = ?'),
+    selectUserByPhone: db.prepare('SELECT id, email, display_name, password_hash, google_sub, phone FROM users WHERE phone = ?'),
+    selectUserByGoogleSub: db.prepare('SELECT id, email, display_name, password_hash, google_sub, phone FROM users WHERE google_sub = ?'),
     upsertGoogleUser: db.prepare(`
       INSERT INTO users (id, email, display_name, password_hash, google_sub, created_at)
       VALUES (@id, @email, @display_name, NULL, @google_sub, @created_at)
       ON CONFLICT(email) DO UPDATE SET google_sub = excluded.google_sub, display_name = excluded.display_name
     `),
     insertPasswordUser: db.prepare(`
-      INSERT INTO users (id, email, display_name, password_hash, google_sub, created_at)
-      VALUES (@id, @email, @display_name, @password_hash, @google_sub, @created_at)
+      INSERT INTO users (id, email, display_name, password_hash, google_sub, phone, created_at)
+      VALUES (@id, @email, @display_name, @password_hash, @google_sub, NULL, @created_at)
+    `),
+    insertPhoneUser: db.prepare(`
+      INSERT INTO users (id, email, display_name, password_hash, google_sub, phone, created_at)
+      VALUES (@id, @email, @display_name, NULL, NULL, @phone, @created_at)
     `),
     upsertGoogleHouseholdMember: db.prepare(`
       INSERT INTO household_members (user_id, household_id, role, created_at)
       VALUES (@user_id, @household_id, @role, @created_at)
       ON CONFLICT(user_id, household_id) DO UPDATE SET role = household_members.role
     `),
-    selectUserById: db.prepare('SELECT id, email, display_name, password_hash, google_sub FROM users WHERE id = ?'),
+    selectUserById: db.prepare('SELECT id, email, display_name, password_hash, google_sub, phone FROM users WHERE id = ?'),
     updateUserPassword: db.prepare('UPDATE users SET password_hash = @password_hash WHERE id = @user_id'),
     selectBabiesByHousehold: db.prepare('SELECT id, household_id, name, dob, archived_at FROM babies WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at ASC'),
     selectBabyForHousehold: db.prepare('SELECT id, household_id, name, dob, archived_at FROM babies WHERE id = ? AND household_id = ? AND archived_at IS NULL'),

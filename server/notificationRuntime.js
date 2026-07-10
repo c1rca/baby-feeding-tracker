@@ -11,10 +11,10 @@ export const createTextEmailSender = (config) => {
     auth: { user: config.smtpUser, pass: config.smtpPassword },
   })
 
-  return async ({ subject, title, message }) => {
+  return async ({ subject, title, message, to }) => {
     await smtpTransporter.sendMail({
       from: config.textEmailFrom,
-      to: config.textEmailTo,
+      to: to || config.textEmailTo,
       subject: subject || title || 'Feedr reminder',
       text: message,
     })

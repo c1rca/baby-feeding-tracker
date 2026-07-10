@@ -20,6 +20,17 @@ export const isEmailAllowed = (email, allowedEmails = []) => {
 const defaultTokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', '')
 const defaultIdFactory = () => globalThis.crypto.randomUUID()
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
+const normalizePhone = (phone) => {
+  const digits = String(phone || '').replace(/\D/g, '')
+  if (digits.length === 10) return `+1${digits}`
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+  if (String(phone || '').trim().startsWith('+') && digits.length >= 10 && digits.length <= 15) return `+${digits}`
+  return ''
+}
+const maskPhone = (phone) => {
+  const digits = String(phone || '').replace(/\D/g, '')
+  return digits.length >= 4 ? `••• ••• ${digits.slice(-4)}` : ''
+}
 const isValidDob = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))
 const isGoogleAuthAvailable = (authRequired, googleAuth = {}) => Boolean(authRequired && googleAuth.clientId && googleAuth.clientSecret && googleAuth.redirectUri)
 const defaultGoogleStateFactory = ({ secret, now = () => new Date() }) => {
@@ -60,7 +71,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, createSignupHousehold = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, baseUrl = '', textLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false } = {}) => {
   const loginFailures = new Map()
   const failureKey = (req, email) => `${req.ip || req.socket?.remoteAddress || 'unknown'}|${email}`
   const failuresFor = (key) => {
@@ -74,7 +85,7 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
 
   const createSession = (user) => {
     const createdAt = now()
-    const expiresAt = addDays(createdAt, 30)
+    const expiresAt = addDays(createdAt, sessionTtlDays)
     const token = tokenFactory()
     insertSession.run({
       id: idFactory(),
@@ -123,6 +134,67 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
           email: user.email,
           displayName: user.display_name,
         },
+      })
+    })
+
+    app.post('/api/auth/text/request', async (req, res) => {
+      if (!authRequired || !textLoginAvailable || !sendTextLogin) {
+        res.status(404).json({ ok: false, error: 'Text sign-in is not enabled' })
+        return
+      }
+      const phone = normalizePhone(req.body?.phone)
+      if (!phone) {
+        res.status(400).json({ ok: false, error: 'Enter a valid mobile number' })
+        return
+      }
+      let user = selectUserByPhone?.get(phone)
+      if (!user) {
+        user = { id: idFactory(), email: `phone:${phone}`, display_name: `Caregiver ${phone.slice(-4)}`, phone }
+        insertPhoneUser?.run({ id: user.id, email: user.email, display_name: user.display_name, phone, password_hash: null, google_sub: null, created_at: now().toISOString() })
+      }
+      const code = tokenFactory()
+      const createdAt = now()
+      const link = `${String(baseUrl || '').replace(/\/$/, '') || ''}/#text_code=${encodeURIComponent(code)}`
+      insertLoginCode?.run({
+        code_hash: hashSessionToken(code),
+        user_id: user.id,
+        created_at: createdAt.toISOString(),
+        expires_at: new Date(createdAt.getTime() + textLoginCodeTtlMs).toISOString(),
+      })
+      const message = `Feedr login: tap ${link} or enter code ${code}. This code expires in 10 minutes.`
+      await sendTextLogin({ to: phone, code, link, message, subject: 'Feedr login code', title: 'Feedr login code' })
+      appendEventLog('auth_text_login_requested', { userId: user.id })
+      res.status(200).json({ ok: true, maskedPhone: maskPhone(phone) })
+    })
+
+    app.post('/api/auth/text/confirm', (req, res) => {
+      if (!authRequired) {
+        res.status(404).json({ ok: false, error: 'Authentication is not enabled' })
+        return
+      }
+      const code = String(req.body?.code || '').replace(/\D/g, '')
+      if (!code) {
+        res.status(400).json({ ok: false, error: 'Missing code' })
+        return
+      }
+      const codeHash = hashSessionToken(code)
+      const row = selectLoginCode?.get(codeHash)
+      if (!row || row.consumed_at || new Date(row.expires_at).getTime() < now().getTime()) {
+        res.status(401).json({ ok: false, error: 'Invalid or expired code' })
+        return
+      }
+      const consumed = consumeLoginCode?.run({ code_hash: codeHash, consumed_at: now().toISOString() })
+      if (consumed && consumed.changes === 0) {
+        res.status(401).json({ ok: false, error: 'Invalid or expired code' })
+        return
+      }
+      const token = createSession({ id: row.user_id })
+      const user = selectUserById?.get(row.user_id)
+      appendEventLog('auth_text_login_confirmed', { userId: row.user_id })
+      res.status(200).json({
+        ok: true,
+        token,
+        user: user ? { id: user.id, email: user.email, displayName: user.display_name } : { id: row.user_id },
       })
     })
 

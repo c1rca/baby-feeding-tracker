@@ -49,6 +49,9 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   // Number of proxy hops to trust for req.ip (so rate-limit keys use the real
   // client IP, not the reverse proxy's). Empty = don't trust any proxy.
   const trustProxy = env.TRUST_PROXY || ''
+  const publicBaseUrl = String(env.PUBLIC_BASE_URL || env.APP_BASE_URL || '').replace(/\/$/, '')
+  const textLoginSmsDomain = String(env.TEXT_LOGIN_SMS_DOMAIN || '').trim()
+  const textLoginAvailable = textEmailAvailable
 
   return {
     port,
@@ -76,5 +79,8 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     bootstrapPassword,
     isProduction,
     trustProxy,
+    publicBaseUrl,
+    textLoginSmsDomain,
+    textLoginAvailable,
   }
 }

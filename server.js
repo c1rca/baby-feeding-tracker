@@ -7,7 +7,7 @@ import { buildStateAudit } from './server/auditLog.js'
 import { createDiagnosticsRouter, createHealthRouter, createHouseholdRouter, createInviteRouter, createMemberRouter, createNotificationSettingsRouter, createStateRouter, createBabyRouter } from './server/apiRoutes.js'
 import { openTrackerDatabase, prepareTrackerStatements, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './server/database.js'
 import { createEventLogger, redactError } from './server/eventLog.js'
-import { createTrackerNotificationScheduler } from './server/notificationRuntime.js'
+import { createTextEmailSender, createTrackerNotificationScheduler } from './server/notificationRuntime.js'
 import { normalizeMedicineReminderSettings } from './server/notificationModels.js'
 import { createRuntimeConfig } from './server/runtimeConfig.js'
 import { createSecurityHeaders } from './server/securityHeaders.js'
@@ -23,8 +23,22 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions, revokeUserSessions } = statements
+const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions, revokeUserSessions } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
+const textEmailSender = createTextEmailSender(config)
+const phoneToTextEmail = (phone) => {
+  if (!config.textLoginSmsDomain) return config.textEmailTo
+  const digits = String(phone || '').replace(/\D/g, '')
+  return digits ? `${digits}@${config.textLoginSmsDomain}` : config.textEmailTo
+}
+const sendTextLogin = textEmailSender
+  ? async (payload) => {
+      const to = phoneToTextEmail(payload.to)
+      appendEventLog('text_login_send_attempt', { to })
+      await textEmailSender({ ...payload, to })
+      appendEventLog('text_login_send_success', { to })
+    }
+  : null
 
 const readBooleanSetting = (key, fallback) => {
   const row = selectSetting.get(key)
@@ -98,7 +112,7 @@ const createHousehold = db.transaction(({ userId, householdId, householdName, ba
   insertEmptyBabyState.run({ household_id: householdId, baby_id: babyId, updated_at: createdAt })
 })
 createHealthRouter({ checkDatabaseReady })(app)
-createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, selectUserByEmail, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, createSignupHousehold: createHousehold, selectInviteByToken, insertHouseholdMember, acceptInvite, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog })(app)
+createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectInviteByToken, insertHouseholdMember, acceptInvite, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, textLoginAvailable: config.textLoginAvailable, baseUrl: config.publicBaseUrl || `http://localhost:${config.port}`, sessionTtlDays: 365 })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, authBypass: config.authBypass, selectSessionContext, selectBabyForHousehold }))
 createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, selectMembershipsByUser, updateUserPassword, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)

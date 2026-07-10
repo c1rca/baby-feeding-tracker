@@ -89,7 +89,7 @@ function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
 }
 
 function App() {
-  const { status, authUser, epoch, pending, error, login, signup, logout, refreshAuth } = useAuthGate()
+  const { status, authUser, epoch, pending, error, login, loginWithTextCode, signup, logout, refreshAuth } = useAuthGate()
   const [babies, setBabies] = useState<BabySummary[]>([])
   const [selectedBabyId, setSelectedBabyId] = useState(() => readSelectedBabyId(authUser?.babyId))
 
@@ -144,7 +144,7 @@ function App() {
   }
 
   if (status === 'checking') return null
-  if (status === 'login') return <LoginScreen pending={pending} error={error} onLogin={login} onSignup={signup} />
+  if (status === 'login') return <LoginScreen pending={pending} error={error} onLogin={login} onTextLogin={loginWithTextCode} onSignup={signup} />
   if (authUser?.needsOnboarding) return <OnboardingScreen onComplete={refreshAuth} />
   // Resolve the transient empty id to the session's baby so the key does not
   // churn (and remount) when selectedBabyId settles from '' to that same baby

@@ -31,7 +31,7 @@ export const hasPendingAuth = (): boolean => {
   try {
     if (readAuthToken()) return true
     const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash
-    return new URLSearchParams(hash).has('auth_code')
+    return new URLSearchParams(hash).has('auth_code') || new URLSearchParams(hash).has('text_code')
   } catch {
     return false
   }
@@ -76,16 +76,22 @@ export const consumeAuthErrorFromUrl = (): string | null => {
 // token itself never appears in a URL, browser history, or access log.
 export const consumeAuthCodeFromUrl = async (): Promise<boolean> => {
   let code: string | null
+  let endpoint = '/api/auth/google/exchange'
   try {
     const hash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash
-    code = new URLSearchParams(hash).get('auth_code')
+    const params = new URLSearchParams(hash)
+    code = params.get('auth_code')
+    if (!code) {
+      code = params.get('text_code')
+      endpoint = '/api/auth/text/confirm'
+    }
   } catch {
     return false
   }
   if (!code) return false
   let stored = false
   try {
-    const response = await fetch('/api/auth/google/exchange', {
+    const response = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code }),

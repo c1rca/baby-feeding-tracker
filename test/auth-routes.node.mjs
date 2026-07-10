@@ -253,6 +253,69 @@ test('google exchange rejects an unknown code', () => {
   assert.equal(res.statusCode, 401)
 })
 
+test('text login request creates or finds a phone user and sends a magic link plus copyable code', async () => {
+  const calls = { users: [], codes: [], messages: [], events: [] }
+  const app = mountRouter({
+    authRequired: true,
+    baseUrl: 'https://feedr.test',
+    textLoginAvailable: true,
+    selectUserByPhone: { get: () => null },
+    insertPhoneUser: { run: (user) => calls.users.push(user) },
+    insertLoginCode: { run: (code) => calls.codes.push(code) },
+    sendTextLogin: async (payload) => calls.messages.push(payload),
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+    tokenFactory: () => '123456',
+    idFactory: () => 'phone-user-1',
+    now: () => new Date('2026-01-01T00:00:00.000Z'),
+  })
+
+  const res = createJsonResponse()
+  await app.route('POST', '/api/auth/text/request')({ body: { phone: '(555) 123-4567' } }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.deepEqual(res.body, { ok: true, maskedPhone: '••• ••• 4567' })
+  assert.equal(calls.users.length, 1)
+  assert.equal(calls.users[0].phone, '+15551234567')
+  assert.equal(calls.users[0].display_name, 'Caregiver 4567')
+  assert.equal(calls.codes[0].code_hash, hashSessionToken('123456'))
+  assert.equal(calls.codes[0].user_id, 'phone-user-1')
+  assert.equal(calls.codes[0].expires_at, '2026-01-01T00:10:00.000Z')
+  assert.equal(calls.messages.length, 1)
+  assert.equal(calls.messages[0].to, '+15551234567')
+  assert.equal(calls.messages[0].code, '123456')
+  assert.equal(calls.messages[0].link, 'https://feedr.test/#text_code=123456')
+  assert.match(calls.messages[0].message, /123456/)
+  assert.match(calls.messages[0].message, /https:\/\/feedr\.test\/#text_code=123456/)
+  assert.deepEqual(calls.events, [{ event: 'auth_text_login_requested', payload: { userId: 'phone-user-1' } }])
+})
+
+test('text login confirm consumes the code and creates a long-lived session', () => {
+  const calls = { sessions: [], consumed: [], events: [] }
+  const codeRow = { code_hash: hashSessionToken('654321'), user_id: 'phone-user-1', created_at: '2026-01-01T00:00:00.000Z', expires_at: '2026-01-01T00:10:00.000Z', consumed_at: null }
+  const app = mountRouter({
+    authRequired: true,
+    selectLoginCode: { get: (hash) => hash === codeRow.code_hash ? codeRow : null },
+    consumeLoginCode: { run: ({ code_hash }) => { calls.consumed.push(code_hash); return { changes: 1 } } },
+    selectUserById: { get: () => ({ id: 'phone-user-1', email: 'phone:+15551234567', display_name: 'Caregiver 4567', phone: '+15551234567' }) },
+    insertSession: { run: (session) => calls.sessions.push(session) },
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+    tokenFactory: () => 'long-lived-session-token',
+    idFactory: () => 'session-id-1',
+    now: () => new Date('2026-01-01T00:02:00.000Z'),
+    sessionTtlDays: 365,
+  })
+
+  const res = createJsonResponse()
+  app.route('POST', '/api/auth/text/confirm')({ body: { code: '654321' } }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.equal(res.body.ok, true)
+  assert.equal(res.body.token, 'long-lived-session-token')
+  assert.deepEqual(res.body.user, { id: 'phone-user-1', email: 'phone:+15551234567', displayName: 'Caregiver 4567' })
+  assert.equal(calls.sessions[0].expires_at, '2027-01-01T00:02:00.000Z')
+  assert.deepEqual(calls.events, [{ event: 'auth_text_login_confirmed', payload: { userId: 'phone-user-1' } }])
+})
+
 test('password reset request creates a short-lived reset code without leaking unknown emails', () => {
   const calls = { resetCodes: [], events: [] }
   const app = mountRouter({

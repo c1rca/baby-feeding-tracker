@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { fetchAuthSession, loginWithPassword, logoutSession, signupWithPassword, type AuthUser, type SignupInput } from './authApi'
+import { fetchAuthSession, loginWithPassword, logoutSession, signupWithPassword, confirmTextLogin, type AuthUser, type SignupInput } from './authApi'
 import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken, consumeAuthCodeFromUrl, consumeAuthErrorFromUrl, hasPendingAuth, storeAuthToken } from './authSession'
 
 type AuthGateStatus = 'checking' | 'ready' | 'login'
@@ -80,6 +80,18 @@ export function useAuthGate() {
     await completeTokenLogin(result.token, 'Sign in failed')
   }, [completeTokenLogin])
 
+  const loginWithTextCode = useCallback(async (code: string) => {
+    setPending(true)
+    setError(null)
+    const result = await confirmTextLogin(code)
+    if (!result.ok) {
+      setError(result.error)
+      setPending(false)
+      return
+    }
+    await completeTokenLogin(result.token, 'Text sign-in failed')
+  }, [completeTokenLogin])
+
   const signup = useCallback(async (input: SignupInput) => {
     setPending(true)
     setError(null)
@@ -104,5 +116,5 @@ export function useAuthGate() {
     requireLogin()
   }, [requireLogin])
 
-  return { status, authUser, epoch, pending, error, login, signup, logout, refreshAuth }
+  return { status, authUser, epoch, pending, error, login, loginWithTextCode, signup, logout, refreshAuth }
 }

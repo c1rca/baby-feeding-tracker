@@ -1,16 +1,21 @@
 import { Baby } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
-import { confirmPasswordReset, fetchGoogleAuthStatus, requestPasswordReset } from './authApi'
+import { confirmPasswordReset, fetchGoogleAuthStatus, requestPasswordReset, requestTextLogin } from './authApi'
 
 type LoginScreenProps = {
   pending: boolean
   error: string | null
   onLogin: (email: string, password: string) => void
+  onTextLogin: (code: string) => void
   onSignup: (input: { email: string; password: string; displayName: string; householdName: string; babyName: string; babyDob: string }) => void
 }
 
-export function LoginScreen({ pending, error, onLogin, onSignup }: LoginScreenProps) {
-  const [mode, setMode] = useState<'login' | 'signup' | 'reset'>('login')
+export function LoginScreen({ pending, error, onLogin, onTextLogin, onSignup }: LoginScreenProps) {
+  const [mode, setMode] = useState<'login' | 'signup' | 'reset' | 'password'>('login')
+  const [phone, setPhone] = useState('')
+  const [textCode, setTextCode] = useState('')
+  const [textStatus, setTextStatus] = useState<string | null>(null)
+  const [textPending, setTextPending] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [resetToken, setResetToken] = useState('')
@@ -30,6 +35,24 @@ export function LoginScreen({ pending, error, onLogin, onSignup }: LoginScreenPr
     })
     return () => { cancelled = true }
   }, [])
+
+  const handleTextRequest = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setTextPending(true)
+    setTextStatus(null)
+    const result = await requestTextLogin(phone)
+    setTextPending(false)
+    if (!result.ok) {
+      setTextStatus(result.error)
+      return
+    }
+    setTextStatus(`Magic link sent to ${result.maskedPhone}. Tap the link or paste the 6-digit code.`)
+  }
+
+  const handleTextConfirm = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    onTextLogin(textCode)
+  }
 
   const handleResetRequest = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -76,8 +99,8 @@ export function LoginScreen({ pending, error, onLogin, onSignup }: LoginScreenPr
       </div>
       <section className="card login-card">
         <h1><span className="brand-mark"><Baby size={22} /></span> Baby Feeding Tracker</h1>
-        <h2>{mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Reset password' : 'Sign in'}</h2>
-        <p className="login-meta">Private, synced care notes for your household.</p>
+        <h2>{mode === 'signup' ? 'Create account' : mode === 'reset' ? 'Reset password' : mode === 'password' ? 'Password sign in' : 'Welcome back — Sign in'}</h2>
+        <p className="login-meta">Tap once. Text arrives. You’re in — no passwords, no friction.</p>
         {googleAvailable ? (
           <a className="google-sign-in-button" href="/api/auth/google/start" aria-label="Sign in with Google">
             <span className="google-g-mark" aria-hidden="true">G</span>
@@ -98,6 +121,20 @@ export function LoginScreen({ pending, error, onLogin, onSignup }: LoginScreenPr
             </form>
             {resetStatus ? <p className="login-meta" role="status">{resetStatus}</p> : null}
           </>
+        ) : mode === 'login' ? (
+          <div className="text-login-flow">
+            <div className="magic-login-glow" aria-hidden="true">✦</div>
+            <form onSubmit={handleTextRequest}>
+              <label>Mobile number<input type="tel" inputMode="tel" autoComplete="tel" placeholder="(555) 123-4567" value={phone} onChange={(event) => setPhone(event.target.value)} required /></label>
+              <button className="primary-magic-button" type="submit" disabled={textPending}>{textPending ? 'Sending the magic…' : 'Text me a magic link'}</button>
+            </form>
+            {textStatus ? <p className="login-meta magic-status" role="status">{textStatus}</p> : null}
+            <form onSubmit={handleTextConfirm} className="code-card">
+              <label>6-digit code<input type="text" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" maxLength={6} value={textCode} onChange={(event) => setTextCode(event.target.value.replace(/\D/g, '').slice(0, 6))} required /></label>
+              {error ? <p className="login-error" role="alert">{error}</p> : null}
+              <button type="submit" disabled={pending || textCode.length < 6}>{pending ? 'Opening…' : 'Unlock tracker'}</button>
+            </form>
+          </div>
         ) : (
           <form onSubmit={handleSubmit}>
             <label>{mode === 'signup' ? 'Email' : 'Username or email'}<input type="text" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
@@ -114,11 +151,12 @@ export function LoginScreen({ pending, error, onLogin, onSignup }: LoginScreenPr
             <button type="submit" disabled={pending}>{pending ? (mode === 'signup' ? 'Creating account…' : 'Signing in…') : (mode === 'signup' ? 'Start tracking' : 'Sign in')}</button>
           </form>
         )}
-        <button className="auth-mode-toggle" type="button" onClick={() => setMode(mode === 'signup' || mode === 'reset' ? 'login' : 'signup')}>{mode === 'signup' || mode === 'reset' ? 'I already have an account' : 'Create account'}</button>
-        {mode === 'login' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('reset')}>Forgot password</button> : null}
+        <button className="auth-mode-toggle" type="button" onClick={() => setMode(mode === 'signup' || mode === 'reset' || mode === 'password' ? 'login' : 'signup')}>{mode === 'signup' || mode === 'reset' || mode === 'password' ? 'Back to magic link' : 'Create account'}</button>
+        {mode === 'login' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('password')}>Use password instead</button> : null}
+        {mode === 'password' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('reset')}>Forgot password</button> : null}
         <div className="login-help">
-          <strong>Need help signing in?</strong>
-          <span>Create a reset token, then set a new password.</span>
+          <strong>Instant and remembered</strong>
+          <span>Your secure session stays signed in on this device for as long as possible.</span>
         </div>
       </section>
     </main>

@@ -61,9 +61,10 @@ describe('App auth shell', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: /Sign in/i })).toBeTruthy())
     await waitFor(() => expect(screen.getByRole('link', { name: /Sign in with Google/i }).getAttribute('href')).toBe('/api/auth/google/start'))
-    expect(screen.getByText(/Forgot password/i)).toBeTruthy()
+    expect(screen.getByText(/Use password instead/i)).toBeTruthy()
     expect(screen.queryByText(/Use username mom or data in dev/i)).toBeNull()
 
+    await user.click(screen.getByRole('button', { name: /use password instead/i }))
     await user.type(screen.getByLabelText(/Username or email/i), 'mom')
     await user.type(screen.getByLabelText(/Password/i), 'hunter22')
     await user.click(screen.getByRole('button', { name: /Sign in/i }))
@@ -115,6 +116,62 @@ describe('App auth shell', () => {
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/not on the invite list/i))
     expect(screen.getByRole('heading', { name: /Sign in/i })).toBeTruthy()
     expect(window.location.search).not.toContain('auth_error')
+  })
+
+  it('requests a text magic link, confirms a code, and celebrates instant login', async () => {
+    const user = userEvent.setup()
+    const issuedToken = 'text-token'
+    const authorized = (init?: RequestInit) => bearerOf(init) === `Bearer ${issuedToken}`
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/auth/google/status') return jsonResponse({ ok: true, available: false })
+      if (url === '/api/auth/text/request' && init?.method === 'POST') return jsonResponse({ ok: true, maskedPhone: '••• ••• 4567' })
+      if (url === '/api/auth/text/confirm' && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body)) as { code?: string }
+        return body.code === '123456' ? jsonResponse({ ok: true, token: issuedToken, user: { id: 'phone-user' } }) : jsonResponse({ ok: false, error: 'Invalid or expired code' }, 401)
+      }
+      if (url === '/api/auth/me') return authorized(init) ? jsonResponse({ ok: true, user: sessionModeUser }) : jsonResponse({ ok: false }, 401)
+      if (url === '/api/babies') return authorized(init) ? jsonResponse({ babies: [{ id: 'default-baby', name: 'Ryan' }] }) : jsonResponse({ ok: false }, 401)
+      if (url === '/api/notification-settings') return authorized(init) ? jsonResponse({ available: false, gotifyRemindersEnabled: false }) : jsonResponse({ ok: false }, 401)
+      if (url === '/api/state' && !init?.method) return authorized(init) ? jsonResponse(emptyServerState) : jsonResponse({ ok: false }, 401)
+      return authorized(init) ? jsonResponse({ ok: true, updatedAt: 'server-2' }) : jsonResponse({ ok: false }, 401)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await waitFor(() => expect(screen.getByRole('heading', { name: /Welcome back/i })).toBeTruthy())
+    expect(screen.getByText(/Text me a magic link/i)).toBeTruthy()
+    expect(screen.queryByLabelText(/Password/i)).toBeNull()
+    await user.type(screen.getByLabelText(/Mobile number/i), '5551234567')
+    await user.click(screen.getByRole('button', { name: /Text me a magic link/i }))
+    expect(await screen.findByText(/sent to ••• ••• 4567/i)).toBeTruthy()
+    await user.type(screen.getByLabelText(/6-digit code/i), '123456')
+    await user.click(screen.getByRole('button', { name: /Unlock tracker/i }))
+
+    await waitFor(() => expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe(issuedToken))
+    await waitFor(() => expect(screen.getByText(/Baby Feeding Tracker/i)).toBeTruthy())
+  })
+
+  it('exchanges a text magic-link code from the URL fragment with polished return copy', async () => {
+    window.location.hash = '#text_code=654321'
+    const authorized = (init?: RequestInit) => bearerOf(init) === 'Bearer text-token-from-link'
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/auth/text/confirm' && init?.method === 'POST') return jsonResponse({ ok: true, token: 'text-token-from-link', user: { id: 'phone-user' } })
+      if (url === '/api/auth/me') return authorized(init) ? jsonResponse({ ok: true, user: sessionModeUser }) : jsonResponse({ ok: false }, 401)
+      if (url === '/api/babies') return jsonResponse({ babies: [{ id: 'default-baby', name: 'Ryan' }] })
+      if (url === '/api/notification-settings') return jsonResponse({ available: false, gotifyRemindersEnabled: false })
+      if (url === '/api/state' && !init?.method) return authorized(init) ? jsonResponse(emptyServerState) : jsonResponse({ ok: false }, 401)
+      return jsonResponse({ ok: true, updatedAt: 'server-2' })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    await waitFor(() => expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe('text-token-from-link'))
+    expect(window.location.hash).not.toContain('text_code')
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store', headers: expect.any(Headers) })))
   })
 
   it('creates a new household from the sign-up form and hydrates the signed-in app', async () => {
@@ -202,6 +259,7 @@ describe('App auth shell', () => {
 
     render(<App />)
     await screen.findByRole('heading', { name: /sign in/i })
+    await user.click(screen.getByRole('button', { name: /use password instead/i }))
     await user.click(screen.getByRole('button', { name: /forgot password/i }))
     await user.type(screen.getByLabelText(/^Email$/i), 'parent@example.com')
     await user.click(screen.getByRole('button', { name: /send reset link/i }))
@@ -228,7 +286,8 @@ describe('App auth shell', () => {
     render(<App />)
 
     await waitFor(() => expect(screen.getByRole('heading', { name: /Sign in/i })).toBeTruthy())
-    await user.type(screen.getByLabelText(/Email/i), 'parent@example.com')
+    await user.click(screen.getByRole('button', { name: /use password instead/i }))
+    await user.type(screen.getByLabelText(/Username or email/i), 'parent@example.com')
     await user.type(screen.getByLabelText(/Password/i), 'wrong-password')
     await user.click(screen.getByRole('button', { name: /Sign in/i }))
 
