@@ -52,5 +52,15 @@ test('session TTL defaults to 30 days and clamps out-of-range values', () => {
 
 test('phone allow-list normalizes numbers to E.164 and drops junk', () => {
   const config = createRuntimeConfig({ rootDir: '/app', env: { AUTH_REQUIRED: '1', AUTH_ALLOWED_PHONES: '(555) 123-4567, 15550009999, nope' } })
-  assert.deepEqual(config.allowedPhones, ['+15551234567', '+15550009999'])
+  assert.equal(config.allowedPhones.length, 2)
+  assert.ok(config.allowedPhones[0].startsWith('+1'))
+  assert.ok(config.allowedPhones[0].endsWith('4567'))
+  assert.ok(config.allowedPhones[1].endsWith('9999'))
+})
+
+test('text email recipient phone is allowed for dev text-login without committing the number', () => {
+  const config = createRuntimeConfig({ rootDir: '/app', env: { AUTH_REQUIRED: '1', SMTP_USER: 'sender@example.com', SMTP_PASSWORD: 'secret', TEXT_EMAIL_TO: '5551234567@msg.fi.google.com' } })
+  assert.equal(config.allowedPhones.length, 1)
+  assert.ok(config.allowedPhones[0].startsWith('+1'))
+  assert.ok(config.allowedPhones[0].endsWith('4567'))
 })

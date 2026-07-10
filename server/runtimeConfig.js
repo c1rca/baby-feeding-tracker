@@ -55,10 +55,16 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     if (String(value || '').trim().startsWith('+') && digits.length >= 10 && digits.length <= 15) return `+${digits}`
     return ''
   }
-  const allowedPhones = String(env.AUTH_ALLOWED_PHONES || '')
-    .split(',')
-    .map((entry) => normalizeAllowedPhone(entry))
+  const textEmailPhones = textEmailTo
+    .map((recipient) => normalizeAllowedPhone(String(recipient).split('@')[0]))
     .filter(Boolean)
+  const allowedPhones = Array.from(new Set([
+    ...String(env.AUTH_ALLOWED_PHONES || '')
+      .split(',')
+      .map((entry) => normalizeAllowedPhone(entry))
+      .filter(Boolean),
+    ...textEmailPhones,
+  ]))
   const bootstrapPassword = env.AUTH_BOOTSTRAP_PASSWORD || ''
   // Session lifetime. Year-long bearer tokens in localStorage are a large theft
   // window; default to 30 days and let the operator tune it. Clamped to a sane
