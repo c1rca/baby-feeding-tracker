@@ -4,12 +4,15 @@ import '@fontsource-variable/nunito/index.css'
 import '@fontsource-variable/inter/index.css'
 import { applySkin, readSkin } from './skin'
 import App from './App.tsx'
+import { ErrorBoundary } from './ErrorBoundary'
 
 applySkin(readSkin())
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 )
 

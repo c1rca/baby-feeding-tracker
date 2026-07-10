@@ -101,7 +101,7 @@ describe('App interactions', () => {
     scheduled[1].callback()
     expect(NotificationMock).toHaveBeenCalledWith('Feeding window reminder', expect.objectContaining({ tag: 'next-feeding-entry-reminder-3h', requireInteraction: true }))
     notifications[0].onclick?.()
-    expect(openSpy).toHaveBeenCalledWith('https://feedr.kjw.lol', '_blank', 'noopener,noreferrer')
+    expect(openSpy).toHaveBeenCalledWith(window.location.origin, '_blank', 'noopener,noreferrer')
   })
 
   it('toggles Gotify reminders from settings', async () => {

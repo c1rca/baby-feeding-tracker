@@ -146,6 +146,27 @@ h1, h2, h3 { font-weight: 800; letter-spacing: -0.02em; }
      for position:fixed children (modals, background scene) */
   animation: app-in .5s ease both;
 }
+
+.app-error-shell {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.app-error-card {
+  width: min(100%, 460px);
+  display: grid;
+  gap: 14px;
+  padding: clamp(24px, 5vw, 36px);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  background: var(--card-solid);
+  box-shadow: var(--shadow-pop);
+  text-align: center;
+}
+
+.app-error-card button { justify-self: center; }
 @keyframes app-in { from { opacity: 0; } to { opacity: 1; } }
 
 .hidden { display: none; }
