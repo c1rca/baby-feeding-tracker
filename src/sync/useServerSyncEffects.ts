@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { hasPendingSync, markPendingSync, type ServerSyncPayload, type SyncToApiOverrides } from './serverSyncTypes'
+import { hasPendingSync, markPendingSync, pendingSyncMatchesBaby, type ServerSyncPayload, type SyncToApiOverrides } from './serverSyncTypes'
 
 type PersistLocalChangesOptions = {
   hasHydrated: boolean
@@ -49,10 +49,10 @@ export function usePersistLocalChanges({
   }, [hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme])
 }
 
-export function usePendingSyncRetry(syncToApi: (overrides?: SyncToApiOverrides) => Promise<void>) {
+export function usePendingSyncRetry(syncToApi: (overrides?: SyncToApiOverrides) => Promise<void>, selectedBabyId?: string | null) {
   useEffect(() => {
     const retrySync = () => {
-      if (hasPendingSync()) void syncToApi()
+      if (hasPendingSync() && pendingSyncMatchesBaby(selectedBabyId)) void syncToApi()
     }
 
     window.addEventListener('online', retrySync)
@@ -61,5 +61,5 @@ export function usePendingSyncRetry(syncToApi: (overrides?: SyncToApiOverrides) 
       window.removeEventListener('online', retrySync)
       window.removeEventListener('focus', retrySync)
     }
-  }, [syncToApi])
+  }, [syncToApi, selectedBabyId])
 }

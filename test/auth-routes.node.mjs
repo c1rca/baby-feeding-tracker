@@ -254,13 +254,15 @@ test('google exchange rejects an unknown code', () => {
 })
 
 test('text login request creates or finds a phone user and sends a magic link plus copyable code', async () => {
-  const calls = { users: [], codes: [], messages: [], events: [] }
+  const calls = { users: [], households: [], codes: [], messages: [], events: [] }
   const app = mountRouter({
     authRequired: true,
     baseUrl: 'https://feedr.test',
     textLoginAvailable: true,
     selectUserByPhone: { get: () => null },
     insertPhoneUser: { run: (user) => calls.users.push(user) },
+    selectMembershipsByUser: { all: () => [] },
+    createSignupHousehold: (payload) => calls.households.push(payload),
     insertLoginCode: { run: (code) => calls.codes.push(code) },
     sendTextLogin: async (payload) => calls.messages.push(payload),
     appendEventLog: (event, payload) => calls.events.push({ event, payload }),
@@ -278,6 +280,15 @@ test('text login request creates or finds a phone user and sends a magic link pl
   assert.equal(calls.users.length, 1)
   assert.equal(calls.users[0].phone, '+15551234567')
   assert.equal(calls.users[0].display_name, 'Caregiver 4567')
+  assert.deepEqual(calls.households[0], {
+    userId: 'phone-user-1',
+    householdId: 'phone-user-1',
+    householdName: 'My Household',
+    babyId: 'phone-user-1',
+    babyName: 'Baby',
+    babyDob: '',
+    createdAt: '2026-01-01T00:00:00.000Z',
+  })
   assert.equal(calls.codes[0].code_hash, hashSessionToken('123456'))
   assert.equal(calls.codes[0].user_id, 'phone-user-1')
   assert.equal(calls.codes[0].expires_at, '2026-01-01T00:10:00.000Z')
