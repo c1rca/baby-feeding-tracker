@@ -190,6 +190,7 @@ describe('App interactions', () => {
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(screen.getByRole('tab', { name: /Data/i }))
     await user.click(screen.getByRole('button', { name: /Clear all data/i }))
 
     expect(confirmSpy).toHaveBeenCalled()

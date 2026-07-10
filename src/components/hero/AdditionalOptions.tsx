@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronDown, Dumbbell, Milk, Pill, Play, Plus, Square } from 'lucide-react'
+import { CalendarDays, ChevronDown, Dumbbell, Milk, Pill, Play, Square } from 'lucide-react'
 import type { HeroPanelProps } from './HeroPanel.types'
 
 type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'tummySession' | 'setTummySession' | 'setAdditionalOptionsOpen' | 'setBottleOpen' | 'setManualOpen' | 'setSession' | 'logMedicine' | 'logTummyTimeMinutes' | 'startTummyTime' | 'stopTummyTime'>
@@ -18,12 +18,8 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
         aria-expanded={additionalOptionsOpen}
         onClick={() => setAdditionalOptionsOpen((open) => !open)}
       >
-        <span className="ao-toggle-lead">
-          <span className="ao-toggle-icon"><Plus size={16} strokeWidth={2.6} /></span>
-          <span className="ao-toggle-copy">
-            <strong>More actions</strong>
-            <small>Tummy time · medicine · bottle · missed feed</small>
-          </span>
+        <span className="ao-toggle-copy">
+          <strong>More actions</strong>
         </span>
         <ChevronDown className="ao-toggle-chevron" size={18} aria-hidden="true" />
       </button>

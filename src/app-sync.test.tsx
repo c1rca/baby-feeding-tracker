@@ -178,6 +178,7 @@ describe('App interactions', () => {
 
     await screen.findByLabelText(/Active baby/i)
     await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(await screen.findByRole('tab', { name: /Baby/i }))
     await user.type(await screen.findByLabelText(/New baby name/i), 'Morgan')
     await user.type(screen.getByLabelText(/New baby date of birth/i), '2026-03-15')
     await user.click(screen.getByRole('button', { name: /Add baby/i }))
@@ -191,6 +192,7 @@ describe('App interactions', () => {
     // Creating a baby switches to it and remounts the tracker (per-baby isolation),
     // which closes the settings panel; reopen it to manage the roster.
     await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(await screen.findByRole('tab', { name: /Baby/i }))
     await user.click(await screen.findByRole('button', { name: /Archive Riley/i }))
     await waitFor(() => expect(screen.queryByRole('button', { name: /Archive Riley/i })).toBeNull())
     expect(fetchMock).toHaveBeenCalledWith('/api/babies/baby-2', expect.objectContaining({ method: 'DELETE' }))
@@ -212,6 +214,7 @@ describe('App interactions', () => {
 
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
     await user.click(screen.getByRole('button', { name: /Show settings/i }))
-    expect(await screen.findByRole('button', { name: /Use dark mode/i })).toBeTruthy()
+    await user.click(await screen.findByRole('tab', { name: /Appearance/i }))
+    expect(await screen.findByRole('switch', { name: /Dark mode/i })).toBeTruthy()
   })
 })

@@ -1,5 +1,5 @@
-import { BellRing } from 'lucide-react'
 import type { MedicineReminderSettings } from './modalTypes'
+import { SettingToggle } from './SettingToggle'
 
 type GotifyReminderSettingProps = {
   gotifyAvailable: boolean
@@ -10,14 +10,14 @@ type GotifyReminderSettingProps = {
 }
 
 const intervalOptions = [
-  { value: '0', label: 'Off', helper: 'No dose reminder' },
-  { value: '4', label: '4 hours', helper: 'Earlier follow-up' },
-  { value: '6', label: '6 hours', helper: 'Default window' },
+  { value: '0', label: 'Off' },
+  { value: '4', label: '4 hours' },
+  { value: '6', label: '6 hours' },
 ] as const
 
 const medicines = [
-  { kind: 'tylenol', label: 'Tylenol', tone: 'amber' },
-  { kind: 'motrin', label: 'Motrin', tone: 'rose' },
+  { kind: 'tylenol', label: 'Tylenol' },
+  { kind: 'motrin', label: 'Motrin' },
 ] as const
 
 export function GotifyReminderSetting({ gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, setGotifyReminders, setMedicineReminderSettings }: GotifyReminderSettingProps) {
@@ -25,37 +25,24 @@ export function GotifyReminderSetting({ gotifyAvailable, gotifyRemindersEnabled,
     void setMedicineReminderSettings({ ...medicineReminderSettings, [kind]: Number(value) as 0 | 4 | 6 })
   }
 
-  const statusText = gotifyAvailable ? (gotifyRemindersEnabled ? 'On' : 'Off') : 'Not configured'
-
   return (
-    <section className="notification-setting server-reminder-card" aria-labelledby="server-reminders-title">
-      <div className="server-reminder-header">
-        <div className="server-reminder-icon" aria-hidden="true"><BellRing size={18} /></div>
-        <div>
-          <div className="server-reminder-title-row">
-            <strong id="server-reminders-title">Gotify reminders</strong>
-            <span aria-label={`Gotify reminders status: ${statusText}`} className={`server-reminder-status ${gotifyRemindersEnabled ? 'is-on' : ''}`}>{statusText}</span>
-          </div>
-          <p className="muted">Server-side Gotify/SMS reminders that still work when this page is closed.</p>
+    <div className="settings-group">
+      <p className="settings-group-label">Server reminders</p>
+      <div className="settings-card">
+        <div className="setting-row">
+          <span className="setting-row-text">
+            <strong>Gotify reminders</strong>
+            <small>{gotifyAvailable ? 'Server-side reminders that arrive even when Feedr is closed' : 'Not configured on this server'}</small>
+          </span>
+          <SettingToggle checked={gotifyRemindersEnabled} onChange={(next) => void setGotifyReminders(next)} label="Gotify reminders" disabled={!gotifyAvailable} />
         </div>
-        <button
-          type="button"
-          className={gotifyRemindersEnabled ? 'server-reminder-toggle' : 'server-reminder-toggle primary'}
-          disabled={!gotifyAvailable}
-          onClick={() => void setGotifyReminders(!gotifyRemindersEnabled)}
-        >
-          {gotifyRemindersEnabled ? 'Turn off' : 'Turn on'}
-        </button>
-      </div>
-
-      <div className="medicine-reminder-settings" aria-label="Medicine reminder intervals">
-        {medicines.map(({ kind, label, tone }) => (
-          <label className={`medicine-reminder-control medicine-reminder-${tone}`} key={kind}>
-            <span className="medicine-reminder-label">
-              <strong>{label}</strong>
-              <small>{medicineReminderSettings[kind] === 0 ? 'Reminder disabled' : `Remind ${medicineReminderSettings[kind]}h after latest dose`}</small>
+        {medicines.map(({ kind, label }) => (
+          <div className="setting-row" key={kind}>
+            <span className="setting-row-text">
+              <strong>{label} dose reminder</strong>
+              <small>{medicineReminderSettings[kind] === 0 ? 'Off' : `Remind ${medicineReminderSettings[kind]}h after the latest dose`}</small>
             </span>
-            <span className="medicine-reminder-select-wrap">
+            <span className="settings-select">
               <select
                 aria-label={`${label} reminder interval`}
                 disabled={!gotifyAvailable}
@@ -65,9 +52,9 @@ export function GotifyReminderSetting({ gotifyAvailable, gotifyRemindersEnabled,
                 {intervalOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </span>
-          </label>
+          </div>
         ))}
       </div>
-    </section>
+    </div>
   )
 }

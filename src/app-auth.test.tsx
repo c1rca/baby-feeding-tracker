@@ -332,6 +332,7 @@ describe('App auth shell', () => {
     render(<App />)
 
     await user.click(await screen.findByLabelText(/Show settings/i))
+    await user.click(screen.getByRole('tab', { name: /Household/i }))
     expect(await screen.findByText(/Household access/i)).toBeTruthy()
     expect(screen.getByText(/old@example.com/i)).toBeTruthy()
     await user.type(screen.getByLabelText(/Invite email/i), 'new@example.com')
@@ -369,6 +370,7 @@ describe('App auth shell', () => {
     render(<App />)
 
     await user.click(await screen.findByLabelText(/Show settings/i))
+    await user.click(screen.getByRole('tab', { name: /Account/i }))
     expect(screen.getByText(/Account security/i)).toBeTruthy()
     expect(screen.getByText(/Signed in as mom/i)).toBeTruthy()
     await user.type(screen.getByLabelText(/Current password/i), '1')
@@ -402,6 +404,7 @@ describe('App auth shell', () => {
     render(<App />)
 
     await user.click(await screen.findByLabelText(/Show settings/i))
+    await user.click(await screen.findByRole('tab', { name: /Account/i }))
     const signOutButton = await screen.findByRole('button', { name: /Sign out/i })
     await user.click(signOutButton)
 

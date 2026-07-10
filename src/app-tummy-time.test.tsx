@@ -117,6 +117,7 @@ describe('Tummy Time tracking', () => {
     expect(screen.getByText(/60% of goal/i)).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(screen.getByRole('tab', { name: /Baby/i }))
     const goalInput = screen.getByLabelText(/Tummy Time daily goal/i)
     await user.clear(goalInput)
     await user.type(goalInput, '45')

@@ -50,7 +50,7 @@ describe('App interactions', () => {
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /Show settings/i }))
-    await user.click(screen.getByRole('button', { name: /Enable reminders/i }))
+    await user.click(screen.getByRole('switch', { name: /Next feeding reminders/i }))
 
     await waitFor(() => expect(requestPermission).toHaveBeenCalled())
     await waitFor(() => expect(localStorage.getItem('baby-feeding-tracker:v1:feeding-notifications')).toBe('1'))
@@ -125,8 +125,9 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Show settings/i }))
 
     await waitFor(() => expect(screen.getByText(/Gotify reminders/i)).toBeTruthy())
-    expect(screen.getByLabelText(/Gotify reminders status: Off/i)).toBeTruthy()
-    await user.click(screen.getByRole('button', { name: /Turn on/i }))
+    const gotifySwitch = screen.getByRole('switch', { name: /Gotify reminders/i })
+    expect(gotifySwitch.getAttribute('aria-checked')).toBe('false')
+    await user.click(gotifySwitch)
 
     await waitFor(() => expect(screen.getByText(/Gotify reminders enabled/i)).toBeTruthy())
     expect(fetchMock).toHaveBeenCalledWith('/api/notification-settings', expect.objectContaining({ method: 'PUT' }))
