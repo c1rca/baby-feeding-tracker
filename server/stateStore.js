@@ -1,19 +1,40 @@
 import { DEFAULT_BABY_DOB, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './database.js'
 
+// A corrupt JSON blob (partial write, disk fault) must not 500 GET /api/state
+// or crash the scheduler; fall back to an empty collection/null, matching the
+// notification path's guards. DB backups are the recovery path for real data.
+const safeParseArray = (value) => {
+  try {
+    const parsed = JSON.parse(value ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+const safeParseObject = (value) => {
+  if (!value) return null
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
 export const serializeState = (row) => {
   if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'light', updatedAt: null }
   return {
     householdId: row.household_id || DEFAULT_HOUSEHOLD_ID,
     babyId: row.baby_id || DEFAULT_BABY_ID,
-    entries: JSON.parse(row.entries_json),
-    diapers: JSON.parse(row.diapers_json || '[]'),
-    medicines: JSON.parse(row.medicines_json || '[]'),
-    tummyTimes: JSON.parse(row.tummy_times_json || '[]'),
-    growthMeasurements: JSON.parse(row.growth_measurements_json || '[]'),
+    entries: safeParseArray(row.entries_json),
+    diapers: safeParseArray(row.diapers_json),
+    medicines: safeParseArray(row.medicines_json),
+    tummyTimes: safeParseArray(row.tummy_times_json),
+    growthMeasurements: safeParseArray(row.growth_measurements_json),
     babyDob: row.baby_dob || DEFAULT_BABY_DOB,
     tummyGoalMinutes: Number.isFinite(Number(row.tummy_goal_minutes)) ? Math.min(240, Math.max(1, Math.round(Number(row.tummy_goal_minutes)))) : 20,
-    session: row.session_json ? JSON.parse(row.session_json) : null,
-    tummySession: row.tummy_session_json ? JSON.parse(row.tummy_session_json) : null,
+    session: safeParseObject(row.session_json),
+    tummySession: safeParseObject(row.tummy_session_json),
     theme: row.theme || 'light',
     updatedAt: row.updated_at,
   }
