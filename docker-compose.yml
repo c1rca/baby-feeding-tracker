@@ -11,6 +11,8 @@ services:
       - DB_PATH=/data/feeding-tracker.db
       - AUTH_REQUIRED=${AUTH_REQUIRED:-1}
       - AUTH_BYPASS=${AUTH_BYPASS:-0}
+      # Explicit acknowledgement required when deliberately running auth-off.
+      - ALLOW_INSECURE_LOCAL_MODE=${ALLOW_INSECURE_LOCAL_MODE:-0}
       # Phone beta gate: comma-separated numbers allowed to self-provision a new
       # phone account. Empty = new-phone provisioning closed (existing phone
       # users keep working). Set this to your beta cohort before relying on
