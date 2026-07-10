@@ -45,7 +45,7 @@ describe('App auth shell', () => {
       if (url === '/api/auth/google/status') return jsonResponse({ ok: true, available: true })
       if (url === '/api/auth/login' && init?.method === 'POST') {
         const body = JSON.parse(String(init.body)) as { email?: string; password?: string }
-        if (body.email === 'mom' && body.password === 'hunter22') {
+        if (body.email === 'mom@example.com' && body.password === 'hunter22') {
           return jsonResponse({ ok: true, token: issuedToken, user: { id: 'default-user', email: body.email, displayName: 'Mom' } })
         }
         return jsonResponse({ ok: false, error: 'Invalid email or password' }, 401)
@@ -65,7 +65,7 @@ describe('App auth shell', () => {
     expect(screen.queryByText(/Use username mom or data in dev/i)).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /use password instead/i }))
-    await user.type(screen.getByLabelText(/Username or email/i), 'mom')
+    await user.type(screen.getByLabelText(/Email/i), 'mom@example.com')
     await user.type(screen.getByLabelText(/Password/i), 'hunter22')
     await user.click(screen.getByRole('button', { name: /Sign in/i }))
 
@@ -140,14 +140,14 @@ describe('App auth shell', () => {
 
     render(<App />)
 
-    await waitFor(() => expect(screen.getByRole('heading', { name: /Welcome back/i })).toBeTruthy())
-    expect(screen.getByText(/Text me a magic link/i)).toBeTruthy()
+    await waitFor(() => expect(screen.getByRole('heading', { name: /Sign in/i })).toBeTruthy())
+    expect(screen.getByText(/Text me my link/i)).toBeTruthy()
     expect(screen.queryByLabelText(/Password/i)).toBeNull()
     await user.type(screen.getByLabelText(/Mobile number/i), '5551234567')
-    await user.click(screen.getByRole('button', { name: /Text me a magic link/i }))
+    await user.click(screen.getByRole('button', { name: /Text me my link/i }))
     expect(await screen.findByText(/sent to ••• ••• 4567/i)).toBeTruthy()
     await user.type(screen.getByLabelText(/6-digit code/i), '123456')
-    await user.click(screen.getByRole('button', { name: /Unlock tracker/i }))
+    await user.click(screen.getByRole('button', { name: /Open tracker/i }))
 
     await waitFor(() => expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe(issuedToken))
     await waitFor(() => expect(screen.getByText(/Baby Feeding Tracker/i)).toBeTruthy())
@@ -182,7 +182,11 @@ describe('App auth shell', () => {
       const url = String(input)
       if (url === '/api/auth/google/status') return jsonResponse({ ok: true, available: false })
       if (url === '/api/auth/me') return authorized(init) ? jsonResponse({ ok: true, user: sessionModeUser }) : jsonResponse({ ok: false }, 401)
-      if (url === '/api/auth/signup' && init?.method === 'POST') return jsonResponse({ ok: true, token: issuedToken, user: { id: 'new-user' } }, 201)
+      if (url === '/api/auth/email/request' && init?.method === 'POST') return jsonResponse({ ok: true, maskedEmail: 'ne•••@example.com' })
+      if (url === '/api/auth/text/confirm' && init?.method === 'POST') {
+        const body = JSON.parse(String(init.body)) as { code?: string }
+        return body.code === '222333' ? jsonResponse({ ok: true, token: issuedToken, user: { id: 'new-user' } }) : jsonResponse({ ok: false }, 401)
+      }
       if (url === '/api/babies') return authorized(init) ? jsonResponse({ babies: [{ id: 'baby-new', name: 'Ryan' }] }) : jsonResponse({ ok: false }, 401)
       if (url === '/api/notification-settings') return jsonResponse({ available: false, gotifyRemindersEnabled: false })
       if (url === '/api/state' && !init?.method) return authorized(init) ? jsonResponse(emptyServerState) : jsonResponse({ ok: false }, 401)
@@ -194,17 +198,15 @@ describe('App auth shell', () => {
 
     await user.click(await screen.findByRole('button', { name: /Create account/i }))
     await user.type(screen.getByLabelText(/Email/i), 'new@example.com')
-    await user.type(screen.getByLabelText(/^Password/i), 'strong-password')
-    await user.type(screen.getByLabelText(/Your name/i), 'New Parent')
-    await user.type(screen.getByLabelText(/Household name/i), 'Home')
-    await user.type(screen.getByLabelText(/Baby name/i), 'Ryan')
-    await user.type(screen.getByLabelText(/Baby date of birth/i), '2026-06-03')
-    await user.click(screen.getByRole('button', { name: /Start tracking/i }))
+    await user.click(screen.getByRole('button', { name: /Email my sign-in link/i }))
+    expect(await screen.findByText(/sent to ne•••@example.com/i)).toBeTruthy()
+    await user.type(screen.getByLabelText(/6-digit code/i), '222333')
+    await user.click(screen.getByRole('button', { name: /Open tracker/i }))
 
     await waitFor(() => expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe(issuedToken))
-    const signupCall = fetchMock.mock.calls.find(([input, callInit]) => String(input) === '/api/auth/signup' && callInit?.method === 'POST')
+    const signupCall = fetchMock.mock.calls.find(([input, callInit]) => String(input) === '/api/auth/email/request' && callInit?.method === 'POST')
     expect(signupCall).toBeTruthy()
-    expect(JSON.parse(String(signupCall?.[1]?.body))).toEqual({ email: 'new@example.com', password: 'strong-password', displayName: 'New Parent', householdName: 'Home', babyName: 'Ryan', babyDob: '2026-06-03' })
+    expect(JSON.parse(String(signupCall?.[1]?.body))).toEqual({ email: 'new@example.com' })
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store', headers: expect.any(Headers) })))
   })
 
@@ -276,7 +278,7 @@ describe('App auth shell', () => {
     expect(await screen.findByText(/reset token ready/i)).toBeTruthy()
     await user.type(screen.getByLabelText(/reset token/i), 'reset-dev-token')
     await user.type(screen.getByLabelText(/new password/i), 'new-reset-password')
-    await user.click(screen.getByRole('button', { name: /reset password/i }))
+    await user.click(screen.getByRole('button', { name: /set password/i }))
     expect(await screen.findByText(/password reset complete/i)).toBeTruthy()
     expect(requests).toEqual([
       { url: '/api/auth/password-reset/request', body: { email: 'parent@example.com' } },
@@ -297,7 +299,7 @@ describe('App auth shell', () => {
 
     await waitFor(() => expect(screen.getByRole('heading', { name: /Sign in/i })).toBeTruthy())
     await user.click(screen.getByRole('button', { name: /use password instead/i }))
-    await user.type(screen.getByLabelText(/Username or email/i), 'parent@example.com')
+    await user.type(screen.getByLabelText(/Email/i), 'parent@example.com')
     await user.type(screen.getByLabelText(/Password/i), 'wrong-password')
     await user.click(screen.getByRole('button', { name: /Sign in/i }))
 
@@ -399,6 +401,7 @@ describe('App auth shell', () => {
 
     render(<App />)
 
+    await user.click(await screen.findByLabelText(/Show settings/i))
     const signOutButton = await screen.findByRole('button', { name: /Sign out/i })
     await user.click(signOutButton)
 

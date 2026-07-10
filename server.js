@@ -53,6 +53,13 @@ const sendTextLogin = textEmailSender
       appendEventLog('text_login_send_success', { to: maskRecipient(to) })
     }
   : null
+const sendEmailLogin = textEmailSender
+  ? async (payload) => {
+      appendEventLog('email_login_send_attempt', { to: maskRecipient(payload.to) })
+      await textEmailSender(payload)
+      appendEventLog('email_login_send_success', { to: maskRecipient(payload.to) })
+    }
+  : null
 
 const readBooleanSetting = (key, fallback) => {
   const row = selectSetting.get(key)
@@ -129,7 +136,7 @@ const createHousehold = db.transaction(({ userId, householdId, householdName, ba
   insertEmptyBabyState.run({ household_id: householdId, baby_id: babyId, updated_at: createdAt })
 })
 createHealthRouter({ checkDatabaseReady })(app)
-createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, allowedPhones: config.allowedPhones, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectMembershipsByUser, selectInviteByToken, insertHouseholdMember, acceptInvite, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, textLoginAvailable: config.textLoginAvailable, baseUrl: config.publicBaseUrl, sessionTtlDays: config.sessionTtlDays })(app)
+createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, allowedPhones: config.allowedPhones, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectMembershipsByUser, selectInviteByToken, insertHouseholdMember, acceptInvite, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, sendEmailLogin, textLoginAvailable: config.textLoginAvailable, emailLoginAvailable: config.textEmailAvailable, baseUrl: config.publicBaseUrl, sessionTtlDays: config.sessionTtlDays })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, authBypass: config.authBypass, selectSessionContext, selectBabyForHousehold }))
 createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, selectMembershipsByUser, updateUserPassword, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)

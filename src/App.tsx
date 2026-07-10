@@ -41,11 +41,11 @@ function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBaby
         <div className="stars" />
         <div className="stars stars-2" />
       </div>
-      <AppHeader {...headerProps} authUser={authUser} onLogout={onLogout} babies={babies} selectedBabyId={selectedBabyId} onSelectedBabyIdChange={onSelectedBabyIdChange} />
+      <AppHeader {...headerProps} babies={babies} selectedBabyId={selectedBabyId} onSelectedBabyIdChange={onSelectedBabyIdChange} />
       <MedicineReminderBanner {...medicineReminderProps} />
       <TummyTimeReminderBanner {...tummyTimeReminderProps} />
       {view === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
-      <TrackerModals {...modalsProps} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} />
+      <TrackerModals {...modalsProps} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} onLogout={onLogout} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} />
       <AppToast {...toastProps} />
     </main>
   )
@@ -89,7 +89,7 @@ function OnboardingScreen({ onComplete }: { onComplete: () => void }) {
 }
 
 function App() {
-  const { status, authUser, epoch, pending, error, login, loginWithTextCode, signup, logout, refreshAuth } = useAuthGate()
+  const { status, authUser, epoch, pending, error, login, loginWithTextCode, logout, refreshAuth } = useAuthGate()
   const [babies, setBabies] = useState<BabySummary[]>([])
   const [selectedBabyId, setSelectedBabyId] = useState(() => readSelectedBabyId(authUser?.babyId))
 
@@ -144,7 +144,7 @@ function App() {
   }
 
   if (status === 'checking') return null
-  if (status === 'login') return <LoginScreen pending={pending} error={error} onLogin={login} onTextLogin={loginWithTextCode} onSignup={signup} />
+  if (status === 'login') return <LoginScreen pending={pending} error={error} onLogin={login} onTextLogin={loginWithTextCode} />
   if (authUser?.needsOnboarding) return <OnboardingScreen onComplete={refreshAuth} />
   // Resolve the transient empty id to the session's baby so the key does not
   // churn (and remount) when selectedBabyId settles from '' to that same baby

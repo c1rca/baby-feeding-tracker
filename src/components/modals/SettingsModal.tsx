@@ -23,6 +23,8 @@ type SettingsModalProps = Pick<
   | 'babies'
   | 'selectedBabyId'
   | 'authUser'
+  | 'theme'
+  | 'onLogout'
   | 'fileInputRef'
   | 'setSettingsOpen'
   | 'setEntries'
@@ -32,6 +34,7 @@ type SettingsModalProps = Pick<
   | 'setSession'
   | 'setUndoState'
   | 'setFeedingNotificationsEnabled'
+  | 'setTheme'
   | 'enableFeedingNotifications'
   | 'setGotifyReminders'
   | 'setMedicineReminderSettings'
@@ -40,31 +43,40 @@ type SettingsModalProps = Pick<
   | 'showToast'
 >
 
-function AppearanceSetting() {
+function AppearanceSetting({ theme, setTheme }: { theme: 'light' | 'dark'; setTheme: (theme: 'light' | 'dark') => void }) {
   const [skin, setSkin] = useState(readSkin)
   const nextSkin = skin === 'lullaby' ? 'classic' : 'lullaby'
 
   return (
-    <div className="setting-row">
-      <span>
-        <strong>Design</strong>
-        <small>Current: {skinLabel[skin]}. Switch between the new Lullaby design and the classic look on this device.</small>
-      </span>
-      <button
-        type="button"
-        aria-label={`Switch to ${skinLabel[nextSkin]} design`}
-        onClick={() => {
-          applySkin(nextSkin)
-          setSkin(nextSkin)
-        }}
-      >
-        Use {skinLabel[nextSkin]}
-      </button>
+    <div className="setting-stack appearance-settings">
+      <div className="setting-row">
+        <span>
+          <strong>Theme</strong>
+          <small>Keep the top bar focused; switch light and dark mode here.</small>
+        </span>
+        <button type="button" onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>{theme === 'light' ? 'Use dark mode' : 'Use light mode'}</button>
+      </div>
+      <div className="setting-row">
+        <span>
+          <strong>Design</strong>
+          <small>Current: {skinLabel[skin]}. Switch between the new Lullaby design and the classic look on this device.</small>
+        </span>
+        <button
+          type="button"
+          aria-label={`Switch to ${skinLabel[nextSkin]} design`}
+          onClick={() => {
+            applySkin(nextSkin)
+            setSkin(nextSkin)
+          }}
+        >
+          Use {skinLabel[nextSkin]}
+        </button>
+      </div>
     </div>
   )
 }
 
-function AccountSecuritySetting({ authUser, showToast }: { authUser: SettingsModalProps['authUser']; showToast: (message: string) => void }) {
+function AccountSecuritySetting({ authUser, onLogout, showToast }: { authUser: SettingsModalProps['authUser']; onLogout?: SettingsModalProps['onLogout']; showToast: (message: string) => void }) {
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [pending, setPending] = useState(false)
@@ -110,7 +122,8 @@ function AccountSecuritySetting({ authUser, showToast }: { authUser: SettingsMod
             <input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
           </label>
           {message ? <p className={`account-security-message ${message.kind === 'success' ? 'is-success' : 'is-error'}`} role={message.kind === 'error' ? 'alert' : 'status'}>{message.text}</p> : null}
-          <button type="button" onClick={submitPassword} disabled={pending || !currentPassword || !newPassword}>{pending ? 'Updating…' : 'Update password'}</button>
+          <button type="button" onClick={submitPassword} disabled={pending || !newPassword}>{pending ? 'Updating…' : 'Update password'}</button>
+          {onLogout ? <button type="button" className="secondary" onClick={onLogout}>Sign out</button> : null}
         </div>
       ) : null}
     </section>
@@ -250,7 +263,7 @@ function BabyManagementSetting({ babies = [], selectedBabyId = '', role, onCreat
   )
 }
 
-export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, babies = [], selectedBabyId = '', authUser = null, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
+export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, babies = [], selectedBabyId = '', authUser = null, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, setTheme, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
   const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
   const closeSettings = () => setSettingsOpen(false)
 
@@ -276,8 +289,8 @@ export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, fee
         setGotifyReminders={setGotifyReminders}
         setMedicineReminderSettings={setMedicineReminderSettings}
       />
-      <AppearanceSetting />
-      <AccountSecuritySetting authUser={authUser} showToast={showToast} />
+      <AppearanceSetting theme={theme} setTheme={setTheme} />
+      <AccountSecuritySetting authUser={authUser} onLogout={onLogout} showToast={showToast} />
       <HouseholdAccessSetting role={authUser?.role} showToast={showToast} />
       <BabyManagementSetting babies={babies} selectedBabyId={selectedBabyId} role={authUser?.role} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} showToast={showToast} />
       <label className="setting-row">

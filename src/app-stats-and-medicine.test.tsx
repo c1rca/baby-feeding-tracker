@@ -135,7 +135,7 @@ describe('App interactions', () => {
 
     expect(screen.getByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
     const headerButtons = Array.from(document.querySelectorAll('.top-actions button')).map((button) => button.getAttribute('aria-label'))
-    expect(headerButtons).toEqual(['Show tracker', 'Show settings', 'Enable dark mode'])
+    expect(headerButtons).toEqual(['Show tracker', 'Show settings'])
   })
 
   it('keeps medicine controls collapsed, alternates reminders, and undoes a new medicine log', async () => {
@@ -234,8 +234,8 @@ describe('App interactions', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
 
-    expect(screen.queryByRole('alert')).toBeNull()
     await vi.advanceTimersByTimeAsync(0)
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/notification-settings'))
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())

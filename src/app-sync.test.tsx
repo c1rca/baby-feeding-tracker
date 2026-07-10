@@ -197,6 +197,7 @@ describe('App interactions', () => {
   })
 
   it('keeps this device theme preference after server hydration', async () => {
+    const user = userEvent.setup()
     localStorage.setItem('baby-feeding-tracker:v1:theme', 'light')
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
@@ -209,6 +210,7 @@ describe('App interactions', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' })))
 
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
-    expect(screen.getByRole('button', { name: /Enable dark mode/i })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    expect(await screen.findByRole('button', { name: /Use dark mode/i })).toBeTruthy()
   })
 })

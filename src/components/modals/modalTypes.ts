@@ -26,6 +26,8 @@ export type TrackerModalsProps = {
   babies?: BabySummary[]
   selectedBabyId?: string
   authUser?: AuthUser | null
+  theme: 'light' | 'dark'
+  onLogout?: () => void
   fileInputRef: RefObject<HTMLInputElement | null>
   setBottleOpen: (open: boolean) => void
   setManualOpen: (open: boolean) => void
@@ -39,6 +41,7 @@ export type TrackerModalsProps = {
   setSession: (session: Session | null) => void
   setUndoState: (state: null) => void
   setFeedingNotificationsEnabled: (enabled: boolean) => void
+  setTheme: (theme: 'light' | 'dark') => void
   logBottle: (oz?: number) => void
   saveManualFeed: () => void
   enableFeedingNotifications: () => void

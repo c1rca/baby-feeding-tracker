@@ -941,6 +941,8 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .medicine-reminder-rose { border-left: 4px solid var(--hue-motrin); }
 
 .setting-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 13px 0; border-top: 1px solid var(--border); }
+.setting-stack { display: grid; }
+.setting-stack .setting-row:first-child { border-top: 0; padding-top: 0; }
 .setting-row span { display: grid; gap: 3px; font-weight: 750; }
 .setting-row small { color: var(--ink-soft); font-weight: 650; }
 .setting-row input[type='date'] { padding: 10px 12px; font-weight: 750; }
@@ -1383,6 +1385,13 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .login-card::after { content: ''; position: absolute; width: 190px; height: 190px; right: -80px; bottom: -96px; border-radius: 50%; background: radial-gradient(circle, color-mix(in srgb, var(--berry) 18%, transparent), transparent 70%); pointer-events: none; }
 .login-card h1 { position: relative; margin: 0; font-size: clamp(1.3rem, 4vw, 1.7rem); display: flex; align-items: center; gap: 11px; letter-spacing: -.035em; }
 .login-card h2 { position: relative; margin: -5px 0 0; font-size: .96rem; color: var(--ink-soft); font-weight: 750; line-height: 1.4; }
+.login-hero-mark { position: relative; display: inline-flex; align-items: center; gap: 10px; width: fit-content; padding: 8px 12px 8px 8px; border-radius: 999px; background: color-mix(in srgb, var(--berry) 9%, var(--well)); border: 1px solid color-mix(in srgb, var(--berry) 18%, var(--border)); color: var(--ink); font-weight: 950; letter-spacing: -.02em; }
+.login-benefits { position: relative; display: flex; flex-wrap: wrap; gap: 8px; }
+.login-benefits span { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border-radius: 999px; background: color-mix(in srgb, var(--mint) 10%, var(--well)); border: 1px solid color-mix(in srgb, var(--mint) 18%, var(--border)); color: var(--ink-soft); font-size: .76rem; font-weight: 900; }
+.frictionless-form { position: relative; }
+.auth-secondary-actions { position: relative; display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.code-card-premium input { text-align: center; font-size: 1.32rem; letter-spacing: .28em; font-family: var(--font-numeric); font-weight: 950; }
+.login-meta.mini { margin-top: -4px; font-size: .76rem; }
 .login-card form { position: relative; display: grid; gap: 13px; }
 .login-card label { display: grid; gap: 7px; color: var(--ink-soft); font-size: .82rem; font-weight: 900; }
 .login-card input { width: 100%; min-height: 48px; padding-inline: 14px; border-radius: 16px; background: color-mix(in srgb, var(--card-solid) 78%, transparent); font-size: 1rem; }

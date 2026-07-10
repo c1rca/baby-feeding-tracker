@@ -1,6 +1,5 @@
-import { Baby, BarChart3, ClipboardList, LogOut, Moon, Settings, Sun } from 'lucide-react'
+import { Baby, BarChart3, ClipboardList, Settings } from 'lucide-react'
 import type { Dispatch, SetStateAction } from 'react'
-import type { AuthUser } from '../auth/authApi'
 import type { BabySummary } from '../babies/babyApi'
 import type { View } from '../types'
 type SyncStatus = 'syncing' | 'synced' | 'offline' | 'issue'
@@ -8,16 +7,12 @@ type SyncStatus = 'syncing' | 'synced' | 'offline' | 'issue'
 type AppHeaderProps = {
   view: View
   syncStatus: SyncStatus
-  theme: 'light' | 'dark'
   settingsOpen: boolean
   setView: Dispatch<SetStateAction<View>>
-  setTheme: Dispatch<SetStateAction<'light' | 'dark'>>
   setSettingsOpen: Dispatch<SetStateAction<boolean>>
-  authUser?: AuthUser | null
   babies?: BabySummary[]
   selectedBabyId?: string
   onSelectedBabyIdChange?: (babyId: string) => void
-  onLogout?: () => void
 }
 
 const syncLabel: Record<SyncStatus, string> = {
@@ -27,7 +22,7 @@ const syncLabel: Record<SyncStatus, string> = {
   issue: 'Connection issue',
 }
 
-export function AppHeader({ view, syncStatus, theme, settingsOpen, setView, setTheme, setSettingsOpen, authUser = null, babies = [], selectedBabyId = '', onSelectedBabyIdChange, onLogout }: AppHeaderProps) {
+export function AppHeader({ view, syncStatus, settingsOpen, setView, setSettingsOpen, babies = [], selectedBabyId = '', onSelectedBabyIdChange }: AppHeaderProps) {
   return (
     <header className="top">
       <h1><span className="brand-mark"><Baby size={22} /></span> Baby Feeding Tracker</h1>
@@ -47,14 +42,6 @@ export function AppHeader({ view, syncStatus, theme, settingsOpen, setView, setT
         <button className="icon-plain" aria-label={settingsOpen ? 'Hide settings' : 'Show settings'} onClick={() => setSettingsOpen((v) => !v)}>
           <Settings size={17} />
         </button>
-        <button className="icon-plain" aria-label={theme === 'light' ? 'Enable dark mode' : 'Enable light mode'} onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}>
-          {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
-        </button>
-        {authUser?.mode === 'session' && onLogout ? (
-          <button className="icon-plain" aria-label="Sign out" title="Sign out" onClick={onLogout}>
-            <LogOut size={17} />
-          </button>
-        ) : null}
       </div>
     </header>
   )

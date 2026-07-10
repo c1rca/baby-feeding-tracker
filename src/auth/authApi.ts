@@ -30,7 +30,8 @@ export async function fetchAuthSession(): Promise<AuthSessionResult> {
 
 export type LoginResult = { ok: true; token: string } | { ok: false; error: string }
 export type TextLoginRequestResult = { ok: true; maskedPhone: string } | { ok: false; error: string }
-export type SignupInput = { email: string; password: string; displayName: string; householdName: string; babyName: string; babyDob: string }
+export type EmailLoginRequestResult = { ok: true; maskedEmail: string } | { ok: false; error: string }
+export type SignupInput = { email: string }
 
 export async function signupWithPassword(input: SignupInput): Promise<LoginResult> {
   try {
@@ -77,6 +78,21 @@ export async function confirmPasswordReset(token: string, newPassword: string): 
   const data = await response.json().catch(() => ({}))
   if (!response.ok || !data.ok) return { ok: false, error: data.error || 'Unable to reset password' }
   return { ok: true }
+}
+
+export async function requestEmailLogin(email: string): Promise<EmailLoginRequestResult> {
+  try {
+    const response = await fetch('/api/auth/email/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const data = await response.json().catch(() => null) as { ok?: boolean; maskedEmail?: string; error?: string } | null
+    if (!response.ok || !data?.ok) return { ok: false, error: data?.error || 'Could not send your sign-in email' }
+    return { ok: true, maskedEmail: data.maskedEmail || 'your email' }
+  } catch {
+    return { ok: false, error: 'Could not reach the server' }
+  }
 }
 
 export async function requestTextLogin(phone: string): Promise<TextLoginRequestResult> {

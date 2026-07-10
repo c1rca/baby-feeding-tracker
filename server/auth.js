@@ -30,8 +30,14 @@ const normalizePhone = (phone) => {
 }
 const maskPhone = (phone) => {
   const digits = String(phone || '').replace(/\D/g, '')
-  return digits.length >= 4 ? `••• ••• ${digits.slice(-4)}` : ''
+  return digits.length >= 4 ? `••• ••• ${digits.slice(-4)}` : 'that number'
 }
+const maskEmail = (email) => {
+  const [name, domain] = String(email || '').split('@')
+  if (!name || !domain) return 'that email'
+  return `${name.slice(0, 2)}•••@${domain}`
+}
+
 const isValidDob = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))
 const isGoogleAuthAvailable = (authRequired, googleAuth = {}) => Boolean(authRequired && googleAuth.clientId && googleAuth.clientSecret && googleAuth.redirectUri)
 const defaultGoogleStateFactory = ({ secret, now = () => new Date() }) => {
@@ -72,7 +78,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, baseUrl = '', textLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, sendEmailLogin = null, baseUrl = '', textLoginAvailable = false, emailLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
   const limiterNow = () => now().getTime()
   const loginLimiter = createRateLimiter({ max: maxLoginAttempts, windowMs: loginWindowMs, now: limiterNow })
   const textRequestLimiter = createRateLimiter({ max: textRequestMax, windowMs: textRequestWindowMs, now: limiterNow })
@@ -198,6 +204,49 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
       await sendTextLogin({ to: phone, code, link, message, subject: 'Feedr login code', title: 'Feedr login code' })
       appendEventLog('auth_text_login_requested', { userId: user.id })
       res.status(200).json({ ok: true, maskedPhone: maskPhone(phone) })
+    })
+
+    app.post('/api/auth/email/request', async (req, res) => {
+      if (!authRequired || !emailLoginAvailable || !sendEmailLogin) {
+        res.status(404).json({ ok: false, error: 'Email sign-in is not enabled' })
+        return
+      }
+      const email = normalizeEmail(req.body?.email)
+      if (!email) {
+        res.status(400).json({ ok: false, error: 'Enter a valid email' })
+        return
+      }
+      const key = `email|${email}`
+      if (textRequestLimiter.isLimited(clientIp(req)) || textRequestLimiter.isLimited(key)) {
+        res.status(429).json({ ok: false, error: 'Too many requests. Try again later.' })
+        return
+      }
+      textRequestLimiter.record(clientIp(req))
+      textRequestLimiter.record(key)
+      let user = selectUserByEmail?.get(email)
+      if (!user && !isEmailAllowed(email, allowedEmails)) {
+        appendEventLog('auth_email_login_denied', { email })
+        res.status(200).json({ ok: true, maskedEmail: maskEmail(email) })
+        return
+      }
+      const createdAt = now()
+      if (!user) {
+        user = { id: idFactory(), email, display_name: email.split('@')[0] }
+        insertPasswordUser?.run({ id: user.id, email, display_name: user.display_name, password_hash: null, google_sub: null, created_at: createdAt.toISOString() })
+      }
+      const memberships = selectMembershipsByUser?.all?.(user.id) || []
+      if (memberships.length === 0 && createSignupHousehold) {
+        createSignupHousehold({ userId: user.id, householdId: idFactory(), householdName: 'My Household', babyId: idFactory(), babyName: 'Baby', babyDob: '', createdAt: createdAt.toISOString() })
+      }
+      expireLoginCodesForUser?.run({ user_id: user.id, consumed_at: createdAt.toISOString() })
+      const code = String(textCodeFactory()).replace(/\D/g, '').slice(0, 6).padStart(6, '0')
+      const linkBaseUrl = String(baseUrl || `${req.protocol || 'http'}://${req.get?.('host') || 'localhost'}`).replace(/\/$/, '')
+      const link = `${linkBaseUrl}/#text_code=${encodeURIComponent(code)}`
+      insertLoginCode?.run({ code_hash: hashSessionToken(code), user_id: user.id, created_at: createdAt.toISOString(), expires_at: new Date(createdAt.getTime() + textLoginCodeTtlMs).toISOString() })
+      const message = `Feedr sign-in: tap ${link} or enter code ${code}. This code expires in 10 minutes.`
+      await sendEmailLogin({ to: email, code, link, message, subject: 'Your Feedr sign-in link', title: 'Your Feedr sign-in link' })
+      appendEventLog('auth_email_login_requested', { userId: user.id })
+      res.status(200).json({ ok: true, maskedEmail: maskEmail(email) })
     })
 
     app.post('/api/auth/text/confirm', (req, res) => {
