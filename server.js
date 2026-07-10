@@ -182,7 +182,7 @@ if (fs.existsSync(distPath)) {
   })
 }
 
-app.listen(config.port, () => {
+const server = app.listen(config.port, () => {
   console.log(`feeding-tracker server listening on :${config.port}`)
   console.log(`sqlite db: ${config.dbPath}`)
   void createBackupOnStart()
@@ -192,3 +192,38 @@ app.listen(config.port, () => {
     console.log(`reminders ${gotifyRemindersEnabled ? 'enabled' : 'disabled'}: gotify=${config.gotifyAvailable ? config.gotifyUrl : 'off'}, textEmail=${config.textEmailAvailable ? 'on' : 'off'}`)
   }
 })
+
+// Graceful shutdown: on `docker stop` (SIGTERM) or Ctrl-C (SIGINT), cancel the
+// reminder timer, stop accepting connections, then close the DB so better-sqlite3
+// checkpoints the WAL back into the main file (avoids leaving a large -wal and a
+// half-applied tail). Force-exit after a grace period in case a live SSE
+// connection keeps the server open.
+let shuttingDown = false
+const shutdown = (signal) => {
+  if (shuttingDown) return
+  shuttingDown = true
+  console.log(`received ${signal}, shutting down`)
+  appendEventLog('server_shutdown', { signal })
+  notificationScheduler?.cancel()
+  const closeDb = () => {
+    try {
+      db.close()
+    } catch (error) {
+      console.warn('db close failed', redactError(error))
+    }
+  }
+  const forceExit = setTimeout(() => {
+    closeDb()
+    process.exit(0)
+  }, 5000)
+  forceExit.unref?.()
+  server.close(() => {
+    clearTimeout(forceExit)
+    closeDb()
+    process.exit(0)
+  })
+  // Drop lingering keep-alive / SSE connections so server.close() can resolve.
+  server.closeAllConnections?.()
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'))
+process.on('SIGINT', () => shutdown('SIGINT'))
