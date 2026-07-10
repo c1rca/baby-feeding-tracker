@@ -11,6 +11,13 @@ services:
       - DB_PATH=/data/feeding-tracker.db
       - AUTH_REQUIRED=${AUTH_REQUIRED:-1}
       - AUTH_BYPASS=${AUTH_BYPASS:-0}
+      # Phone beta gate: comma-separated numbers allowed to self-provision a new
+      # phone account. Empty = new-phone provisioning closed (existing phone
+      # users keep working). Set this to your beta cohort before relying on
+      # text sign-in for onboarding.
+      - AUTH_ALLOWED_PHONES=${AUTH_ALLOWED_PHONES:-}
+      # Bearer-token session lifetime in days (default 30, clamped 1..365).
+      - AUTH_SESSION_TTL_DAYS=${AUTH_SESSION_TTL_DAYS:-30}
       - TRUST_PROXY=${TRUST_PROXY:-1}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
