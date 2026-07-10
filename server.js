@@ -23,7 +23,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions, revokeUserSessions } = statements
+const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, archiveBaby, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions, revokeUserSessions } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 const textEmailSender = createTextEmailSender(config)
 const phoneToTextEmail = (phone) => {
@@ -34,7 +34,10 @@ const phoneToTextEmail = (phone) => {
     .map((domain) => domain.trim())
     .filter(Boolean)
   if (!domains.length) return config.textEmailTo
-  return domains.map((domain) => `${digits}@${domain}`).join(',')
+  // Deliver to a single carrier gateway, never a fan-out across every carrier:
+  // a fan-out turns one login into N outbound messages (SMS bombing / cost
+  // abuse). The operator configures the correct gateway for the beta cohort.
+  return `${digits}@${domains[0]}`
 }
 const sendTextLogin = textEmailSender
   ? async (payload) => {
@@ -117,7 +120,7 @@ const createHousehold = db.transaction(({ userId, householdId, householdName, ba
   insertEmptyBabyState.run({ household_id: householdId, baby_id: babyId, updated_at: createdAt })
 })
 createHealthRouter({ checkDatabaseReady })(app)
-createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectMembershipsByUser, selectInviteByToken, insertHouseholdMember, acceptInvite, insertSession, insertLoginCode, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, textLoginAvailable: config.textLoginAvailable, baseUrl: config.publicBaseUrl, sessionTtlDays: 365 })(app)
+createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, allowedPhones: config.allowedPhones, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectMembershipsByUser, selectInviteByToken, insertHouseholdMember, acceptInvite, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, textLoginAvailable: config.textLoginAvailable, baseUrl: config.publicBaseUrl, sessionTtlDays: 365 })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, authBypass: config.authBypass, selectSessionContext, selectBabyForHousehold }))
 createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, selectMembershipsByUser, updateUserPassword, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)

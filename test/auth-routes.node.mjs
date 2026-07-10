@@ -259,11 +259,13 @@ test('text login request creates or finds a phone user and sends a magic link pl
     authRequired: true,
     baseUrl: 'https://feedr.test',
     textLoginAvailable: true,
+    allowedPhones: ['+15551234567'],
     selectUserByPhone: { get: () => null },
     insertPhoneUser: { run: (user) => calls.users.push(user) },
     selectMembershipsByUser: { all: () => [] },
     createSignupHousehold: (payload) => calls.households.push(payload),
     insertLoginCode: { run: (code) => calls.codes.push(code) },
+    expireLoginCodesForUser: { run: (payload) => calls.expired?.push?.(payload) },
     sendTextLogin: async (payload) => calls.messages.push(payload),
     appendEventLog: (event, payload) => calls.events.push({ event, payload }),
     textCodeFactory: () => '123456',
@@ -299,6 +301,103 @@ test('text login request creates or finds a phone user and sends a magic link pl
   assert.match(calls.messages[0].message, /123456/)
   assert.match(calls.messages[0].message, /https:\/\/feedr\.test\/#text_code=123456/)
   assert.deepEqual(calls.events, [{ event: 'auth_text_login_requested', payload: { userId: 'phone-user-1' } }])
+})
+
+test('text login request refuses to provision a phone that is not allow-listed', async () => {
+  const calls = { users: [], messages: [], events: [] }
+  const app = mountRouter({
+    authRequired: true,
+    textLoginAvailable: true,
+    allowedPhones: ['+15550001111'],
+    selectUserByPhone: { get: () => null },
+    insertPhoneUser: { run: (user) => calls.users.push(user) },
+    createSignupHousehold: () => { throw new Error('should not provision') },
+    insertLoginCode: { run: () => { throw new Error('should not issue a code') } },
+    sendTextLogin: async (payload) => calls.messages.push(payload),
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+  })
+
+  const res = createJsonResponse()
+  await app.route('POST', '/api/auth/text/request')({ ip: '203.0.113.5', body: { phone: '(555) 123-4567' } }, res)
+
+  // Enumeration-safe: still 200, but nothing is provisioned and no SMS is sent.
+  assert.equal(res.statusCode, 200)
+  assert.equal(calls.users.length, 0)
+  assert.equal(calls.messages.length, 0)
+  assert.equal(calls.events.at(-1).event, 'auth_text_login_denied')
+})
+
+test('text login request lets an existing phone user in without an allow-list entry', async () => {
+  const calls = { messages: [], expired: [], codes: [] }
+  const app = mountRouter({
+    authRequired: true,
+    textLoginAvailable: true,
+    allowedPhones: [],
+    selectUserByPhone: { get: () => ({ id: 'existing-1', email: 'phone:+15551234567', display_name: 'Caregiver 4567', phone: '+15551234567' }) },
+    selectMembershipsByUser: { all: () => [{ household_id: 'h1' }] },
+    expireLoginCodesForUser: { run: (payload) => calls.expired.push(payload) },
+    insertLoginCode: { run: (code) => calls.codes.push(code) },
+    sendTextLogin: async (payload) => calls.messages.push(payload),
+    appendEventLog: () => {},
+    textCodeFactory: () => '222333',
+    now: () => new Date('2026-01-01T00:00:00.000Z'),
+  })
+
+  const res = createJsonResponse()
+  await app.route('POST', '/api/auth/text/request')({ ip: '203.0.113.6', body: { phone: '(555) 123-4567' } }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.equal(calls.messages.length, 1)
+  // Outstanding codes for this user are invalidated before the new one is issued.
+  assert.deepEqual(calls.expired, [{ user_id: 'existing-1', consumed_at: '2026-01-01T00:00:00.000Z' }])
+  assert.equal(calls.codes.length, 1)
+})
+
+test('text login request rate-limits repeated sends from the same address', async () => {
+  const calls = { messages: [] }
+  const app = mountRouter({
+    authRequired: true,
+    textLoginAvailable: true,
+    allowedPhones: ['+15551234567'],
+    selectUserByPhone: { get: () => ({ id: 'u1', phone: '+15551234567' }) },
+    selectMembershipsByUser: { all: () => [{ household_id: 'h1' }] },
+    expireLoginCodesForUser: { run: () => {} },
+    insertLoginCode: { run: () => {} },
+    sendTextLogin: async (payload) => calls.messages.push(payload),
+    appendEventLog: () => {},
+    textRequestMax: 2,
+    textCodeFactory: () => '123456',
+  })
+  const request = app.route('POST', '/api/auth/text/request')
+
+  for (let i = 0; i < 2; i += 1) {
+    const res = createJsonResponse()
+    await request({ ip: '203.0.113.7', body: { phone: '(555) 123-4567' } }, res)
+    assert.equal(res.statusCode, 200)
+  }
+  const limited = createJsonResponse()
+  await request({ ip: '203.0.113.7', body: { phone: '(555) 123-4567' } }, limited)
+  assert.equal(limited.statusCode, 429)
+  assert.equal(calls.messages.length, 2)
+})
+
+test('text login confirm locks out brute-forced codes after repeated failures', () => {
+  const app = mountRouter({
+    authRequired: true,
+    selectLoginCode: { get: () => null },
+    appendEventLog: () => {},
+    textConfirmMax: 3,
+  })
+  const confirm = app.route('POST', '/api/auth/text/confirm')
+
+  for (let i = 0; i < 3; i += 1) {
+    const res = createJsonResponse()
+    confirm({ ip: '198.51.100.4', body: { code: '000000' } }, res)
+    assert.equal(res.statusCode, 401)
+  }
+  const limited = createJsonResponse()
+  confirm({ ip: '198.51.100.4', body: { code: '000000' } }, limited)
+  assert.equal(limited.statusCode, 429)
 })
 
 test('text login confirm consumes the code and creates a long-lived session', () => {

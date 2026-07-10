@@ -1,6 +1,7 @@
 import crypto from 'node:crypto'
 import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID, DEFAULT_USER_ID } from './database.js'
 import { hashPassword, hashSessionToken, verifyPassword } from './authCrypto.js'
+import { clientIp, createRateLimiter } from './rateLimiter.js'
 
 export { hashPassword, hashSessionToken, verifyPassword }
 
@@ -71,17 +72,16 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, baseUrl = '', textLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
-  const loginFailures = new Map()
-  const failureKey = (req, email) => `${req.ip || req.socket?.remoteAddress || 'unknown'}|${email}`
-  const failuresFor = (key) => {
-    const record = loginFailures.get(key)
-    if (record && now().getTime() - record.firstAt > loginWindowMs) {
-      loginFailures.delete(key)
-      return null
-    }
-    return record ?? null
-  }
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, baseUrl = '', textLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
+  const limiterNow = () => now().getTime()
+  const loginLimiter = createRateLimiter({ max: maxLoginAttempts, windowMs: loginWindowMs, now: limiterNow })
+  const textRequestLimiter = createRateLimiter({ max: textRequestMax, windowMs: textRequestWindowMs, now: limiterNow })
+  const textConfirmLimiter = createRateLimiter({ max: textConfirmMax, windowMs: textConfirmWindowMs, now: limiterNow })
+  const passwordResetLimiter = createRateLimiter({ max: passwordResetMax, windowMs: passwordResetWindowMs, now: limiterNow })
+  const googleExchangeLimiter = createRateLimiter({ max: googleExchangeMax, windowMs: googleExchangeWindowMs, now: limiterNow })
+  // Empty allow-list = new-phone provisioning is CLOSED (existing phone users
+  // can still request a code). This mirrors the email beta gate.
+  const isPhoneAllowed = (phone) => allowedPhones.includes(phone)
 
   const createSession = (user) => {
     const createdAt = now()
@@ -107,8 +107,8 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
 
       const email = normalizeEmail(req.body?.email)
       const password = String(req.body?.password || '')
-      const key = failureKey(req, email)
-      if ((failuresFor(key)?.count ?? 0) >= maxLoginAttempts) {
+      const key = `${clientIp(req)}|${email}`
+      if (loginLimiter.isLimited(key)) {
         appendEventLog('auth_login_rate_limited', { email })
         res.status(429).json({ ok: false, error: 'Too many login attempts. Try again later.' })
         return
@@ -116,13 +116,11 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
 
       const user = email ? selectUserByEmail?.get(email) : null
       if (!user?.password_hash || !verifyPassword(password, user.password_hash)) {
-        const record = failuresFor(key)
-        if (record) record.count += 1
-        else loginFailures.set(key, { count: 1, firstAt: now().getTime() })
+        loginLimiter.record(key)
         res.status(401).json({ ok: false, error: 'Invalid email or password' })
         return
       }
-      loginFailures.delete(key)
+      loginLimiter.reset(key)
 
       const token = createSession(user)
       appendEventLog('auth_login', { userId: user.id })
@@ -147,7 +145,25 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
         res.status(400).json({ ok: false, error: 'Enter a valid mobile number' })
         return
       }
+      const ipKey = clientIp(req)
+      const phoneKey = `phone|${phone}`
+      if (textRequestLimiter.isLimited(ipKey) || textRequestLimiter.isLimited(phoneKey)) {
+        appendEventLog('auth_text_login_rate_limited', { maskedPhone: maskPhone(phone) })
+        res.status(429).json({ ok: false, error: 'Too many requests. Try again later.' })
+        return
+      }
+      textRequestLimiter.record(ipKey)
+      textRequestLimiter.record(phoneKey)
+
       let user = selectUserByPhone?.get(phone)
+      // New phone numbers may only self-provision when explicitly allow-listed;
+      // existing phone users can always request a code. Respond 200 either way
+      // so the endpoint never reveals which numbers already have an account.
+      if (!user && !isPhoneAllowed(phone)) {
+        appendEventLog('auth_text_login_denied', { maskedPhone: maskPhone(phone) })
+        res.status(200).json({ ok: true, maskedPhone: maskPhone(phone) })
+        return
+      }
       const createdAt = now()
       if (!user) {
         user = { id: idFactory(), email: `phone:${phone}`, display_name: `Caregiver ${phone.slice(-4)}`, phone }
@@ -165,6 +181,10 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
           createdAt: createdAt.toISOString(),
         })
       }
+      // Cap outstanding codes: invalidate any prior unconsumed code for this
+      // user so only the newest code is ever valid, shrinking the pool of codes
+      // an attacker can guess at once.
+      expireLoginCodesForUser?.run({ user_id: user.id, consumed_at: createdAt.toISOString() })
       const code = String(textCodeFactory()).replace(/\D/g, '').slice(0, 6).padStart(6, '0')
       const linkBaseUrl = String(baseUrl || `${req.protocol || 'http'}://${req.get?.('host') || 'localhost'}`).replace(/\/$/, '')
       const link = `${linkBaseUrl}/#text_code=${encodeURIComponent(code)}`
@@ -190,17 +210,26 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
         res.status(400).json({ ok: false, error: 'Missing code' })
         return
       }
+      const confirmKey = clientIp(req)
+      if (textConfirmLimiter.isLimited(confirmKey)) {
+        appendEventLog('auth_text_confirm_rate_limited', {})
+        res.status(429).json({ ok: false, error: 'Too many attempts. Try again later.' })
+        return
+      }
       const codeHash = hashSessionToken(code)
       const row = selectLoginCode?.get(codeHash)
       if (!row || row.consumed_at || new Date(row.expires_at).getTime() < now().getTime()) {
+        textConfirmLimiter.record(confirmKey)
         res.status(401).json({ ok: false, error: 'Invalid or expired code' })
         return
       }
       const consumed = consumeLoginCode?.run({ code_hash: codeHash, consumed_at: now().toISOString() })
       if (consumed && consumed.changes === 0) {
+        textConfirmLimiter.record(confirmKey)
         res.status(401).json({ ok: false, error: 'Invalid or expired code' })
         return
       }
+      textConfirmLimiter.reset(confirmKey)
       const token = createSession({ id: row.user_id })
       const user = selectUserById?.get(row.user_id)
       appendEventLog('auth_text_login_confirmed', { userId: row.user_id })
@@ -263,6 +292,15 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
         return
       }
       const email = normalizeEmail(req.body?.email)
+      const ipKey = clientIp(req)
+      const emailKey = `pwreset|${email}`
+      if (passwordResetLimiter.isLimited(ipKey) || passwordResetLimiter.isLimited(emailKey)) {
+        appendEventLog('auth_password_reset_rate_limited', {})
+        res.status(429).json({ ok: false, error: 'Too many requests. Try again later.' })
+        return
+      }
+      passwordResetLimiter.record(ipKey)
+      passwordResetLimiter.record(emailKey)
       const user = email ? selectUserByEmail?.get(email) : null
       if (user?.password_hash) {
         const token = tokenFactory()
@@ -439,9 +477,16 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
         res.status(400).json({ ok: false, error: 'Missing code' })
         return
       }
+      const exchangeKey = clientIp(req)
+      if (googleExchangeLimiter.isLimited(exchangeKey)) {
+        appendEventLog('auth_google_exchange_rate_limited', {})
+        res.status(429).json({ ok: false, error: 'Too many attempts. Try again later.' })
+        return
+      }
       const codeHash = hashSessionToken(code)
       const row = selectLoginCode?.get(codeHash)
       if (!row || row.consumed_at || new Date(row.expires_at).getTime() < now().getTime()) {
+        googleExchangeLimiter.record(exchangeKey)
         res.status(401).json({ ok: false, error: 'Invalid or expired code' })
         return
       }
@@ -449,9 +494,11 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
       // consumed_at, so a replayed code updates zero rows and is rejected.
       const consumed = consumeLoginCode?.run({ code_hash: codeHash, consumed_at: now().toISOString() })
       if (consumed && consumed.changes === 0) {
+        googleExchangeLimiter.record(exchangeKey)
         res.status(401).json({ ok: false, error: 'Invalid or expired code' })
         return
       }
+      googleExchangeLimiter.reset(exchangeKey)
       const token = createSession({ id: row.user_id })
       const user = selectUserById?.get(row.user_id)
       appendEventLog('auth_google_exchange', { userId: row.user_id })

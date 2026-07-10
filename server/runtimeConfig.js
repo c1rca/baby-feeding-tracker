@@ -44,6 +44,20 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     .split(',')
     .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean)
+  // Phone beta gate: only these E.164 numbers may self-provision a new phone
+  // account. Empty = new-phone provisioning closed (existing phone users can
+  // still request codes). Same 10/11-digit normalization the auth router uses.
+  const normalizeAllowedPhone = (value) => {
+    const digits = String(value || '').replace(/\D/g, '')
+    if (digits.length === 10) return `+1${digits}`
+    if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+    if (String(value || '').trim().startsWith('+') && digits.length >= 10 && digits.length <= 15) return `+${digits}`
+    return ''
+  }
+  const allowedPhones = String(env.AUTH_ALLOWED_PHONES || '')
+    .split(',')
+    .map((entry) => normalizeAllowedPhone(entry))
+    .filter(Boolean)
   const bootstrapPassword = env.AUTH_BOOTSTRAP_PASSWORD || ''
   const isProduction = env.NODE_ENV === 'production'
   // Number of proxy hops to trust for req.ip (so rate-limit keys use the real
@@ -76,6 +90,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     authBypass,
     googleAuth,
     allowedEmails,
+    allowedPhones,
     bootstrapPassword,
     isProduction,
     trustProxy,

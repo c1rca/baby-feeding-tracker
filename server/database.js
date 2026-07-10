@@ -302,6 +302,11 @@ export function prepareTrackerStatements(db) {
       INSERT INTO auth_login_codes (code_hash, user_id, created_at, expires_at, consumed_at)
       VALUES (@code_hash, @user_id, @created_at, @expires_at, NULL)
     `),
+    expireLoginCodesForUser: db.prepare(`
+      UPDATE auth_login_codes
+      SET consumed_at = @consumed_at
+      WHERE user_id = @user_id AND consumed_at IS NULL
+    `),
     insertPasswordResetCode: db.prepare(`
       INSERT INTO auth_password_reset_codes (code_hash, user_id, created_at, expires_at, consumed_at)
       VALUES (@code_hash, @user_id, @created_at, @expires_at, NULL)
