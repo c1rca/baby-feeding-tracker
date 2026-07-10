@@ -264,7 +264,8 @@ test('text login request creates or finds a phone user and sends a magic link pl
     insertLoginCode: { run: (code) => calls.codes.push(code) },
     sendTextLogin: async (payload) => calls.messages.push(payload),
     appendEventLog: (event, payload) => calls.events.push({ event, payload }),
-    tokenFactory: () => '123456',
+    textCodeFactory: () => '123456',
+    tokenFactory: () => 'unused-token',
     idFactory: () => 'phone-user-1',
     now: () => new Date('2026-01-01T00:00:00.000Z'),
   })

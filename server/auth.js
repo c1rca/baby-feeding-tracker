@@ -71,7 +71,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, baseUrl = '', textLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, baseUrl = '', textLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
   const loginFailures = new Map()
   const failureKey = (req, email) => `${req.ip || req.socket?.remoteAddress || 'unknown'}|${email}`
   const failuresFor = (key) => {
@@ -152,9 +152,10 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
         user = { id: idFactory(), email: `phone:${phone}`, display_name: `Caregiver ${phone.slice(-4)}`, phone }
         insertPhoneUser?.run({ id: user.id, email: user.email, display_name: user.display_name, phone, password_hash: null, google_sub: null, created_at: now().toISOString() })
       }
-      const code = tokenFactory()
+      const code = String(textCodeFactory()).replace(/\D/g, '').slice(0, 6).padStart(6, '0')
       const createdAt = now()
-      const link = `${String(baseUrl || '').replace(/\/$/, '') || ''}/#text_code=${encodeURIComponent(code)}`
+      const linkBaseUrl = String(baseUrl || `${req.protocol || 'http'}://${req.get?.('host') || 'localhost'}`).replace(/\/$/, '')
+      const link = `${linkBaseUrl}/#text_code=${encodeURIComponent(code)}`
       insertLoginCode?.run({
         code_hash: hashSessionToken(code),
         user_id: user.id,
