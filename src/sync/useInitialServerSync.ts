@@ -40,14 +40,14 @@ export function useInitialServerSync({
           return
         }
         applyServerState(serverState)
-        setSyncStatus(hasPendingSync() ? 'offline' : 'synced')
+        setSyncStatus(pendingForThisBaby ? 'offline' : 'synced')
       } catch {
         if (pendingForThisBaby) {
           setHasHydrated(true)
           await syncToApi()
           return
         }
-        setSyncStatus(hasPendingSync() ? 'offline' : 'issue')
+        setSyncStatus(pendingForThisBaby ? 'offline' : 'issue')
       } finally {
         setHasHydrated(true)
       }

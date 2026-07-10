@@ -120,9 +120,10 @@ describe('useServerSync', () => {
     // Baby B's server state loads, and baby A's pending payload is never PUT.
     await waitFor(() => expect(screen.getByTestId('entries').textContent).toBe('baby-b-server'))
     expect(fetchMock.mock.calls.some((call) => call[1]?.method === 'PUT')).toBe(false)
-    // Baby A's pending flag is preserved for when the user switches back.
+    // Baby A's pending flag is preserved for when the user switches back, but
+    // the currently loaded baby should not claim it is offline.
     expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBe('1')
-    expect(screen.getByTestId('status').textContent).toBe('offline')
+    expect(screen.getByTestId('status').textContent).toBe('synced')
   })
 
   it('replays pending local tummy time and growth changes without dropping server-side records', async () => {

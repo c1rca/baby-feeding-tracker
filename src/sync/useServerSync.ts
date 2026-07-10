@@ -1,14 +1,14 @@
 import { useCallback, useState } from 'react'
 import { saveServerState } from './serverSyncApi'
 import { buildApiStatePayload } from './serverSyncModels'
-import { clearPendingSync, hasPendingSync, markPendingSync, type SyncStatus, type SyncToApiOverrides, type UseServerSyncOptions } from './serverSyncTypes'
+import { clearPendingSync, hasPendingSync, markPendingSync, pendingSyncMatchesBaby, type SyncStatus, type SyncToApiOverrides, type UseServerSyncOptions } from './serverSyncTypes'
 import { useInitialServerSync } from './useInitialServerSync'
 import { useLatestServerPayload, useServerStateApplier } from './useServerStateApplier'
 import { usePendingSyncRetry, usePersistLocalChanges } from './useServerSyncEffects'
 
 export const useServerSync = (options: UseServerSyncOptions) => {
   const { entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, selectedBabyId } = options
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => (hasPendingSync() ? 'offline' : 'synced'))
+  const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => (hasPendingSync() && pendingSyncMatchesBaby(selectedBabyId) ? 'offline' : 'synced'))
   const [hasHydrated, setHasHydrated] = useState(false)
   const latestPayloadRef = useLatestServerPayload(options)
   const { applyServerState, applyingServerStateRef, serverUpdatedAtRef, skipNextSyncRef } = useServerStateApplier(options)

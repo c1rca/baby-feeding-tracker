@@ -211,14 +211,20 @@ describe('App auth shell', () => {
   it('onboards an authenticated householdless user before loading tracker state', async () => {
     const user = userEvent.setup()
     localStorage.setItem(AUTH_TOKEN_KEY, 'token-123')
+    localStorage.setItem('baby-feeding-tracker:v1:selected-baby-id', 'stale-baby')
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync', '1')
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync-baby', 'stale-baby')
     let onboarded = false
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
-      if (url === '/api/auth/me') return jsonResponse({ ok: true, user: onboarded ? sessionModeUser : { id: 'new-user', mode: 'session', email: 'new@example.com', needsOnboarding: true } })
+      if (url === '/api/auth/me') return jsonResponse({ ok: true, user: onboarded ? { ...sessionModeUser, householdId: 'hh-new', babyId: 'baby-new' } : { id: 'new-user', mode: 'session', email: 'new@example.com', needsOnboarding: true } })
       if (url === '/api/households' && init?.method === 'POST') { onboarded = true; return jsonResponse({ ok: true, household: { id: 'hh-new', name: 'Home' }, baby: { id: 'baby-new', name: 'Ryan', dob: '2026-06-03' } }, 201) }
       if (url === '/api/babies') return jsonResponse({ babies: [{ id: 'baby-new', name: 'Ryan' }] })
       if (url === '/api/notification-settings') return jsonResponse({ available: false, gotifyRemindersEnabled: false })
-      if (url === '/api/state' && !init?.method) return onboarded ? jsonResponse(emptyServerState) : jsonResponse({ ok: false, error: 'needs_household' }, 403)
+      if (url === '/api/state' && !init?.method) {
+        if (!onboarded) return jsonResponse({ ok: false, error: 'needs_household' }, 403)
+        return new Headers(init?.headers).get('x-baby-id') === 'stale-baby' ? jsonResponse({ ok: false, error: 'Baby not found' }, 404) : jsonResponse(emptyServerState)
+      }
       return jsonResponse({ ok: true, updatedAt: 'server-2' })
     })
     vi.stubGlobal('fetch', fetchMock)
@@ -233,6 +239,10 @@ describe('App auth shell', () => {
 
     await waitFor(() => expect(onboarded).toBe(true))
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store', headers: expect.any(Headers) })))
+    const stateCall = fetchMock.mock.calls.find(([input, init]) => String(input) === '/api/state' && !init?.method)
+    expect(new Headers(stateCall?.[1]?.headers).get('x-baby-id')).toBe('baby-new')
+    expect(screen.queryByText(/Offline changes saved/i)).toBeNull()
+    expect(screen.getByLabelText(/Sync status: Online/i)).toBeTruthy()
   })
 
   it('requests and confirms a password reset from the login screen', async () => {
