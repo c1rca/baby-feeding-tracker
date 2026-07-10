@@ -53,6 +53,13 @@ export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEna
     })
 
     app.put('/api/notification-settings', (req, res) => {
+      // Reminder settings and the delivery channel are effectively shared admin
+      // config (today a single global channel), so only an owner may change
+      // them. Local/bypass mode resolves to role 'owner', so it is unaffected.
+      if (req.auth?.role !== 'owner') {
+        rejectForbidden(res)
+        return
+      }
       if (Object.prototype.hasOwnProperty.call(req.body ?? {}, 'gotifyRemindersEnabled')) {
         const enabled = Boolean(req.body?.gotifyRemindersEnabled) && config.notificationChannelsAvailable
         setGotifyRemindersEnabled(enabled)

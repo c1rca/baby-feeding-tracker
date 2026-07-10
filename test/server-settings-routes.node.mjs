@@ -81,7 +81,7 @@ test('notification settings route clamps disabled channels and persists the resu
   })(app)
 
   const res = createJsonResponse()
-  app.route('PUT', '/api/notification-settings')({ body: { gotifyRemindersEnabled: true } }, res)
+  app.route('PUT', '/api/notification-settings')({ auth: { role: 'owner' }, body: { gotifyRemindersEnabled: true } }, res)
 
   assert.equal(enabled, false)
   assert.deepEqual(writes, [{ key: 'gotify_reminders_enabled', value: false }])
@@ -109,11 +109,36 @@ test('notification settings route persists per-kind medicine reminder intervals'
   })(app)
 
   const res = createJsonResponse()
-  app.route('PUT', '/api/notification-settings')({ body: { medicineReminderSettings: { tylenol: 4, motrin: 0 } } }, res)
+  app.route('PUT', '/api/notification-settings')({ auth: { role: 'owner' }, body: { medicineReminderSettings: { tylenol: 4, motrin: 0 } } }, res)
 
   assert.deepEqual(medicineReminderSettings, { tylenol: 4, motrin: 0 })
   assert.deepEqual(writes, [{ key: 'medicine_reminder_settings', value: { tylenol: 4, motrin: 0 } }])
   assert.deepEqual(schedulerCalls, ['evaluate'])
   assert.deepEqual(events, [{ event: 'settings_update', payload: { key: 'medicine_reminder_settings', value: { tylenol: 4, motrin: 0 } } }])
   assert.deepEqual(res.body, { ok: true, available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 4, motrin: 0 } })
+})
+
+test('notification settings mutation is rejected for non-owner members and changes nothing', () => {
+  const app = createFakeApp()
+  let enabled = true
+  const writes = []
+  createNotificationSettingsRouter({
+    config: { notificationChannelsAvailable: true },
+    getGotifyRemindersEnabled: () => enabled,
+    setGotifyRemindersEnabled: (value) => { enabled = value },
+    getMedicineReminderSettings: () => ({ tylenol: 6, motrin: 6 }),
+    setMedicineReminderSettings: () => {},
+    writeBooleanSetting: (key, value) => writes.push({ key, value }),
+    writeJsonSetting: (key, value) => writes.push({ key, value }),
+    appendEventLog: () => {},
+    notificationScheduler: { setEnabled: () => {}, evaluate: () => {} },
+  })(app)
+
+  for (const role of ['viewer', 'caregiver']) {
+    const res = createJsonResponse()
+    app.route('PUT', '/api/notification-settings')({ auth: { role }, body: { gotifyRemindersEnabled: false } }, res)
+    assert.equal(res.statusCode, 403, `${role} should be forbidden`)
+  }
+  assert.equal(enabled, true)
+  assert.deepEqual(writes, [])
 })
