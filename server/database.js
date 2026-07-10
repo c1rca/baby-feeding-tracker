@@ -18,6 +18,13 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
 
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
+  // Enforce declared foreign keys (SQLite defaults them OFF per connection, so
+  // every FK in this schema was previously inert and orphan rows were possible).
+  // Enabled before the seed/migration DML, which already inserts parents first.
+  db.pragma('foreign_keys = ON')
+  // Wait on a briefly-locked WAL database instead of failing immediately with
+  // SQLITE_BUSY (startup backup, scheduler, and request writes can overlap).
+  db.pragma('busy_timeout = 5000')
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
