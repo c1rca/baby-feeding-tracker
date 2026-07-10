@@ -1,4 +1,4 @@
-import { Baby } from 'lucide-react'
+import { Baby, Mail, MessageCircle, ShieldCheck } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { confirmPasswordReset, fetchGoogleAuthStatus, requestMagicLogin, requestPasswordReset } from './authApi'
 
@@ -75,25 +75,23 @@ export function LoginScreen({ pending, error, onLogin, onTextLogin }: LoginScree
     <main className="app auth-screen">
       <div className="bg-scene" aria-hidden="true"><div className="aurora aurora-1" /><div className="aurora aurora-2" /><div className="aurora aurora-3" /><div className="stars" /><div className="stars stars-2" /></div>
       <section className="card login-card">
-        <h1><span className="brand-mark"><Baby size={22} /></span> Baby Feeding Tracker</h1>
-        <h2>{mode === 'reset' ? 'Reset password' : mode === 'password' ? 'Password sign in' : 'Welcome back — Sign in'}</h2>
-        <p className="login-meta">Tap once. Link arrives. You’re in — no passwords, no friction.</p>
+        <h1><span className="brand-mark"><Baby size={24} /></span> Baby Feeding Tracker</h1>
+        <h2>Sign in fast</h2>
+        <p className="login-meta">Enter your mobile number or email. We’ll send a secure link and a 6-digit code.</p>
+        <div className="login-benefits" aria-hidden="true"><span><MessageCircle size={15} /> Text link</span><span><Mail size={15} /> Email link</span><span><ShieldCheck size={15} /> Remembered</span></div>
         {error && mode !== 'code' && mode !== 'password' ? <p className="login-error" role="alert">{error}</p> : null}
 
         {googleAvailable ? <a className="google-sign-in-button" href="/api/auth/google/start" aria-label="Sign in with Google"><span className="google-g-mark" aria-hidden="true">G</span><span>Continue with Google</span></a> : null}
 
         {mode === 'magic' ? (
-          <div className="text-login-flow">
-            <div className="magic-login-glow" aria-hidden="true">✦</div>
-            <form onSubmit={sendMagicLink}>
-              <label>Mobile number or email<input type="text" inputMode="email" autoComplete="username" placeholder="(555) 123-4567 or you@example.com" value={destination} onChange={(event) => setDestination(event.target.value)} required /></label>
-              <button className="primary-magic-button" type="submit" disabled={localPending}>{localPending ? 'Sending the magic…' : 'Send my sign-in link'}</button>
-            </form>
-          </div>
+          <form onSubmit={sendMagicLink} className="text-login-flow">
+            <label>Mobile number or email<input type="text" inputMode="email" autoComplete="username" placeholder="(555) 123-4567 or you@example.com" value={destination} onChange={(event) => setDestination(event.target.value)} required /></label>
+            <button className="primary-magic-button" type="submit" disabled={localPending}>{localPending ? 'Sending…' : 'Send my sign-in link'}</button>
+          </form>
         ) : null}
 
         {mode === 'code' ? (
-          <form onSubmit={confirmCode} className="code-card">
+          <form onSubmit={confirmCode} className="code-card code-card-premium">
             <label>6-digit code<input type="text" inputMode="numeric" autoComplete="one-time-code" placeholder="123456" maxLength={6} value={textCode} onChange={(event) => setTextCode(event.target.value.replace(/\D/g, '').slice(0, 6))} required autoFocus /></label>
             {error ? <p className="login-error" role="alert">{error}</p> : null}
             <button type="submit" disabled={pending || textCode.length < 6}>{pending ? 'Opening…' : 'Open tracker'}</button>
@@ -117,13 +115,11 @@ export function LoginScreen({ pending, error, onLogin, onTextLogin }: LoginScree
         ) : null}
 
         {status ? <p className="login-meta magic-status" role="status">{status}</p> : null}
-        {mode !== 'magic' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('magic')}>Back to magic link</button> : null}
-        {mode === 'magic' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('magic')}>Create account with email</button> : null}
-        {mode !== 'password' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('password')}>Use password instead</button> : null}
-        {mode === 'password' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('reset')}>Forgot password</button> : null}
-        <div className="login-help">
-          <strong>Instant and remembered</strong>
-          <span>Your secure session stays signed in on this device for as long as possible.</span>
+        <div className="auth-secondary-actions">
+          {mode !== 'magic' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('magic')}>Use link instead</button> : null}
+          {mode === 'magic' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('magic')}>Create account with email</button> : null}
+          {mode !== 'password' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('password')}>Use password instead</button> : null}
+          {mode === 'password' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('reset')}>Forgot password?</button> : null}
         </div>
       </section>
     </main>
