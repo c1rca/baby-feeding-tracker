@@ -1,3 +1,5 @@
+import { SettingToggle } from './SettingToggle'
+
 type BrowserReminderSettingProps = {
   feedingNotificationsEnabled: boolean
   notificationPermission: NotificationPermission | 'default'
@@ -8,29 +10,24 @@ type BrowserReminderSettingProps = {
 
 export function BrowserReminderSetting({ feedingNotificationsEnabled, notificationPermission, setFeedingNotificationsEnabled, enableFeedingNotifications, showToast }: BrowserReminderSettingProps) {
   const enabled = feedingNotificationsEnabled && notificationPermission === 'granted'
+  const blocked = notificationPermission === 'denied'
+
+  const toggle = (next: boolean) => {
+    if (next) {
+      void enableFeedingNotifications()
+    } else {
+      setFeedingNotificationsEnabled(false)
+      showToast('Feeding reminders disabled')
+    }
+  }
 
   return (
-    <div className="notification-setting">
-      <div>
+    <div className="setting-row">
+      <span className="setting-row-text">
         <strong>Next feeding reminders</strong>
-        <p className="muted">Browser/mobile notifications at 2 and 3 hours after each feed. Opens Feedr.</p>
-        <small>Permission: {notificationPermission}</small>
-      </div>
-      {enabled ? (
-        <button
-          type="button"
-          onClick={() => {
-            setFeedingNotificationsEnabled(false)
-            showToast('Feeding reminders disabled')
-          }}
-        >
-          Turn off
-        </button>
-      ) : (
-        <button type="button" className="primary" onClick={enableFeedingNotifications}>
-          Enable reminders
-        </button>
-      )}
+        <small>Browser alerts 2 and 3 hours after each feed{blocked ? ' · Blocked in browser settings' : ''}</small>
+      </span>
+      <SettingToggle checked={enabled} onChange={toggle} label="Next feeding reminders" disabled={blocked} />
     </div>
   )
 }

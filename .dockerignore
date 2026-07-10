@@ -1,0 +1,23 @@
+# Keep secrets, private data, and local cruft out of the build context/image.
+.git
+.github
+node_modules
+dist
+data/
+data-dev/
+backups/
+rollback/
+logs/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.jsonl
+.env
+.env.*
+!.env.example
+!.env.*.example
+docs/plans/
+*IMPLEMENTATION_PLAN*.md
+20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.txt
+.DS_Store

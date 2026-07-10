@@ -1,11 +1,44 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createHealthRouter, createNotificationSettingsRouter } from '../server/apiRoutes.js'
+import { createDiagnosticsRouter, createHealthRouter, createNotificationSettingsRouter } from '../server/apiRoutes.js'
 import { createFakeApp, createJsonResponse } from './server-test-helpers.mjs'
 
-test('health route reports runtime availability and current reminder enablement', () => {
+test('public health route reports readiness without leaking configuration', () => {
   const app = createFakeApp()
-  createHealthRouter({
+  createHealthRouter({ checkDatabaseReady: () => true })(app)
+
+  const res = createJsonResponse()
+  app.route('GET', '/api/health')({}, res)
+
+  assert.deepEqual(res.body, { ok: true })
+})
+
+test('public health route can be backed by scoped baby_state readiness without touching legacy app_state', () => {
+  const app = createFakeApp()
+  let scopedReadCount = 0
+  createHealthRouter({ checkDatabaseReady: () => { scopedReadCount += 1; return true } })(app)
+
+  const res = createJsonResponse()
+  app.route('GET', '/api/health')({}, res)
+
+  assert.equal(scopedReadCount, 1)
+  assert.deepEqual(res.body, { ok: true })
+})
+
+test('public health route reports 503 when the database is not readable', () => {
+  const app = createFakeApp()
+  createHealthRouter({ checkDatabaseReady: () => false })(app)
+
+  const res = createJsonResponse()
+  app.route('GET', '/api/health')({}, res)
+
+  assert.equal(res.statusCode, 503)
+  assert.deepEqual(res.body, { ok: false })
+})
+
+test('authenticated diagnostics route reports runtime availability and reminder enablement', () => {
+  const app = createFakeApp()
+  createDiagnosticsRouter({
     config: {
       dbPath: '/data/app.db',
       notificationChannelsAvailable: true,
@@ -16,7 +49,7 @@ test('health route reports runtime availability and current reminder enablement'
   })(app)
 
   const res = createJsonResponse()
-  app.route('GET', '/api/health')({}, res)
+  app.route('GET', '/api/diagnostics')({}, res)
 
   assert.deepEqual(res.body, {
     ok: true,
@@ -48,7 +81,7 @@ test('notification settings route clamps disabled channels and persists the resu
   })(app)
 
   const res = createJsonResponse()
-  app.route('PUT', '/api/notification-settings')({ body: { gotifyRemindersEnabled: true } }, res)
+  app.route('PUT', '/api/notification-settings')({ auth: { role: 'owner' }, body: { gotifyRemindersEnabled: true } }, res)
 
   assert.equal(enabled, false)
   assert.deepEqual(writes, [{ key: 'gotify_reminders_enabled', value: false }])
@@ -76,11 +109,36 @@ test('notification settings route persists per-kind medicine reminder intervals'
   })(app)
 
   const res = createJsonResponse()
-  app.route('PUT', '/api/notification-settings')({ body: { medicineReminderSettings: { tylenol: 4, motrin: 0 } } }, res)
+  app.route('PUT', '/api/notification-settings')({ auth: { role: 'owner' }, body: { medicineReminderSettings: { tylenol: 4, motrin: 0 } } }, res)
 
   assert.deepEqual(medicineReminderSettings, { tylenol: 4, motrin: 0 })
   assert.deepEqual(writes, [{ key: 'medicine_reminder_settings', value: { tylenol: 4, motrin: 0 } }])
   assert.deepEqual(schedulerCalls, ['evaluate'])
   assert.deepEqual(events, [{ event: 'settings_update', payload: { key: 'medicine_reminder_settings', value: { tylenol: 4, motrin: 0 } } }])
   assert.deepEqual(res.body, { ok: true, available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 4, motrin: 0 } })
+})
+
+test('notification settings mutation is rejected for non-owner members and changes nothing', () => {
+  const app = createFakeApp()
+  let enabled = true
+  const writes = []
+  createNotificationSettingsRouter({
+    config: { notificationChannelsAvailable: true },
+    getGotifyRemindersEnabled: () => enabled,
+    setGotifyRemindersEnabled: (value) => { enabled = value },
+    getMedicineReminderSettings: () => ({ tylenol: 6, motrin: 6 }),
+    setMedicineReminderSettings: () => {},
+    writeBooleanSetting: (key, value) => writes.push({ key, value }),
+    writeJsonSetting: (key, value) => writes.push({ key, value }),
+    appendEventLog: () => {},
+    notificationScheduler: { setEnabled: () => {}, evaluate: () => {} },
+  })(app)
+
+  for (const role of ['viewer', 'caregiver']) {
+    const res = createJsonResponse()
+    app.route('PUT', '/api/notification-settings')({ auth: { role }, body: { gotifyRemindersEnabled: false } }, res)
+    assert.equal(res.statusCode, 403, `${role} should be forbidden`)
+  }
+  assert.equal(enabled, true)
+  assert.deepEqual(writes, [])
 })

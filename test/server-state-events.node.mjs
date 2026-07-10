@@ -9,6 +9,29 @@ test('sendStateEvent writes Server-Sent Event framing with JSON payloads', () =>
   assert.deepEqual(writes, ['event: state\n', 'data: {"ok":true}\n\n'])
 })
 
+test('state event hub scopes initial and broadcast states to the subscribed household baby', () => {
+  const household1Writes = []
+  const household2Writes = []
+  const makeResponse = (writes) => ({ set() {}, flushHeaders() {}, write: (chunk) => writes.push(chunk), end: () => {} })
+  const makeRequest = (auth) => ({ auth, on: (event, handler) => { if (event === 'close') closeHandlers.push(handler) } })
+  const closeHandlers = []
+  const hub = createStateEventHub({
+    selectState: { get: () => ({ household_id: 'default-household', baby_id: 'default-baby', theme: 'legacy' }) },
+    selectStateForBaby: { get: (householdId, babyId) => ({ household_id: householdId, baby_id: babyId, theme: `${householdId}:${babyId}` }) },
+    serializeState: (row) => ({ theme: row.theme }),
+  })
+
+  hub.handleStateEvents(makeRequest({ householdId: 'household-1', babyId: 'baby-1' }), makeResponse(household1Writes))
+  hub.handleStateEvents(makeRequest({ householdId: 'household-2', babyId: 'baby-2' }), makeResponse(household2Writes))
+  hub.broadcastStateChange({ theme: 'household-1 update' }, { householdId: 'household-1', babyId: 'baby-1' })
+
+  assert.equal(household1Writes[1], 'data: {"theme":"household-1:baby-1"}\n\n')
+  assert.equal(household2Writes[1], 'data: {"theme":"household-2:baby-2"}\n\n')
+  assert.equal(household1Writes.some((chunk) => chunk.includes('household-1 update')), true)
+  assert.equal(household2Writes.some((chunk) => chunk.includes('household-1 update')), false)
+  closeHandlers.forEach((handler) => handler())
+})
+
 test('state event hub sends initial state, broadcasts updates, and removes closed clients', () => {
   const writes = []
   let closeHandler

@@ -8,6 +8,20 @@ services:
       - PORT=8080
       - DB_DIR=/data
       - DB_PATH=/data/feeding-tracker-dev.db
+      - AUTH_REQUIRED=${AUTH_REQUIRED:-1}
+      - AUTH_BYPASS=${AUTH_BYPASS:-0}
+      - ALLOW_INSECURE_LOCAL_MODE=1
+      - AUTH_ALLOWED_EMAILS=${AUTH_ALLOWED_EMAILS:-alex@example.test,test@example.test,parent@example.com,waldbauma686@gmail.com}
+      - AUTH_ALLOWED_PHONES=${AUTH_ALLOWED_PHONES:-}
+      # Dev defaults to the single TEXT_EMAIL_TO recipient from .env.smtp so
+      # text-login can be tested without guessing a carrier gateway domain.
+      # Set TEXT_LOGIN_SMS_DOMAIN explicitly only when testing a known carrier
+      # email-to-SMS gateway for the entered phone number.
+      - TEXT_LOGIN_SMS_DOMAIN=${TEXT_LOGIN_SMS_DOMAIN:-}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://dev.feedr.kjw.lol}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
       - NOTIFICATIONS_ENABLED=1
     env_file:
       - .env.gotify

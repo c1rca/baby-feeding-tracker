@@ -8,6 +8,7 @@ export { buildMedicineQuickLogUrl, buildMedicineReminder, buildReminder, formatT
 
 export function createNotificationScheduler({
   selectState,
+  selectAllStates = null,
   getNotificationState,
   upsertNotificationState,
   sendGotify,
@@ -48,12 +49,12 @@ export function createNotificationScheduler({
     const reminders = []
     if (!hasActiveSession(row) && sendGotify) {
       const feeding = buildReminder(getLatestEndedFeed(entries), now())
-      if (feeding) reminders.push({ ...feeding, notificationId: feeding.entryId })
+      if (feeding) reminders.push({ ...feeding, householdId: row.household_id, babyId: row.baby_id, notificationId: feeding.entryId })
     }
     const medicineReminderSettings = getMedicineReminderSettings()
     for (const latestDose of getLatestMedicineDosesByKind(medicines)) {
       const medicine = buildMedicineReminder(latestDose, now(), medicineReminderSettings)
-      if (medicine) reminders.push({ ...medicine, notificationId: `medicine:${medicine.medicineKind}:${medicine.doseId}` })
+      if (medicine) reminders.push({ ...medicine, householdId: row.household_id, babyId: row.baby_id, notificationId: `medicine:${medicine.medicineKind}:${medicine.doseId}` })
     }
 
     return reminders
@@ -80,12 +81,19 @@ export function createNotificationScheduler({
     markHandled(freshReminder)
   }
 
+  const getStateRows = () => {
+    const rows = selectAllStates?.all?.()
+    if (Array.isArray(rows)) return rows
+    const row = selectState.get()
+    return row ? [row] : []
+  }
+
   const evaluate = () => {
     if (!isEnabled) return cancel()
-    const row = selectState.get()
-    if (!row) return cancel()
+    const rows = getStateRows()
+    if (rows.length === 0) return cancel()
 
-    const reminder = buildNextReminder(row)
+    const reminder = rows.map((row) => buildNextReminder(row)).filter(Boolean).sort((a, b) => a.dueAt - b.dueAt)[0] ?? null
     if (!reminder) return cancel()
 
     if (scheduled?.notificationId === reminder.notificationId && scheduled?.dueAt === reminder.dueAt) return
@@ -95,16 +103,17 @@ export function createNotificationScheduler({
     const delay = Math.max(0, reminder.dueAt - now())
     timer = setTimer(async () => {
       timer = null
-      const freshRow = selectState.get()
-      if (!freshRow) return cancel()
+      const freshRows = getStateRows()
+      if (freshRows.length === 0) return cancel()
 
-      if (reminder.kind === 'feeding' && hasActiveSession(freshRow)) {
+      const freshReminder = freshRows.map((row) => buildNextReminder(row)).filter(Boolean).sort((a, b) => a.dueAt - b.dueAt)[0] ?? null
+      const freshRow = freshRows.find((row) => row.household_id === reminder.householdId && row.baby_id === reminder.babyId) || freshRows.find((row) => buildNextReminder(row)?.notificationId === reminder.notificationId)
+      if (reminder.kind === 'feeding' && freshRow && hasActiveSession(freshRow)) {
         markHandled(reminder)
         scheduled = null
         return evaluate()
       }
 
-      const freshReminder = buildNextReminder(freshRow)
       if (!freshReminder || freshReminder.notificationId !== reminder.notificationId || now() > freshReminder.catchUpUntil) return evaluate()
 
       try {

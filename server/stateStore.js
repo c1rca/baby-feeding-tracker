@@ -1,15 +1,40 @@
+import { DEFAULT_BABY_DOB, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './database.js'
+
+// A corrupt JSON blob (partial write, disk fault) must not 500 GET /api/state
+// or crash the scheduler; fall back to an empty collection/null, matching the
+// notification path's guards. DB backups are the recovery path for real data.
+const safeParseArray = (value) => {
+  try {
+    const parsed = JSON.parse(value ?? '[]')
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+const safeParseObject = (value) => {
+  if (!value) return null
+  try {
+    const parsed = JSON.parse(value)
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
 export const serializeState = (row) => {
-  if (!row) return { entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: '2026-06-03', tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'light', updatedAt: null }
+  if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'dark', updatedAt: null }
   return {
-    entries: JSON.parse(row.entries_json),
-    diapers: JSON.parse(row.diapers_json || '[]'),
-    medicines: JSON.parse(row.medicines_json || '[]'),
-    tummyTimes: JSON.parse(row.tummy_times_json || '[]'),
-    growthMeasurements: JSON.parse(row.growth_measurements_json || '[]'),
-    babyDob: row.baby_dob || '2026-06-03',
+    householdId: row.household_id || DEFAULT_HOUSEHOLD_ID,
+    babyId: row.baby_id || DEFAULT_BABY_ID,
+    entries: safeParseArray(row.entries_json),
+    diapers: safeParseArray(row.diapers_json),
+    medicines: safeParseArray(row.medicines_json),
+    tummyTimes: safeParseArray(row.tummy_times_json),
+    growthMeasurements: safeParseArray(row.growth_measurements_json),
+    babyDob: row.baby_dob || DEFAULT_BABY_DOB,
     tummyGoalMinutes: Number.isFinite(Number(row.tummy_goal_minutes)) ? Math.min(240, Math.max(1, Math.round(Number(row.tummy_goal_minutes)))) : 20,
-    session: row.session_json ? JSON.parse(row.session_json) : null,
-    tummySession: row.tummy_session_json ? JSON.parse(row.tummy_session_json) : null,
+    session: safeParseObject(row.session_json),
+    tummySession: safeParseObject(row.tummy_session_json),
     theme: row.theme || 'light',
     updatedAt: row.updated_at,
   }
@@ -31,13 +56,15 @@ export const summarizeState = (entries, session, theme, diapers = [], medicines 
   theme,
 })
 
-export const createDeletedItemOptionsReader = (selectDeletedItems) => () => {
+export const createDeletedItemOptionsReader = (selectDeletedItems) => (scope = {}) => {
+  const householdId = scope.householdId || DEFAULT_HOUSEHOLD_ID
+  const babyId = scope.babyId || DEFAULT_BABY_ID
   const deletedEntryIds = []
   const deletedDiaperIds = []
   const deletedMedicineIds = []
   const deletedTummyTimeIds = []
   const deletedGrowthMeasurementIds = []
-  for (const row of selectDeletedItems.all()) {
+  for (const row of selectDeletedItems.all(householdId, babyId)) {
     if (row.collection === 'entries') deletedEntryIds.push(row.item_id)
     if (row.collection === 'diapers') deletedDiaperIds.push(row.item_id)
     if (row.collection === 'medicines') deletedMedicineIds.push(row.item_id)
@@ -47,10 +74,13 @@ export const createDeletedItemOptionsReader = (selectDeletedItems) => () => {
   return { deletedEntryIds, deletedDiaperIds, deletedMedicineIds, deletedTummyTimeIds, deletedGrowthMeasurementIds }
 }
 
-export const createDeletedItemRecorder = (upsertDeletedItem) => (audit, deletedAt) => {
-  for (const entry of audit.entries?.removed || []) upsertDeletedItem.run({ item_id: entry.id, collection: 'entries', deleted_at: deletedAt })
-  for (const diaper of audit.diapers?.removed || []) upsertDeletedItem.run({ item_id: diaper.id, collection: 'diapers', deleted_at: deletedAt })
-  for (const medicine of audit.medicines?.removed || []) upsertDeletedItem.run({ item_id: medicine.id, collection: 'medicines', deleted_at: deletedAt })
-  for (const tummyTime of audit.tummyTimes?.removed || []) upsertDeletedItem.run({ item_id: tummyTime.id, collection: 'tummyTimes', deleted_at: deletedAt })
-  for (const measurement of audit.growthMeasurements?.removed || []) upsertDeletedItem.run({ item_id: measurement.id, collection: 'growthMeasurements', deleted_at: deletedAt })
+export const createDeletedItemRecorder = (upsertDeletedItem) => (audit, deletedAt, scope = {}) => {
+  const household_id = scope.householdId || DEFAULT_HOUSEHOLD_ID
+  const baby_id = scope.babyId || DEFAULT_BABY_ID
+  const record = (id, collection) => upsertDeletedItem.run({ item_id: id, collection, household_id, baby_id, deleted_at: deletedAt })
+  for (const entry of audit.entries?.removed || []) record(entry.id, 'entries')
+  for (const diaper of audit.diapers?.removed || []) record(diaper.id, 'diapers')
+  for (const medicine of audit.medicines?.removed || []) record(medicine.id, 'medicines')
+  for (const tummyTime of audit.tummyTimes?.removed || []) record(tummyTime.id, 'tummyTimes')
+  for (const measurement of audit.growthMeasurements?.removed || []) record(measurement.id, 'growthMeasurements')
 }

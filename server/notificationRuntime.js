@@ -11,23 +11,24 @@ export const createTextEmailSender = (config) => {
     auth: { user: config.smtpUser, pass: config.smtpPassword },
   })
 
-  return async ({ subject, title, message }) => {
+  return async ({ subject, title, message, to }) => {
     await smtpTransporter.sendMail({
       from: config.textEmailFrom,
-      to: config.textEmailTo,
+      to: to || config.textEmailTo,
       subject: subject || title || 'Feedr reminder',
       text: message,
     })
   }
 }
 
-export const createTrackerNotificationScheduler = ({ config, selectState, getNotificationState, upsertNotificationState, gotifyRemindersEnabled, getMedicineReminderSettings, appendEventLog, redactError }) => {
+export const createTrackerNotificationScheduler = ({ config, selectState, selectAllStates = null, getNotificationState, upsertNotificationState, gotifyRemindersEnabled, getMedicineReminderSettings, appendEventLog, redactError }) => {
   if (!config.notificationChannelsAvailable) return null
 
   const sendTextEmailMessage = createTextEmailSender(config)
 
   return createNotificationScheduler({
     selectState,
+    selectAllStates,
     getNotificationState,
     upsertNotificationState,
     sendGotify: config.gotifyAvailable

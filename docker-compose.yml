@@ -6,8 +6,26 @@ services:
       - "8080:8080"
     environment:
       - PORT=8080
+      - NODE_ENV=production
       - DB_DIR=/data
       - DB_PATH=/data/feeding-tracker.db
+      - AUTH_REQUIRED=${AUTH_REQUIRED:-1}
+      - AUTH_BYPASS=${AUTH_BYPASS:-0}
+      # Phone beta gate: comma-separated numbers allowed to self-provision a new
+      # phone account. Empty = new-phone provisioning closed (existing phone
+      # users keep working). Set this to your beta cohort before relying on
+      # text sign-in for onboarding.
+      - AUTH_ALLOWED_PHONES=${AUTH_ALLOWED_PHONES:-}
+      # Carrier email-to-SMS gateway domain for text sign-in delivery (e.g.
+      # msg.fi.google.com for Google Fi). Empty = fall back to TEXT_EMAIL_TO.
+      # Set the real value in the gitignored .env, not here.
+      - TEXT_LOGIN_SMS_DOMAIN=${TEXT_LOGIN_SMS_DOMAIN:-}
+      # Bearer-token session lifetime in days (default 30, clamped 1..365).
+      - AUTH_SESSION_TTL_DAYS=${AUTH_SESSION_TTL_DAYS:-30}
+      - TRUST_PROXY=${TRUST_PROXY:-1}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
       - NOTIFICATIONS_ENABLED=1
       - FEEDING_TIME_ZONE=America/New_York
       - TZ=America/New_York

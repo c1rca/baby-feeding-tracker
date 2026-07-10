@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import type { Entry } from '../types'
 
-const NOTIFICATION_APP_URL = 'https://feedr.kjw.lol'
+const NOTIFICATION_APP_URL = import.meta.env.VITE_NOTIFICATION_APP_URL || window.location.origin
 const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
 
 type BrowserFeedNotificationsOptions = {

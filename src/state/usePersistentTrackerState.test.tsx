@@ -68,6 +68,21 @@ describe('usePersistentTrackerState', () => {
     expect(document.cookie).toContain('baby_feeding_theme=dark')
   })
 
+  it('persists baby-scoped state without writing feed data into legacy keys', () => {
+    const { result } = renderHook(() => usePersistentTrackerState('baby-2'))
+
+    act(() => {
+      result.current.setEntries([entry])
+      result.current.setSession(session)
+      result.current.setFeedingNotificationsEnabled(true)
+    })
+
+    expect(JSON.parse(localStorage.getItem('baby-feeding-tracker:v1:baby:baby-2:entries') ?? '[]')).toEqual([entry])
+    expect(JSON.parse(localStorage.getItem('baby-feeding-tracker:v1:baby:baby-2:session') ?? 'null')).toEqual(session)
+    expect(localStorage.getItem('baby-feeding-tracker:v1:baby:baby-2:feeding-notifications')).toBe('1')
+    expect(JSON.parse(localStorage.getItem('baby-feeding-tracker:v1:entries') ?? '[]')).toEqual([])
+  })
+
   it('prefers a valid theme cookie over local storage', () => {
     localStorage.setItem('baby-feeding-tracker:v1:theme', 'light')
     document.cookie = 'baby_feeding_theme=dark; path=/'

@@ -1,5 +1,7 @@
 import type { RefObject } from 'react'
 import type { DiaperEvent, Entry, Session } from '../../types'
+import type { AuthUser } from '../../auth/authApi'
+import type { BabySummary } from '../../babies/babyApi'
 
 export type ManualDraft = { date: string; time: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string }
 
@@ -21,6 +23,11 @@ export type TrackerModalsProps = {
   gotifyAvailable: boolean
   gotifyRemindersEnabled: boolean
   medicineReminderSettings: MedicineReminderSettings
+  babies?: BabySummary[]
+  selectedBabyId?: string
+  authUser?: AuthUser | null
+  theme: 'light' | 'dark'
+  onLogout?: () => void
   fileInputRef: RefObject<HTMLInputElement | null>
   setBottleOpen: (open: boolean) => void
   setManualOpen: (open: boolean) => void
@@ -34,10 +41,13 @@ export type TrackerModalsProps = {
   setSession: (session: Session | null) => void
   setUndoState: (state: null) => void
   setFeedingNotificationsEnabled: (enabled: boolean) => void
+  setTheme: (theme: 'light' | 'dark') => void
   logBottle: (oz?: number) => void
   saveManualFeed: () => void
   enableFeedingNotifications: () => void
   setGotifyReminders: (enabled: boolean) => void | Promise<void>
   setMedicineReminderSettings: (settings: MedicineReminderSettings) => void | Promise<void>
+  onCreateBaby?: (input: { name: string; dob?: string }) => Promise<boolean>
+  onArchiveBaby?: (babyId: string) => Promise<boolean>
   showToast: (message: string) => void
 }

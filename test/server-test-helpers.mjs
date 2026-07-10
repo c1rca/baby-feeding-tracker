@@ -9,6 +9,15 @@ export const createFakeApp = () => {
     put(path, handler) {
       routes.set(`PUT ${path}`, handler)
     },
+    patch(path, handler) {
+      routes.set(`PATCH ${path}`, handler)
+    },
+    post(path, handler) {
+      routes.set(`POST ${path}`, handler)
+    },
+    delete(path, handler) {
+      routes.set(`DELETE ${path}`, handler)
+    },
     route(method, path) {
       const handler = routes.get(`${method} ${path}`)
       assert.equal(typeof handler, 'function', `${method} ${path} was not registered`)
@@ -27,6 +36,14 @@ export const createJsonResponse = () => {
       } else {
         response.headers.set(key, value)
       }
+    },
+    status(code) {
+      response.statusCode = code
+      return response
+    },
+    redirect(codeOrUrl, maybeUrl) {
+      response.statusCode = typeof codeOrUrl === 'number' ? codeOrUrl : 302
+      response.redirectUrl = typeof codeOrUrl === 'number' ? maybeUrl : codeOrUrl
     },
     json(payload) {
       response.body = payload

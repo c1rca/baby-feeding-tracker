@@ -36,6 +36,9 @@ rollback/
 *.sqlite3
 *.jsonl
 
+# Claude Code session transcripts exported to the repo root
+/20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.txt
+
 # Local planning / implementation notes
 IMPLEMENTATION_PLAN.md
 implementation-plan.md
@@ -45,6 +48,7 @@ implementation_plan.md
 *implementation_plan*.md
 plans/
 docs/plans/
+docs/plans/prod-readiness-agent-handoff.md
 
 # Docker/local overrides
 compose.override.yml

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { authFetch } from '../auth/authSession'
 import { DEFAULT_MEDICINE_REMINDER_SETTINGS, normalizeMedicineReminderSettings, type MedicineReminderSettings } from '../state/medicineReminderModel'
 
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
@@ -17,7 +18,7 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
 
   const loadGotifySettings = useCallback(async () => {
     try {
-      const response = await fetch(API_NOTIFICATION_SETTINGS)
+      const response = await authFetch(API_NOTIFICATION_SETTINGS)
       if (!response.ok) throw new Error('settings load failed')
       const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean; medicineReminderSettings?: Partial<Record<keyof MedicineReminderSettings, number>> }
       setGotifyAvailable(Boolean(data.available))
@@ -36,7 +37,7 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
 
   const setGotifyReminders = async (enabled: boolean) => {
     try {
-      const response = await fetch(API_NOTIFICATION_SETTINGS, {
+      const response = await authFetch(API_NOTIFICATION_SETTINGS, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ gotifyRemindersEnabled: enabled }),
@@ -55,7 +56,7 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
   const setMedicineReminderSettings = async (settings: MedicineReminderSettings) => {
     const normalized = normalizeMedicineReminderSettings(settings)
     try {
-      const response = await fetch(API_NOTIFICATION_SETTINGS, {
+      const response = await authFetch(API_NOTIFICATION_SETTINGS, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ medicineReminderSettings: normalized }),

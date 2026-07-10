@@ -52,7 +52,7 @@ describe('App interactions', () => {
     expect(screen.getAllByText(/Taken today/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/1 dose this week/i)).toBeTruthy()
     expect(screen.getByRole('region', { name: /Tummy Time stats/i })).toBeTruthy()
-    expect(screen.getByText(/12\/20 min today/i)).toBeTruthy()
+    expect(screen.getAllByText(/12\/20 min today/i).length).toBeGreaterThan(0)
     expect(screen.getByText(/32 minutes captured this week · 1 goal day/i)).toBeTruthy()
     expect(screen.getByText(/Daily avg/i)).toBeTruthy()
     expect(screen.getByText(/Best day/i)).toBeTruthy()
@@ -135,7 +135,7 @@ describe('App interactions', () => {
 
     expect(screen.getByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
     const headerButtons = Array.from(document.querySelectorAll('.top-actions button')).map((button) => button.getAttribute('aria-label'))
-    expect(headerButtons).toEqual(['Show tracker', 'Show settings', 'Enable dark mode'])
+    expect(headerButtons).toEqual(['Show tracker', 'Show settings'])
   })
 
   it('keeps medicine controls collapsed, alternates reminders, and undoes a new medicine log', async () => {
@@ -192,6 +192,13 @@ describe('App interactions', () => {
     render(<App />)
     await vi.advanceTimersByTimeAsync(0)
 
+    // Let the async state load + reminder computation settle before asserting.
+    // Under CPU load a single microtask flush can leave only the first reminder
+    // rendered; step the fake clock until all three are present (or give up).
+    for (let attempt = 0; attempt < 10 && screen.queryAllByRole('alert').length < 3; attempt += 1) {
+      await vi.advanceTimersByTimeAsync(50)
+    }
+
     const alerts = screen.getAllByRole('alert')
     expect(alerts).toHaveLength(3)
     expect(alerts.map((alert) => alert.textContent)).toEqual([
@@ -234,8 +241,8 @@ describe('App interactions', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
 
-    expect(screen.queryByRole('alert')).toBeNull()
     await vi.advanceTimersByTimeAsync(0)
+    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/notification-settings'))
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull())
