@@ -150,7 +150,7 @@ function App() {
   // churn (and remount) when selectedBabyId settles from '' to that same baby
   // after /api/babies loads. A genuine baby switch still changes the key.
   const keyBabyId = selectedBabyId || authUser?.babyId || 'default'
-  return <TrackerApp key={`${epoch}:${keyBabyId}`} authUser={authUser} onLogout={logout} babies={babies} selectedBabyId={selectedBabyId} onSelectedBabyIdChange={handleSelectedBabyIdChange} onCreateBaby={handleCreateBaby} onArchiveBaby={handleArchiveBaby} />
+  return <TrackerApp key={`${epoch}:${keyBabyId}`} authUser={authUser} onLogout={logout} babies={babies} selectedBabyId={keyBabyId === 'default' ? selectedBabyId : keyBabyId} onSelectedBabyIdChange={handleSelectedBabyIdChange} onCreateBaby={handleCreateBaby} onArchiveBaby={handleArchiveBaby} />
 }
 
 export default App

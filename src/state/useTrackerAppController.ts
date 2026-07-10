@@ -50,7 +50,7 @@ type AppToastProps = ComponentProps<typeof AppToast>
 type TrackViewProps = ComponentProps<typeof TrackView>
 
 export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyId?: string | null } = {}) {
-  const { entries, setEntries, session, setSession, diapers, setDiapers, medicines, setMedicines, tummyTimes, setTummyTimes, tummySession, setTummySession, tummyGoalMinutes, setTummyGoalMinutes, growthMeasurements, setGrowthMeasurements, babyDob, setBabyDob, theme, setTheme, settingsOpen, setSettingsOpen, feedingNotificationsEnabled, setFeedingNotificationsEnabled } = usePersistentTrackerState()
+  const { entries, setEntries, session, setSession, diapers, setDiapers, medicines, setMedicines, tummyTimes, setTummyTimes, tummySession, setTummySession, tummyGoalMinutes, setTummyGoalMinutes, growthMeasurements, setGrowthMeasurements, babyDob, setBabyDob, theme, setTheme, settingsOpen, setSettingsOpen, feedingNotificationsEnabled, setFeedingNotificationsEnabled } = usePersistentTrackerState(selectedBabyId)
   const [selectedDiapers, setSelectedDiapers] = useState<DiaperKind[]>([])
   const [dismissedMedicineReminderIds, setDismissedMedicineReminderIds] = useState<string[]>(readDismissedMedicineReminderIds)
   const [view, setView] = useState<View>(readInitialView)

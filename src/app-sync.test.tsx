@@ -139,6 +139,12 @@ describe('App interactions', () => {
       }))
     })
     expect(localStorage.getItem('baby-feeding-tracker:v1:selected-baby-id')).toBe('baby-2')
+    await waitFor(() => {
+      const scopedEntries = JSON.parse(localStorage.getItem('baby-feeding-tracker:v1:baby:baby-2:entries') ?? '[]') as Array<{ id: string }>
+      expect(scopedEntries).toHaveLength(1)
+      expect(scopedEntries[0].id).toBe('feed-riley')
+    })
+    expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')).toHaveLength(0)
   })
 
   it('creates and archives babies from settings controls', async () => {
