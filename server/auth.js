@@ -60,7 +60,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, createSignupHousehold = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, selectUserById = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000 } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, createSignupHousehold = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, loginCodeTtlMs = 60 * 1000, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false } = {}) => {
   const loginFailures = new Map()
   const failureKey = (req, email) => `${req.ip || req.socket?.remoteAddress || 'unknown'}|${email}`
   const failuresFor = (key) => {
@@ -170,6 +170,59 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
       const token = createSession({ id: userId })
       appendEventLog('auth_signup', { userId, email, householdId })
       res.status(201).json({ ok: true, token, user: { id: userId, email, displayName } })
+    })
+
+    app.post('/api/auth/password-reset/request', (req, res) => {
+      if (!authRequired) {
+        res.status(404).json({ ok: false, error: 'Authentication is not enabled' })
+        return
+      }
+      const email = normalizeEmail(req.body?.email)
+      const user = email ? selectUserByEmail?.get(email) : null
+      if (user?.password_hash) {
+        const token = tokenFactory()
+        const createdAt = now()
+        insertPasswordResetCode?.run({
+          code_hash: hashSessionToken(token),
+          user_id: user.id,
+          created_at: createdAt.toISOString(),
+          expires_at: new Date(createdAt.getTime() + passwordResetTtlMs).toISOString(),
+          consumed_at: null,
+        })
+        appendEventLog('auth_password_reset_requested', { userId: user.id })
+        res.status(200).json(exposePasswordResetToken ? { ok: true, resetToken: token } : { ok: true })
+        return
+      }
+      res.status(200).json({ ok: true })
+    })
+
+    app.post('/api/auth/password-reset/confirm', (req, res) => {
+      if (!authRequired) {
+        res.status(404).json({ ok: false, error: 'Authentication is not enabled' })
+        return
+      }
+      const token = String(req.body?.token || '').trim()
+      const newPassword = String(req.body?.newPassword || '')
+      if (newPassword.length < 12) {
+        res.status(400).json({ ok: false, error: 'New password must be at least 12 characters' })
+        return
+      }
+      const codeHash = hashSessionToken(token)
+      const row = token ? selectPasswordResetCode?.get(codeHash) : null
+      if (!row || row.consumed_at || new Date(row.expires_at).getTime() <= now().getTime()) {
+        res.status(401).json({ ok: false, error: 'Invalid or expired reset token' })
+        return
+      }
+      const consumedAt = now().toISOString()
+      const result = consumePasswordResetCode?.run({ code_hash: codeHash, consumed_at: consumedAt }) || { changes: 0 }
+      if (!result.changes) {
+        res.status(401).json({ ok: false, error: 'Invalid or expired reset token' })
+        return
+      }
+      updateUserPassword?.run({ user_id: row.user_id, password_hash: hashPassword(newPassword), updated_at: consumedAt })
+      revokeUserSessions?.run({ user_id: row.user_id, revoked_at: consumedAt })
+      appendEventLog('auth_password_reset_confirmed', { userId: row.user_id })
+      res.status(200).json({ ok: true })
     })
 
     app.post('/api/auth/invites/accept', (req, res) => {

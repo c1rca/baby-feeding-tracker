@@ -178,6 +178,44 @@ describe('App auth shell', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store', headers: expect.any(Headers) })))
   })
 
+  it('requests and confirms a password reset from the login screen', async () => {
+    const user = userEvent.setup()
+    const requests: Array<{ url: string; body: unknown }> = []
+    const authorized = () => false
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      const body = init?.body ? JSON.parse(String(init.body)) : null
+      if (url === '/api/auth/me') return jsonResponse({ ok: false }, 401)
+      if (url === '/api/auth/google/status') return jsonResponse({ ok: true, available: false })
+      if (url === '/api/auth/password-reset/request') {
+        requests.push({ url, body })
+        return jsonResponse({ ok: true, resetToken: 'reset-dev-token' })
+      }
+      if (url === '/api/auth/password-reset/confirm') {
+        requests.push({ url, body })
+        return jsonResponse({ ok: true })
+      }
+      if (url === '/api/state') return authorized() ? jsonResponse(emptyServerState) : jsonResponse({ ok: false }, 401)
+      return jsonResponse({ ok: false }, 404)
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+    await screen.findByRole('heading', { name: /sign in/i })
+    await user.click(screen.getByRole('button', { name: /forgot password/i }))
+    await user.type(screen.getByLabelText(/^Email$/i), 'parent@example.com')
+    await user.click(screen.getByRole('button', { name: /send reset link/i }))
+    expect(await screen.findByText(/reset token ready/i)).toBeTruthy()
+    await user.type(screen.getByLabelText(/reset token/i), 'reset-dev-token')
+    await user.type(screen.getByLabelText(/new password/i), 'new-reset-password')
+    await user.click(screen.getByRole('button', { name: /reset password/i }))
+    expect(await screen.findByText(/password reset complete/i)).toBeTruthy()
+    expect(requests).toEqual([
+      { url: '/api/auth/password-reset/request', body: { email: 'parent@example.com' } },
+      { url: '/api/auth/password-reset/confirm', body: { token: 'reset-dev-token', newPassword: 'new-reset-password' } },
+    ])
+  })
+
   it('keeps the login form up with an error message after a failed login', async () => {
     const user = userEvent.setup()
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {

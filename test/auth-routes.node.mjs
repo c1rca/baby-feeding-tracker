@@ -253,6 +253,88 @@ test('google exchange rejects an unknown code', () => {
   assert.equal(res.statusCode, 401)
 })
 
+test('password reset request creates a short-lived reset code without leaking unknown emails', () => {
+  const calls = { resetCodes: [], events: [] }
+  const app = mountRouter({
+    authRequired: true,
+    exposePasswordResetToken: true,
+    selectUserByEmail: { get: (email) => email === 'parent@example.com' ? { id: 'user-1', email, password_hash: 'hash' } : null },
+    insertPasswordResetCode: { run: (row) => calls.resetCodes.push(row) },
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+    tokenFactory: () => 'reset-code-plain',
+    now: () => new Date('2026-01-01T00:00:00.000Z'),
+  })
+
+  const knownRes = createJsonResponse()
+  app.route('POST', '/api/auth/password-reset/request')({ body: { email: ' Parent@Example.com ' } }, knownRes)
+
+  assert.equal(knownRes.statusCode, 200)
+  assert.equal(knownRes.body.ok, true)
+  assert.equal(knownRes.body.resetToken, 'reset-code-plain')
+  assert.equal(calls.resetCodes.length, 1)
+  assert.equal(calls.resetCodes[0].code_hash, hashSessionToken('reset-code-plain'))
+  assert.equal(calls.resetCodes[0].user_id, 'user-1')
+  assert.equal(calls.resetCodes[0].expires_at, '2026-01-01T00:15:00.000Z')
+  assert.deepEqual(calls.events, [{ event: 'auth_password_reset_requested', payload: { userId: 'user-1' } }])
+
+  const unknownRes = createJsonResponse()
+  app.route('POST', '/api/auth/password-reset/request')({ body: { email: 'unknown@example.com' } }, unknownRes)
+  assert.equal(unknownRes.statusCode, 200)
+  assert.deepEqual(unknownRes.body, { ok: true })
+  assert.equal(calls.resetCodes.length, 1)
+})
+
+test('password reset confirm updates password, consumes code, and revokes sessions', () => {
+  const codeRow = { code_hash: hashSessionToken('reset-code-plain'), user_id: 'user-1', expires_at: '2026-01-01T00:15:00.000Z', consumed_at: null }
+  const calls = { consumed: [], passwordUpdates: [], revocations: [], events: [] }
+  const app = mountRouter({
+    authRequired: true,
+    selectPasswordResetCode: { get: (hash) => hash === codeRow.code_hash ? codeRow : null },
+    consumePasswordResetCode: { run: (payload) => { calls.consumed.push(payload); codeRow.consumed_at = payload.consumed_at; return { changes: 1 } } },
+    updateUserPassword: { run: (payload) => calls.passwordUpdates.push(payload) },
+    revokeUserSessions: { run: (payload) => calls.revocations.push(payload) },
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+    now: () => new Date('2026-01-01T00:05:00.000Z'),
+  })
+
+  const res = createJsonResponse()
+  app.route('POST', '/api/auth/password-reset/confirm')({ body: { token: 'reset-code-plain', newPassword: 'new-reset-password' } }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.deepEqual(res.body, { ok: true })
+  assert.deepEqual(calls.consumed, [{ code_hash: codeRow.code_hash, consumed_at: '2026-01-01T00:05:00.000Z' }])
+  assert.equal(calls.passwordUpdates[0].user_id, 'user-1')
+  assert.equal(verifyPassword('new-reset-password', calls.passwordUpdates[0].password_hash), true)
+  assert.deepEqual(calls.revocations, [{ user_id: 'user-1', revoked_at: '2026-01-01T00:05:00.000Z' }])
+  assert.deepEqual(calls.events, [{ event: 'auth_password_reset_confirmed', payload: { userId: 'user-1' } }])
+})
+
+test('password reset confirm rejects invalid, expired, consumed, and weak reset attempts', () => {
+  const validHash = hashSessionToken('reset-code-plain')
+  const calls = { consumed: 0, passwordUpdates: 0, revocations: 0 }
+  const app = mountRouter({
+    authRequired: true,
+    selectPasswordResetCode: { get: (hash) => hash === validHash ? { code_hash: validHash, user_id: 'user-1', expires_at: '2026-01-01T00:01:00.000Z', consumed_at: null } : null },
+    consumePasswordResetCode: { run: () => { calls.consumed += 1; return { changes: 0 } } },
+    updateUserPassword: { run: () => { calls.passwordUpdates += 1 } },
+    revokeUserSessions: { run: () => { calls.revocations += 1 } },
+    now: () => new Date('2026-01-01T00:02:00.000Z'),
+  })
+
+  const expiredRes = createJsonResponse()
+  app.route('POST', '/api/auth/password-reset/confirm')({ body: { token: 'reset-code-plain', newPassword: 'new-reset-password' } }, expiredRes)
+  assert.equal(expiredRes.statusCode, 401)
+
+  const weakRes = createJsonResponse()
+  app.route('POST', '/api/auth/password-reset/confirm')({ body: { token: 'reset-code-plain', newPassword: 'short' } }, weakRes)
+  assert.equal(weakRes.statusCode, 400)
+
+  const invalidRes = createJsonResponse()
+  app.route('POST', '/api/auth/password-reset/confirm')({ body: { token: 'missing', newPassword: 'new-reset-password' } }, invalidRes)
+  assert.equal(invalidRes.statusCode, 401)
+  assert.deepEqual(calls, { consumed: 0, passwordUpdates: 0, revocations: 0 })
+})
+
 test('password signup creates an allow-listed account, household, first baby, and session', () => {
   const calls = { users: [], households: [], sessions: [], events: [] }
   const ids = ['user-new', 'household-new', 'baby-new', 'session-new']

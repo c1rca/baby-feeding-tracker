@@ -64,6 +64,20 @@ export async function createHouseholdForOnboarding(input: OnboardingInput): Prom
   }
 }
 
+export async function requestPasswordReset(email: string): Promise<{ ok: true; resetToken?: string } | { ok: false; error: string }> {
+  const response = await fetch('/api/auth/password-reset/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || !data.ok) return { ok: false, error: data.error || 'Unable to request password reset' }
+  return { ok: true, resetToken: data.resetToken }
+}
+
+export async function confirmPasswordReset(token: string, newPassword: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const response = await fetch('/api/auth/password-reset/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token, newPassword }) })
+  const data = await response.json().catch(() => ({}))
+  if (!response.ok || !data.ok) return { ok: false, error: data.error || 'Unable to reset password' }
+  return { ok: true }
+}
+
 export async function loginWithPassword(email: string, password: string): Promise<LoginResult> {
   try {
     const response = await fetch('/api/auth/login', {

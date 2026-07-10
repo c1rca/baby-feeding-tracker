@@ -62,6 +62,15 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS auth_password_reset_codes (
+      code_hash TEXT PRIMARY KEY,
+      user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+
     CREATE TABLE IF NOT EXISTS household_invites (
       id TEXT PRIMARY KEY,
       household_id TEXT NOT NULL,
@@ -284,6 +293,16 @@ export function prepareTrackerStatements(db) {
       INSERT INTO auth_login_codes (code_hash, user_id, created_at, expires_at, consumed_at)
       VALUES (@code_hash, @user_id, @created_at, @expires_at, NULL)
     `),
+    insertPasswordResetCode: db.prepare(`
+      INSERT INTO auth_password_reset_codes (code_hash, user_id, created_at, expires_at, consumed_at)
+      VALUES (@code_hash, @user_id, @created_at, @expires_at, NULL)
+    `),
+    selectPasswordResetCode: db.prepare('SELECT code_hash, user_id, created_at, expires_at, consumed_at FROM auth_password_reset_codes WHERE code_hash = ?'),
+    consumePasswordResetCode: db.prepare(`
+      UPDATE auth_password_reset_codes
+      SET consumed_at = @consumed_at
+      WHERE code_hash = @code_hash AND consumed_at IS NULL
+    `),
     selectLoginCode: db.prepare('SELECT code_hash, user_id, created_at, expires_at, consumed_at FROM auth_login_codes WHERE code_hash = ?'),
     selectActiveInvitesByHousehold: db.prepare('SELECT id, email, role, created_at, expires_at FROM household_invites WHERE household_id = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > datetime(\'now\') ORDER BY created_at DESC'),
     selectInviteByEmail: db.prepare('SELECT id FROM household_invites WHERE household_id = ? AND email = ? AND accepted_at IS NULL AND revoked_at IS NULL AND expires_at > datetime(\'now\') LIMIT 1'),
@@ -308,6 +327,11 @@ export function prepareTrackerStatements(db) {
       UPDATE auth_sessions
       SET revoked_at = @revoked_at
       WHERE user_id = @user_id AND token_hash != @token_hash AND revoked_at IS NULL
+    `),
+    revokeUserSessions: db.prepare(`
+      UPDATE auth_sessions
+      SET revoked_at = @revoked_at
+      WHERE user_id = @user_id AND revoked_at IS NULL
     `),
     upsertSetting: db.prepare(`
       INSERT INTO app_settings (key, value, updated_at)
