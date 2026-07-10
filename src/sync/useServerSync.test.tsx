@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GrowthMeasurement } from '../domain/growthTypes'
 import type { DiaperEvent, Entry, MedicineEvent, Session, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
 import { useServerSync } from './useServerSync'
+import { hasPendingSyncForBaby } from './serverSyncTypes'
 
 const entry = (id: string, endedAt: number): Entry => ({
   id,
@@ -124,6 +125,29 @@ describe('useServerSync', () => {
     // the currently loaded baby should not claim it is offline.
     expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBe('1')
     expect(screen.getByTestId('status').textContent).toBe('synced')
+  })
+
+  it('a successful sync on baby B preserves baby A unsynced offline change (B1 data-loss regression)', async () => {
+    // Baby A queued an offline change; we open baby B and sync a fresh edit on B.
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync', '1')
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync-baby', 'baby-A')
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init || init.method !== 'PUT') return { ok: true, json: async () => ({ entries: [entry('baby-b-server', 6000)], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-b' }) }
+      return { ok: true, json: async () => ({ updatedAt: 'server-b2', state: JSON.parse(String(init.body)) }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness selectedBabyId="baby-B" />)
+    await waitFor(() => expect(screen.getByTestId('entries').textContent).toBe('baby-b-server'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    // Baby B writes a local change, which syncs successfully and clears B only.
+    screen.getByRole('button', { name: 'add local' }).click()
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' })))
+
+    // Baby A's pending marker must survive B's successful sync.
+    expect(hasPendingSyncForBaby('baby-A')).toBe(true)
+    expect(hasPendingSyncForBaby('baby-B')).toBe(false)
   })
 
   it('replays pending local tummy time and growth changes without dropping server-side records', async () => {

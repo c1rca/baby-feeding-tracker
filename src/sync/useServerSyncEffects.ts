@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { hasPendingSync, markPendingSync, pendingSyncMatchesBaby, type ServerSyncPayload, type SyncToApiOverrides } from './serverSyncTypes'
+import { hasPendingSyncForBaby, markPendingSync, type ServerSyncPayload, type SyncToApiOverrides } from './serverSyncTypes'
 
 type PersistLocalChangesOptions = {
   hasHydrated: boolean
@@ -52,7 +52,7 @@ export function usePersistLocalChanges({
 export function usePendingSyncRetry(syncToApi: (overrides?: SyncToApiOverrides) => Promise<void>, selectedBabyId?: string | null) {
   useEffect(() => {
     const retrySync = () => {
-      if (hasPendingSync() && pendingSyncMatchesBaby(selectedBabyId)) void syncToApi()
+      if (hasPendingSyncForBaby(selectedBabyId)) void syncToApi()
     }
 
     window.addEventListener('online', retrySync)

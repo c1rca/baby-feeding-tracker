@@ -3,7 +3,7 @@ import type { MutableRefObject } from 'react'
 import type { ServerState } from '../types'
 import { loadServerState } from './serverSyncApi'
 import { buildPendingSyncPayload } from './serverSyncModels'
-import { hasPendingSync, pendingSyncMatchesBaby, type ServerSyncPayload, type SyncStatus, type SyncToApiOverrides } from './serverSyncTypes'
+import { hasPendingSyncForBaby, type ServerSyncPayload, type SyncStatus, type SyncToApiOverrides } from './serverSyncTypes'
 
 type InitialServerSyncOptions = {
   latestPayloadRef: MutableRefObject<ServerSyncPayload>
@@ -28,7 +28,7 @@ export function useInitialServerSync({
     const loadFromApi = async () => {
       // Only replay a pending change if it belongs to the baby we are loading;
       // a change queued for another baby must not be pushed into this scope.
-      const pendingForThisBaby = hasPendingSync() && pendingSyncMatchesBaby(selectedBabyId)
+      const pendingForThisBaby = hasPendingSyncForBaby(selectedBabyId)
       const localPayload = latestPayloadRef.current
       try {
         const serverState = await loadServerState({ babyId: selectedBabyId })
