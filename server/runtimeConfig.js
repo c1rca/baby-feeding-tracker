@@ -22,16 +22,17 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   const notificationsDefaultEnabled = env.NOTIFICATIONS_ENABLED === '1' && notificationChannelsAvailable
   const authRequired = env.AUTH_REQUIRED === '1'
   const authBypass = env.AUTH_BYPASS === '1'
-  // Production must never boot without auth. ALLOW_INSECURE_LOCAL_MODE is the
-  // deliberate, explicit escape hatch for local diagnostics against a
-  // prod-like NODE_ENV; it is never set in the deployed environment.
-  if (env.NODE_ENV === 'production' && env.ALLOW_INSECURE_LOCAL_MODE !== '1') {
-    if (!authRequired) {
-      throw new Error('AUTH_REQUIRED must be 1 in production (set ALLOW_INSECURE_LOCAL_MODE=1 to override for local diagnostics)')
-    }
-    if (authBypass) {
-      throw new Error('AUTH_BYPASS must not be enabled in production (set ALLOW_INSECURE_LOCAL_MODE=1 to override for local diagnostics)')
-    }
+  const allowInsecureLocalMode = env.ALLOW_INSECURE_LOCAL_MODE === '1'
+  // Fail closed, independent of NODE_ENV: refuse to boot with auth disabled (or
+  // bypassed) unless the operator has explicitly acknowledged insecure local
+  // mode. Previously the guard only fired when NODE_ENV=production was set, so
+  // forgetting that one env var silently ran the app wide open. Now a missing
+  // env var can only make the app more locked down, never less.
+  if (!authRequired && !allowInsecureLocalMode) {
+    throw new Error('AUTH_REQUIRED must be 1 (set ALLOW_INSECURE_LOCAL_MODE=1 to run without auth for local diagnostics)')
+  }
+  if (authBypass && !allowInsecureLocalMode) {
+    throw new Error('AUTH_BYPASS requires ALLOW_INSECURE_LOCAL_MODE=1 (never set it on an exposed deployment)')
   }
   const googleAuth = {
     clientId: env.GOOGLE_CLIENT_ID || '',

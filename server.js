@@ -117,7 +117,10 @@ const checkDatabaseReady = () => {
 // Trust the reverse proxy (if configured) so req.ip reflects the real client
 // for rate-limit keys instead of the proxy's address.
 if (config.trustProxy) app.set('trust proxy', /^\d+$/.test(config.trustProxy) ? Number(config.trustProxy) : config.trustProxy)
-app.use(createSecurityHeaders({ hsts: config.isProduction }))
+// Pin HSTS on any real deployment, not just when NODE_ENV=production is set:
+// if auth is required this is an exposed instance over HTTPS, so forgetting
+// NODE_ENV no longer silently drops the header.
+app.use(createSecurityHeaders({ hsts: config.isProduction || config.authRequired }))
 app.use(express.json({ limit: '1mb' }))
 const createHousehold = db.transaction(({ userId, householdId, householdName, babyId, babyName, babyDob, createdAt }) => {
   insertHousehold.run({ id: householdId, name: householdName, created_at: createdAt })
