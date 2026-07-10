@@ -79,6 +79,61 @@ body { margin: 0; }
 .additional-options-toggle:hover { background:#f8fafc; border-color:#cbd5e1; transform:none; box-shadow:none; }
 .additional-options-toggle strong { font-size:.82rem; opacity:.78; }
 .additional-options-panel { display:grid; gap:10px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:16px; background:rgba(248,250,252,.58); animation:panel-in .16s ease; }
+
+/* Additional options — premium redesign (ao-*). Classic palette. See styles.css
+   for the revert note. Category accents via --ao-accent; translucent color-mix
+   tints adapt to light/dark. */
+.ao-shell { display:grid; gap:10px; margin:2px 0 14px; }
+.ao-toggle { width:100%; min-height:54px; padding:8px 14px 8px 8px; justify-content:space-between; gap:12px; border-radius:16px; border:1px solid #e2e8f0; background:rgba(255,255,255,.85); color:#1e293b; box-shadow:0 1px 2px rgba(15,23,42,.05), 0 10px 26px -14px rgba(15,23,42,.2); }
+.ao-toggle:hover { transform:translateY(-1px); border-color:#cbd5e1; box-shadow:0 14px 30px -14px rgba(15,23,42,.28); }
+.ao-toggle-lead { display:inline-flex; align-items:center; gap:12px; min-width:0; }
+.ao-toggle-icon { display:grid; place-items:center; width:38px; height:38px; flex:none; border-radius:12px; color:#fff; background:linear-gradient(135deg,#3b82f6,#2563eb); box-shadow:0 8px 18px -8px rgba(37,99,235,.5); }
+.ao-toggle-copy { display:grid; gap:1px; text-align:left; min-width:0; }
+.ao-toggle-copy strong { font-size:.95rem; font-weight:800; color:#1e293b; }
+.ao-toggle-copy small { color:#94a3b8; font-size:.72rem; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ao-toggle-chevron { flex:none; color:#94a3b8; transition:transform .28s ease, color .2s ease; }
+.ao-toggle[aria-expanded="true"] .ao-toggle-chevron { transform:rotate(180deg); color:#2563eb; }
+.ao-panel { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); align-items:start; gap:10px; animation:panel-in .18s ease; }
+.ao-card { --ao-accent:#2563eb; display:grid; gap:10px; padding:13px; border:1px solid #e8edf3; border-radius:16px; background:rgba(255,255,255,.72); box-shadow:0 1px 2px rgba(15,23,42,.04); }
+.ao-card--tummy { --ao-accent:#8b5cf6; }
+.ao-card--medicine { --ao-accent:#f97316; }
+.ao-card--bottle { --ao-accent:#0d9488; }
+.ao-card--missed { --ao-accent:#2563eb; }
+.ao-card-head { display:flex; align-items:center; gap:9px; }
+.ao-card-icon { display:grid; place-items:center; width:30px; height:30px; flex:none; border-radius:10px; color:var(--ao-accent); background:color-mix(in srgb, var(--ao-accent) 14%, transparent); }
+.ao-card-title { font-size:.82rem; font-weight:800; color:#1e293b; }
+.ao-live { margin-left:auto; display:inline-flex; align-items:center; gap:5px; padding:3px 9px 3px 8px; border-radius:999px; font-size:.62rem; font-weight:900; letter-spacing:.08em; text-transform:uppercase; color:var(--ao-accent); background:color-mix(in srgb, var(--ao-accent) 14%, transparent); }
+.ao-live::before { content:''; width:6px; height:6px; border-radius:999px; background:var(--ao-accent); }
+.ao-card-body { display:grid; gap:10px; }
+.ao-chips { display:flex; flex-wrap:wrap; gap:7px; }
+.ao-chip { flex:1 1 auto; min-width:56px; min-height:44px; flex-direction:column; gap:0; padding:4px 8px; border-radius:12px; background:#f1f5f9; border-color:transparent; box-shadow:none; color:#334155; }
+.ao-chip:hover { border-color:color-mix(in srgb, var(--ao-accent) 55%, transparent); color:var(--ao-accent); background:color-mix(in srgb, var(--ao-accent) 9%, transparent); }
+.ao-chip-num { font-size:1rem; font-weight:800; line-height:1; }
+.ao-chip-unit { font-size:.6rem; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:#94a3b8; }
+.ao-chip:hover .ao-chip-unit { color:inherit; }
+.ao-action { min-height:42px; justify-content:center; border-radius:12px; font-weight:800; color:var(--ao-accent); background:color-mix(in srgb, var(--ao-accent) 11%, transparent); border-color:color-mix(in srgb, var(--ao-accent) 24%, transparent); box-shadow:none; }
+.ao-action:hover { background:color-mix(in srgb, var(--ao-accent) 17%, transparent); border-color:color-mix(in srgb, var(--ao-accent) 42%, transparent); color:var(--ao-accent); }
+.ao-action--wide { width:100%; }
+.ao-action--stop { --ao-accent:#ef4444; }
+.ao-med { flex:1 1 88px; min-height:42px; justify-content:center; border-radius:12px; font-weight:800; font-size:.86rem; color:var(--ao-med-hue); background:color-mix(in srgb, var(--ao-med-hue) 11%, transparent); border-color:color-mix(in srgb, var(--ao-med-hue) 24%, transparent); box-shadow:none; }
+.ao-med::before { content:''; width:7px; height:7px; flex:none; border-radius:999px; background:var(--ao-med-hue); }
+.ao-med:hover { background:color-mix(in srgb, var(--ao-med-hue) 17%, transparent); border-color:color-mix(in srgb, var(--ao-med-hue) 42%, transparent); }
+.ao-med--tylenol { --ao-med-hue:#f97316; }
+.ao-med--motrin { --ao-med-hue:#ef4444; }
+.ao-med--vitamin { --ao-med-hue:#f59e0b; }
+.ao-hint { margin:0; color:#64748b; font-size:.8rem; font-weight:650; line-height:1.35; }
+.ao-note { display:grid; gap:5px; }
+.ao-note > span { font-size:.78rem; font-weight:800; color:#475569; }
+.ao-note--feed { grid-column:1 / -1; }
+[data-theme='dark'] .ao-toggle { background:rgba(15,23,42,.6); border-color:#334155; color:#e2e8f0; }
+[data-theme='dark'] .ao-toggle-copy strong { color:#e2e8f0; }
+[data-theme='dark'] .ao-card { background:rgba(15,23,42,.5); border-color:#334155; }
+[data-theme='dark'] .ao-card-title { color:#e2e8f0; }
+[data-theme='dark'] .ao-chip { background:rgba(148,163,184,.12); color:#cbd5e1; }
+[data-theme='dark'] .ao-hint { color:#94a3b8; }
+[data-theme='dark'] .ao-note > span { color:#cbd5e1; }
+/* ===== end Additional options — premium redesign ===== */
+
 .medicine-reminder-stack { display:grid; gap:10px; }
 .medicine-reminder-banner { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border:1px solid #fed7aa; border-radius:18px; background:linear-gradient(135deg,#fff7ed,#fffbeb); color:#7c2d12; box-shadow:0 14px 28px rgba(154,52,18,.10); }
 .vitamin-reminder-banner { border-color:#bfdbfe; background:linear-gradient(135deg,#eff6ff,#ecfeff); color:#1e3a8a; box-shadow:0 14px 28px rgba(37,99,235,.10); }

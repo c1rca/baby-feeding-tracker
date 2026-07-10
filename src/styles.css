@@ -598,6 +598,166 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 }
 .tummy-quick-row button { min-height: 38px; border-radius: 999px; font-size: .88rem; }
 
+/* ============================================================
+   Additional options — premium redesign (ao-*)
+   Self-contained namespace. TO REVERT: delete this block, the matching
+   block in styles-classic.css, and restore the pre-redesign
+   src/components/hero/AdditionalOptions.tsx (or `git revert` the commit).
+   The legacy .additional-options-* / .medicine-panel rules above are left
+   intact and simply unused.
+   ============================================================ */
+.ao-shell { display: grid; gap: 10px; margin: 4px 0 12px; }
+
+/* Toggle bar */
+.ao-toggle {
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 14px 8px 8px;
+  justify-content: space-between;
+  gap: 12px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--card-solid) 55%, transparent);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(8px);
+}
+.ao-toggle:hover { transform: translateY(-1px); border-color: var(--border-strong); box-shadow: var(--shadow-pop); }
+.ao-toggle-lead { display: inline-flex; align-items: center; gap: 12px; min-width: 0; }
+.ao-toggle-icon {
+  display: grid; place-items: center;
+  width: 40px; height: 40px; flex: none;
+  border-radius: 13px;
+  color: #fff;
+  background: var(--grad-primary);
+  background-size: 160% 160%;
+  box-shadow: 0 8px 18px -8px var(--ring), inset 0 1px 0 rgba(255, 255, 255, .3);
+}
+.ao-toggle-copy { display: grid; gap: 1px; text-align: left; min-width: 0; }
+.ao-toggle-copy strong { font-size: .98rem; font-weight: 850; letter-spacing: -.01em; }
+.ao-toggle-copy small { color: var(--ink-faint); font-size: .74rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ao-toggle-chevron { flex: none; color: var(--ink-faint); transition: transform .28s cubic-bezier(.2, .9, .3, 1.4), color .2s ease; }
+.ao-toggle[aria-expanded="true"] .ao-toggle-chevron { transform: rotate(180deg); color: var(--berry); }
+
+/* Panel + cards */
+.ao-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  align-items: start;
+  gap: 10px;
+  animation: ao-panel-in .22s cubic-bezier(.2, .9, .3, 1.2);
+}
+@keyframes ao-panel-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+
+.ao-card {
+  --ao-accent: var(--berry);
+  display: grid; gap: 10px;
+  padding: 13px 13px 14px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    linear-gradient(color-mix(in srgb, var(--ao-accent) 5%, transparent), transparent 62%),
+    color-mix(in srgb, var(--card-solid) 60%, transparent);
+  box-shadow: 0 1px 2px rgba(42, 36, 64, .04);
+  animation: ao-card-in .3s both cubic-bezier(.2, .9, .3, 1.2);
+}
+.ao-card--tummy { --ao-accent: var(--hue-tummy); }
+.ao-card--medicine { --ao-accent: var(--hue-tylenol); }
+.ao-card--bottle { --ao-accent: var(--hue-bottle); }
+.ao-card--missed { --ao-accent: var(--berry); }
+.ao-panel > .ao-card:nth-child(1) { animation-delay: .02s; }
+.ao-panel > .ao-card:nth-child(2) { animation-delay: .06s; }
+.ao-panel > .ao-card:nth-child(3) { animation-delay: .10s; }
+.ao-panel > .ao-card:nth-child(4) { animation-delay: .14s; }
+@keyframes ao-card-in { from { opacity: 0; transform: translateY(6px) scale(.985); } to { opacity: 1; transform: none; } }
+
+.ao-card-head { display: flex; align-items: center; gap: 9px; }
+.ao-card-icon {
+  display: grid; place-items: center;
+  width: 30px; height: 30px; flex: none;
+  border-radius: 10px;
+  color: var(--ao-accent);
+  background: color-mix(in srgb, var(--ao-accent) 15%, transparent);
+}
+.ao-card-title { font-size: .82rem; font-weight: 850; letter-spacing: .01em; color: var(--ink); }
+.ao-live {
+  margin-left: auto;
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px 3px 8px;
+  border-radius: 999px;
+  font-size: .62rem; font-weight: 900; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--ao-accent);
+  background: color-mix(in srgb, var(--ao-accent) 14%, transparent);
+}
+.ao-live::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: var(--ao-accent); animation: ao-pulse 1.5s ease-in-out infinite; }
+@keyframes ao-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.65); } }
+
+.ao-card-body { display: grid; gap: 10px; }
+
+/* Tummy quick chips */
+.ao-chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.ao-chip {
+  flex: 1 1 auto;
+  min-width: 56px; min-height: 46px;
+  flex-direction: column; gap: 0;
+  padding: 4px 8px;
+  border-radius: 14px;
+  background: var(--well);
+  border-color: transparent;
+  box-shadow: none;
+}
+.ao-chip:hover { border-color: color-mix(in srgb, var(--ao-accent) 55%, transparent); color: var(--ao-accent); background: color-mix(in srgb, var(--ao-accent) 8%, transparent); }
+.ao-chip-num { font-family: var(--font-numeric); font-size: 1.02rem; font-weight: 800; line-height: 1; }
+.ao-chip-unit { font-size: .6rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-faint); }
+.ao-chip:hover .ao-chip-unit { color: inherit; }
+
+/* Card actions (Start / Bottle / Missed feed / Stop) */
+.ao-action {
+  min-height: 44px;
+  justify-content: center;
+  border-radius: 13px;
+  font-weight: 800;
+  color: var(--ao-accent);
+  background: color-mix(in srgb, var(--ao-accent) 11%, transparent);
+  border-color: color-mix(in srgb, var(--ao-accent) 22%, transparent);
+  box-shadow: none;
+}
+.ao-action:hover { background: color-mix(in srgb, var(--ao-accent) 17%, transparent); border-color: color-mix(in srgb, var(--ao-accent) 42%, transparent); color: var(--ao-accent); }
+.ao-action--wide { width: 100%; }
+.ao-action--stop { --ao-accent: var(--rose); }
+
+/* Medicine chips (per-drug hue) */
+.ao-med {
+  flex: 1 1 88px;
+  min-height: 44px;
+  justify-content: center;
+  border-radius: 13px;
+  font-weight: 800; font-size: .86rem;
+  color: var(--ao-med-hue);
+  background: color-mix(in srgb, var(--ao-med-hue) 10%, transparent);
+  border-color: color-mix(in srgb, var(--ao-med-hue) 24%, transparent);
+  box-shadow: none;
+}
+.ao-med::before { content: ''; width: 7px; height: 7px; flex: none; border-radius: 999px; background: var(--ao-med-hue); }
+.ao-med:hover { background: color-mix(in srgb, var(--ao-med-hue) 17%, transparent); border-color: color-mix(in srgb, var(--ao-med-hue) 45%, transparent); color: var(--ao-med-hue); }
+.ao-med--tylenol { --ao-med-hue: var(--hue-tylenol); }
+.ao-med--motrin { --ao-med-hue: var(--hue-motrin); }
+.ao-med--vitamin { --ao-med-hue: var(--hue-vitamin); }
+
+.ao-hint { margin: 0; color: var(--ink-soft); font-size: .8rem; font-weight: 650; line-height: 1.35; }
+
+/* Notes */
+.ao-note { display: grid; gap: 5px; }
+.ao-note > span { font-size: .78rem; font-weight: 800; color: var(--ink-soft); }
+.ao-note--feed { grid-column: 1 / -1; padding-top: 2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ao-panel, .ao-card { animation: none; }
+  .ao-live::before { animation: none; }
+  .ao-toggle-chevron { transition: none; }
+}
+/* ===== end Additional options — premium redesign ===== */
+
 /* ---------- 8. Reminder banners ---------- */
 .medicine-reminder-stack { display: grid; gap: 10px; }
 .medicine-reminder-banner {
