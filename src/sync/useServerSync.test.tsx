@@ -5,6 +5,9 @@ import type { GrowthMeasurement } from '../domain/growthTypes'
 import type { DiaperEvent, Entry, MedicineEvent, Session, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
 import { useServerSync } from './useServerSync'
 import { hasPendingSyncForBaby } from './serverSyncTypes'
+import { SYNC_DEBOUNCE_MS } from './useServerSyncEffects'
+
+const putCalls = (mock: ReturnType<typeof vi.fn>) => mock.mock.calls.filter((call) => call[1]?.method === 'PUT')
 
 const entry = (id: string, endedAt: number): Entry => ({
   id,
@@ -202,6 +205,55 @@ describe('useServerSync', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' })))
     const putCall = fetchMock.mock.calls.find((call) => call[1]?.method === 'PUT')
     expect(JSON.parse(String(putCall?.[1]?.body)).session.note).toBe('local-session')
+  })
+
+  it('coalesces a burst of local edits into a single debounced PUT', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init || init.method !== 'PUT') return { ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'v1' }) }
+      return { ok: true, json: async () => ({ updatedAt: 'v2' }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' })))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const button = screen.getByRole('button', { name: 'add local' })
+    button.click()
+    button.click()
+    button.click()
+
+    await waitFor(() => expect(putCalls(fetchMock).length).toBe(1))
+    // No further PUT should land after the debounce window fully elapses.
+    await new Promise((resolve) => setTimeout(resolve, SYNC_DEBOUNCE_MS + 100))
+    expect(putCalls(fetchMock).length).toBe(1)
+  })
+
+  it('never runs two syncs concurrently (single-flight serialization)', async () => {
+    let concurrent = 0
+    let maxConcurrent = 0
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init || init.method !== 'PUT') return { ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'v1' }) }
+      concurrent += 1
+      maxConcurrent = Math.max(maxConcurrent, concurrent)
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      concurrent -= 1
+      return { ok: true, json: async () => ({ updatedAt: 'v2' }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' })))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    screen.getByRole('button', { name: 'add local' }).click()
+    // Once the first PUT is in flight, a focus/online retry requests another
+    // sync; single-flight must defer it rather than run it concurrently.
+    await waitFor(() => expect(putCalls(fetchMock).length).toBe(1))
+    window.dispatchEvent(new Event('online'))
+
+    await waitFor(() => expect(putCalls(fetchMock).length).toBeGreaterThanOrEqual(2))
+    expect(maxConcurrent).toBe(1)
   })
 
   it('writes local changes back to the server state without opening a live subscription', async () => {

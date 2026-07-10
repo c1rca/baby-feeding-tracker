@@ -99,12 +99,13 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
     await user.click(screen.getByRole('button', { name: /Log bottle-only feed/i }))
     await user.click(screen.getByRole('button', { name: /^log bottle$/i }))
-    expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')).toHaveLength(1)
 
-    window.dispatchEvent(new Event('online'))
-    await new Promise((resolve) => window.setTimeout(resolve, 10))
-    expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' }))
+    // The write is debounced; once it lands the pending marker clears and the
+    // online save never surfaces an offline banner.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ method: 'PUT' })))
+    await waitFor(() => expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull())
+    expect(screen.queryByText(/Offline changes saved/i)).toBeNull()
   })
 
   it('switches babies and hydrates the selected baby with the scope header', async () => {

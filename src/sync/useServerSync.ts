@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { saveServerState } from './serverSyncApi'
 import { buildApiStatePayload } from './serverSyncModels'
 import { clearPendingSync, hasPendingSyncForBaby, markPendingSync, type SyncStatus, type SyncToApiOverrides, type UseServerSyncOptions } from './serverSyncTypes'
@@ -12,8 +12,23 @@ export const useServerSync = (options: UseServerSyncOptions) => {
   const [hasHydrated, setHasHydrated] = useState(false)
   const latestPayloadRef = useLatestServerPayload(options)
   const { applyServerState, applyingServerStateRef, serverUpdatedAtRef, skipNextSyncRef } = useServerStateApplier(options)
+  // Single-flight: never overlap PUTs. Concurrent writes could return out of
+  // order, letting a stale updatedAt regress serverUpdatedAtRef so the next
+  // write is treated as a stale replay and its deletes are dropped. A request
+  // made while one is in flight schedules exactly one trailing rerun, which
+  // reads the latest payload — so the newest state still lands.
+  const inFlightRef = useRef(false)
+  const rerunRef = useRef(false)
+  const syncToApiRef = useRef<(overrides?: SyncToApiOverrides) => Promise<void>>(async () => {})
 
   const syncToApi = useCallback(async (overrides: SyncToApiOverrides = {}) => {
+    if (inFlightRef.current) {
+      // An override sync (the initial merge) must not be dropped; run it as a
+      // trailing rerun with its overrides once the in-flight sync settles.
+      rerunRef.current = true
+      return
+    }
+    inFlightRef.current = true
     const payload = latestPayloadRef.current
     setSyncStatus('syncing')
     try {
@@ -25,8 +40,19 @@ export const useServerSync = (options: UseServerSyncOptions) => {
     } catch {
       markPendingSync(selectedBabyId)
       setSyncStatus('offline')
+    } finally {
+      inFlightRef.current = false
+      if (rerunRef.current) {
+        rerunRef.current = false
+        void syncToApiRef.current()
+      }
     }
   }, [applyServerState, latestPayloadRef, selectedBabyId, serverUpdatedAtRef])
+  // Keep the ref pointing at the latest syncToApi so the in-flight rerun calls
+  // the current closure (setting a ref during render is disallowed).
+  useEffect(() => {
+    syncToApiRef.current = syncToApi
+  }, [syncToApi])
 
   const isApplyingServerState = useCallback(() => applyingServerStateRef.current, [applyingServerStateRef])
   const consumeSkipNextSync = useCallback(() => {

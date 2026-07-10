@@ -1,5 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { hasPendingSyncForBaby, markPendingSync, type ServerSyncPayload, type SyncToApiOverrides } from './serverSyncTypes'
+
+// Trailing debounce so a burst of edits (e.g. typing a note, rapid taps)
+// coalesces into one whole-state PUT instead of one PUT per mutation.
+export const SYNC_DEBOUNCE_MS = 600
 
 type PersistLocalChangesOptions = {
   hasHydrated: boolean
@@ -36,6 +40,7 @@ export function usePersistLocalChanges({
   session,
   theme,
 }: PersistLocalChangesOptions) {
+  const debounceRef = useRef<number | undefined>(undefined)
   useEffect(() => {
     if (!hasHydrated) return
     if (isApplyingServerState()) {
@@ -44,8 +49,17 @@ export function usePersistLocalChanges({
     }
     if (consumeSkipNextSync()) return
 
+    // Record the pending marker immediately (so an offline state is captured
+    // even before the debounce fires), then debounce the actual PUT.
     markPendingSync(selectedBabyId)
-    window.setTimeout(() => void syncToApi(), 0)
+    if (debounceRef.current !== undefined) window.clearTimeout(debounceRef.current)
+    debounceRef.current = window.setTimeout(() => {
+      debounceRef.current = undefined
+      void syncToApi()
+    }, SYNC_DEBOUNCE_MS)
+    return () => {
+      if (debounceRef.current !== undefined) window.clearTimeout(debounceRef.current)
+    }
   }, [hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme])
 }
 
