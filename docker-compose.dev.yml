@@ -12,6 +12,7 @@ services:
       - AUTH_BYPASS=${AUTH_BYPASS:-0}
       - AUTH_ALLOWED_EMAILS=${AUTH_ALLOWED_EMAILS:-alex@example.test,test@example.test,parent@example.com}
       - TEXT_LOGIN_SMS_DOMAIN=${TEXT_LOGIN_SMS_DOMAIN:-msg.fi.google.com,vtext.com,tmomail.net,txt.att.net,mms.att.net,pm.sprint.com,vmobl.com}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://10.10.1.206:8081}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}
