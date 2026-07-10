@@ -16,6 +16,10 @@ services:
       # users keep working). Set this to your beta cohort before relying on
       # text sign-in for onboarding.
       - AUTH_ALLOWED_PHONES=${AUTH_ALLOWED_PHONES:-}
+      # Carrier email-to-SMS gateway domain for text sign-in delivery (e.g.
+      # msg.fi.google.com for Google Fi). Empty = fall back to TEXT_EMAIL_TO.
+      # Set the real value in the gitignored .env, not here.
+      - TEXT_LOGIN_SMS_DOMAIN=${TEXT_LOGIN_SMS_DOMAIN:-}
       # Bearer-token session lifetime in days (default 30, clamped 1..365).
       - AUTH_SESSION_TTL_DAYS=${AUTH_SESSION_TTL_DAYS:-30}
       - TRUST_PROXY=${TRUST_PROXY:-1}
