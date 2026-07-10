@@ -37,7 +37,7 @@ export const useServerSync = (options: UseServerSyncOptions) => {
 
   useInitialServerSync({ latestPayloadRef, serverUpdatedAtRef, applyServerState, syncToApi, selectedBabyId, setHasHydrated, setSyncStatus })
   usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme })
-  usePendingSyncRetry(syncToApi)
+  usePendingSyncRetry(syncToApi, selectedBabyId)
 
   return { syncStatus, hasHydrated }
 }
