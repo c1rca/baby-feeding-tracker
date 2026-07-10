@@ -27,9 +27,14 @@ const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upser
 const appendEventLog = createEventLogger(config.eventLogPath)
 const textEmailSender = createTextEmailSender(config)
 const phoneToTextEmail = (phone) => {
-  if (!config.textLoginSmsDomain) return config.textEmailTo
   const digits = String(phone || '').replace(/\D/g, '')
-  return digits ? `${digits}@${config.textLoginSmsDomain}` : config.textEmailTo
+  if (!digits) return config.textEmailTo
+  const domains = String(config.textLoginSmsDomain || '')
+    .split(',')
+    .map((domain) => domain.trim())
+    .filter(Boolean)
+  if (!domains.length) return config.textEmailTo
+  return domains.map((domain) => `${digits}@${domain}`).join(',')
 }
 const sendTextLogin = textEmailSender
   ? async (payload) => {
