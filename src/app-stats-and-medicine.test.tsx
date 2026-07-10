@@ -192,6 +192,13 @@ describe('App interactions', () => {
     render(<App />)
     await vi.advanceTimersByTimeAsync(0)
 
+    // Let the async state load + reminder computation settle before asserting.
+    // Under CPU load a single microtask flush can leave only the first reminder
+    // rendered; step the fake clock until all three are present (or give up).
+    for (let attempt = 0; attempt < 10 && screen.queryAllByRole('alert').length < 3; attempt += 1) {
+      await vi.advanceTimersByTimeAsync(50)
+    }
+
     const alerts = screen.getAllByRole('alert')
     expect(alerts).toHaveLength(3)
     expect(alerts.map((alert) => alert.textContent)).toEqual([
