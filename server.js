@@ -79,7 +79,7 @@ const createBackupOnStart = createStartupBackup({ db, backupDir: config.backupDi
 
 const checkDatabaseReady = () => {
   try {
-    selectState.get()
+    selectAllBabyStates.all()
     return true
   } catch {
     return false
@@ -148,7 +148,7 @@ app.listen(config.port, () => {
   console.log(`feeding-tracker server listening on :${config.port}`)
   console.log(`sqlite db: ${config.dbPath}`)
   void createBackupOnStart()
-  appendStartupStateSnapshot({ selectState, appendEventLog, summarizeState, redactError })
+  appendStartupStateSnapshot({ selectState, selectAllStates: selectAllBabyStates, appendEventLog, summarizeState, redactError })
   if (config.notificationChannelsAvailable) {
     notificationScheduler.evaluate()
     console.log(`reminders ${gotifyRemindersEnabled ? 'enabled' : 'disabled'}: gotify=${config.gotifyAvailable ? config.gotifyUrl : 'off'}, textEmail=${config.textEmailAvailable ? 'on' : 'off'}`)

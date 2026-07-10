@@ -13,6 +13,18 @@ test('public health route reports readiness without leaking configuration', () =
   assert.deepEqual(res.body, { ok: true })
 })
 
+test('public health route can be backed by scoped baby_state readiness without touching legacy app_state', () => {
+  const app = createFakeApp()
+  let scopedReadCount = 0
+  createHealthRouter({ checkDatabaseReady: () => { scopedReadCount += 1; return true } })(app)
+
+  const res = createJsonResponse()
+  app.route('GET', '/api/health')({}, res)
+
+  assert.equal(scopedReadCount, 1)
+  assert.deepEqual(res.body, { ok: true })
+})
+
 test('public health route reports 503 when the database is not readable', () => {
   const app = createFakeApp()
   createHealthRouter({ checkDatabaseReady: () => false })(app)
