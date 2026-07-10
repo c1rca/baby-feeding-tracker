@@ -8,8 +8,9 @@ services:
       - PORT=8080
       - DB_DIR=/data
       - DB_PATH=/data/feeding-tracker-dev.db
-      - AUTH_REQUIRED=${AUTH_REQUIRED:-0}
+      - AUTH_REQUIRED=${AUTH_REQUIRED:-1}
       - AUTH_BYPASS=${AUTH_BYPASS:-0}
+      - ALLOW_INSECURE_LOCAL_MODE=1
       - AUTH_ALLOWED_EMAILS=${AUTH_ALLOWED_EMAILS:-alex@example.test,test@example.test,parent@example.com}
       - TEXT_LOGIN_SMS_DOMAIN=${TEXT_LOGIN_SMS_DOMAIN:-msg.fi.google.com,vtext.com,tmomail.net,txt.att.net,mms.att.net,pm.sprint.com,vmobl.com}
       - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://10.10.1.206:8081}
