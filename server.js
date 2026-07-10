@@ -27,8 +27,12 @@ const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upser
 const appendEventLog = createEventLogger(config.eventLogPath)
 const textEmailSender = createTextEmailSender(config)
 const phoneToTextEmail = (phone) => {
-  const digits = String(phone || '').replace(/\D/g, '')
+  let digits = String(phone || '').replace(/\D/g, '')
   if (!digits) return config.textEmailTo
+  // US carrier email-to-SMS gateways (incl. Google Fi msg.fi.google.com) address
+  // the 10-digit number without the country code, so drop a leading 1 from the
+  // 11-digit E.164 form — otherwise the gateway rejects/silently drops the code.
+  if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1)
   const domains = String(config.textLoginSmsDomain || '')
     .split(',')
     .map((domain) => domain.trim())
