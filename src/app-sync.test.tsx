@@ -198,6 +198,7 @@ describe('App interactions', () => {
 
   it('keeps this device theme preference after server hydration', async () => {
     const user = userEvent.setup()
+    document.cookie = 'baby_feeding_theme=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT'
     localStorage.setItem('baby-feeding-tracker:v1:theme', 'light')
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })

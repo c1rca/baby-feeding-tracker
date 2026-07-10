@@ -225,7 +225,7 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
       textRequestLimiter.record(key)
       let user = selectUserByEmail?.get(email)
       if (!user && !isEmailAllowed(email, allowedEmails)) {
-        appendEventLog('auth_email_login_denied', { email })
+        appendEventLog('auth_email_login_denied', { maskedEmail: maskEmail(email) })
         res.status(200).json({ ok: true, maskedEmail: maskEmail(email) })
         return
       }

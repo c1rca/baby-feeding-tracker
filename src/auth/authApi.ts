@@ -31,6 +31,7 @@ export async function fetchAuthSession(): Promise<AuthSessionResult> {
 export type LoginResult = { ok: true; token: string } | { ok: false; error: string }
 export type TextLoginRequestResult = { ok: true; maskedPhone: string } | { ok: false; error: string }
 export type EmailLoginRequestResult = { ok: true; maskedEmail: string } | { ok: false; error: string }
+export type MagicLoginRequestResult = { ok: true; maskedDestination: string; channel: 'text' | 'email' } | { ok: false; error: string }
 export type SignupInput = { email: string }
 
 export async function signupWithPassword(input: SignupInput): Promise<LoginResult> {
@@ -108,6 +109,17 @@ export async function requestTextLogin(phone: string): Promise<TextLoginRequestR
   } catch {
     return { ok: false, error: 'Could not reach the server' }
   }
+}
+
+export async function requestMagicLogin(destination: string): Promise<MagicLoginRequestResult> {
+  const value = destination.trim()
+  if (!value) return { ok: false, error: 'Enter your mobile number or email' }
+  if (value.includes('@')) {
+    const result = await requestEmailLogin(value)
+    return result.ok ? { ok: true, channel: 'email', maskedDestination: result.maskedEmail } : result
+  }
+  const result = await requestTextLogin(value)
+  return result.ok ? { ok: true, channel: 'text', maskedDestination: result.maskedPhone } : result
 }
 
 export async function confirmTextLogin(code: string): Promise<LoginResult> {

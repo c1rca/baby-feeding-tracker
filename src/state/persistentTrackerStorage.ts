@@ -102,7 +102,7 @@ const getCookieTheme = (): Theme | null => {
 
 export const readTheme = (): Theme => {
   const stored = localStorage.getItem(TRACKER_STORAGE_KEYS.theme)
-  return getCookieTheme() || (stored === 'dark' || stored === 'light' ? stored : null) || 'light'
+  return getCookieTheme() || (stored === 'dark' || stored === 'light' ? stored : null) || 'dark'
 }
 
 export const hasPersistedThemePreference = () => {

@@ -11,13 +11,13 @@ services:
       - AUTH_REQUIRED=${AUTH_REQUIRED:-1}
       - AUTH_BYPASS=${AUTH_BYPASS:-0}
       - ALLOW_INSECURE_LOCAL_MODE=1
-      - AUTH_ALLOWED_EMAILS=${AUTH_ALLOWED_EMAILS:-alex@example.test,test@example.test,parent@example.com}
+      - AUTH_ALLOWED_EMAILS=${AUTH_ALLOWED_EMAILS:-alex@example.test,test@example.test,parent@example.com,waldbauma686@gmail.com}
       - AUTH_ALLOWED_PHONES=${AUTH_ALLOWED_PHONES:-}
       # Dev defaults to a non-routable sink domain so text-login never sends real
       # SMS to a live carrier gateway. Override only when deliberately testing
       # real delivery, and never on a reachable LAN.
       - TEXT_LOGIN_SMS_DOMAIN=${TEXT_LOGIN_SMS_DOMAIN:-sms-sink.invalid}
-      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-http://10.10.1.206:8081}
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-https://dev.feedr.kjw.lol}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}

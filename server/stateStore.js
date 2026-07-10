@@ -22,7 +22,7 @@ const safeParseObject = (value) => {
 }
 
 export const serializeState = (row) => {
-  if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'light', updatedAt: null }
+  if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'dark', updatedAt: null }
   return {
     householdId: row.household_id || DEFAULT_HOUSEHOLD_ID,
     babyId: row.baby_id || DEFAULT_BABY_ID,
