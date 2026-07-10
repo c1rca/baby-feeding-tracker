@@ -39,12 +39,18 @@ const phoneToTextEmail = (phone) => {
   // abuse). The operator configures the correct gateway for the beta cohort.
   return `${digits}@${domains[0]}`
 }
+// Mask an all-digit local part (a phone carrier gateway address) down to its
+// last 4 digits before it reaches the log; real email recipients pass through.
+const maskRecipient = (to) => String(to || '')
+  .split(',')
+  .map((addr) => addr.replace(/^(\d+)(@.*)?$/, (_match, digits, domain = '') => `${'•'.repeat(Math.max(0, digits.length - 4))}${digits.slice(-4)}${domain}`))
+  .join(',')
 const sendTextLogin = textEmailSender
   ? async (payload) => {
       const to = phoneToTextEmail(payload.to)
-      appendEventLog('text_login_send_attempt', { to })
+      appendEventLog('text_login_send_attempt', { to: maskRecipient(to) })
       await textEmailSender({ ...payload, to })
-      appendEventLog('text_login_send_success', { to })
+      appendEventLog('text_login_send_success', { to: maskRecipient(to) })
     }
   : null
 
