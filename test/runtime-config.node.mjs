@@ -41,3 +41,16 @@ test('non-production config is unaffected by the guard', () => {
   assert.equal(config.authRequired, false)
   assert.equal(config.authBypass, false)
 })
+
+test('session TTL defaults to 30 days and clamps out-of-range values', () => {
+  assert.equal(createRuntimeConfig({ rootDir: '/app', env: {} }).sessionTtlDays, 30)
+  assert.equal(createRuntimeConfig({ rootDir: '/app', env: { AUTH_SESSION_TTL_DAYS: '7' } }).sessionTtlDays, 7)
+  assert.equal(createRuntimeConfig({ rootDir: '/app', env: { AUTH_SESSION_TTL_DAYS: '99999' } }).sessionTtlDays, 365)
+  assert.equal(createRuntimeConfig({ rootDir: '/app', env: { AUTH_SESSION_TTL_DAYS: '0' } }).sessionTtlDays, 1)
+  assert.equal(createRuntimeConfig({ rootDir: '/app', env: { AUTH_SESSION_TTL_DAYS: 'garbage' } }).sessionTtlDays, 30)
+})
+
+test('phone allow-list normalizes numbers to E.164 and drops junk', () => {
+  const config = createRuntimeConfig({ rootDir: '/app', env: { AUTH_ALLOWED_PHONES: '(555) 123-4567, 15550009999, nope' } })
+  assert.deepEqual(config.allowedPhones, ['+15551234567', '+15550009999'])
+})

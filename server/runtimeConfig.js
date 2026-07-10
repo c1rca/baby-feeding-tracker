@@ -59,6 +59,11 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     .map((entry) => normalizeAllowedPhone(entry))
     .filter(Boolean)
   const bootstrapPassword = env.AUTH_BOOTSTRAP_PASSWORD || ''
+  // Session lifetime. Year-long bearer tokens in localStorage are a large theft
+  // window; default to 30 days and let the operator tune it. Clamped to a sane
+  // 1..365 range so a typo can't create effectively-immortal sessions.
+  const rawSessionTtlDays = Number(env.AUTH_SESSION_TTL_DAYS)
+  const sessionTtlDays = Number.isFinite(rawSessionTtlDays) ? Math.min(365, Math.max(1, Math.round(rawSessionTtlDays))) : 30
   const isProduction = env.NODE_ENV === 'production'
   // Number of proxy hops to trust for req.ip (so rate-limit keys use the real
   // client IP, not the reverse proxy's). Empty = don't trust any proxy.
@@ -92,6 +97,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     allowedEmails,
     allowedPhones,
     bootstrapPassword,
+    sessionTtlDays,
     isProduction,
     trustProxy,
     publicBaseUrl,
