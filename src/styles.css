@@ -606,7 +606,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
    The legacy .additional-options-* / .medicine-panel rules above are left
    intact and simply unused.
    ============================================================ */
-.ao-shell { display: grid; gap: 10px; margin: 4px 0 12px; }
+.ao-shell { display: grid; gap: 10px; margin: 10px 0 12px; }
 
 /* Toggle bar */
 .ao-toggle {
