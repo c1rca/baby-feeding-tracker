@@ -1,14 +1,14 @@
-import { CalendarDays, ChevronDown, Dumbbell, Milk, Pill, Play, Square } from 'lucide-react'
+import { CalendarDays, ChevronDown, Dumbbell, Milk, Moon, Pill, Play, Square } from 'lucide-react'
 import type { HeroPanelProps } from './HeroPanel.types'
 
-type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'tummySession' | 'setTummySession' | 'setAdditionalOptionsOpen' | 'setBottleOpen' | 'setManualOpen' | 'setSession' | 'logMedicine' | 'logTummyTimeMinutes' | 'startTummyTime' | 'stopTummyTime'>
+type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'tummySession' | 'setTummySession' | 'setAdditionalOptionsOpen' | 'setBottleOpen' | 'setManualOpen' | 'setSession' | 'logMedicine' | 'logTummyTimeMinutes' | 'startTummyTime' | 'stopTummyTime' | 'startSleep' | 'stopSleep'>
 
 const TUMMY_PRESETS = [5, 10, 15, 20] as const
 
 // Premium "More actions" drawer — organized, color-coded category cards.
 // Revert path: restore this file + delete the "Additional options — premium
 // redesign" block in styles.css / styles-classic.css (or git revert the commit).
-export function AdditionalOptions({ session, additionalOptionsOpen, tummySession, setTummySession, setAdditionalOptionsOpen, setBottleOpen, setManualOpen, setSession, logMedicine, logTummyTimeMinutes, startTummyTime, stopTummyTime }: AdditionalOptionsProps) {
+export function AdditionalOptions({ session, additionalOptionsOpen, tummySession, setTummySession, setAdditionalOptionsOpen, setBottleOpen, setManualOpen, setSession, logMedicine, logTummyTimeMinutes, startTummyTime, stopTummyTime, startSleep, stopSleep }: AdditionalOptionsProps) {
   return (
     <div className="ao-shell">
       <button
@@ -30,9 +30,9 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
             <header className="ao-card-head">
               <span className="ao-card-icon"><Dumbbell size={15} /></span>
               <span className="ao-card-title">Tummy time</span>
-              {tummySession ? <span className="ao-live" aria-label="Tummy time running">Live</span> : null}
+              {tummySession && tummySession.kind !== 'sleep' ? <span className="ao-live" aria-label="Tummy time running">Live</span> : null}
             </header>
-            {tummySession ? (
+            {tummySession && tummySession.kind !== 'sleep' ? (
               <div className="ao-card-body">
                 <button type="button" className="ao-action ao-action--stop" aria-label="Stop Tummy Time" onClick={stopTummyTime}>
                   <Square size={14} /> Stop session
@@ -52,8 +52,8 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
                     </button>
                   ))}
                 </div>
-                {session ? (
-                  <p className="ao-hint">Save or clear the active feed before starting Tummy Time.</p>
+                {session || tummySession ? (
+                  <p className="ao-hint">{tummySession?.kind === 'sleep' ? 'Stop Sleep before starting Tummy Time.' : 'Save or clear the active feed before starting Tummy Time.'}</p>
                 ) : (
                   <button type="button" className="ao-action" aria-label="Start Tummy Time" onClick={startTummyTime}>
                     <Play size={14} /> Start session
@@ -61,6 +61,25 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
                 )}
               </div>
             )}
+          </section>
+
+          <section className="ao-card ao-card--sleep" role="group" aria-label="Sleep">
+            <header className="ao-card-head">
+              <span className="ao-card-icon"><Moon size={15} /></span>
+              <span className="ao-card-title">Sleep</span>
+              {tummySession?.kind === 'sleep' ? <span className="ao-live" aria-label="Sleep running">Live</span> : null}
+            </header>
+            <div className="ao-card-body">
+              {tummySession?.kind === 'sleep' ? (
+                <button type="button" className="ao-action ao-action--stop" aria-label="Stop Sleep" onClick={stopSleep}><Square size={14} /> Stop session</button>
+              ) : tummySession ? (
+                <p className="ao-hint">Stop Tummy Time before starting Sleep.</p>
+              ) : session ? (
+                <p className="ao-hint">Save or clear the active feed before starting Sleep.</p>
+              ) : (
+                <button type="button" className="ao-action" aria-label="Start Sleep" onClick={startSleep}><Play size={14} /> Start session</button>
+              )}
+            </div>
           </section>
 
           <section className="ao-card ao-card--medicine" role="group" aria-label="Medicine">

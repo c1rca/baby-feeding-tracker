@@ -10,7 +10,7 @@ export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide
   const timerState = tummySession || (session && activeSide) ? 'is-live' : session ? 'is-paused' : 'is-idle'
   return (
     <div className="timer-cluster">
-      {tummySession ? <span className="timer-mode-pill">Tummy Time</span> : null}
+      {tummySession ? <span className="timer-mode-pill">{tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</span> : null}
       <div className={`timer-shell ${timerState}`}>
         <div className="timer-halo" aria-hidden="true" />
         <div className="timer">{formatDuration(displaySeconds)}</div>

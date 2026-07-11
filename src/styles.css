@@ -662,6 +662,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
   animation: ao-card-in .3s both cubic-bezier(.2, .9, .3, 1.2);
 }
 .ao-card--tummy { --ao-accent: var(--hue-tummy); }
+.ao-card--sleep { --ao-accent: #4f46e5; }
 .ao-card--medicine { --ao-accent: var(--hue-tylenol); }
 .ao-card--bottle { --ao-accent: var(--hue-bottle); }
 .ao-card--missed { --ao-accent: var(--berry); }
@@ -932,6 +933,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .badge-medicine-motrin { --badge-hue: var(--hue-motrin); }
 .badge-medicine-vitamin_d { --badge-hue: var(--hue-vitamin); }
 .badge-tummy { --badge-hue: var(--hue-tummy); }
+.badge-sleep { --badge-hue: #4f46e5; }
 
 .metric, .metric-chip {
   border: 1px solid var(--border);
@@ -1066,6 +1068,8 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 /* Tabbed settings shell: navigation rail + scrolling panel. */
 .settings.modal-card {
   width: min(780px, 100%);
+  height: min(720px, calc(100dvh - 28px));
+  min-height: min(720px, calc(100dvh - 28px));
   padding: 0;
   overflow: hidden;
   display: flex;

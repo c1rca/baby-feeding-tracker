@@ -28,27 +28,36 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
     showToast(`${minutes} min Tummy Time saved`)
   }
 
-  const startTummyTime = () => {
+  const startCareTimer = (kind: 'tummy' | 'sleep') => {
+    const label = kind === 'sleep' ? 'Sleep' : 'Tummy Time'
     if (feedSession) {
-      showToast('Save or clear the active feed before starting Tummy Time')
+      showToast(`Save or clear the active feed before starting ${label}`)
       return
     }
-    setTummySession({ id: makeId(), startedAt: new Date().getTime(), note: '' })
+    if (tummySession) return
+    setTummySession({ id: makeId(), startedAt: new Date().getTime(), note: '', kind })
     setAdditionalOptionsOpen(true)
-    showToast('Tummy Time started')
+    showToast(`${label} started`)
   }
 
-  const stopTummyTime = () => {
+  const startTummyTime = () => startCareTimer('tummy')
+  const startSleep = () => startCareTimer('sleep')
+
+  const stopCareTimer = () => {
     if (!tummySession) return
-    const tummyTime = { id: tummySession.id, startedAt: tummySession.startedAt, endedAt: new Date().getTime(), note: tummySession.note }
+    const label = tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'
+    const tummyTime = { id: tummySession.id, startedAt: tummySession.startedAt, endedAt: new Date().getTime(), note: tummySession.note, kind: tummySession.kind }
     setTummyTimes((prev) => [tummyTime, ...prev].sort((a, b) => b.startedAt - a.startedAt))
     setTummySession(null)
     setAdditionalOptionsOpen(false)
     clearUndoTimeout()
     const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
     setUndoState({ tummyTime, timeoutId, kind: 'tummy-log' })
-    showToast('Tummy Time saved')
+    showToast(`${label} saved`)
   }
+
+  const stopTummyTime = stopCareTimer
+  const stopSleep = stopCareTimer
 
   const startTummyTimeEdit = (tummyTime: TummyTimeEvent) => {
     setEditingTummyTime({ id: tummyTime.id, startTime: formatClockInput(tummyTime.startedAt), endTime: formatClockInput(tummyTime.endedAt), note: tummyTime.note ?? '', originalStartedAt: tummyTime.startedAt, originalEndedAt: tummyTime.endedAt })
@@ -76,5 +85,5 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
     showToast('Tummy Time deleted')
   }
 
-  return { logTummyTimeMinutes, startTummyTime, stopTummyTime, startTummyTimeEdit, saveTummyTimeEdit, deleteTummyTime }
+  return { logTummyTimeMinutes, startTummyTime, stopTummyTime, startSleep, stopSleep, startTummyTimeEdit, saveTummyTimeEdit, deleteTummyTime }
 }

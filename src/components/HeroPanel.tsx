@@ -47,6 +47,8 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   logTummyTimeMinutes,
   startTummyTime,
   stopTummyTime,
+  startSleep,
+  stopSleep,
 }, ref) {
   const [clearConfirmingFor, setClearConfirmingFor] = useState<number | null>(null)
   const clearConfirming = Boolean(session && clearConfirmingFor === session.startedAt)
@@ -73,7 +75,7 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
       <StartOffsetControl session={session} startOffsetOpen={startOffsetOpen} startInputMode={startInputMode} startClockText={startClockText} startMinutesAgo={startMinutesAgo} selectedStartMinutesAgo={selectedStartMinutesAgo} setStartOffsetOpen={setStartOffsetOpen} setStartInputMode={setStartInputMode} setStartClockText={setStartClockText} setStartMinutesAgo={setStartMinutesAgo} />
       <HeroActions session={session} tummySession={tummySession} activeSide={activeSide} activeOppositeSide={activeOppositeSide} suggestedSide={suggestedSide} startSession={startSession} switchSide={switchSide} resume={resume} endSession={endSession} clearConfirming={clearConfirming} requestClearSession={requestClearSession} clearIcon={<XCircle size={14} />} />
       <DiaperQuickLog session={session} selectedDiapers={selectedDiapers} availableSelectedDiapers={availableSelectedDiapers} toggleDiaperSelection={toggleDiaperSelection} logSelectedDiapers={logSelectedDiapers} />
-      <AdditionalOptions session={session} additionalOptionsOpen={additionalOptionsOpen} tummySession={tummySession} setTummySession={setTummySession} setAdditionalOptionsOpen={setAdditionalOptionsOpen} setBottleOpen={setBottleOpen} setManualOpen={setManualOpen} setSession={setSession} logMedicine={logMedicine} logTummyTimeMinutes={logTummyTimeMinutes} startTummyTime={startTummyTime} stopTummyTime={stopTummyTime} />
+      <AdditionalOptions session={session} additionalOptionsOpen={additionalOptionsOpen} tummySession={tummySession} setTummySession={setTummySession} setAdditionalOptionsOpen={setAdditionalOptionsOpen} setBottleOpen={setBottleOpen} setManualOpen={setManualOpen} setSession={setSession} logMedicine={logMedicine} logTummyTimeMinutes={logTummyTimeMinutes} startTummyTime={startTummyTime} stopTummyTime={stopTummyTime} startSleep={startSleep} stopSleep={stopSleep} />
     </section>
   )
 })

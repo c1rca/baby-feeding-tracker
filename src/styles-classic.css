@@ -96,6 +96,7 @@ body { margin: 0; }
 .ao-panel { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); align-items:start; gap:10px; animation:panel-in .18s ease; }
 .ao-card { --ao-accent:#2563eb; display:grid; gap:10px; padding:13px; border:1px solid #e8edf3; border-radius:16px; background:rgba(255,255,255,.72); box-shadow:0 1px 2px rgba(15,23,42,.04); }
 .ao-card--tummy { --ao-accent:#8b5cf6; }
+.ao-card--sleep { --ao-accent:#4f46e5; }
 .ao-card--medicine { --ao-accent:#f97316; }
 .ao-card--bottle { --ao-accent:#0d9488; }
 .ao-card--missed { --ao-accent:#2563eb; }
@@ -200,6 +201,7 @@ button.end-feed { font-weight: 800; border-width: 2px; }
 .badge-medicine { background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
 .badge-medicine-motrin { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
 .badge-tummy { background:#f5f3ff; color:#3730a3; border-color:#c4b5fd; }
+.badge-sleep { background:#eef2ff; color:#3730a3; border-color:#a5b4fc; }
 .diaper-action { background:linear-gradient(180deg,#ecfeff,#f0f9ff); border-color:#bae6fd; color:#0369a1; }
 .diaper-action:hover { border-color:#7dd3fc; }
 .diaper-stat { background:linear-gradient(180deg,rgba(236,254,255,.92),rgba(255,255,255,.9)); }
@@ -252,7 +254,7 @@ input:focus-visible { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,
 .settings .row { gap: 8px; }
 
 /* Tabbed settings shell */
-.settings.modal-card { width:min(780px,100%); padding:0; overflow:hidden; display:flex; }
+.settings.modal-card { width:min(780px,100%); height:min(720px,calc(100dvh - 28px)); min-height:min(720px,calc(100dvh - 28px)); padding:0; overflow:hidden; display:flex; }
 .settings-shell { display:grid; grid-template-columns:210px minmax(0,1fr); width:100%; min-height:0; max-height:calc(100dvh - 28px); }
 .settings-rail { display:flex; flex-direction:column; gap:16px; min-height:0; padding:18px 12px; overflow-y:auto; border-right:1px solid #e2e8f0; background:#f8fafc; }
 .settings-rail-brand { display:grid; gap:2px; padding:4px 10px 0; }

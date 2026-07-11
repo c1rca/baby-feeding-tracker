@@ -43,4 +43,6 @@ export type HeroPanelProps = {
   logTummyTimeMinutes: (minutes: number) => void
   startTummyTime: () => void
   stopTummyTime: () => void
+  startSleep: () => void
+  stopSleep: () => void
 }

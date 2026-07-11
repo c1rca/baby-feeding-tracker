@@ -1,5 +1,5 @@
 import { formatDistanceToNow } from 'date-fns'
-import { Dumbbell, MoreHorizontal, Pencil, Save, Trash2 } from 'lucide-react'
+import { Dumbbell, Moon, MoreHorizontal, Pencil, Save, Trash2 } from 'lucide-react'
 import { formatTimelineTimestamp } from '../../domain/trackerDomain'
 import { formatDuration } from '../../domain/feedingUtils'
 import { tummyTimeDurationSeconds } from '../../domain/tummyTime'
@@ -14,6 +14,8 @@ export function TummyTimeTimelineItem({ tummyTime, actions }: { tummyTime: Tummy
   const confirmingDelete = actions.confirmingDeleteEntryId === tummyTime.id
   const timestamp = formatTimelineTimestamp(tummyTime.startedAt)
   const duration = formatDuration(tummyTimeDurationSeconds(tummyTime))
+  const isSleep = tummyTime.kind === 'sleep'
+  const label = isSleep ? 'Sleep' : 'Tummy Time'
 
   return (
     <li className={`timeline-item timeline-tummy ${menuOpen ? 'menu-open' : ''}`}>
@@ -21,7 +23,7 @@ export function TummyTimeTimelineItem({ tummyTime, actions }: { tummyTime: Tummy
         <div className="timeline-main">
           <div className="timeline-head">
             <strong>{timestamp.primary}</strong>
-            <span className="badge badge-medicine badge-tummy"><Dumbbell size={13} /> Tummy Time</span>
+            <span className={`badge badge-medicine ${isSleep ? 'badge-sleep' : 'badge-tummy'}`}>{isSleep ? <Moon size={13} /> : <Dumbbell size={13} />} {label}</span>
             <span className="metric-chip">{duration}</span>
           </div>
           <span className="timeline-age">{formatDistanceToNow(tummyTime.startedAt, { addSuffix: true })}</span>

@@ -6,8 +6,9 @@ export type FeedType = 'breast' | 'bottle' | 'mixed'
 export type Segment = SideSegment
 export type DiaperKind = 'wet' | 'stool'
 export type MedicineKind = 'tylenol' | 'motrin' | 'vitamin_d'
-export type TummyTimeEvent = { id: string; startedAt: number; endedAt: number; note?: string }
-export type TummyTimeSession = { id: string; startedAt: number; note: string }
+export type CareTimerKind = 'tummy' | 'sleep'
+export type TummyTimeEvent = { id: string; startedAt: number; endedAt: number; note?: string; kind?: CareTimerKind }
+export type TummyTimeSession = { id: string; startedAt: number; note: string; kind?: CareTimerKind }
 export type Theme = 'light' | 'dark'
 export type View = 'track' | 'stats'
 

@@ -127,6 +127,23 @@ describe('Tummy Time tracking', () => {
     expect(screen.getByText(/27% of goal/i)).toBeTruthy()
   })
 
+  it('tracks Sleep as a separate active timer from More actions', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    const group = screen.getByRole('group', { name: /Sleep/i })
+    await user.click(within(group).getByRole('button', { name: /^Start Sleep$/i }))
+
+    expect(document.querySelector('.timer-mode-pill')?.textContent).toBe('Sleep')
+    expect(within(group).queryByRole('button', { name: /^Start Sleep$/i })).toBeNull()
+    expect(within(group).getByRole('button', { name: /^Stop Sleep$/i })).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /^Start Tummy Time$/i })).toBeNull()
+
+    await user.click(within(group).getByRole('button', { name: /^Stop Sleep$/i }))
+    expect(screen.getByText(/Sleep saved/i)).toBeTruthy()
+  })
+
   it('reminds against a configurable daily goal with spacing after partial sessions', () => {
     const at = (hour: number, minutes = 10): TummyTimeEvent => ({ id: `tummy-${hour}`, startedAt: new Date(2026, 5, 10, hour).getTime(), endedAt: new Date(2026, 5, 10, hour, minutes).getTime() })
     expect(shouldShowTummyTimeReminder([], null, new Date(2026, 5, 10, 7).getTime(), 30)).toBe(false)
