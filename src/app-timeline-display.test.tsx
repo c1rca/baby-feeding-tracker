@@ -10,7 +10,7 @@ import {
 describe('App interactions', () => {
   setupAppTestEnvironment()
 
-  it('shows older timeline entries with the calendar date before the clock time', () => {
+  it('shows an older entry with a calendar date after loading its day', async () => {
     const now = new Date(2026, 5, 10, 12, 0).getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(now)
@@ -19,7 +19,9 @@ describe('App interactions', () => {
       JSON.stringify([{ id: 'old-feed', type: 'breast', startedAt: new Date(2026, 5, 4, 5, 0).getTime(), endedAt: new Date(2026, 5, 4, 5, 15).getTime(), leftSeconds: 15 * 60, rightSeconds: 0, bottleOunces: null, note: '' }]),
     )
 
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
+    for (let day = 0; day < 6; day += 1) await user.click(screen.getByRole('button', { name: /Load older events/i }))
 
     expect(screen.getByText(/Jun 4.*5:00 AM/i)).toBeTruthy()
     expect(screen.getByText(/6 days ago/i)).toBeTruthy()
@@ -102,7 +104,7 @@ describe('App interactions', () => {
     expect(within(items[1]).getByText(/about 4 hours ago/i)).toBeTruthy()
   })
 
-  it('pages older timeline events after the last 48 hours and can show all', async () => {
+  it('shows only the last 24 hours first and loads one older day at a time', async () => {
     const now = new Date(2026, 5, 10, 12, 0).getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(now)
@@ -110,24 +112,31 @@ describe('App interactions', () => {
       STORAGE_KEY,
       JSON.stringify([
         { id: 'recent-feed', type: 'breast', startedAt: now - 2 * 60 * 60 * 1000, endedAt: now - 2 * 60 * 60 * 1000 + 10 * 60 * 1000, leftSeconds: 10 * 60, rightSeconds: 0, bottleOunces: null, note: 'recent feed' },
-        ...Array.from({ length: 26 }, (_, index) => ({ id: `old-feed-${index}`, type: 'bottle', startedAt: now - (72 + index) * 60 * 60 * 1000, endedAt: now - (72 + index) * 60 * 60 * 1000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 2, note: `old feed ${index}` })),
+        { id: 'day-one-feed', type: 'bottle', startedAt: now - 25 * 60 * 60 * 1000, endedAt: now - 25 * 60 * 60 * 1000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 2, note: 'day one feed' },
+        { id: 'day-two-feed', type: 'bottle', startedAt: now - 49 * 60 * 60 * 1000, endedAt: now - 49 * 60 * 60 * 1000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 2, note: 'day two feed' },
       ]),
     )
 
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
 
-    expect(screen.getByText(/A clearer view of your day/i)).toBeTruthy()
     expect(screen.getByText(/recent feed/i)).toBeTruthy()
-    expect(screen.getByText(/old feed 0/i)).toBeTruthy()
-    expect(screen.getByText(/old feed 25/i)).toBeTruthy()
-    expect(screen.queryByText(/old feed 26/i)).toBeNull()
+    expect(screen.queryByText(/day one feed/i)).toBeNull()
+    expect(screen.queryByText(/day two feed/i)).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Load older events/i }))
+    expect(screen.getByText(/day one feed/i)).toBeTruthy()
+    expect(screen.queryByText(/day two feed/i)).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: /Load older events/i }))
+    expect(screen.getByText(/day two feed/i)).toBeTruthy()
   })
 
   it('offers premium timeline filter chips and a simple load-older affordance', () => {
     const now = Date.now()
     localStorage.setItem(STORAGE_KEY, JSON.stringify([
       { id: 'preview-feed', type: 'bottle', startedAt: now, endedAt: now, leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: 'preview feed' },
-      ...Array.from({ length: 41 }, (_, index) => ({ id: `preview-old-${index}`, type: 'bottle', startedAt: now - (index + 1) * 60_000, endedAt: now - (index + 1) * 60_000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: '' })),
+      ...Array.from({ length: 41 }, (_, index) => ({ id: `preview-old-${index}`, type: 'bottle', startedAt: now - (index + 25) * 60 * 60 * 1000, endedAt: now - (index + 25) * 60 * 60 * 1000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: '' })),
     ]))
 
     render(<App />)

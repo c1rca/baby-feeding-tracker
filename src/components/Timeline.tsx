@@ -6,7 +6,7 @@ import { TummyTimeTimelineItem } from './timeline/TummyTimeTimelineItem'
 import type { TimelineActions, TimelineItem, TimelineProps } from './timeline/timelineTypes'
 import { timelineItems } from './timeline/timelineUtils'
 
-const PAGE_SIZE = 40
+const DAY_MS = 24 * 60 * 60 * 1000
 type Filter = 'all' | 'feed' | 'diaper' | 'sleep' | 'medicine'
 const filters: Array<{ id: Filter; label: string }> = [{ id: 'all', label: 'All events' }, { id: 'feed', label: 'Feeds' }, { id: 'diaper', label: 'Diapers' }, { id: 'sleep', label: 'Sleep' }, { id: 'medicine', label: 'Medicines' }]
 
@@ -29,18 +29,18 @@ function TimelineList({ items, actions }: { items: TimelineItem[]; actions: Time
 
 export function Timeline({ now, entries, diapers, medicines, tummyTimes, editing, editingDiaper, editingMedicine, editingTummyTime, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setEditingTummyTime, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, deleteEntry, deleteDiaper, deleteMedicine, deleteTummyTime, startMedicineEdit, startTummyTimeEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, saveTummyTimeEdit, showToast }: TimelineProps) {
   const [filter, setFilter] = useState<Filter>('all')
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  const [visibleDays, setVisibleDays] = useState(1)
   const items = timelineItems(entries, diapers, medicines, tummyTimes)
   const filtered = useMemo(() => items.filter((item) => matches(item, filter)), [items, filter])
-  const visible = filtered.slice(0, visibleCount)
+  const visible = filtered.filter((item) => item.time >= now - visibleDays * DAY_MS)
   const actions: TimelineActions = { editing, editingDiaper, editingMedicine, editingTummyTime, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setEditingTummyTime, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, deleteEntry, deleteDiaper, deleteMedicine, deleteTummyTime, startMedicineEdit, startTummyTimeEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, saveTummyTimeEdit, showToast }
   const groups = visible.reduce<Array<{ label: string; items: TimelineItem[] }>>((all, item) => { const label = dayLabel(item.time, now); const group = all.at(-1); if (!group || group.label !== label) all.push({ label, items: [item] }); else group.items.push(item); return all }, [])
   return <section className="card timeline-card">
     <div className="section-heading"><div><h2>Timeline</h2><span className="muted">A clearer view of your day</span></div><span className="timeline-total">{items.length} events</span></div>
     {items.length === 0 ? <p className="muted">No feeds yet. Start with left/right, quick bottle, diaper, or medicine log.</p> : <>
-      <div className="timeline-filters" role="group" aria-label="Timeline filters">{filters.map(({ id, label }) => <button key={id} type="button" aria-pressed={filter === id} onClick={() => { setFilter(id); setVisibleCount(PAGE_SIZE) }}>{label} <span>{items.filter((item) => matches(item, id)).length}</span></button>)}</div>
+      <div className="timeline-filters" role="group" aria-label="Timeline filters">{filters.map(({ id, label }) => <button key={id} type="button" aria-pressed={filter === id} onClick={() => { setFilter(id); setVisibleDays(1) }}>{label} <span>{items.filter((item) => matches(item, id)).length}</span></button>)}</div>
       {groups.length ? groups.map((group) => <div className="timeline-day" key={group.label}><div className="timeline-day-header"><strong>{group.label}</strong><span>{group.items.length} event{group.items.length === 1 ? '' : 's'}</span></div><TimelineList items={group.items} actions={actions} /></div>) : <p className="timeline-empty">No {filter === 'all' ? '' : `${filter} `}events logged yet.</p>}
-      {visible.length < filtered.length ? <div className="timeline-load"><button type="button" onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}>Load older events</button></div> : null}
+      {visible.length < filtered.length ? <div className="timeline-load"><button type="button" onClick={() => setVisibleDays((days) => days + 1)}>Load older events</button></div> : null}
     </>}
   </section>
 }
