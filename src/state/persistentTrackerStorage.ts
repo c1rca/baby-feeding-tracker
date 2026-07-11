@@ -2,7 +2,7 @@ import { normalizeGrowthMeasurements } from '../domain/growth'
 import { normalizeSession } from '../domain/trackerDomain'
 import { normalizeTummyTimeGoalMinutes, TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES } from '../domain/tummyTime'
 import type { GrowthMeasurement } from '../domain/growthTypes'
-import type { DiaperEvent, Entry, LegacySession, MedicineEvent, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
+import type { DiaperEvent, Entry, LegacySession, MedicineEvent, PumpEvent, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
 
 export const TRACKER_STORAGE_KEYS = {
   entries: 'baby-feeding-tracker:v1:entries',
@@ -13,6 +13,7 @@ export const TRACKER_STORAGE_KEYS = {
   diapers: 'baby-feeding-tracker:v1:diapers',
   medicines: 'baby-feeding-tracker:v1:medicines',
   tummyTimes: 'baby-feeding-tracker:v1:tummy-times',
+  pumpEvents: 'baby-feeding-tracker:v1:pump-events',
   tummySession: 'baby-feeding-tracker:v1:tummy-session',
   tummyGoalMinutes: 'baby-feeding-tracker:v1:tummy-goal-minutes',
   growthMeasurements: 'baby-feeding-tracker:v1:growth-measurements',
@@ -39,6 +40,7 @@ export const getTrackerStorageKeys = (babyId?: string | null): TrackerStorageKey
   diapers: scopedKey(TRACKER_STORAGE_KEYS.diapers, babyId),
   medicines: scopedKey(TRACKER_STORAGE_KEYS.medicines, babyId),
   tummyTimes: scopedKey(TRACKER_STORAGE_KEYS.tummyTimes, babyId),
+  pumpEvents: scopedKey(TRACKER_STORAGE_KEYS.pumpEvents, babyId),
   tummySession: scopedKey(TRACKER_STORAGE_KEYS.tummySession, babyId),
   tummyGoalMinutes: scopedKey(TRACKER_STORAGE_KEYS.tummyGoalMinutes, babyId),
   growthMeasurements: scopedKey(TRACKER_STORAGE_KEYS.growthMeasurements, babyId),
@@ -73,6 +75,11 @@ export const readSortedMedicines = (keys: TrackerStorageKeys = TRACKER_STORAGE_K
 
 export const readSortedTummyTimes = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
   const parsed = safeJsonParse<TummyTimeEvent[]>(localStorage.getItem(keys.tummyTimes)) ?? []
+  return parsed.sort((a, b) => b.startedAt - a.startedAt)
+}
+
+export const readSortedPumpEvents = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
+  const parsed = safeJsonParse<PumpEvent[]>(localStorage.getItem(keys.pumpEvents)) ?? []
   return parsed.sort((a, b) => b.startedAt - a.startedAt)
 }
 

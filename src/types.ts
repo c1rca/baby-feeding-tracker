@@ -9,6 +9,7 @@ export type MedicineKind = 'tylenol' | 'motrin' | 'vitamin_d'
 export type CareTimerKind = 'tummy' | 'sleep'
 export type TummyTimeEvent = { id: string; startedAt: number; endedAt: number; note?: string; kind?: CareTimerKind }
 export type TummyTimeSession = { id: string; startedAt: number; note: string; kind?: CareTimerKind }
+export type PumpEvent = { id: string; startedAt: number; endedAt: number; leftOunces: number | null; rightOunces: number | null; note?: string }
 export type Theme = 'light' | 'dark'
 export type View = 'track' | 'stats'
 
@@ -59,6 +60,7 @@ export type ServerState = {
   diapers?: DiaperEvent[]
   medicines?: MedicineEvent[]
   tummyTimes?: TummyTimeEvent[]
+  pumpEvents?: PumpEvent[]
   tummySession?: TummyTimeSession | null
   tummyGoalMinutes?: number
   growthMeasurements?: GrowthMeasurement[]
@@ -73,6 +75,7 @@ export type UndoState =
   | { diaper: DiaperEvent; timeoutId: number; kind: 'diaper-log' | 'diaper-delete' }
   | { medicine: MedicineEvent; timeoutId: number; kind: 'medicine-log' | 'medicine-delete' }
   | { tummyTime: TummyTimeEvent; timeoutId: number; kind: 'tummy-log' | 'tummy-delete' }
+  | { pumpEvent: PumpEvent; timeoutId: number; kind: 'pump-log' | 'pump-delete' }
   | { session: Session; timeoutId: number; kind: 'clear-session' }
 
 export type EditingState = {

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import type { DiaperEvent, Entry, MedicineEvent, Session, TummyTimeEvent, UndoState } from '../types'
+import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, Session, TummyTimeEvent, UndoState } from '../types'
 import { undoLabelFor, undoToastTextFor } from './undoToastLabels'
 
 type UndoToastOptions = {
@@ -8,10 +8,11 @@ type UndoToastOptions = {
   setDiapers: Dispatch<SetStateAction<DiaperEvent[]>>
   setMedicines: Dispatch<SetStateAction<MedicineEvent[]>>
   setTummyTimes: Dispatch<SetStateAction<TummyTimeEvent[]>>
+  setPumpEvents: Dispatch<SetStateAction<PumpEvent[]>>
   setSession: Dispatch<SetStateAction<Session | null>>
 }
 
-export function useUndoToast({ setEntries, setDiapers, setMedicines, setTummyTimes, setSession }: UndoToastOptions) {
+export function useUndoToast({ setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setSession }: UndoToastOptions) {
   const [toast, setToast] = useState('')
   const [undoState, setUndoState] = useState<UndoState | null>(null)
 
@@ -47,6 +48,12 @@ export function useUndoToast({ setEntries, setDiapers, setMedicines, setTummyTim
     } else if (undoState.kind === 'tummy-delete') {
       setTummyTimes((prev) => [undoState.tummyTime, ...prev].sort((a, b) => b.startedAt - a.startedAt))
       showToast('Tummy Time delete undone')
+    } else if (undoState.kind === 'pump-log') {
+      setPumpEvents((prev) => prev.filter((event) => event.id !== undoState.pumpEvent.id))
+      showToast('Pumping log undone')
+    } else if (undoState.kind === 'pump-delete') {
+      setPumpEvents((prev) => [undoState.pumpEvent, ...prev].sort((a, b) => b.startedAt - a.startedAt))
+      showToast('Pumping delete undone')
     } else if ('entry' in undoState) {
       setEntries((prev) => [undoState.entry, ...prev].sort((a, b) => b.endedAt - a.endedAt))
       if (undoState.kind === 'resume') setSession(undoState.previousSession ?? null)

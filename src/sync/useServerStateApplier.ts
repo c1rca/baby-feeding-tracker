@@ -47,12 +47,10 @@ export function useServerStateApplier({
   return { applyServerState, applyingServerStateRef, serverUpdatedAtRef, skipNextSyncRef }
 }
 
-export function useLatestServerPayload({ entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme }: UseServerSyncOptions) {
-  const latestPayloadRef = useRef({ entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme })
-
+export function useLatestServerPayload({ entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme }: UseServerSyncOptions) {
+  const latestPayloadRef = useRef({ entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme })
   useEffect(() => {
-    latestPayloadRef.current = { entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme }
-  }, [entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme])
-
+    latestPayloadRef.current = { entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme }
+  }, [entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme])
   return latestPayloadRef
 }

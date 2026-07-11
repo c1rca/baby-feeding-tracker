@@ -51,6 +51,15 @@ export const compactTummyTime = (tummyTime) => pickDefined({
   note: tummyTime?.note || undefined,
 })
 
+export const compactPumpEvent = (pumpEvent) => pickDefined({
+  id: pumpEvent?.id,
+  startedAt: pumpEvent?.startedAt,
+  endedAt: pumpEvent?.endedAt,
+  leftOunces: pumpEvent?.leftOunces ?? null,
+  rightOunces: pumpEvent?.rightOunces ?? null,
+  note: pumpEvent?.note || undefined,
+})
+
 export const compactGrowthMeasurement = (measurement) => pickDefined({
   id: measurement?.id,
   at: measurement?.at,
@@ -93,17 +102,19 @@ export function buildStateAudit(existingRow, nextState, options = {}) {
     diapers: parseJsonArray(existingRow.diapers_json),
     medicines: parseJsonArray(existingRow.medicines_json),
     tummyTimes: parseJsonArray(existingRow.tummy_times_json),
+    pumpEvents: parseJsonArray(existingRow.pump_events_json),
     growthMeasurements: parseJsonArray(existingRow.growth_measurements_json),
     session: parseJsonValue(existingRow.session_json, null),
     tummySession: parseJsonValue(existingRow.tummy_session_json, null),
     theme: existingRow.theme || 'light',
     updatedAt: existingRow.updated_at,
-  } : { entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], session: null, tummySession: null, theme: 'light', updatedAt: null }
+  } : { entries: [], diapers: [], medicines: [], tummyTimes: [], pumpEvents: [], growthMeasurements: [], session: null, tummySession: null, theme: 'light', updatedAt: null }
 
   const entries = changedItems(before.entries, nextState.entries ?? [], compactEntry)
   const diapers = changedItems(before.diapers, nextState.diapers ?? [], compactDiaper)
   const medicines = changedItems(before.medicines, nextState.medicines ?? [], compactMedicine)
   const tummyTimes = changedItems(before.tummyTimes, nextState.tummyTimes ?? [], compactTummyTime)
+  const pumpEvents = changedItems(before.pumpEvents, nextState.pumpEvents ?? [], compactPumpEvent)
   const growthMeasurements = changedItems(before.growthMeasurements, nextState.growthMeasurements ?? [], compactGrowthMeasurement)
   const beforeSession = compactSession(before.session)
   const afterSession = compactSession(nextState.session)
@@ -119,6 +130,7 @@ export function buildStateAudit(existingRow, nextState, options = {}) {
     diapers,
     medicines,
     tummyTimes,
+    pumpEvents,
     growthMeasurements,
     session: sessionChanged ? { before: beforeSession, after: afterSession } : undefined,
     theme: before.theme !== nextState.theme ? { before: before.theme, after: nextState.theme } : undefined,
@@ -127,6 +139,7 @@ export function buildStateAudit(existingRow, nextState, options = {}) {
       diapers: (nextState.diapers ?? []).length,
       medicines: (nextState.medicines ?? []).length,
       tummyTimes: (nextState.tummyTimes ?? []).length,
+      ...(nextState.pumpEvents?.length ? { pumpEvents: nextState.pumpEvents.length } : {}),
       growthMeasurements: (nextState.growthMeasurements ?? []).length,
       hasSession: Boolean(nextState.session),
       hasTummySession: Boolean(nextState.tummySession),

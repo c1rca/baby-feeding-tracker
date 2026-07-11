@@ -1,15 +1,21 @@
 import { CalendarDays, ChevronDown, Droplets, Dumbbell, Milk, Moon, Pill, Play, Square } from 'lucide-react'
+import { useState } from 'react'
+import type { PumpSession } from '../../state/usePumpActions'
 import type { DiaperKind } from '../../types'
 import type { HeroPanelProps } from './HeroPanel.types'
 
-type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'tummySession' | 'setTummySession' | 'setAdditionalOptionsOpen' | 'setBottleOpen' | 'setManualOpen' | 'setSession' | 'logDiaperKinds' | 'logMedicine' | 'logTummyTimeMinutes' | 'startTummyTime' | 'stopTummyTime' | 'startSleep' | 'stopSleep'>
+type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'tummySession' | 'setTummySession' | 'setAdditionalOptionsOpen' | 'setBottleOpen' | 'setManualOpen' | 'setSession' | 'logDiaperKinds' | 'logMedicine' | 'logTummyTimeMinutes' | 'startTummyTime' | 'stopTummyTime' | 'startSleep' | 'stopSleep'> & { pumpSession: PumpSession | null; startPumping: (side: 'left' | 'both' | 'right') => void; stopPumping: () => void; savePumping: (left: string, right: string, note: string) => void; pumpCompletionOpen: boolean; setPumpCompletionOpen: (open: boolean) => void }
 
 const TUMMY_PRESETS = [5, 10, 15, 20] as const
 
 // Premium "More actions" drawer — organized, color-coded category cards.
 // Revert path: restore this file + delete the "Additional options — premium
 // redesign" block in styles.css / styles-classic.css (or git revert the commit).
-export function AdditionalOptions({ session, additionalOptionsOpen, tummySession, setTummySession, setAdditionalOptionsOpen, setBottleOpen, setManualOpen, setSession, logDiaperKinds, logMedicine, logTummyTimeMinutes, startTummyTime, stopTummyTime, startSleep, stopSleep }: AdditionalOptionsProps) {
+export function AdditionalOptions({ session, additionalOptionsOpen, tummySession, setTummySession, setAdditionalOptionsOpen, setBottleOpen, setManualOpen, setSession, logDiaperKinds, logMedicine, logTummyTimeMinutes, startTummyTime, stopTummyTime, startSleep, stopSleep, pumpSession, startPumping, stopPumping, savePumping, pumpCompletionOpen, setPumpCompletionOpen }: AdditionalOptionsProps) {
+  const [pumpSide, setPumpSide] = useState<'left' | 'both' | 'right'>('left')
+  const [leftOutput, setLeftOutput] = useState('')
+  const [rightOutput, setRightOutput] = useState('')
+  const [pumpNote, setPumpNote] = useState('')
   return (
     <div className="ao-shell">
       <button
@@ -27,17 +33,17 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
 
       {additionalOptionsOpen ? (
         <div className="ao-panel">
-          <section className="ao-card ao-card--diapers" role="group" aria-label="Diapers">
+          {!session ? <section className="ao-card ao-card--diapers" role="group" aria-label="Diapers">
             <header className="ao-card-head">
               <span className="ao-card-icon"><Droplets size={15} /></span>
               <span className="ao-card-title">Diapers</span>
             </header>
             <div className="ao-card-body ao-diaper-actions">
               {([['wet', 'Wet'], ['stool', 'Stool'], ['mixed', 'Mixed']] as const).map(([kind, label]) => (
-                <button key={kind} type="button" className={`ao-diaper ao-diaper--${kind}`} aria-label={`Log ${label.toLowerCase()} diaper`} onClick={() => logDiaperKinds(kind === 'mixed' ? ['wet', 'stool'] : [kind as DiaperKind])}>{label}</button>
+                <button key={kind} type="button" className={`ao-diaper ao-diaper--${kind}`} aria-label={`Log ${label.toLowerCase()} diaper`} onClick={() => logDiaperKinds(kind === 'mixed' ? ['wet', 'stool'] : [kind as DiaperKind])}>{kind === 'mixed' ? 'Combo' : label}</button>
               ))}
             </div>
-          </section>
+          </section> : null}
 
           <section className="ao-card ao-card--tummy" role="group" aria-label="Tummy Time">
             <header className="ao-card-head">
@@ -100,6 +106,14 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
               )}
             </div>
           </section>
+
+          <section className="ao-card ao-card--pumping" role="group" aria-label="Pumping">
+            <header className="ao-card-head"><span className="ao-card-title">Pumping</span>{pumpSession ? <span className="ao-live">Live</span> : null}</header>
+            <div className="ao-card-body">
+              {pumpSession ? <><strong>Pumping in progress</strong><button type="button" className="ao-action ao-action--stop" aria-label="Stop pumping" onClick={stopPumping}><Square size={14} /> Stop pumping</button></> : <><div className="ao-chips"><button type="button" className="ao-chip" aria-label="Left pumping side" onClick={() => setPumpSide('left')}>Left</button><button type="button" className="ao-chip" aria-label="Both pumping sides" onClick={() => setPumpSide('both')}>Both</button><button type="button" className="ao-chip" aria-label="Right pumping side" onClick={() => setPumpSide('right')}>Right</button></div><button type="button" className="ao-action" aria-label="Start pumping" onClick={() => startPumping(pumpSide)}><Play size={14} /> Start pumping</button></>}
+            </div>
+          </section>
+          {pumpCompletionOpen ? <div className="modal-backdrop"><div className="modal" role="dialog" aria-modal="true" aria-label="Complete pumping session"><h2>Complete pumping session</h2><label>Left output<input type="number" min="0" step="0.1" aria-label="Left output ounces" value={leftOutput} onChange={(e) => setLeftOutput(e.target.value)} /></label><label>Right output<input type="number" min="0" step="0.1" aria-label="Right output ounces" value={rightOutput} onChange={(e) => setRightOutput(e.target.value)} /></label><label>Note<input aria-label="Pumping note" value={pumpNote} onChange={(e) => setPumpNote(e.target.value)} /></label><p>Total output: {(Number(leftOutput) || 0) + (Number(rightOutput) || 0)} oz</p><button type="button" aria-label="Save pumping session" onClick={() => { savePumping(leftOutput, rightOutput, pumpNote); setLeftOutput(''); setRightOutput(''); setPumpNote('') }}>Save pumping session</button><button type="button" onClick={() => setPumpCompletionOpen(false)}>Cancel</button></div></div> : null}
 
           <section className="ao-card ao-card--medicine" role="group" aria-label="Medicine">
             <header className="ao-card-head">

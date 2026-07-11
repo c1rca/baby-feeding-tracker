@@ -116,6 +116,7 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
       diapers_json TEXT NOT NULL DEFAULT '[]',
       medicines_json TEXT NOT NULL DEFAULT '[]',
       tummy_times_json TEXT NOT NULL DEFAULT '[]',
+      pump_events_json TEXT NOT NULL DEFAULT '[]',
       tummy_session_json TEXT,
       growth_measurements_json TEXT NOT NULL DEFAULT '[]',
       baby_dob TEXT NOT NULL DEFAULT '2026-06-03',
@@ -130,6 +131,7 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
       diapers_json TEXT NOT NULL DEFAULT '[]',
       medicines_json TEXT NOT NULL DEFAULT '[]',
       tummy_times_json TEXT NOT NULL DEFAULT '[]',
+      pump_events_json TEXT NOT NULL DEFAULT '[]',
       tummy_session_json TEXT,
       tummy_goal_minutes INTEGER NOT NULL DEFAULT 20,
       growth_measurements_json TEXT NOT NULL DEFAULT '[]',
@@ -174,6 +176,10 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
   if (!hasMedicinesColumn) db.exec("ALTER TABLE app_state ADD COLUMN medicines_json TEXT NOT NULL DEFAULT '[]'")
   const hasTummyTimesColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'tummy_times_json'").get().count > 0
   if (!hasTummyTimesColumn) db.exec("ALTER TABLE app_state ADD COLUMN tummy_times_json TEXT NOT NULL DEFAULT '[]'")
+  const hasPumpEventsColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'pump_events_json'").get().count > 0
+  if (!hasPumpEventsColumn) db.exec("ALTER TABLE app_state ADD COLUMN pump_events_json TEXT NOT NULL DEFAULT '[]'")
+  const hasBabyPumpEventsColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('baby_state') WHERE name = 'pump_events_json'").get().count > 0
+  if (!hasBabyPumpEventsColumn) db.exec("ALTER TABLE baby_state ADD COLUMN pump_events_json TEXT NOT NULL DEFAULT '[]'")
   const hasTummySessionColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'tummy_session_json'").get().count > 0
   if (!hasTummySessionColumn) db.exec("ALTER TABLE app_state ADD COLUMN tummy_session_json TEXT")
   const hasGrowthMeasurementsColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'growth_measurements_json'").get().count > 0
@@ -210,8 +216,8 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
   // Copy the legacy single-row state into its scoped row exactly once; later
   // writes land in baby_state directly, so an existing scoped row always wins.
   db.exec(`
-    INSERT OR IGNORE INTO baby_state (household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
-    SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at
+    INSERT OR IGNORE INTO baby_state (household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
+    SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at
     FROM app_state WHERE id = 1
   `)
 
@@ -220,10 +226,10 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
 
 export function prepareTrackerStatements(db) {
   return {
-    selectState: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM app_state WHERE id = 1'),
+    selectState: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM app_state WHERE id = 1'),
     upsertState: db.prepare(`
-      INSERT INTO app_state (id, household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
-      VALUES (1, @household_id, @baby_id, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @tummy_session_json, @tummy_goal_minutes, @growth_measurements_json, @baby_dob, @session_json, @theme, @updated_at)
+      INSERT INTO app_state (id, household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
+      VALUES (1, @household_id, @baby_id, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @pump_events_json, @tummy_session_json, @tummy_goal_minutes, @growth_measurements_json, @baby_dob, @session_json, @theme, @updated_at)
       ON CONFLICT(id) DO UPDATE SET
         household_id = excluded.household_id,
         baby_id = excluded.baby_id,
@@ -231,6 +237,7 @@ export function prepareTrackerStatements(db) {
         diapers_json = excluded.diapers_json,
         medicines_json = excluded.medicines_json,
         tummy_times_json = excluded.tummy_times_json,
+        pump_events_json = excluded.pump_events_json,
         tummy_session_json = excluded.tummy_session_json,
         tummy_goal_minutes = excluded.tummy_goal_minutes,
         growth_measurements_json = excluded.growth_measurements_json,
@@ -239,16 +246,17 @@ export function prepareTrackerStatements(db) {
         theme = excluded.theme,
         updated_at = excluded.updated_at
     `),
-    selectStateForBaby: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM baby_state WHERE household_id = ? AND baby_id = ?'),
-    selectAllBabyStates: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM baby_state'),
+    selectStateForBaby: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM baby_state WHERE household_id = ? AND baby_id = ?'),
+    selectAllBabyStates: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM baby_state'),
     upsertStateForBaby: db.prepare(`
-      INSERT INTO baby_state (household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
-      VALUES (@household_id, @baby_id, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @tummy_session_json, @tummy_goal_minutes, @growth_measurements_json, @baby_dob, @session_json, @theme, @updated_at)
+      INSERT INTO baby_state (household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
+      VALUES (@household_id, @baby_id, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @pump_events_json, @tummy_session_json, @tummy_goal_minutes, @growth_measurements_json, @baby_dob, @session_json, @theme, @updated_at)
       ON CONFLICT(household_id, baby_id) DO UPDATE SET
         entries_json = excluded.entries_json,
         diapers_json = excluded.diapers_json,
         medicines_json = excluded.medicines_json,
         tummy_times_json = excluded.tummy_times_json,
+        pump_events_json = excluded.pump_events_json,
         tummy_session_json = excluded.tummy_session_json,
         tummy_goal_minutes = excluded.tummy_goal_minutes,
         growth_measurements_json = excluded.growth_measurements_json,

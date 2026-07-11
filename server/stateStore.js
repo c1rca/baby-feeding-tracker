@@ -22,7 +22,7 @@ const safeParseObject = (value) => {
 }
 
 export const serializeState = (row) => {
-  if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], growthMeasurements: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'dark', updatedAt: null }
+  if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], pumpEvents: [], growthMeasurements: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'dark', updatedAt: null }
   return {
     householdId: row.household_id || DEFAULT_HOUSEHOLD_ID,
     babyId: row.baby_id || DEFAULT_BABY_ID,
@@ -30,6 +30,7 @@ export const serializeState = (row) => {
     diapers: safeParseArray(row.diapers_json),
     medicines: safeParseArray(row.medicines_json),
     tummyTimes: safeParseArray(row.tummy_times_json),
+    pumpEvents: safeParseArray(row.pump_events_json),
     growthMeasurements: safeParseArray(row.growth_measurements_json),
     babyDob: row.baby_dob || DEFAULT_BABY_DOB,
     tummyGoalMinutes: Number.isFinite(Number(row.tummy_goal_minutes)) ? Math.min(240, Math.max(1, Math.round(Number(row.tummy_goal_minutes)))) : 20,
@@ -40,11 +41,12 @@ export const serializeState = (row) => {
   }
 }
 
-export const summarizeState = (entries, session, theme, diapers = [], medicines = [], growthMeasurements = [], babyDob = '2026-06-03', tummyTimes = [], tummySession = null) => ({
+export const summarizeState = (entries, session, theme, diapers = [], medicines = [], growthMeasurements = [], babyDob = '2026-06-03', tummyTimes = [], tummySession = null, pumpEvents = []) => ({
   entryCount: entries.length,
   diaperCount: diapers.length,
   medicineCount: medicines.length,
   tummyTimeCount: tummyTimes.length,
+  pumpEventCount: pumpEvents.length,
   growthMeasurementCount: growthMeasurements.length,
   babyDob,
   latestEntryId: entries[0]?.id ?? null,
@@ -63,15 +65,17 @@ export const createDeletedItemOptionsReader = (selectDeletedItems) => (scope = {
   const deletedDiaperIds = []
   const deletedMedicineIds = []
   const deletedTummyTimeIds = []
+  const deletedPumpEventIds = []
   const deletedGrowthMeasurementIds = []
   for (const row of selectDeletedItems.all(householdId, babyId)) {
     if (row.collection === 'entries') deletedEntryIds.push(row.item_id)
     if (row.collection === 'diapers') deletedDiaperIds.push(row.item_id)
     if (row.collection === 'medicines') deletedMedicineIds.push(row.item_id)
     if (row.collection === 'tummyTimes') deletedTummyTimeIds.push(row.item_id)
+    if (row.collection === 'pumpEvents') deletedPumpEventIds.push(row.item_id)
     if (row.collection === 'growthMeasurements') deletedGrowthMeasurementIds.push(row.item_id)
   }
-  return { deletedEntryIds, deletedDiaperIds, deletedMedicineIds, deletedTummyTimeIds, deletedGrowthMeasurementIds }
+  return { deletedEntryIds, deletedDiaperIds, deletedMedicineIds, deletedTummyTimeIds, deletedPumpEventIds, deletedGrowthMeasurementIds }
 }
 
 export const createDeletedItemRecorder = (upsertDeletedItem) => (audit, deletedAt, scope = {}) => {
@@ -82,5 +86,6 @@ export const createDeletedItemRecorder = (upsertDeletedItem) => (audit, deletedA
   for (const diaper of audit.diapers?.removed || []) record(diaper.id, 'diapers')
   for (const medicine of audit.medicines?.removed || []) record(medicine.id, 'medicines')
   for (const tummyTime of audit.tummyTimes?.removed || []) record(tummyTime.id, 'tummyTimes')
+  for (const pumpEvent of audit.pumpEvents?.removed || []) record(pumpEvent.id, 'pumpEvents')
   for (const measurement of audit.growthMeasurements?.removed || []) record(measurement.id, 'growthMeasurements')
 }

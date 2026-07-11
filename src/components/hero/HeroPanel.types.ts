@@ -1,4 +1,5 @@
 import type { DiaperKind, MedicineKind, Session, Side, TummyTimeSession } from '../../types'
+import type { PumpSession } from '../../state/usePumpActions'
 
 export type HeroPanelProps = {
   session: Session | null
@@ -46,4 +47,10 @@ export type HeroPanelProps = {
   stopTummyTime: () => void
   startSleep: () => void
   stopSleep: () => void
+  pumpSession: PumpSession | null
+  startPumping: (side: 'left' | 'both' | 'right') => void
+  stopPumping: () => void
+  savePumping: (left: string, right: string, note: string) => void
+  pumpCompletionOpen: boolean
+  setPumpCompletionOpen: (open: boolean) => void
 }
