@@ -31,7 +31,6 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
             <header className="ao-card-head">
               <span className="ao-card-icon"><Droplets size={15} /></span>
               <span className="ao-card-title">Diapers</span>
-              <span className="ao-card-caption">Quick log</span>
             </header>
             <div className="ao-card-body ao-diaper-actions">
               {([['wet', 'Wet'], ['stool', 'Stool'], ['mixed', 'Mixed']] as const).map(([kind, label]) => (
