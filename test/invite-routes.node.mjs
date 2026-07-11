@@ -72,6 +72,30 @@ test('invite creation rejects viewers, invalid roles, duplicates, and missing ho
   assert.equal(calls.inserts, 0)
 })
 
+test('owner sends an email or text invitation and only persists it after delivery', async () => {
+  const calls = { sent: [], inserts: [] }
+  const app = mountInviteRouter({
+    selectInviteByEmail: { get: () => null },
+    insertInvite: { run: (invite) => calls.inserts.push(invite) },
+    sendInvite: async (payload) => calls.sent.push(payload),
+    baseUrl: 'https://dev.feedr.kjw.lol',
+    idFactory: () => 'invite-delivery',
+    tokenFactory: () => 'deliver-token',
+    now: () => new Date('2026-07-10T00:00:00.000Z'),
+  })
+
+  const emailRes = createJsonResponse()
+  await app.route('POST', '/api/household-invites')({ auth: ownerAuth(), body: { email: 'caregiver@example.com', role: 'caregiver' } }, emailRes)
+  assert.equal(emailRes.statusCode, 201)
+  assert.deepEqual(calls.sent[0], { channel: 'email', to: 'caregiver@example.com', link: 'https://dev.feedr.kjw.lol/?invite=deliver-token', role: 'caregiver' })
+
+  const textRes = createJsonResponse()
+  await app.route('POST', '/api/household-invites')({ auth: ownerAuth(), body: { email: '(555) 123-4567', role: 'viewer' } }, textRes)
+  assert.equal(textRes.statusCode, 201)
+  assert.deepEqual(calls.sent[1], { channel: 'text', to: '+15551234567', link: 'https://dev.feedr.kjw.lol/?invite=deliver-token', role: 'viewer' })
+  assert.equal(calls.inserts.length, 2)
+})
+
 test('owner revokes only invites scoped to the current household', () => {
   const calls = { revoked: [], events: [] }
   const app = mountInviteRouter({

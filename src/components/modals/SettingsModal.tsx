@@ -199,7 +199,7 @@ function HouseholdAccessSetting({ role, showToast }: { role?: string; showToast:
       {canManage ? (
         <div className="settings-card">
           <div className="settings-form invite-form">
-            <label><span>Invite email</span><input aria-label="Invite email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="caregiver@example.com" /></label>
+            <label><span>Invite email or mobile</span><input aria-label="Invite email or mobile" type="text" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="caregiver@example.com or (555) 123-4567" /></label>
             <label><span>Role</span><select aria-label="Invite role" value={inviteRole} onChange={(event) => setInviteRole(event.target.value as 'caregiver' | 'viewer')}><option value="caregiver">Caregiver</option><option value="viewer">Viewer</option></select></label>
             <button type="button" className="primary" onClick={sendInvite} disabled={!email.trim()}>Send invite</button>
           </div>

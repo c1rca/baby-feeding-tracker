@@ -149,6 +149,13 @@ export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = 
 
 const isValidDob = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))
 const normalizeEmail = (value) => String(value || '').trim().toLowerCase()
+const normalizePhone = (value) => {
+  const digits = String(value || '').replace(/\D/g, '')
+  if (digits.length === 10) return `+1${digits}`
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`
+  if (String(value || '').trim().startsWith('+') && digits.length >= 10 && digits.length <= 15) return `+${digits}`
+  return ''
+}
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
 const invitePayload = (row) => ({ id: row.id, email: row.email, role: row.role, createdAt: row.created_at, expiresAt: row.expires_at })
 const memberPayload = (row) => ({ userId: row.user_id, email: row.email, displayName: row.display_name, role: row.role, createdAt: row.created_at })
@@ -207,7 +214,7 @@ export const createMemberRouter = ({ selectMembersByHousehold = null, updateMemb
   return router
 }
 
-export const createInviteRouter = ({ selectActiveInvitesByHousehold = null, selectInviteByEmail = null, insertInvite = null, revokeInvite = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), tokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', ''), now = () => new Date() } = {}) => {
+export const createInviteRouter = ({ selectActiveInvitesByHousehold = null, selectInviteByEmail = null, insertInvite = null, revokeInvite = null, appendEventLog = () => {}, sendInvite = null, baseUrl = '', idFactory = () => globalThis.crypto.randomUUID(), tokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', ''), now = () => new Date() } = {}) => {
   const router = (app) => {
     app.get('/api/household-invites', (req, res) => {
       if (!req.auth?.householdId) {
@@ -218,15 +225,18 @@ export const createInviteRouter = ({ selectActiveInvitesByHousehold = null, sele
       res.status(200).json({ ok: true, invites })
     })
 
-    app.post('/api/household-invites', (req, res) => {
+    app.post('/api/household-invites', async (req, res) => {
       if (!canMutate(req.auth) || !req.auth?.householdId) {
         rejectForbidden(res)
         return
       }
-      const email = normalizeEmail(req.body?.email)
+      const rawDestination = String(req.body?.email || req.body?.destination || '')
+      const phone = normalizePhone(rawDestination)
+      const email = phone || normalizeEmail(rawDestination)
+      const channel = phone ? 'text' : 'email'
       const role = String(req.body?.role || 'caregiver').trim()
       if (!email) {
-        res.status(400).json({ ok: false, error: 'Email is required' })
+        res.status(400).json({ ok: false, error: 'Enter an email or mobile number' })
         return
       }
       if (!['caregiver', 'viewer'].includes(role)) {
@@ -250,6 +260,14 @@ export const createInviteRouter = ({ selectActiveInvitesByHousehold = null, sele
         expires_at: addDays(createdAt, 7).toISOString(),
         accepted_at: null,
         revoked_at: null,
+      }
+      const linkBaseUrl = String(baseUrl || `${req.protocol || 'http'}://${req.get?.('host') || 'localhost'}`).replace(/\/$/, '')
+      const link = `${linkBaseUrl}/?invite=${encodeURIComponent(token)}`
+      try {
+        if (sendInvite) await sendInvite({ channel, to: email, link, role })
+      } catch {
+        res.status(502).json({ ok: false, error: `Could not deliver invite by ${channel}` })
+        return
       }
       insertInvite?.run(row)
       appendEventLog('invite_create', { inviteId: row.id, householdId: row.household_id, email, role, createdBy: req.auth.userId })
