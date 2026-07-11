@@ -45,6 +45,7 @@ describe('Tummy Time tracking', () => {
     expect(screen.getAllByText('0m 00s').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: /^Stop Tummy Time$/i })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /Start suggested side/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Adjust start time/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /^Start (Left|Right)$/i })).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /^Stop Tummy Time$/i }))
@@ -139,6 +140,7 @@ describe('Tummy Time tracking', () => {
     expect(within(group).queryByRole('button', { name: /^Start Sleep$/i })).toBeNull()
     expect(within(group).getByRole('button', { name: /^Stop Sleep$/i })).toBeTruthy()
     expect(screen.queryByRole('button', { name: /^Start Tummy Time$/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Adjust start time/i })).toBeNull()
 
     await user.click(within(group).getByRole('button', { name: /^Stop Sleep$/i }))
     expect(screen.getByText(/Sleep saved/i)).toBeTruthy()
