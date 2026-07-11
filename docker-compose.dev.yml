@@ -13,6 +13,7 @@ services:
       - ALLOW_INSECURE_LOCAL_MODE=1
       - AUTH_ALLOWED_EMAILS=${AUTH_ALLOWED_EMAILS:-alex@example.test,test@example.test,parent@example.com,waldbauma686@gmail.com}
       - AUTH_ALLOWED_PHONES=${AUTH_ALLOWED_PHONES:-}
+      - AUTH_BOOTSTRAP_PASSWORD=${AUTH_BOOTSTRAP_PASSWORD:-}
       # Dev defaults to the single TEXT_EMAIL_TO recipient from .env.smtp so
       # text-login can be tested without guessing a carrier gateway domain.
       # Set TEXT_LOGIN_SMS_DOMAIN explicitly only when testing a known carrier
