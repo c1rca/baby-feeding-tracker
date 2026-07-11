@@ -4,6 +4,7 @@ import { EntryTimelineItem } from './timeline/EntryTimelineItem'
 import { MedicineTimelineItem } from './timeline/MedicineTimelineItem'
 import { TummyTimeTimelineItem } from './timeline/TummyTimeTimelineItem'
 import type { TimelineActions, TimelineItem, TimelineProps } from './timeline/timelineTypes'
+import { entryDiaperKinds } from '../domain/labels'
 import { timelineItems } from './timeline/timelineUtils'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -17,7 +18,7 @@ const filters: Array<{ id: Filter; label: string }> = [
 ]
 
 function matches(item: TimelineItem, filter: Filter) {
-  return filter === 'all' || item.kind === filter || (filter === 'sleep' && item.kind === 'tummy' && item.tummyTime.kind === 'sleep')
+  return filter === 'all' || item.kind === filter || (filter === 'diaper' && item.kind === 'feed' && entryDiaperKinds(item.entry).length > 0) || (filter === 'sleep' && item.kind === 'tummy' && item.tummyTime.kind === 'sleep')
 }
 function dayLabel(time: number, now: number) {
   const date = new Date(time); const today = new Date(now); const yesterday = new Date(now - 86400000)

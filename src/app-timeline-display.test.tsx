@@ -152,6 +152,21 @@ describe('App interactions', () => {
     expect(screen.getByRole('button', { name: /Load older events/i })).toBeTruthy()
   })
 
+  it('keeps feeds with attached diapers visible in the Diapers filter', async () => {
+    const now = Date.now()
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([
+      { id: 'feed-with-wet-diaper', type: 'bottle', startedAt: now - 60_000, endedAt: now, leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: 'combo diaper feed', diaperKinds: ['wet'] },
+      { id: 'feed-only', type: 'bottle', startedAt: now - 120_000, endedAt: now - 60_000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: 'feed only', diaperKinds: [] },
+    ]))
+
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(within(screen.getByRole('group', { name: /Timeline filters/i })).getByRole('button', { name: /Diapers/i }))
+
+    expect(screen.getByText(/combo diaper feed/i)).toBeTruthy()
+    expect(screen.queryByText(/feed only/i)).toBeNull()
+  })
+
   it('keeps saved timeline metrics compact and non-redundant', () => {
     localStorage.setItem(
       STORAGE_KEY,
