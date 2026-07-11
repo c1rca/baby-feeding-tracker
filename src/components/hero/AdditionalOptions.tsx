@@ -33,6 +33,14 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
 
       {additionalOptionsOpen ? (
         <div className="ao-panel">
+          <div className="care-launcher" role="group" aria-label="Care actions">
+            <button type="button" className="care-launcher-button care-launcher--diapers" onClick={() => document.querySelector<HTMLElement>('.ao-card--diapers')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}><Droplets size={18} /><span>Diapers</span></button>
+            <button type="button" className="care-launcher-button care-launcher--tummy" onClick={() => document.querySelector<HTMLElement>('.ao-card--tummy')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}><Dumbbell size={18} /><span>Tummy</span></button>
+            <button type="button" className="care-launcher-button care-launcher--sleep" onClick={() => document.querySelector<HTMLElement>('.ao-card--sleep')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}><Moon size={18} /><span>Sleep</span></button>
+            <button type="button" className="care-launcher-button care-launcher--pumping" onClick={() => document.querySelector<HTMLElement>('.ao-card--pumping')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}><TimerReset size={18} /><span>Pumping</span></button>
+            <button type="button" className="care-launcher-button care-launcher--medicine" onClick={() => document.querySelector<HTMLElement>('.ao-card--medicine')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}><Pill size={18} /><span>Medicine</span></button>
+            <button type="button" className="care-launcher-button care-launcher--bottle" onClick={() => document.querySelector<HTMLElement>('.ao-card--bottle')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })}><Milk size={18} /><span>Bottle</span></button>
+          </div>
           {!session ? <section className="ao-card ao-card--diapers" role="group" aria-label="Diapers">
             <header className="ao-card-head">
               <span className="ao-card-icon"><Droplets size={15} /></span>

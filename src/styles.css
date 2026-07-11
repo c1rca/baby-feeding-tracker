@@ -649,6 +649,13 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 }
 @keyframes ao-panel-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
+/* Dev-preview care launcher: the candidate replacement for the More actions entry point. */
+.care-launcher { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 4px; }
+.care-launcher-button { --launcher-accent: var(--berry); min-height: 72px; display: grid; place-items: center; align-content: center; gap: 5px; padding: 8px 4px; border-radius: 16px; color: var(--launcher-accent); background: color-mix(in srgb, var(--launcher-accent) 9%, var(--card-solid)); border-color: color-mix(in srgb, var(--launcher-accent) 26%, transparent); box-shadow: none; font-size: .68rem; font-weight: 850; }
+.care-launcher-button:hover { transform: translateY(-2px); background: color-mix(in srgb, var(--launcher-accent) 16%, var(--card-solid)); border-color: color-mix(in srgb, var(--launcher-accent) 55%, transparent); }
+.care-launcher--diapers { --launcher-accent: #0f766e; }.care-launcher--tummy { --launcher-accent: var(--hue-tummy); }.care-launcher--sleep { --launcher-accent: #4f46e5; }.care-launcher--pumping { --launcher-accent: #0e7490; }.care-launcher--medicine { --launcher-accent: var(--hue-tylenol); }.care-launcher--bottle { --launcher-accent: var(--hue-bottle); }
+@media (max-width: 560px) { .care-launcher { grid-template-columns: repeat(3, minmax(0, 1fr)); }.care-launcher-button { min-height: 64px; } }
+
 .ao-card {
   --ao-accent: var(--berry);
   display: grid; gap: 10px;
