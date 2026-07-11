@@ -663,6 +663,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 }
 .ao-card--tummy { --ao-accent: var(--hue-tummy); }
 .ao-card--sleep { --ao-accent: #4f46e5; }
+.ao-card--diapers { --ao-accent: #0f766e; }
 .ao-card--medicine { --ao-accent: var(--hue-tylenol); }
 .ao-card--bottle { --ao-accent: var(--hue-bottle); }
 .ao-card--missed { --ao-accent: var(--berry); }
@@ -694,6 +695,13 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 @keyframes ao-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .4; transform: scale(.65); } }
 
 .ao-card-body { display: grid; gap: 10px; }
+.ao-card-caption { margin-left: auto; color: var(--ink-faint); font-size: .65rem; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; }
+.ao-diaper-actions { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ao-diaper { min-height: 46px; justify-content: center; border-radius: 13px; font-weight: 850; font-size: .82rem; color: var(--ao-diaper-hue); background: color-mix(in srgb, var(--ao-diaper-hue) 10%, transparent); border-color: color-mix(in srgb, var(--ao-diaper-hue) 27%, transparent); box-shadow: none; }
+.ao-diaper:hover { color: var(--ao-diaper-hue); background: color-mix(in srgb, var(--ao-diaper-hue) 17%, transparent); border-color: color-mix(in srgb, var(--ao-diaper-hue) 48%, transparent); }
+.ao-diaper--wet { --ao-diaper-hue: #0284c7; }
+.ao-diaper--stool { --ao-diaper-hue: #a16207; }
+.ao-diaper--mixed { --ao-diaper-hue: #0f766e; }
 
 /* Tummy quick chips */
 .ao-chips { display: flex; flex-wrap: wrap; gap: 7px; }

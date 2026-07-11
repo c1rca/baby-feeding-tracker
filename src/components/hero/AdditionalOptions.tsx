@@ -1,4 +1,4 @@
-import { CalendarDays, ChevronDown, Dumbbell, Milk, Moon, Pill, Play, Square } from 'lucide-react'
+import { CalendarDays, ChevronDown, Droplets, Dumbbell, Milk, Moon, Pill, Play, Square } from 'lucide-react'
 import type { DiaperKind } from '../../types'
 import type { HeroPanelProps } from './HeroPanel.types'
 
@@ -91,7 +91,9 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
 
           <section className="ao-card ao-card--diapers" role="group" aria-label="Diapers">
             <header className="ao-card-head">
+              <span className="ao-card-icon"><Droplets size={15} /></span>
               <span className="ao-card-title">Diapers</span>
+              <span className="ao-card-caption">Quick log</span>
             </header>
             <div className="ao-card-body ao-diaper-actions">
               {([['wet', 'Wet'], ['stool', 'Stool'], ['mixed', 'Mixed']] as const).map(([kind, label]) => (
