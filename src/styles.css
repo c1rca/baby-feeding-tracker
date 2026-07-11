@@ -999,6 +999,20 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .timeline-pagination span { margin-right: auto; color: var(--ink-faint); font-size: .8rem; font-weight: 800; }
 .timeline-pagination button { min-height: 34px; padding: 0 13px; border-radius: 999px; font-size: .84rem; }
 
+.timeline-filters { display:flex; gap:7px; flex-wrap:wrap; margin: 15px 0 18px; padding:6px; border:1px solid var(--border); border-radius:16px; background:var(--well); }
+.timeline-filters button { min-height:34px; padding:0 11px; border:0; border-radius:11px; background:transparent; box-shadow:none; color:var(--ink-soft); font-size:.8rem; font-weight:800; }
+.timeline-filters button span { margin-left:4px; color:var(--ink-faint); font-family:var(--font-numeric); }
+.timeline-filters button[aria-pressed='true'] { color:var(--berry); background:var(--card); box-shadow:0 4px 12px -8px rgba(35,25,65,.45); }
+.timeline-total { color:var(--ink-faint); font:800 .78rem var(--font-numeric); }
+.timeline-day { margin-top:18px; }
+.timeline-day-header { position:sticky; top:8px; z-index:4; display:flex; justify-content:space-between; align-items:center; margin:0 0 9px; padding:8px 10px; border:1px solid var(--border); border-radius:12px; background:color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter:blur(12px); }
+.timeline-day-header strong { font-size:.84rem; letter-spacing:.03em; text-transform:uppercase; color:var(--ink); }
+.timeline-day-header span,.timeline-empty { color:var(--ink-faint); font-size:.76rem; font-weight:750; }
+.timeline-load { display:flex; justify-content:center; padding:18px 0 2px; }
+.timeline-load button { border-radius:999px; min-height:40px; padding:0 18px; color:var(--berry); background:color-mix(in srgb, var(--berry) 10%, transparent); border-color:color-mix(in srgb, var(--berry) 30%, transparent); }
+.timeline-item { box-shadow:0 8px 20px -18px rgba(35,25,65,.55); }
+.timeline-item::before { width:18px; height:18px; left:-25px; top:18px; border:3px solid var(--paper); box-shadow:0 0 0 3px color-mix(in srgb, var(--tl-hue) 22%, transparent); }
+
 .edit-panel { margin-top: 12px; display: grid; gap: 10px; padding-top: 12px; border-top: 1px dashed var(--border-strong); }
 .diaper-edit-panel { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .edit-panel label { display: grid; gap: 5px; font-size: .84rem; color: var(--ink-soft); font-weight: 750; }

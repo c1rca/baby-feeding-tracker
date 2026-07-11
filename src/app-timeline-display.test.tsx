@@ -114,22 +114,31 @@ describe('App interactions', () => {
       ]),
     )
 
-    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
 
-    expect(screen.getByText(/Latest first · past 48 hours/i)).toBeTruthy()
+    expect(screen.getByText(/A clearer view of your day/i)).toBeTruthy()
     expect(screen.getByText(/recent feed/i)).toBeTruthy()
     expect(screen.getByText(/old feed 0/i)).toBeTruthy()
-    expect(screen.queryByText(/old feed 25/i)).toBeNull()
-    expect(screen.getByText(/older page 1 of 2/i)).toBeTruthy()
-
-    await user.click(screen.getByRole('button', { name: /Older/i }))
     expect(screen.getByText(/old feed 25/i)).toBeTruthy()
+    expect(screen.queryByText(/old feed 26/i)).toBeNull()
+  })
 
-    await user.click(screen.getByRole('button', { name: /Show all/i }))
-    expect(screen.getByText(/Showing all 27 events/i)).toBeTruthy()
-    expect(screen.getByText(/old feed 0/i)).toBeTruthy()
-    expect(screen.getByText(/old feed 25/i)).toBeTruthy()
+  it('offers premium timeline filter chips and a simple load-older affordance', () => {
+    const now = Date.now()
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([
+      { id: 'preview-feed', type: 'bottle', startedAt: now, endedAt: now, leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: 'preview feed' },
+      ...Array.from({ length: 41 }, (_, index) => ({ id: `preview-old-${index}`, type: 'bottle', startedAt: now - (index + 1) * 60_000, endedAt: now - (index + 1) * 60_000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: '' })),
+    ]))
+
+    render(<App />)
+
+    const filterGroup = screen.getByRole('group', { name: /Timeline filters/i })
+    expect(within(filterGroup).getByRole('button', { name: /All events/i })).toBeTruthy()
+    expect(within(filterGroup).getByRole('button', { name: /Feeds/i })).toBeTruthy()
+    expect(within(filterGroup).getByRole('button', { name: /Diapers/i })).toBeTruthy()
+    expect(within(filterGroup).getByRole('button', { name: /Sleep/i })).toBeTruthy()
+    expect(within(filterGroup).getByRole('button', { name: /Medicines/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Load older events/i })).toBeTruthy()
   })
 
   it('keeps saved timeline metrics compact and non-redundant', () => {

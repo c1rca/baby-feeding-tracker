@@ -6,48 +6,41 @@ import { TummyTimeTimelineItem } from './timeline/TummyTimeTimelineItem'
 import type { TimelineActions, TimelineItem, TimelineProps } from './timeline/timelineTypes'
 import { timelineItems } from './timeline/timelineUtils'
 
-const RECENT_TIMELINE_WINDOW_MS = 48 * 60 * 60 * 1000
-const TIMELINE_PAGE_SIZE = 25
+const PAGE_SIZE = 40
+type Filter = 'all' | 'feed' | 'diaper' | 'sleep' | 'medicine'
+const filters: Array<{ id: Filter; label: string }> = [{ id: 'all', label: 'All events' }, { id: 'feed', label: 'Feeds' }, { id: 'diaper', label: 'Diapers' }, { id: 'sleep', label: 'Sleep' }, { id: 'medicine', label: 'Medicines' }]
 
+function matches(item: TimelineItem, filter: Filter) {
+  return filter === 'all' || item.kind === filter || (filter === 'sleep' && item.kind === 'tummy' && item.tummyTime.kind === 'sleep')
+}
+function dayLabel(time: number, now: number) {
+  const date = new Date(time); const today = new Date(now); const yesterday = new Date(now - 86400000)
+  const key = date.toDateString()
+  return key === today.toDateString() ? 'Today' : key === yesterday.toDateString() ? 'Yesterday' : date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
+}
 function TimelineList({ items, actions }: { items: TimelineItem[]; actions: TimelineActions }) {
-  return (
-    <ul className="timeline">
-      {items.map((item, index) => {
-        if (item.kind === 'medicine') return <MedicineTimelineItem key={item.medicine.id} medicine={item.medicine} actions={actions} />
-        if (item.kind === 'diaper') return <DiaperTimelineItem key={item.diaper.id} diaper={item.diaper} actions={actions} />
-        if (item.kind === 'tummy') return <TummyTimeTimelineItem key={item.tummyTime.id} tummyTime={item.tummyTime} actions={actions} />
-        return <EntryTimelineItem key={item.entry.id} entry={item.entry} index={index} actions={actions} />
-      })}
-    </ul>
-  )
+  return <ul className="timeline">{items.map((item, index) => {
+    if (item.kind === 'medicine') return <MedicineTimelineItem key={item.medicine.id} medicine={item.medicine} actions={actions} />
+    if (item.kind === 'diaper') return <DiaperTimelineItem key={item.diaper.id} diaper={item.diaper} actions={actions} />
+    if (item.kind === 'tummy') return <TummyTimeTimelineItem key={item.tummyTime.id} tummyTime={item.tummyTime} actions={actions} />
+    return <EntryTimelineItem key={item.entry.id} entry={item.entry} index={index} actions={actions} />
+  })}</ul>
 }
 
 export function Timeline({ now, entries, diapers, medicines, tummyTimes, editing, editingDiaper, editingMedicine, editingTummyTime, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setEditingTummyTime, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, deleteEntry, deleteDiaper, deleteMedicine, deleteTummyTime, startMedicineEdit, startTummyTimeEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, saveTummyTimeEdit, showToast }: TimelineProps) {
-  const [olderPage, setOlderPage] = useState(0)
-  const [showAll, setShowAll] = useState(false)
+  const [filter, setFilter] = useState<Filter>('all')
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
   const items = timelineItems(entries, diapers, medicines, tummyTimes)
-  const cutoff = now - RECENT_TIMELINE_WINDOW_MS
-  const recentItems = items.filter((item) => item.time >= cutoff)
-  const olderItems = items.filter((item) => item.time < cutoff)
-  const visibleOlderItems = showAll ? olderItems : olderItems.slice(olderPage * TIMELINE_PAGE_SIZE, (olderPage + 1) * TIMELINE_PAGE_SIZE)
-  const visibleItems = useMemo(() => [...recentItems, ...visibleOlderItems], [recentItems, visibleOlderItems])
-  const totalOlderPages = Math.max(1, Math.ceil(olderItems.length / TIMELINE_PAGE_SIZE))
+  const filtered = useMemo(() => items.filter((item) => matches(item, filter)), [items, filter])
+  const visible = filtered.slice(0, visibleCount)
   const actions: TimelineActions = { editing, editingDiaper, editingMedicine, editingTummyTime, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setEditingTummyTime, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, deleteEntry, deleteDiaper, deleteMedicine, deleteTummyTime, startMedicineEdit, startTummyTimeEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, saveTummyTimeEdit, showToast }
-
-  return (
-    <section className="card timeline-card">
-      <div className="section-heading"><h2>Timeline</h2><span className="muted">Latest first · past 48 hours</span></div>
-      {items.length === 0 ? <p className="muted">No feeds yet. Start with left/right, quick bottle, diaper, or medicine log.</p> : <>
-        <TimelineList items={visibleItems} actions={actions} />
-        {olderItems.length > 0 ? (
-          <div className="timeline-pagination" aria-label="Timeline pagination">
-            <span>{showAll ? `Showing all ${items.length} events` : `Showing ${recentItems.length} recent + older page ${olderPage + 1} of ${totalOlderPages}`}</span>
-            {!showAll ? <button type="button" disabled={olderPage === 0} onClick={() => setOlderPage((page) => Math.max(0, page - 1))}>Newer</button> : null}
-            {!showAll ? <button type="button" disabled={olderPage >= totalOlderPages - 1} onClick={() => setOlderPage((page) => Math.min(totalOlderPages - 1, page + 1))}>Older</button> : null}
-            <button type="button" onClick={() => setShowAll((value) => !value)}>{showAll ? 'Show pages' : 'Show all'}</button>
-          </div>
-        ) : null}
-      </>}
-    </section>
-  )
+  const groups = visible.reduce<Array<{ label: string; items: TimelineItem[] }>>((all, item) => { const label = dayLabel(item.time, now); const group = all.at(-1); if (!group || group.label !== label) all.push({ label, items: [item] }); else group.items.push(item); return all }, [])
+  return <section className="card timeline-card">
+    <div className="section-heading"><div><h2>Timeline</h2><span className="muted">A clearer view of your day</span></div><span className="timeline-total">{items.length} events</span></div>
+    {items.length === 0 ? <p className="muted">No feeds yet. Start with left/right, quick bottle, diaper, or medicine log.</p> : <>
+      <div className="timeline-filters" role="group" aria-label="Timeline filters">{filters.map(({ id, label }) => <button key={id} type="button" aria-pressed={filter === id} onClick={() => { setFilter(id); setVisibleCount(PAGE_SIZE) }}>{label} <span>{items.filter((item) => matches(item, id)).length}</span></button>)}</div>
+      {groups.length ? groups.map((group) => <div className="timeline-day" key={group.label}><div className="timeline-day-header"><strong>{group.label}</strong><span>{group.items.length} event{group.items.length === 1 ? '' : 's'}</span></div><TimelineList items={group.items} actions={actions} /></div>) : <p className="timeline-empty">No {filter === 'all' ? '' : `${filter} `}events logged yet.</p>}
+      {visible.length < filtered.length ? <div className="timeline-load"><button type="button" onClick={() => setVisibleCount((count) => count + PAGE_SIZE)}>Load older events</button></div> : null}
+    </>}
+  </section>
 }
