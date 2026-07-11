@@ -39,6 +39,7 @@ export type HeroPanelProps = {
   clearSession: () => void
   toggleDiaperSelection: (kind: DiaperKind) => void
   logSelectedDiapers: () => void
+  logDiaperKinds: (kinds: DiaperKind[]) => void
   logMedicine: (kind: MedicineKind) => void
   logTummyTimeMinutes: (minutes: number) => void
   startTummyTime: () => void

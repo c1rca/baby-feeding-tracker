@@ -24,17 +24,21 @@ export function useDiaperActions({ sessionHasActiveFeed, selectedDiapers, setSel
     setSelectedDiapers((prev) => toggleDiaperKind(prev, kind))
   }
 
-  const logSelectedDiapers = () => {
-    const kinds = availableSelectedDiapers
-    if (kinds.length === 0) return showToast(sessionHasActiveFeed ? 'Select an unlogged diaper' : 'Select wet, stool, or both')
+  const logDiaperKinds = (kinds: DiaperKind[]) => {
     const label = kinds.map(diaperLabel).join(' + ')
     const diaper = createStandaloneDiaper(kinds, new Date().getTime())
     setDiapers((prev) => [diaper, ...prev].sort((a, b) => b.at - a.at))
-    setSelectedDiapers((prev) => prev.filter((kind) => !kinds.includes(kind)))
     clearUndoTimeout()
     const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
     setUndoState({ diaper, timeoutId, kind: 'diaper-log' })
     showToast(`${label} diaper logged`)
+  }
+
+  const logSelectedDiapers = () => {
+    const kinds = availableSelectedDiapers
+    if (kinds.length === 0) return showToast(sessionHasActiveFeed ? 'Select an unlogged diaper' : 'Select wet, stool, or both')
+    logDiaperKinds(kinds)
+    setSelectedDiapers((prev) => prev.filter((kind) => !kinds.includes(kind)))
   }
 
   const deleteDiaper = (diaper: DiaperEvent) => {
@@ -55,5 +59,5 @@ export function useDiaperActions({ sessionHasActiveFeed, selectedDiapers, setSel
     showToast('Diaper updated')
   }
 
-  return { availableSelectedDiapers, toggleDiaperSelection, logSelectedDiapers, deleteDiaper, saveDiaperEdit }
+  return { availableSelectedDiapers, toggleDiaperSelection, logSelectedDiapers, logDiaperKinds, deleteDiaper, saveDiaperEdit }
 }

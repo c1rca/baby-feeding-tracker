@@ -36,7 +36,7 @@ export function useAuxiliaryEventActions({
   }, [undoState])
 
   const { logBottle, saveManualFeed } = useBottleManualActions({ now, session, setSession, setEntries, bottleQuickOz, manualDraft, setManualDraft, setManualOpen, showToast })
-  const { availableSelectedDiapers, toggleDiaperSelection, logSelectedDiapers, deleteDiaper, saveDiaperEdit } = useDiaperActions({
+  const { availableSelectedDiapers, toggleDiaperSelection, logSelectedDiapers, logDiaperKinds, deleteDiaper, saveDiaperEdit } = useDiaperActions({
     sessionHasActiveFeed: Boolean(session),
     selectedDiapers,
     setSelectedDiapers,
@@ -67,6 +67,7 @@ export function useAuxiliaryEventActions({
     logBottle,
     toggleDiaperSelection,
     logSelectedDiapers,
+    logDiaperKinds,
     deleteDiaper,
     saveDiaperEdit,
     logMedicine,

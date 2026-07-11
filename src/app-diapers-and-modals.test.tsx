@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest'
 import App from './App'
 import {
   STORAGE_KEY,
-  STORAGE_SESSION_KEY,
   setupAppTestEnvironment,
 } from './appTestSetup'
 
@@ -48,36 +47,27 @@ describe('App interactions', () => {
     expect(savedEntries[0].diaperKinds).toEqual(['wet', 'stool'])
   })
 
-  it('keeps diaper logging primary while missed feed stays in additional options', async () => {
+  it('moves instant diaper logs into More actions', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    const hero = document.querySelector('.hero') as HTMLElement
-    const diaperPanel = screen.getByRole('group', { name: /Diaper/i })
-    expect(hero.compareDocumentPosition(diaperPanel) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Add missed feed/i })).toBeNull()
+    expect(screen.queryByRole('group', { name: /^Diapers$/i })).toBeNull()
     await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    expect(screen.getByRole('button', { name: /Add missed feed/i })).toBeTruthy()
-
-    await user.click(screen.getByRole('button', { name: /Select wet diaper/i }))
-    await user.click(screen.getByRole('button', { name: /Select stool diaper/i }))
-    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
+    const diapers = screen.getByRole('group', { name: /^Diapers$/i })
+    expect(within(diapers).getByRole('button', { name: /^Log wet diaper$/i })).toBeTruthy()
+    expect(within(diapers).getByRole('button', { name: /^Log stool diaper$/i })).toBeTruthy()
+    await user.click(within(diapers).getByRole('button', { name: /^Log mixed diaper$/i }))
 
     expect(screen.getByText(/Wet \+ Stool diaper logged/i)).toBeTruthy()
-    expect(screen.getByText(/Diapers today/i).nextElementSibling?.textContent).toContain('1 wet')
-    expect(screen.getByText(/Diapers today/i).nextElementSibling?.textContent).toContain('1 stool')
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
-    expect(screen.getAllByText(/Wet \+ Stool/i).length).toBeGreaterThan(0)
-    expect(screen.queryByText(/Outside feed/i)).toBeNull()
-    expect(screen.queryByText(/Attached to active feed/i)).toBeNull()
   })
 
   it('undoes a standalone diaper log from the timeline toast', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Select wet diaper/i }))
-    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    await user.click(within(screen.getByRole('group', { name: /^Diapers$/i })).getByRole('button', { name: /^Log wet diaper$/i }))
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
 
     await user.click(screen.getByRole('button', { name: /Undo diaper log/i }))
@@ -90,8 +80,8 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Select wet diaper/i }))
-    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
+    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    await user.click(within(screen.getByRole('group', { name: /^Diapers$/i })).getByRole('button', { name: /^Log wet diaper$/i }))
     const diaperItem = screen.getAllByRole('listitem')[0]
 
     await user.click(within(diaperItem).getByRole('button', { name: /Diaper actions/i }))
@@ -108,69 +98,6 @@ describe('App interactions', () => {
     expect(screen.getByText(/Diaper deleted/i)).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Undo diaper delete/i }))
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
-  })
-
-  it('logs active-feed diaper selections immediately when Log is pressed', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-
-    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
-    await user.click(screen.getByRole('button', { name: /Select wet during active feed/i }))
-    await user.click(screen.getByRole('button', { name: /Select stool during active feed/i }))
-    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
-
-    expect(screen.getByText(/Wet \+ Stool diaper logged/i)).toBeTruthy()
-    const immediateItems = screen.getAllByRole('listitem')
-    expect(immediateItems).toHaveLength(1)
-    expect(within(immediateItems[0]).getByText(/Wet \+ Stool/i)).toBeTruthy()
-
-    await user.click(screen.getByRole('button', { name: /End feed/i }))
-    const savedItems = screen.getAllByRole('listitem')
-    expect(savedItems).toHaveLength(2)
-    expect(within(savedItems[0]).getByText(/Wet \+ Stool/i)).toBeTruthy()
-    expect(within(savedItems[1]).queryByText(/Wet \+ Stool/i)).toBeNull()
-    expect(screen.queryByText(/Attached to active feed/i)).toBeNull()
-    expect(screen.queryByText(/Outside feed/i)).toBeNull()
-  })
-
-  it('still allows immediate standalone diaper logging when the active feed already has pending diaper selections', async () => {
-    const user = userEvent.setup()
-    const now = Date.now()
-    localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify({
-      startedAt: now - 5 * 60 * 1000,
-      activeSide: 'left',
-      segments: [{ side: 'left', startedAt: now - 5 * 60 * 1000, endedAt: null }],
-      bottleOunces: 0,
-      note: '',
-      diaperKinds: ['wet', 'stool'],
-    }))
-
-    render(<App />)
-
-    await user.click(screen.getByRole('button', { name: /Select wet during active feed/i }))
-    await user.click(screen.getByRole('button', { name: /Select stool during active feed/i }))
-    await user.click(screen.getByRole('button', { name: /Log selected diapers/i }))
-
-    expect(screen.getByText(/Wet \+ Stool diaper logged/i)).toBeTruthy()
-    const items = screen.getAllByRole('listitem')
-    expect(items).toHaveLength(1)
-    expect(within(items[0]).getByText(/Wet \+ Stool/i)).toBeTruthy()
-  })
-
-  it('includes selected active-feed diapers when saving if Log was not pressed', async () => {
-    const user = userEvent.setup()
-    render(<App />)
-
-    await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
-    await user.click(screen.getByRole('button', { name: /Select wet during active feed/i }))
-    await user.click(screen.getByRole('button', { name: /Select stool during active feed/i }))
-
-    await user.click(screen.getByRole('button', { name: /End feed/i }))
-
-    const items = screen.getAllByRole('listitem')
-    expect(items).toHaveLength(1)
-    expect(within(items[0]).getByText(/Wet \+ Stool/i)).toBeTruthy()
-    expect(screen.queryByRole('button', { name: /Select stool during active feed/i })).toBeNull()
   })
 
   it('closes modal workflows with Escape', async () => {

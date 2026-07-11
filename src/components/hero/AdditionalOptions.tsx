@@ -1,14 +1,15 @@
 import { CalendarDays, ChevronDown, Dumbbell, Milk, Moon, Pill, Play, Square } from 'lucide-react'
+import type { DiaperKind } from '../../types'
 import type { HeroPanelProps } from './HeroPanel.types'
 
-type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'tummySession' | 'setTummySession' | 'setAdditionalOptionsOpen' | 'setBottleOpen' | 'setManualOpen' | 'setSession' | 'logMedicine' | 'logTummyTimeMinutes' | 'startTummyTime' | 'stopTummyTime' | 'startSleep' | 'stopSleep'>
+type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'tummySession' | 'setTummySession' | 'setAdditionalOptionsOpen' | 'setBottleOpen' | 'setManualOpen' | 'setSession' | 'logDiaperKinds' | 'logMedicine' | 'logTummyTimeMinutes' | 'startTummyTime' | 'stopTummyTime' | 'startSleep' | 'stopSleep'>
 
 const TUMMY_PRESETS = [5, 10, 15, 20] as const
 
 // Premium "More actions" drawer — organized, color-coded category cards.
 // Revert path: restore this file + delete the "Additional options — premium
 // redesign" block in styles.css / styles-classic.css (or git revert the commit).
-export function AdditionalOptions({ session, additionalOptionsOpen, tummySession, setTummySession, setAdditionalOptionsOpen, setBottleOpen, setManualOpen, setSession, logMedicine, logTummyTimeMinutes, startTummyTime, stopTummyTime, startSleep, stopSleep }: AdditionalOptionsProps) {
+export function AdditionalOptions({ session, additionalOptionsOpen, tummySession, setTummySession, setAdditionalOptionsOpen, setBottleOpen, setManualOpen, setSession, logDiaperKinds, logMedicine, logTummyTimeMinutes, startTummyTime, stopTummyTime, startSleep, stopSleep }: AdditionalOptionsProps) {
   return (
     <div className="ao-shell">
       <button
@@ -85,6 +86,17 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
               ) : (
                 <button type="button" className="ao-action" aria-label="Start Sleep" onClick={startSleep}><Play size={14} /> Start session</button>
               )}
+            </div>
+          </section>
+
+          <section className="ao-card ao-card--diapers" role="group" aria-label="Diapers">
+            <header className="ao-card-head">
+              <span className="ao-card-title">Diapers</span>
+            </header>
+            <div className="ao-card-body ao-diaper-actions">
+              {([['wet', 'Wet'], ['stool', 'Stool'], ['mixed', 'Mixed']] as const).map(([kind, label]) => (
+                <button key={kind} type="button" className={`ao-diaper ao-diaper--${kind}`} aria-label={`Log ${label.toLowerCase()} diaper`} onClick={() => logDiaperKinds(kind === 'mixed' ? ['wet', 'stool'] : [kind as DiaperKind])}>{label}</button>
+              ))}
             </div>
           </section>
 
