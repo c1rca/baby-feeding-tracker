@@ -1012,11 +1012,11 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .timeline-total { color:var(--ink-faint); font:800 .78rem var(--font-numeric); }
 .timeline-day { margin-top:18px; }
 .timeline-day.menu-open { position:relative; z-index:5; }
-.timeline-day-header { position:sticky; top:8px; z-index:4; display:flex; justify-content:space-between; align-items:center; margin:16px 0 8px; padding:6px 2px 7px 10px; border:0; border-bottom:1px solid color-mix(in srgb,var(--berry) 18%,var(--border)); border-radius:0; background:color-mix(in srgb,var(--paper) 76%,transparent); backdrop-filter:blur(10px); box-shadow:0 8px 12px -14px color-mix(in srgb,var(--ink) 55%,transparent); }
-.timeline-day-header::before { content:''; width:3px; height:18px; margin-right:8px; border-radius:999px; background:linear-gradient(180deg,var(--violet),var(--berry)); box-shadow:0 2px 7px -2px var(--ring); }
+.timeline-day-header { position:sticky; top:8px; z-index:4; display:flex; justify-content:space-between; align-items:center; margin:16px 0 8px; padding:7px 10px; border:1px solid color-mix(in srgb,var(--berry) 17%,var(--border)); border-radius:14px; background:color-mix(in srgb,var(--card) 58%,transparent); backdrop-filter:blur(14px) saturate(1.08); box-shadow:0 10px 20px -20px color-mix(in srgb,var(--berry) 70%,var(--ink)); }
+.timeline-day-header::before { content:''; width:3px; height:17px; margin-right:8px; border-radius:999px; background:linear-gradient(180deg,var(--violet),var(--berry)); box-shadow:0 2px 7px -2px var(--ring); }
 .timeline-day-header strong { margin-right:auto; font-size:.72rem; letter-spacing:.085em; text-transform:uppercase; color:var(--ink-soft); }
 .timeline-day-header span,.timeline-empty { color:var(--ink-faint); font-size:.72rem; font-weight:750; }
-@media (max-width:600px) { .timeline-day-header { top:4px; margin-top:12px; padding-block:5px 6px; } }
+@media (max-width:600px) { .timeline-day-header { top:4px; margin-top:12px; padding-block:6px; border-radius:13px; } }
 .timeline-load { display:flex; justify-content:center; padding:18px 0 2px; }
 .timeline-load button { border-radius:999px; min-height:40px; padding:0 18px; color:var(--berry); background:color-mix(in srgb, var(--berry) 10%, transparent); border-color:color-mix(in srgb, var(--berry) 30%, transparent); }
 .timeline-item { box-shadow:0 8px 20px -18px rgba(35,25,65,.55); }
