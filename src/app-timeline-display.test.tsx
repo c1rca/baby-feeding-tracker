@@ -142,7 +142,9 @@ describe('App interactions', () => {
     render(<App />)
 
     const filterGroup = screen.getByRole('group', { name: /Timeline filters/i })
-    expect(within(filterGroup).getByRole('button', { name: /All events/i })).toBeTruthy()
+    const allLens = within(filterGroup).getByRole('button', { name: /All events/i })
+    expect(allLens.getAttribute('data-filter')).toBe('all')
+    expect(within(allLens).getByText('✦')).toBeTruthy()
     expect(within(filterGroup).getByRole('button', { name: /Feeds/i })).toBeTruthy()
     expect(within(filterGroup).getByRole('button', { name: /Diapers/i })).toBeTruthy()
     expect(within(filterGroup).getByRole('button', { name: /Sleep/i })).toBeTruthy()

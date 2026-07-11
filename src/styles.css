@@ -999,10 +999,19 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .timeline-pagination span { margin-right: auto; color: var(--ink-faint); font-size: .8rem; font-weight: 800; }
 .timeline-pagination button { min-height: 34px; padding: 0 13px; border-radius: 999px; font-size: .84rem; }
 
-.timeline-filters { display:flex; gap:7px; flex-wrap:wrap; margin: 15px 0 18px; padding:6px; border:1px solid var(--border); border-radius:16px; background:var(--well); }
-.timeline-filters button { min-height:34px; padding:0 11px; border:0; border-radius:11px; background:transparent; box-shadow:none; color:var(--ink-soft); font-size:.8rem; font-weight:800; }
-.timeline-filters button span { margin-left:4px; color:var(--ink-faint); font-family:var(--font-numeric); }
+.timeline-filters { display:flex; align-items:center; gap:5px; margin:14px 0 18px; padding:5px; border:1px solid var(--border); border-radius:16px; background:var(--well); overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:none; scroll-snap-type:x proximity; }
+.timeline-filters::-webkit-scrollbar { display:none; }
+.timeline-filters button { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; min-height:34px; padding:0 10px; border:0; border-radius:11px; background:transparent; box-shadow:none; color:var(--ink-soft); font-size:.8rem; font-weight:800; scroll-snap-align:start; }
+.timeline-filter-icon { display:grid; place-items:center; width:18px; font-size:.92rem; line-height:1; }
+.timeline-filter-count { display:grid; place-items:center; min-width:19px; height:19px; padding:0 5px; border-radius:999px; color:var(--ink-faint); background:color-mix(in srgb, var(--ink) 6%, transparent); font:800 .69rem var(--font-numeric); }
 .timeline-filters button[aria-pressed='true'] { color:var(--berry); background:var(--card); box-shadow:0 4px 12px -8px rgba(35,25,65,.45); }
+.timeline-filters button[aria-pressed='true'] .timeline-filter-count { color:var(--berry); background:color-mix(in srgb, var(--berry) 11%, transparent); }
+@media (max-width: 600px) {
+  .timeline-filters { margin:10px -2px 14px; border-radius:14px; }
+  .timeline-filters button { min-height:38px; padding:0 9px; gap:5px; }
+  .timeline-filter-label { font-size:.74rem; }
+  .timeline-filter-count { min-width:18px; height:18px; padding:0 4px; }
+}
 .timeline-total { color:var(--ink-faint); font:800 .78rem var(--font-numeric); }
 .timeline-day { margin-top:18px; }
 .timeline-day.menu-open { position:relative; z-index:5; }
