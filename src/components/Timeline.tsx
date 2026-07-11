@@ -18,6 +18,12 @@ function dayLabel(time: number, now: number) {
   const key = date.toDateString()
   return key === today.toDateString() ? 'Today' : key === yesterday.toDateString() ? 'Yesterday' : date.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
 }
+function itemId(item: TimelineItem) {
+  if (item.kind === 'feed') return item.entry.id
+  if (item.kind === 'diaper') return item.diaper.id
+  if (item.kind === 'medicine') return item.medicine.id
+  return item.tummyTime.id
+}
 function TimelineList({ items, actions }: { items: TimelineItem[]; actions: TimelineActions }) {
   return <ul className="timeline">{items.map((item, index) => {
     if (item.kind === 'medicine') return <MedicineTimelineItem key={item.medicine.id} medicine={item.medicine} actions={actions} />
@@ -39,7 +45,7 @@ export function Timeline({ now, entries, diapers, medicines, tummyTimes, editing
     <div className="section-heading"><div><h2>Timeline</h2><span className="muted">A clearer view of your day</span></div><span className="timeline-total">{items.length} events</span></div>
     {items.length === 0 ? <p className="muted">No feeds yet. Start with left/right, quick bottle, diaper, or medicine log.</p> : <>
       <div className="timeline-filters" role="group" aria-label="Timeline filters">{filters.map(({ id, label }) => <button key={id} type="button" aria-pressed={filter === id} onClick={() => { setFilter(id); setVisibleDays(1) }}>{label} <span>{items.filter((item) => matches(item, id)).length}</span></button>)}</div>
-      {groups.length ? groups.map((group) => <div className="timeline-day" key={group.label}><div className="timeline-day-header"><strong>{group.label}</strong><span>{group.items.length} event{group.items.length === 1 ? '' : 's'}</span></div><TimelineList items={group.items} actions={actions} /></div>) : <p className="timeline-empty">No {filter === 'all' ? '' : `${filter} `}events logged yet.</p>}
+      {groups.length ? groups.map((group) => <div className={`timeline-day${group.items.some((item) => itemId(item) === openEntryMenuId) ? ' menu-open' : ''}`} key={group.label}><div className="timeline-day-header"><strong>{group.label}</strong><span>{group.items.length} event{group.items.length === 1 ? '' : 's'}</span></div><TimelineList items={group.items} actions={actions} /></div>) : <p className="timeline-empty">No {filter === 'all' ? '' : `${filter} `}events logged yet.</p>}
       {visible.length < filtered.length ? <div className="timeline-load"><button type="button" onClick={() => setVisibleDays((days) => days + 1)}>Load older events</button></div> : null}
     </>}
   </section>

@@ -12,7 +12,7 @@ describe('App interactions', () => {
   setupAppTestEnvironment()
 
   it('edits a medicine timeline entry kind and time', async () => {
-    const now = new Date('2026-06-05T14:00:00Z').getTime()
+    const now = Date.now()
     localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'dose-1', kind: 'tylenol', at: now }]))
 
     const user = userEvent.setup()
@@ -87,6 +87,7 @@ describe('App interactions', () => {
     const firstItem = screen.getAllByRole('listitem')[0]
     await user.click(within(firstItem).getByRole('button', { name: /Entry actions/i }))
     expect(within(firstItem).getByRole('menuitem', { name: /Edit entry/i })).toBeTruthy()
+    expect(firstItem.closest('.timeline-day')?.classList.contains('menu-open')).toBe(true)
 
     await user.click(screen.getByText(/Baby Feeding Tracker/i))
 

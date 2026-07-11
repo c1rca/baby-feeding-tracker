@@ -1005,6 +1005,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .timeline-filters button[aria-pressed='true'] { color:var(--berry); background:var(--card); box-shadow:0 4px 12px -8px rgba(35,25,65,.45); }
 .timeline-total { color:var(--ink-faint); font:800 .78rem var(--font-numeric); }
 .timeline-day { margin-top:18px; }
+.timeline-day.menu-open { position:relative; z-index:5; }
 .timeline-day-header { position:sticky; top:8px; z-index:4; display:flex; justify-content:space-between; align-items:center; margin:0 0 9px; padding:8px 10px; border:1px solid var(--border); border-radius:12px; background:color-mix(in srgb, var(--paper) 88%, transparent); backdrop-filter:blur(12px); }
 .timeline-day-header strong { font-size:.84rem; letter-spacing:.03em; text-transform:uppercase; color:var(--ink); }
 .timeline-day-header span,.timeline-empty { color:var(--ink-faint); font-size:.76rem; font-weight:750; }
