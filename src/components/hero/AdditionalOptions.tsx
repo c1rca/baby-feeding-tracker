@@ -27,6 +27,19 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
 
       {additionalOptionsOpen ? (
         <div className="ao-panel">
+          <section className="ao-card ao-card--diapers" role="group" aria-label="Diapers">
+            <header className="ao-card-head">
+              <span className="ao-card-icon"><Droplets size={15} /></span>
+              <span className="ao-card-title">Diapers</span>
+              <span className="ao-card-caption">Quick log</span>
+            </header>
+            <div className="ao-card-body ao-diaper-actions">
+              {([['wet', 'Wet'], ['stool', 'Stool'], ['mixed', 'Mixed']] as const).map(([kind, label]) => (
+                <button key={kind} type="button" className={`ao-diaper ao-diaper--${kind}`} aria-label={`Log ${label.toLowerCase()} diaper`} onClick={() => logDiaperKinds(kind === 'mixed' ? ['wet', 'stool'] : [kind as DiaperKind])}>{label}</button>
+              ))}
+            </div>
+          </section>
+
           <section className="ao-card ao-card--tummy" role="group" aria-label="Tummy Time">
             <header className="ao-card-head">
               <span className="ao-card-icon"><Dumbbell size={15} /></span>
@@ -86,19 +99,6 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
               ) : (
                 <button type="button" className="ao-action" aria-label="Start Sleep" onClick={startSleep}><Play size={14} /> Start session</button>
               )}
-            </div>
-          </section>
-
-          <section className="ao-card ao-card--diapers" role="group" aria-label="Diapers">
-            <header className="ao-card-head">
-              <span className="ao-card-icon"><Droplets size={15} /></span>
-              <span className="ao-card-title">Diapers</span>
-              <span className="ao-card-caption">Quick log</span>
-            </header>
-            <div className="ao-card-body ao-diaper-actions">
-              {([['wet', 'Wet'], ['stool', 'Stool'], ['mixed', 'Mixed']] as const).map(([kind, label]) => (
-                <button key={kind} type="button" className={`ao-diaper ao-diaper--${kind}`} aria-label={`Log ${label.toLowerCase()} diaper`} onClick={() => logDiaperKinds(kind === 'mixed' ? ['wet', 'stool'] : [kind as DiaperKind])}>{label}</button>
-              ))}
             </div>
           </section>
 
