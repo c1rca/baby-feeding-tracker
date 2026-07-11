@@ -48,7 +48,9 @@ export type HeroPanelProps = {
   startSleep: () => void
   stopSleep: () => void
   pumpSession: PumpSession | null
+  pumpActiveSeconds: number
   startPumping: (side: 'left' | 'both' | 'right') => void
+  startManualPumping: () => void
   stopPumping: () => void
   savePumping: (left: string, right: string, note: string) => void
   pumpCompletionOpen: boolean

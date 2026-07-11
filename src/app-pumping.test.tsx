@@ -17,6 +17,8 @@ describe('Pumping tracker', () => {
     await user.click(within(pumping).getByRole('button', { name: /^Start pumping$/i }))
 
     expect(screen.getByText(/Pumping in progress/i)).toBeTruthy()
+    expect(document.querySelector('.timer-mode-pill')?.textContent).toBe('Pumping')
+    expect(screen.queryByRole('button', { name: /Start suggested side/i })).toBeNull()
     expect(screen.getByRole('button', { name: /^Stop pumping$/i })).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: /^Stop pumping$/i }))

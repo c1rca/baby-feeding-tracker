@@ -663,6 +663,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 }
 .ao-card--tummy { --ao-accent: var(--hue-tummy); }
 .ao-card--sleep { --ao-accent: #4f46e5; }
+.ao-card--pumping { --ao-accent: #0e7490; }
 .ao-card--diapers { --ao-accent: #0f766e; }
 .ao-card--medicine { --ao-accent: var(--hue-tylenol); }
 .ao-card--bottle { --ao-accent: var(--hue-bottle); }
@@ -759,6 +760,33 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .ao-note { display: grid; gap: 5px; }
 .ao-note > span { font-size: .78rem; font-weight: 800; color: var(--ink-soft); }
 .ao-note--feed { grid-column: 1 / -1; padding-top: 2px; }
+
+/* Pumping: timer-first card and opaque output sheet */
+.pump-side-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.pump-side-picker button { min-height: 42px; justify-content: center; border-radius: 12px; background: var(--well); border-color: transparent; box-shadow: none; font-weight: 800; }
+.pump-side-picker button[aria-pressed="true"] { color: #fff; background: var(--ao-accent); border-color: var(--ao-accent); box-shadow: 0 7px 15px -10px var(--ao-accent); }
+.pump-actions { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+.pump-manual { min-height: 44px; padding: 0 12px; border-radius: 13px; color: var(--ink-soft); background: var(--well); border-color: var(--border); box-shadow: none; font-size: .78rem; font-weight: 800; }
+.pump-live { display: grid; gap: 5px; }
+.pump-live strong { color: var(--ao-accent); font-size: .88rem; }
+.pump-live span { color: var(--ink-soft); font-size: .75rem; }
+.pump-sheet-backdrop { background: rgba(10, 14, 28, .62); backdrop-filter: blur(6px); }
+.pump-sheet { width: min(100% - 28px, 440px); padding: 22px; border: 1px solid var(--border-strong); border-radius: 22px; background: var(--card-solid); color: var(--ink); box-shadow: 0 24px 68px rgba(0,0,0,.38); }
+.pump-sheet-head { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+.pump-sheet-head h2 { margin: 2px 0 5px; font-size: 1.25rem; }
+.pump-sheet-head p { margin: 0; color: var(--ink-soft); font-size: .82rem; line-height: 1.4; }
+.pump-sheet-eyebrow { color: var(--ao-accent); font-size: .68rem; font-weight: 900; letter-spacing: .1em; text-transform: uppercase; }
+.pump-output-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.pump-output-grid label, .pump-note { display: grid; gap: 6px; color: var(--ink-soft); font-size: .78rem; font-weight: 800; }
+.pump-output-grid label > div { position: relative; }
+.pump-output-grid input { width: 100%; min-height: 52px; padding-right: 36px; font-size: 1.05rem; font-weight: 800; }
+.pump-output-grid em { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-style: normal; font-size: .75rem; }
+.pump-total { display: flex; align-items: center; justify-content: space-between; margin: 12px 0; padding: 12px 14px; border-radius: 14px; color: var(--ao-accent); background: color-mix(in srgb, var(--ao-accent) 11%, var(--well)); }
+.pump-total span { font-size: .76rem; font-weight: 800; }.pump-total strong { font-size: 1.1rem; }
+.pump-note em { color: var(--ink-faint); font-style: normal; font-weight: 650; }
+.pump-note input { min-height: 44px; }
+.pump-sheet-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+.pump-sheet-actions button { min-height: 44px; }
 
 @media (prefers-reduced-motion: reduce) {
   .ao-panel, .ao-card { animation: none; }

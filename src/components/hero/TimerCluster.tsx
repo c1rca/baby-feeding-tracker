@@ -3,14 +3,14 @@ import { formatDuration } from '../../domain/feedingUtils'
 import { sideLabel } from '../../domain/trackerDomain'
 import type { HeroPanelProps } from './HeroPanel.types'
 
-type TimerClusterProps = Pick<HeroPanelProps, 'session' | 'activeSeconds' | 'activeSide' | 'suggestedSide' | 'tummySession' | 'tummyActiveSeconds' | 'pause' | 'resume'>
+type TimerClusterProps = Pick<HeroPanelProps, 'session' | 'activeSeconds' | 'activeSide' | 'suggestedSide' | 'tummySession' | 'tummyActiveSeconds' | 'pumpSession' | 'pumpActiveSeconds' | 'pause' | 'resume'>
 
-export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide, tummySession, tummyActiveSeconds, pause, resume }: TimerClusterProps) {
-  const displaySeconds = tummySession ? tummyActiveSeconds : activeSeconds
-  const timerState = tummySession || (session && activeSide) ? 'is-live' : session ? 'is-paused' : 'is-idle'
+export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide, tummySession, tummyActiveSeconds, pumpSession, pumpActiveSeconds, pause, resume }: TimerClusterProps) {
+  const displaySeconds = pumpSession ? pumpActiveSeconds : tummySession ? tummyActiveSeconds : activeSeconds
+  const timerState = pumpSession || tummySession || (session && activeSide) ? 'is-live' : session ? 'is-paused' : 'is-idle'
   return (
     <div className="timer-cluster">
-      {tummySession ? <span className="timer-mode-pill">{tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</span> : null}
+      {pumpSession ? <span className="timer-mode-pill">Pumping</span> : tummySession ? <span className="timer-mode-pill">{tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</span> : null}
       <div className={`timer-shell ${timerState}`}>
         <div className="timer-halo" aria-hidden="true" />
         <div className="timer">{formatDuration(displaySeconds)}</div>

@@ -28,6 +28,7 @@ const parseOutput = (value: string) => {
 
 export function usePumpActions({ pumpSession, setPumpSession, setPumpEvents, setPumpCompletionOpen, editingPump, setEditingPump, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
   const startPumping = (side: PumpSide) => setPumpSession({ id: makeId(), startedAt: Date.now(), side })
+  const startManualPumping = () => { setPumpSession({ id: makeId(), startedAt: Date.now(), side: 'both' }); setPumpCompletionOpen(true) }
   const stopPumping = () => { if (pumpSession) setPumpCompletionOpen(true) }
   const savePumping = (leftText: string, rightText: string, note: string) => {
     if (!pumpSession) return
@@ -59,5 +60,5 @@ export function usePumpActions({ pumpSession, setPumpSession, setPumpEvents, set
     setUndoState({ pumpEvent, timeoutId, kind: 'pump-delete' })
     showToast('Pumping deleted')
   }
-  return { startPumping, stopPumping, savePumping, startPumpEdit, savePumpEdit, deletePump }
+  return { startPumping, startManualPumping, stopPumping, savePumping, startPumpEdit, savePumpEdit, deletePump }
 }

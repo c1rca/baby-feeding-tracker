@@ -47,7 +47,9 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   startSleep,
   stopSleep,
   pumpSession,
+  pumpActiveSeconds,
   startPumping,
+  startManualPumping,
   stopPumping,
   savePumping,
   pumpCompletionOpen,
@@ -69,15 +71,15 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   return (
     <section className="card hero" ref={ref}>
       <HeroCue session={session} nextFeedWindowText={nextFeedWindowText} nextFeedSideText={nextFeedSideText} hasLastFeed={hasLastFeed} />
-      <TimerCluster session={session} activeSeconds={activeSeconds} activeSide={activeSide} suggestedSide={suggestedSide} tummySession={tummySession} tummyActiveSeconds={tummyActiveSeconds} pause={pause} resume={resume} />
+      <TimerCluster session={session} activeSeconds={activeSeconds} activeSide={activeSide} suggestedSide={suggestedSide} tummySession={tummySession} tummyActiveSeconds={tummyActiveSeconds} pumpSession={pumpSession} pumpActiveSeconds={pumpActiveSeconds} pause={pause} resume={resume} />
       <div className="hero-micro-meta" aria-label="Feed timing summary">
         <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
         {avgGapShortText ? <span>{avgGapShortText}</span> : null}
       </div>
       <LiveSplit session={session} activeSplit={activeSplit} />
       {tummySession ? null : <StartOffsetControl session={session} startOffsetOpen={startOffsetOpen} startInputMode={startInputMode} startClockText={startClockText} startMinutesAgo={startMinutesAgo} selectedStartMinutesAgo={selectedStartMinutesAgo} setStartOffsetOpen={setStartOffsetOpen} setStartInputMode={setStartInputMode} setStartClockText={setStartClockText} setStartMinutesAgo={setStartMinutesAgo} />}
-      <HeroActions session={session} tummySession={tummySession} activeSide={activeSide} activeOppositeSide={activeOppositeSide} suggestedSide={suggestedSide} startSession={startSession} switchSide={switchSide} resume={resume} endSession={endSession} clearConfirming={clearConfirming} requestClearSession={requestClearSession} clearIcon={<XCircle size={14} />} />
-      <AdditionalOptions session={session} additionalOptionsOpen={additionalOptionsOpen} tummySession={tummySession} setTummySession={setTummySession} setAdditionalOptionsOpen={setAdditionalOptionsOpen} setBottleOpen={setBottleOpen} setManualOpen={setManualOpen} setSession={setSession} logDiaperKinds={logDiaperKinds} logMedicine={logMedicine} logTummyTimeMinutes={logTummyTimeMinutes} startTummyTime={startTummyTime} stopTummyTime={stopTummyTime} startSleep={startSleep} stopSleep={stopSleep} pumpSession={pumpSession} startPumping={startPumping} stopPumping={stopPumping} savePumping={savePumping} pumpCompletionOpen={pumpCompletionOpen} setPumpCompletionOpen={setPumpCompletionOpen} />
+      <HeroActions session={session} tummySession={tummySession} pumpSession={pumpSession} activeSide={activeSide} activeOppositeSide={activeOppositeSide} suggestedSide={suggestedSide} startSession={startSession} switchSide={switchSide} resume={resume} endSession={endSession} clearConfirming={clearConfirming} requestClearSession={requestClearSession} clearIcon={<XCircle size={14} />} />
+      <AdditionalOptions session={session} additionalOptionsOpen={additionalOptionsOpen} tummySession={tummySession} setTummySession={setTummySession} setAdditionalOptionsOpen={setAdditionalOptionsOpen} setBottleOpen={setBottleOpen} setManualOpen={setManualOpen} setSession={setSession} logDiaperKinds={logDiaperKinds} logMedicine={logMedicine} logTummyTimeMinutes={logTummyTimeMinutes} startTummyTime={startTummyTime} stopTummyTime={stopTummyTime} startSleep={startSleep} stopSleep={stopSleep} pumpSession={pumpSession} startPumping={startPumping} startManualPumping={startManualPumping} stopPumping={stopPumping} savePumping={savePumping} pumpCompletionOpen={pumpCompletionOpen} setPumpCompletionOpen={setPumpCompletionOpen} />
     </section>
   )
 })
