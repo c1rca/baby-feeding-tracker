@@ -71,7 +71,13 @@ export function AdditionalOptions({ session, additionalOptionsOpen, tummySession
             </header>
             <div className="ao-card-body">
               {tummySession?.kind === 'sleep' ? (
-                <button type="button" className="ao-action ao-action--stop" aria-label="Stop Sleep" onClick={stopSleep}><Square size={14} /> Stop session</button>
+                <>
+                  <button type="button" className="ao-action ao-action--stop" aria-label="Stop Sleep" onClick={stopSleep}><Square size={14} /> Stop session</button>
+                  <label className="ao-note">
+                    <span>Sleep note</span>
+                    <input value={tummySession.note} onChange={(event) => setTummySession({ ...tummySession, note: event.target.value })} placeholder="optional note" />
+                  </label>
+                </>
               ) : tummySession ? (
                 <p className="ao-hint">Stop Tummy Time before starting Sleep.</p>
               ) : session ? (

@@ -139,11 +139,14 @@ describe('Tummy Time tracking', () => {
     expect(document.querySelector('.timer-mode-pill')?.textContent).toBe('Sleep')
     expect(within(group).queryByRole('button', { name: /^Start Sleep$/i })).toBeNull()
     expect(within(group).getByRole('button', { name: /^Stop Sleep$/i })).toBeTruthy()
+    const note = within(group).getByRole('textbox', { name: /Sleep note/i })
+    await user.type(note, 'long afternoon nap')
     expect(screen.queryByRole('button', { name: /^Start Tummy Time$/i })).toBeNull()
     expect(screen.queryByRole('button', { name: /Adjust start time/i })).toBeNull()
 
     await user.click(within(group).getByRole('button', { name: /^Stop Sleep$/i }))
     expect(screen.getByText(/Sleep saved/i)).toBeTruthy()
+    expect(screen.getByText('long afternoon nap')).toBeTruthy()
   })
 
   it('reminds against a configurable daily goal with spacing after partial sessions', () => {

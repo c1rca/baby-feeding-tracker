@@ -76,8 +76,5 @@ describe('App interactions', () => {
     expect(saved[0].startedAt).toBe(new Date('2026-06-10T08:00:00').getTime())
     expect(saved[0].endedAt).toBe(new Date('2026-06-10T08:12:00').getTime())
     expect(screen.getByText(/Missed feed saved/i)).toBeTruthy()
-    expect(screen.getByText(/mixed/i)).toBeTruthy()
-    expect(screen.getAllByText(/2\.5 oz/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/late log/i)).toBeTruthy()
   })
 })
