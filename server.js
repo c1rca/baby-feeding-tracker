@@ -65,6 +65,17 @@ const sendEmailLogin = textEmailSender
     }
   : null
 
+const sendInvite = textEmailSender
+  ? async ({ channel, to, link, role }) => {
+      const recipient = channel === 'text' ? phoneToTextEmail(to) : to
+      const subject = 'Feedr caregiver invitation'
+      const message = `You have been invited as a ${role} in Feedr. Open your invite: ${link}`
+      appendEventLog('invite_send_attempt', { channel, to: maskRecipient(recipient) })
+      await textEmailSender({ to: recipient, subject, title: subject, message })
+      appendEventLog('invite_send_success', { channel, to: maskRecipient(recipient) })
+    }
+  : null
+
 const readBooleanSetting = (key, fallback) => {
   const row = selectSetting.get(key)
   return row ? row.value === '1' : fallback
@@ -145,7 +156,7 @@ app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, authBy
 createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, selectMembershipsByUser, updateUserPassword, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, archiveBaby, appendEventLog })(app)
 createMemberRouter({ selectMembersByHousehold, updateMemberRole, removeMember, appendEventLog })(app)
-createInviteRouter({ selectActiveInvitesByHousehold, selectInviteByEmail, insertInvite, revokeInvite, appendEventLog })(app)
+createInviteRouter({ selectActiveInvitesByHousehold, selectInviteByEmail, insertInvite, revokeInvite, appendEventLog, sendInvite, baseUrl: config.publicBaseUrl })(app)
 createHouseholdRouter({ selectMembershipsByUser, createHousehold, appendEventLog })(app)
 
 createDiagnosticsRouter({ config, getGotifyRemindersEnabled })(app)
