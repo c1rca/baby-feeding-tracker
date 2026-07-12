@@ -687,6 +687,10 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .app-shell-content > .tracker-view + .timeline-card { margin-top: 18px; }
 .tracker-view > .card:last-child { padding: 14px 16px 16px; }
 .tracker-view > .card:last-child .section-heading { margin-bottom: 10px; }
+.workspace-topbar > div:first-child { min-width: 0; }
+.workspace-topbar h1 { margin: 4px 0 0; font-size: clamp(1.65rem, 2.8vw, 2.25rem); font-weight: 800; letter-spacing: -.045em; line-height: 1.05; }
+.workspace-topbar .workspace-eyebrow { letter-spacing: .16em; }
+.workspace-topbar-actions { min-height: 36px; }
 .care-actions { display: grid; gap: 8px; margin: 10px 0 12px; }
 .care-actions .care-launcher { padding: 0; }
 .care-history-link { justify-self: center; padding: 4px 8px; border: 0; background: transparent; color: var(--ink-faint); font-size: .75rem; box-shadow: none; }
