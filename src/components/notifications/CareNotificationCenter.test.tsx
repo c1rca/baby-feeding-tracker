@@ -13,9 +13,10 @@ describe('CareNotificationCenter', () => {
     const user = userEvent.setup()
     render(<CareNotificationCenter notifications={[item(), item({ id: 'vitamin', kind: 'vitamin_d', priority: 2, title: 'Vitamin D reminder', actionLabel: 'Log Vitamin D', ariaActionLabel: 'Log Vitamin D now' })]} />)
 
-    expect(screen.getByRole('button', { name: /Log Tylenol now/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Open care notifications/i }).textContent).toMatch(/2 care reminders/i)
-    await user.click(screen.getByRole('button', { name: /Open care notifications/i }))
+    expect(screen.getByRole('button', { name: /Open care notifications, 2 unresolved/i })).toBeTruthy()
+    expect(screen.getByText('2')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: /Log Tylenol now/i })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Open care notifications, 2 unresolved/i }))
     expect(screen.getByRole('dialog', { name: /Care notifications/i })).toBeTruthy()
     expect(screen.getAllByRole('alert')).toHaveLength(2)
     await user.keyboard('{Escape}')

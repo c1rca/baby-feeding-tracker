@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Bell, ChevronRight, Dumbbell, Pill, Sun, X } from 'lucide-react'
+import { Bell, Dumbbell, Pill, Sun, X } from 'lucide-react'
 import type { CareNotification } from './notificationModel'
-import { careNotificationSummary } from './notificationModel'
 
 type Props = { notifications: CareNotification[] }
 
@@ -20,18 +19,10 @@ export function CareNotificationCenter({ notifications }: Props) {
   }, [open])
 
   if (notifications.length === 0) return null
-  const primary = notifications[0]
-  const summary = careNotificationSummary(notifications)
-
   return <section className="care-notification-center" aria-label="Care notifications">
-    <div className="care-notification-dock">
-      <button ref={openerRef} type="button" className="care-notification-opener" aria-label="Open care notifications" aria-expanded={open} onClick={() => setOpen(true)}>
-        <span className="care-notification-orb"><Bell size={17} /><i /></span>
-        <span className="care-notification-copy"><strong>{notifications.length === 1 ? primary.title : `${notifications.length} care reminders`}</strong><span>{summary}</span></span>
-        <ChevronRight className="care-notification-chevron" size={18} aria-hidden="true" />
-      </button>
-      <button type="button" className={`care-notification-primary-action care-notification-primary-action--${primary.kind}`} aria-label={primary.ariaActionLabel} onClick={primary.action}>{iconFor(primary.kind)}<span>{primary.actionLabel}</span></button>
-    </div>
+    <button ref={openerRef} type="button" className="care-notification-opener" aria-label={`Open care notifications, ${notifications.length} unresolved`} aria-expanded={open} onClick={() => setOpen(true)}>
+      <Bell size={18} /><span className="care-notification-count" aria-hidden="true">{notifications.length}</span>
+    </button>
     {open ? <div className="care-notification-panel" role="dialog" aria-label="Care notifications" aria-modal="false">
       <header className="care-notification-panel-header"><div><span>Care notifications</span><small>{notifications.length} {notifications.length === 1 ? 'needs' : 'need'} attention</small></div><button type="button" className="icon-plain" aria-label="Close care notifications" onClick={close}><X size={18} /></button></header>
       <div className="care-notification-list">
