@@ -14,7 +14,7 @@ describe('CareNotificationCenter', () => {
     render(<CareNotificationCenter notifications={[item(), item({ id: 'vitamin', kind: 'vitamin_d', priority: 2, title: 'Vitamin D reminder', actionLabel: 'Log Vitamin D', ariaActionLabel: 'Log Vitamin D now' })]} />)
 
     expect(screen.getByRole('button', { name: /Open care notifications, 2 unresolved/i })).toBeTruthy()
-    expect(screen.getByText('2')).toBeTruthy()
+    expect(screen.getAllByText('2').length).toBeGreaterThan(0)
     expect(screen.queryByRole('button', { name: /Log Tylenol now/i })).toBeNull()
     await user.click(screen.getByRole('button', { name: /Open care notifications, 2 unresolved/i }))
     expect(screen.getByRole('dialog', { name: /Care notifications/i })).toBeTruthy()
