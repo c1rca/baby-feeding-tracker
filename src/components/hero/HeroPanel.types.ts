@@ -55,6 +55,7 @@ export type HeroPanelProps = {
   stopPumping: () => void
   pausePumping: () => void
   resumePumping: () => void
+  setPumpingSide: (side: 'left' | 'both' | 'right') => void
   savePumping: (left: string, right: string, note: string) => void
   pumpCompletionOpen: boolean
   setPumpCompletionOpen: (open: boolean) => void

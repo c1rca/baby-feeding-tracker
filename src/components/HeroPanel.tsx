@@ -32,7 +32,6 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   setAdditionalOptionsOpen,
   setBottleOpen,
   setManualOpen,
-  setSession,
   startSession,
   switchSide,
   pause,
@@ -55,6 +54,7 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   stopPumping,
   pausePumping,
   resumePumping,
+  setPumpingSide,
   savePumping,
   pumpCompletionOpen,
   setPumpCompletionOpen,
@@ -77,14 +77,14 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
       <HeroCue session={session} nextFeedWindowText={nextFeedWindowText} nextFeedSideText={nextFeedSideText} hasLastFeed={hasLastFeed} />
       <TimerCluster session={session} activeSeconds={activeSeconds} activeSide={activeSide} suggestedSide={suggestedSide} tummySession={tummySession} tummyActiveSeconds={tummyActiveSeconds} pumpSession={pumpSession} pumpActiveSeconds={pumpActiveSeconds} pause={pause} resume={resume} pauseCareTimer={pauseCareTimer} resumeCareTimer={resumeCareTimer} pausePumping={pausePumping} resumePumping={resumePumping} />
       {tummySession ? <button type="button" className="success end-feed" onClick={stopTummyTime}>Stop & save {tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</button> : pumpSession ? <button type="button" className="success end-feed" onClick={stopPumping}>Finish & add output</button> : null}
-      <div className="hero-micro-meta" aria-label="Feed timing summary">
+      {!tummySession && !pumpSession ? <div className="hero-micro-meta" aria-label="Feed timing summary">
         <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
         {avgGapShortText ? <span>{avgGapShortText}</span> : null}
-      </div>
+      </div> : null}
       <LiveSplit session={session} activeSplit={activeSplit} />
-      {tummySession ? null : <StartOffsetControl session={session} startOffsetOpen={startOffsetOpen} startInputMode={startInputMode} startClockText={startClockText} startMinutesAgo={startMinutesAgo} selectedStartMinutesAgo={selectedStartMinutesAgo} setStartOffsetOpen={setStartOffsetOpen} setStartInputMode={setStartInputMode} setStartClockText={setStartClockText} setStartMinutesAgo={setStartMinutesAgo} />}
+      {session || tummySession || pumpSession ? null : <StartOffsetControl session={session} startOffsetOpen={startOffsetOpen} startInputMode={startInputMode} startClockText={startClockText} startMinutesAgo={startMinutesAgo} selectedStartMinutesAgo={selectedStartMinutesAgo} setStartOffsetOpen={setStartOffsetOpen} setStartInputMode={setStartInputMode} setStartClockText={setStartClockText} setStartMinutesAgo={setStartMinutesAgo} />}
       <HeroActions session={session} tummySession={tummySession} pumpSession={pumpSession} activeSide={activeSide} activeOppositeSide={activeOppositeSide} suggestedSide={suggestedSide} startSession={startSession} switchSide={switchSide} resume={resume} endSession={endSession} clearConfirming={clearConfirming} requestClearSession={requestClearSession} clearIcon={<XCircle size={14} />} />
-      <AdditionalOptions session={session} additionalOptionsOpen={additionalOptionsOpen} tummySession={tummySession} setTummySession={setTummySession} setAdditionalOptionsOpen={setAdditionalOptionsOpen} setBottleOpen={setBottleOpen} setManualOpen={setManualOpen} setSession={setSession} logDiaperKinds={logDiaperKinds} logMedicine={logMedicine} logTummyTimeMinutes={logTummyTimeMinutes} startTummyTime={startTummyTime} stopTummyTime={stopTummyTime} startSleep={startSleep} stopSleep={stopSleep} pumpSession={pumpSession} startPumping={startPumping} startManualPumping={startManualPumping} stopPumping={stopPumping} savePumping={savePumping} pumpCompletionOpen={pumpCompletionOpen} setPumpCompletionOpen={setPumpCompletionOpen} />
+      <AdditionalOptions session={session} additionalOptionsOpen={additionalOptionsOpen} tummySession={tummySession} setTummySession={setTummySession} setAdditionalOptionsOpen={setAdditionalOptionsOpen} setBottleOpen={setBottleOpen} setManualOpen={setManualOpen} logDiaperKinds={logDiaperKinds} logMedicine={logMedicine} logTummyTimeMinutes={logTummyTimeMinutes} startTummyTime={startTummyTime} stopTummyTime={stopTummyTime} startSleep={startSleep} stopSleep={stopSleep} pumpSession={pumpSession} startPumping={startPumping} startManualPumping={startManualPumping} stopPumping={stopPumping} setPumpingSide={setPumpingSide} savePumping={savePumping} pumpCompletionOpen={pumpCompletionOpen} setPumpCompletionOpen={setPumpCompletionOpen} />
     </section>
   )
 })

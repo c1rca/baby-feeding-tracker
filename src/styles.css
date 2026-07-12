@@ -331,6 +331,7 @@ button.primary {
   box-shadow: 0 10px 24px -8px var(--ring), inset 0 1px 0 rgba(255, 255, 255, .28);
 }
 button.primary:hover { background-position: 80% 50%; box-shadow: 0 14px 30px -8px var(--ring), inset 0 1px 0 rgba(255, 255, 255, .28); }
+button.success, .care-stop-save { color: #fff; }
 button.primary::after {
   content: '';
   position: absolute; inset: 0;
