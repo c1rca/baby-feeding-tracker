@@ -31,7 +31,6 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   setStartMinutesAgo,
   setAdditionalOptionsOpen,
   setBottleOpen,
-  setManualOpen,
   setSession,
   startSession,
   switchSide,
@@ -82,7 +81,7 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
       <LiveSplit session={session} activeSplit={activeSplit} />
       {tummySession ? null : <StartOffsetControl session={session} startOffsetOpen={startOffsetOpen} startInputMode={startInputMode} startClockText={startClockText} startMinutesAgo={startMinutesAgo} selectedStartMinutesAgo={selectedStartMinutesAgo} setStartOffsetOpen={setStartOffsetOpen} setStartInputMode={setStartInputMode} setStartClockText={setStartClockText} setStartMinutesAgo={setStartMinutesAgo} />}
       <HeroActions session={session} tummySession={tummySession} pumpSession={pumpSession} activeSide={activeSide} activeOppositeSide={activeOppositeSide} suggestedSide={suggestedSide} startSession={startSession} switchSide={switchSide} resume={resume} endSession={endSession} clearConfirming={clearConfirming} requestClearSession={requestClearSession} clearIcon={<XCircle size={14} />} />
-      <AdditionalOptions session={session} additionalOptionsOpen={additionalOptionsOpen} tummySession={tummySession} setTummySession={setTummySession} setAdditionalOptionsOpen={setAdditionalOptionsOpen} setBottleOpen={setBottleOpen} setManualOpen={setManualOpen} setSession={setSession} logDiaperKinds={logDiaperKinds} logMedicine={logMedicine} logTummyTimeMinutes={logTummyTimeMinutes} startTummyTime={startTummyTime} stopTummyTime={stopTummyTime} startSleep={startSleep} stopSleep={stopSleep} pumpSession={pumpSession} startPumping={startPumping} startManualPumping={startManualPumping} stopPumping={stopPumping} savePumping={savePumping} pumpCompletionOpen={pumpCompletionOpen} setPumpCompletionOpen={setPumpCompletionOpen} />
+      <AdditionalOptions session={session} additionalOptionsOpen={additionalOptionsOpen} tummySession={tummySession} setTummySession={setTummySession} setAdditionalOptionsOpen={setAdditionalOptionsOpen} setBottleOpen={setBottleOpen} setSession={setSession} logDiaperKinds={logDiaperKinds} logMedicine={logMedicine} logTummyTimeMinutes={logTummyTimeMinutes} startTummyTime={startTummyTime} stopTummyTime={stopTummyTime} startSleep={startSleep} stopSleep={stopSleep} pumpSession={pumpSession} startPumping={startPumping} startManualPumping={startManualPumping} stopPumping={stopPumping} savePumping={savePumping} pumpCompletionOpen={pumpCompletionOpen} setPumpCompletionOpen={setPumpCompletionOpen} />
     </section>
   )
 })

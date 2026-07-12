@@ -1,11 +1,11 @@
-import { CalendarDays, Droplets, Dumbbell, Milk, Moon, Pill, Play, Square, TimerReset, X } from 'lucide-react'
+import { Droplets, Dumbbell, Milk, Moon, Pill, Play, Square, TimerReset, X } from 'lucide-react'
 import { useState } from 'react'
 import type { PumpSession } from '../../state/usePumpActions'
 import type { DiaperKind } from '../../types'
 import type { HeroPanelProps } from './HeroPanel.types'
 
 type CareSheet = 'diapers' | 'tummy' | 'medicine' | 'pumping' | null
-type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'setAdditionalOptionsOpen' | 'tummySession' | 'setTummySession' | 'setBottleOpen' | 'setManualOpen' | 'setSession' | 'logDiaperKinds' | 'logMedicine' | 'logTummyTimeMinutes' | 'startTummyTime' | 'stopTummyTime' | 'startSleep' | 'stopSleep'> & {
+type AdditionalOptionsProps = Pick<HeroPanelProps, 'session' | 'additionalOptionsOpen' | 'setAdditionalOptionsOpen' | 'tummySession' | 'setTummySession' | 'setBottleOpen' | 'setSession' | 'logDiaperKinds' | 'logMedicine' | 'logTummyTimeMinutes' | 'startTummyTime' | 'stopTummyTime' | 'startSleep' | 'stopSleep'> & {
   pumpSession: PumpSession | null
   startPumping: (side: 'left' | 'both' | 'right') => void
   startManualPumping: () => void
@@ -21,7 +21,7 @@ const launcherItems = [
   ['pumping', 'Pumping', TimerReset], ['medicine', 'Medicine', Pill], ['bottle', 'Bottle', Milk],
 ] as const
 
-export function AdditionalOptions({ session, tummySession, setBottleOpen, setManualOpen, setSession, logDiaperKinds, logMedicine, logTummyTimeMinutes, startTummyTime, stopTummyTime, startSleep, pumpSession, startPumping, startManualPumping, stopPumping, savePumping, pumpCompletionOpen, setPumpCompletionOpen }: AdditionalOptionsProps) {
+export function AdditionalOptions({ session, tummySession, setBottleOpen, setSession, logDiaperKinds, logMedicine, logTummyTimeMinutes, startTummyTime, stopTummyTime, startSleep, pumpSession, startPumping, startManualPumping, stopPumping, savePumping, pumpCompletionOpen, setPumpCompletionOpen }: AdditionalOptionsProps) {
   const [sheet, setSheet] = useState<CareSheet>(null)
   const [timerMode, setTimerMode] = useState<'tummy' | 'sleep'>('tummy')
   const [pumpSide, setPumpSide] = useState<'left' | 'both' | 'right'>('left')
@@ -41,7 +41,6 @@ export function AdditionalOptions({ session, tummySession, setBottleOpen, setMan
     <div className="care-launcher" role="group" aria-label="Care action launcher">
       {launcherItems.map(([kind, label, Icon]) => <button key={kind} type="button" className={`care-launcher-button care-launcher--${kind}`} aria-label={label} onClick={() => selectLauncher(kind)}><Icon size={19} /><span>{label}</span></button>)}
     </div>
-    <button type="button" className="care-history-link" onClick={() => setManualOpen(true)}><CalendarDays size={14} /> Log a past feed</button>
     {session ? <label className="care-feed-note"><span>Note for current feed</span><input value={session.note} onChange={(event) => setSession({ ...session, note: event.target.value })} placeholder="optional note" /></label> : null}
 
     {sheet === 'diapers' ? <div className="modal-backdrop"><div className="modal care-sheet care-choice-sheet" role="dialog" aria-modal="true" aria-label="Log diaper"><header><div><span className="care-sheet-eyebrow">Quick care</span><h2>Diaper change</h2><p>What changed?</p></div><button type="button" className="icon-plain" aria-label="Close diaper menu" onClick={close}><X size={16} /></button></header><div className="care-quick-grid"><button onClick={() => logDiaper(['wet'])}><Droplets size={17} />Wet</button><button onClick={() => logDiaper(['stool'])}>Stool</button><button onClick={() => logDiaper(['wet', 'stool'])}>Both</button></div></div></div> : null}
