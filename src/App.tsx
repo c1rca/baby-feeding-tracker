@@ -3,7 +3,8 @@ import { LoginScreen } from './auth/LoginScreen'
 import { useAuthGate } from './auth/useAuthGate'
 import { createHouseholdForOnboarding, type AuthUser } from './auth/authApi'
 import { archiveBaby, createBaby, fetchBabies, type BabySummary } from './babies/babyApi'
-import { AppHeader } from './components/AppHeader'
+import { CarePreview } from './components/CarePreview'
+import { PremiumSidebar } from './components/PremiumSidebar'
 import { AppToast } from './components/AppToast'
 import { MedicineReminderBanner } from './components/MedicineReminderBanner'
 import { TummyTimeReminderBanner } from './components/TummyTimeReminderBanner'
@@ -31,9 +32,12 @@ type TrackerAppProps = {
 
 function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBabyIdChange, onCreateBaby, onArchiveBaby }: TrackerAppProps) {
   const { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps } = useTrackerAppController({ selectedBabyId })
+  const [workspace, setWorkspace] = useState<'track' | 'care' | 'stats'>(view)
+  const activeWorkspace = workspace === 'stats' || workspace === 'track' ? workspace : 'care'
+  const navigateWorkspace = (next: 'track' | 'care' | 'stats') => { setWorkspace(next); if (next === 'track' || next === 'stats') headerProps.setView(next) }
 
   return (
-    <main className="app">
+    <main className={`app app-shell ${activeWorkspace === 'care' ? 'workspace-care' : ''}`}>
       <div className="bg-scene" aria-hidden="true">
         <div className="aurora aurora-1" />
         <div className="aurora aurora-2" />
@@ -41,10 +45,12 @@ function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBaby
         <div className="stars" />
         <div className="stars stars-2" />
       </div>
-      <AppHeader {...headerProps} babies={babies} selectedBabyId={selectedBabyId} onSelectedBabyIdChange={onSelectedBabyIdChange} />
-      <MedicineReminderBanner {...medicineReminderProps} />
-      <TummyTimeReminderBanner {...tummyTimeReminderProps} />
-      {view === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
+      <PremiumSidebar view={activeWorkspace} setView={navigateWorkspace} settingsOpen={headerProps.settingsOpen} setSettingsOpen={headerProps.setSettingsOpen} />
+      <div className="app-shell-content">
+        <header className="workspace-topbar"><div><span className="workspace-eyebrow">{activeWorkspace === 'care' ? 'Care space' : activeWorkspace === 'stats' ? 'Insights' : 'Today'}</span><h1>{activeWorkspace === 'care' ? 'Care, made calmer.' : activeWorkspace === 'stats' ? 'Your little one’s story.' : 'Good morning, Alex.'}</h1></div><div className="workspace-topbar-actions"><span className="sync-pill sync-synced">Online</span>{babies.length > 1 ? <select aria-label="Active baby" value={selectedBabyId} onChange={(event) => onSelectedBabyIdChange(event.target.value)}>{babies.map((baby) => <option key={baby.id} value={baby.id}>{baby.name}</option>)}</select> : null}<button className="avatar-button" aria-label="Open settings" onClick={() => headerProps.setSettingsOpen(true)}>A</button></div></header>
+        {activeWorkspace !== 'care' ? <><MedicineReminderBanner {...medicineReminderProps} /><TummyTimeReminderBanner {...tummyTimeReminderProps} /></> : null}
+        {activeWorkspace === 'care' ? <CarePreview /> : view === 'track' && activeWorkspace === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
+      </div>
       <TrackerModals {...modalsProps} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} onLogout={onLogout} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} />
       <AppToast {...toastProps} />
     </main>
