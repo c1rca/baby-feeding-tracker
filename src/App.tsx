@@ -1,5 +1,4 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { BarChart3, Settings } from 'lucide-react'
 import { LoginScreen } from './auth/LoginScreen'
 import { useAuthGate } from './auth/useAuthGate'
 import { createHouseholdForOnboarding, type AuthUser } from './auth/authApi'
@@ -50,7 +49,7 @@ function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBaby
       </div>
       <PremiumSidebar view={activeWorkspace} setView={navigateWorkspace} settingsOpen={headerProps.settingsOpen} setSettingsOpen={headerProps.setSettingsOpen} />
       <div className="app-shell-content">
-        <header className="workspace-topbar"><div><span className="workspace-eyebrow">{activeWorkspace === 'care' ? 'Care space' : activeWorkspace === 'stats' ? 'Insights' : 'Today'}</span><h1>Today</h1></div><div className="workspace-topbar-actions"><span className="sync-pill sync-synced">Online</span>{babies.length > 1 ? <select aria-label="Active baby" value={selectedBabyId} onChange={(event) => onSelectedBabyIdChange(event.target.value)}>{babies.map((baby) => <option key={baby.id} value={baby.id}>{baby.name}</option>)}</select> : null}<button className="icon-plain" aria-label="Show stats" onClick={() => navigateWorkspace('stats')}><BarChart3 size={18} /></button><button className="avatar-button" aria-label="Open profile settings" onClick={() => headerProps.setSettingsOpen(true)}>{profileName.trim().slice(0, 1).toUpperCase()}</button><button className="icon-plain" aria-label="Show settings" onClick={() => headerProps.setSettingsOpen(true)}><Settings size={17} /></button></div></header>
+        <header className="workspace-topbar"><div><span className="workspace-eyebrow">{activeWorkspace === 'care' ? 'Care space' : activeWorkspace === 'stats' ? 'Insights' : 'Today'}</span><h1>Today</h1></div><div className="workspace-topbar-actions"><span className="sync-pill sync-synced">Online</span>{babies.length > 1 ? <select aria-label="Active baby" value={selectedBabyId} onChange={(event) => onSelectedBabyIdChange(event.target.value)}>{babies.map((baby) => <option key={baby.id} value={baby.id}>{baby.name}</option>)}</select> : null}<button className="avatar-button" aria-label="Open profile settings" onClick={() => headerProps.setSettingsOpen(true)}>{profileName.trim().slice(0, 1).toUpperCase()}</button></div></header>
         {activeWorkspace !== 'care' ? <><MedicineReminderBanner {...medicineReminderProps} /><TummyTimeReminderBanner {...tummyTimeReminderProps} /></> : null}
         {activeWorkspace === 'care' ? <CarePreview /> : view === 'track' && activeWorkspace === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
       </div>
