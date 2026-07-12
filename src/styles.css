@@ -342,12 +342,25 @@ button.primary::after {
 button.primary:hover::after { transform: translateX(120%); }
 
 button.success {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 18px;
   background: var(--grad-success);
-  color: #063b31;
+  color: #fff;
   border-color: transparent;
   box-shadow: 0 10px 24px -8px rgba(16, 185, 129, .45), inset 0 1px 0 rgba(255, 255, 255, .35);
-  font-weight: 850;
+  font-weight: 900;
+  letter-spacing: -.01em;
+  text-shadow: 0 1px 1px rgba(0, 76, 64, .24);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
 }
+button.success:hover { color: #fff; filter: saturate(1.08) brightness(1.03); transform: translateY(-2px); box-shadow: 0 15px 30px -10px rgba(16, 185, 129, .58), inset 0 1px 0 rgba(255, 255, 255, .42); }
+button.success:active { color: #fff; transform: translateY(0) scale(.98); box-shadow: 0 7px 15px -8px rgba(16, 185, 129, .5), inset 0 2px 5px rgba(0, 76, 64, .16); }
+button.success:focus-visible { outline: 3px solid color-mix(in srgb, #5eead4 72%, transparent); outline-offset: 3px; }
+button.end-feed { min-width: min(250px, 100%); font-weight: 900; }
 button.danger { background: rgba(244, 63, 94, .1); border-color: rgba(244, 63, 94, .35); color: var(--rose); }
 button.subtle-danger { background: rgba(244, 63, 94, .07); border-color: rgba(244, 63, 94, .28); color: var(--rose); }
 button.subtle-danger:hover { background: rgba(244, 63, 94, .14); border-color: rgba(244, 63, 94, .5); }
