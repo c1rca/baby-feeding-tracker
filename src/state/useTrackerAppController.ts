@@ -112,8 +112,8 @@ export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyI
   useBrowserFeedNotifications({ feedingNotificationsEnabled, notificationPermission, lastFeed })
 
   const headerProps: AppHeaderProps = { view, syncStatus, settingsOpen, setView, setSettingsOpen }
-  const medicineReminderProps: MedicineReminderBannerProps = { medicineReminder, medicineReminders, showMedicineReminder, dismissMedicineReminder: (id) => setDismissedMedicineReminderIds((prev) => prev.includes(id) ? prev : [...prev, id]), logMedicine }
-  const tummyTimeReminder = shouldShowTummyTimeReminder(tummyTimes, tummySession, now, tummyGoalMinutes) ? { copy: tummyTimeReminderCopy(tummyTimes, now, tummyGoalMinutes) } : null
+  const medicineReminderProps: MedicineReminderBannerProps = { medicineReminder, medicineReminders, showMedicineReminder: hasHydrated && showMedicineReminder, dismissMedicineReminder: (id) => setDismissedMedicineReminderIds((prev) => prev.includes(id) ? prev : [...prev, id]), logMedicine }
+  const tummyTimeReminder = hasHydrated && shouldShowTummyTimeReminder(tummyTimes, tummySession, now, tummyGoalMinutes) ? { copy: tummyTimeReminderCopy(tummyTimes, now, tummyGoalMinutes) } : null
   const tummyTimeReminderProps: TummyTimeReminderBannerProps = { reminder: tummyTimeReminder, startTummyTime }
   const statsProps: StatsDashboardProps = { stats, trend, growthMeasurements, setGrowthMeasurements, babyDob }
   const tummyActiveSeconds = tummySession ? Math.max(0, Math.floor((now - tummySession.startedAt) / 1000)) : 0
