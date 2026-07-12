@@ -1826,3 +1826,9 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 @media (max-width: 640px) { .care-brief { top: 74px; grid-template-columns: auto minmax(0, 1fr) auto; }.care-brief .icon-plain { display: none; }.care-brief-action { padding: 0 9px; } }
 @media (max-width: 640px) { .workspace-topbar-actions .care-notification-opener { flex-basis: 40px; width: 40px; min-width: 40px; height: 40px; }.care-notification-panel { top: auto; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); width: calc(100vw - 20px); max-height: 78dvh; } }
 @media (prefers-reduced-motion: reduce) { .workspace-topbar-actions .care-notification-opener.is-nudging, .workspace-topbar-actions .care-notification-opener.is-nudging .care-notification-count { animation: none; } }
+
+/* The Care Brief is in normal document flow: it arrives beneath the header, never over the active workflow. */
+#care-brief-slot:has(.care-brief) { margin: -12px 0 18px; }
+#care-brief-slot .care-brief { position: relative; z-index: auto; top: auto; left: auto; width: auto; margin: 0; transform: none; }
+#care-brief-slot .care-brief { grid-template-columns: auto minmax(0, 1fr) auto auto; }
+@media (max-width: 640px) { #care-brief-slot:has(.care-brief) { margin: -12px 0 14px; } #care-brief-slot .care-brief { grid-template-columns: auto minmax(0, 1fr) auto; } }
