@@ -30,6 +30,7 @@ export function usePumpActions({ pumpSession, setPumpSession, setPumpEvents, set
   const startPumping = (side: PumpSide) => setPumpSession({ id: makeId(), startedAt: Date.now(), side })
   const startManualPumping = () => { setPumpSession({ id: makeId(), startedAt: Date.now(), side: 'both' }); setPumpCompletionOpen(true) }
   const stopPumping = () => { if (pumpSession) setPumpCompletionOpen(true) }
+  const clearPumping = () => { setPumpSession(null); setPumpCompletionOpen(false) }
   const savePumping = (leftText: string, rightText: string, note: string) => {
     if (!pumpSession) return
     const pumpEvent: PumpEvent = { id: pumpSession.id, startedAt: pumpSession.startedAt, endedAt: Date.now(), leftOunces: parseOutput(leftText), rightOunces: parseOutput(rightText), note: note.trim() || undefined }
@@ -60,5 +61,5 @@ export function usePumpActions({ pumpSession, setPumpSession, setPumpEvents, set
     setUndoState({ pumpEvent, timeoutId, kind: 'pump-delete' })
     showToast('Pumping deleted')
   }
-  return { startPumping, startManualPumping, stopPumping, savePumping, startPumpEdit, savePumpEdit, deletePump }
+  return { startPumping, startManualPumping, stopPumping, clearPumping, savePumping, startPumpEdit, savePumpEdit, deletePump }
 }

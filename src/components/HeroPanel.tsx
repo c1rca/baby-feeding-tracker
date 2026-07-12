@@ -51,13 +51,15 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   startPumping,
   startManualPumping,
   stopPumping,
+  clearPumping,
   savePumping,
   pumpCompletionOpen,
   setPumpCompletionOpen,
 }, ref) {
   const [clearConfirmingFor, setClearConfirmingFor] = useState<number | null>(null)
+  const [careClearConfirming, setCareClearConfirming] = useState(false)
   const clearConfirming = Boolean(session && clearConfirmingFor === session.startedAt)
-
+  const clearCare = () => { if (tummySession) setTummySession(null); if (pumpSession) clearPumping(); setCareClearConfirming(false) }
   const requestClearSession = () => {
     if (!session) return
     if (!clearConfirming) {
@@ -72,11 +74,11 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
     <section className="card hero" ref={ref}>
       <HeroCue session={session} nextFeedWindowText={nextFeedWindowText} nextFeedSideText={nextFeedSideText} hasLastFeed={hasLastFeed} />
       <TimerCluster session={session} activeSeconds={activeSeconds} activeSide={activeSide} suggestedSide={suggestedSide} tummySession={tummySession} tummyActiveSeconds={tummyActiveSeconds} pumpSession={pumpSession} pumpActiveSeconds={pumpActiveSeconds} pause={pause} resume={resume} />
-      {tummySession ? <button type="button" className="success end-feed" onClick={stopTummyTime}>Stop & save {tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</button> : pumpSession ? <button type="button" className="success end-feed" onClick={stopPumping}>Finish & add output</button> : null}
-      <div className="hero-micro-meta" aria-label="Feed timing summary">
+      {tummySession || pumpSession ? <div className="care-active-actions"><button type="button" className="success end-feed" onClick={tummySession ? stopTummyTime : stopPumping}>{tummySession ? `Stop & save ${tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}` : 'Finish & add output'}</button><button type="button" className="secondary care-clear-action" onClick={() => careClearConfirming ? clearCare() : setCareClearConfirming(true)}>{careClearConfirming ? 'Confirm clear' : 'Clear timer'}</button></div> : null}
+      {!tummySession && !pumpSession ? <div className="hero-micro-meta" aria-label="Feed timing summary">
         <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
         {avgGapShortText ? <span>{avgGapShortText}</span> : null}
-      </div>
+      </div> : null}
       <LiveSplit session={session} activeSplit={activeSplit} />
       {tummySession ? null : <StartOffsetControl session={session} startOffsetOpen={startOffsetOpen} startInputMode={startInputMode} startClockText={startClockText} startMinutesAgo={startMinutesAgo} selectedStartMinutesAgo={selectedStartMinutesAgo} setStartOffsetOpen={setStartOffsetOpen} setStartInputMode={setStartInputMode} setStartClockText={setStartClockText} setStartMinutesAgo={setStartMinutesAgo} />}
       <HeroActions session={session} tummySession={tummySession} pumpSession={pumpSession} activeSide={activeSide} activeOppositeSide={activeOppositeSide} suggestedSide={suggestedSide} startSession={startSession} switchSide={switchSide} resume={resume} endSession={endSession} clearConfirming={clearConfirming} requestClearSession={requestClearSession} clearIcon={<XCircle size={14} />} />
