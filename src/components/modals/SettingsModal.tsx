@@ -25,6 +25,8 @@ type SettingsModalProps = Pick<
   | 'babies'
   | 'selectedBabyId'
   | 'authUser'
+  | 'profileName'
+  | 'setProfileName'
   | 'theme'
   | 'onLogout'
   | 'fileInputRef'
@@ -272,7 +274,13 @@ function BabyManagementSetting({ babies = [], selectedBabyId = '', role, onCreat
   )
 }
 
-type TabId = 'reminders' | 'baby' | 'household' | 'appearance' | 'account' | 'data'
+function ProfileSetting({ profileName, setProfileName, showToast }: { profileName: string; setProfileName: (name: string) => void; showToast: (message: string) => void }) {
+  const [draft, setDraft] = useState(profileName)
+  const save = () => { const next = draft.trim() || 'Mom'; setProfileName(next); setDraft(next); showToast('Profile name saved') }
+  return <div className="settings-group" aria-label="Profile"><p className="settings-lead">Choose the name used in your greeting and profile avatar.</p><div className="settings-card"><div className="settings-form"><label><span>Your name</span><input aria-label="Your profile name" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Mom" /></label><button type="button" className="primary" onClick={save}>Save profile</button></div></div></div>
+}
+
+type TabId = 'profile' | 'reminders' | 'baby' | 'household' | 'appearance' | 'account' | 'data'
 
 type TabDef = {
   id: TabId
@@ -283,6 +291,7 @@ type TabDef = {
 }
 
 const TAB_ORDER: TabDef[] = [
+  { id: 'profile', label: 'Profile', icon: Baby, title: 'Your profile', blurb: 'The name and greeting shown throughout your tracker.' },
   { id: 'reminders', label: 'Reminders', icon: Bell, title: 'Reminders', blurb: 'Feeding and medicine nudges — in this browser and from the server.' },
   { id: 'baby', label: 'Baby', icon: Baby, title: 'Baby profile', blurb: 'Roster, birth date, and the daily tummy-time goal.' },
   { id: 'household', label: 'Household', icon: Users, title: 'Household access', blurb: 'Invite caregivers and manage who can do what.' },
@@ -291,7 +300,7 @@ const TAB_ORDER: TabDef[] = [
   { id: 'data', label: 'Data', icon: Database, title: 'Data', blurb: 'Export, import, or clear the log on this device.' },
 ]
 
-export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, babies = [], selectedBabyId = '', authUser = null, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, setTheme, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
+export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, setTheme, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
   const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
   const [activeTab, setActiveTab] = useState<TabId>('reminders')
   const tablistRef = useRef<HTMLDivElement>(null)
@@ -364,6 +373,7 @@ export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, fee
           </div>
 
           <div className="settings-panel-body" id="settings-tabpanel" role="tabpanel" aria-labelledby={`settings-tab-${active.id}`} tabIndex={0}>
+            {active.id === 'profile' ? <ProfileSetting profileName={profileName} setProfileName={setProfileName} showToast={showToast} /> : null}
             {active.id === 'reminders' ? (
               <>
                 <div className="settings-group">

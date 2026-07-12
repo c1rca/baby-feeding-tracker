@@ -26,6 +26,8 @@ export type TrackerModalsProps = {
   babies?: BabySummary[]
   selectedBabyId?: string
   authUser?: AuthUser | null
+  profileName?: string
+  setProfileName?: (name: string) => void
   theme: 'light' | 'dark'
   onLogout?: () => void
   fileInputRef: RefObject<HTMLInputElement | null>
