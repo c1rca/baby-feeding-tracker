@@ -685,8 +685,11 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .app-shell-content > .workspace-topbar { padding-block: 4px 2px; margin-bottom: 24px; }
 .app-shell-content > .medicine-reminder-stack { margin-bottom: 18px; }
 .app-shell-content > .tracker-view + .timeline-card { margin-top: 18px; }
-.tracker-view > .card:last-child { padding: 14px 16px 16px; }
-.tracker-view > .card:last-child .section-heading { margin-bottom: 10px; }
+.tracker-view > .card:last-child { padding: 12px 14px 13px; }
+.tracker-view > .card:last-child .section-heading { margin-bottom: 7px; }
+.tracker-view > .card:last-child .trend { gap: 4px; }
+.tracker-view > .card:last-child .trend-col { grid-template-rows: auto 34px auto; padding: 3px 1px 1px; gap: 3px; }
+.tracker-view > .card:last-child .trend-track { height: 34px; width: min(20px, 70%); }
 .workspace-topbar > div:first-child { min-width: 0; }
 .workspace-topbar h1 { margin: 4px 0 0; font-size: clamp(1.65rem, 2.8vw, 2.25rem); font-weight: 800; letter-spacing: -.045em; line-height: 1.05; }
 .workspace-topbar .workspace-eyebrow { letter-spacing: .16em; }
