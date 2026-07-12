@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Bell, Dumbbell, Pill, Sun, X } from 'lucide-react'
 import type { CareNotification } from './notificationModel'
 
@@ -23,7 +24,7 @@ export function CareNotificationCenter({ notifications }: Props) {
     <button ref={openerRef} type="button" className="care-notification-opener" aria-label={`Open care notifications, ${notifications.length} unresolved`} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((current) => !current)}>
       <Bell size={18} /><span className="care-notification-count" aria-hidden="true">{notifications.length}</span>
     </button>
-    {open ? <div className="care-notification-panel" role="dialog" aria-label="Care notifications" aria-modal="false">
+    {open ? createPortal(<><button type="button" className="care-notification-backdrop" aria-label="Close care notifications" onClick={close} /><div className="care-notification-panel" role="dialog" aria-label="Care notifications" aria-modal="true">
       <header className="care-notification-panel-header"><div><span>Care notifications</span><small>{notifications.length} {notifications.length === 1 ? 'needs' : 'need'} attention</small></div><button type="button" className="icon-plain" aria-label="Close care notifications" onClick={close}><X size={18} /></button></header>
       <div className="care-notification-list">
         {notifications.map((notification) => <article key={notification.id} className={`care-notification-item care-notification-item--${notification.kind}`} role={notification.announcedRole}>
@@ -32,6 +33,6 @@ export function CareNotificationCenter({ notifications }: Props) {
           <div className="care-notification-item-actions"><button type="button" className="care-notification-item-action" aria-label={notification.ariaActionLabel} onClick={notification.action}>{notification.actionLabel}</button>{notification.dismissible && notification.dismiss ? <button type="button" className="icon-plain" aria-label={`Dismiss ${notification.actionLabel.replace('Log ', '')} reminder`} onClick={notification.dismiss}><X size={17} /></button> : null}</div>
         </article>)}
       </div>
-    </div> : null}
+    </div></>, document.body) : null}
   </section>
 }

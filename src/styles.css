@@ -1812,3 +1812,9 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .care-notification-count { position: absolute; right: -5px; top: -5px; display: grid; place-items: center; min-width: 18px; height: 18px; padding: 0 4px; border: 2px solid var(--card); border-radius: 999px; background: var(--hue-tylenol); color: white; font-size: .64rem; font-weight: 900; font-variant-numeric: tabular-nums; box-shadow: 0 3px 8px -3px color-mix(in srgb, var(--hue-tylenol) 80%, transparent); }
 .workspace-topbar-actions .care-notification-panel { top: calc(100% + 12px); right: 0; }
 @media (max-width: 640px) { .workspace-topbar-actions .care-notification-opener { width: 36px; min-width: 36px; height: 36px; }.workspace-topbar-actions .care-notification-panel { right: -44px; } }
+
+/* Portal layer guarantees the preview can never be clipped by app-shell chrome. */
+.workspace-topbar-actions .care-notification-opener { box-sizing: border-box; flex: 0 0 40px; width: 40px; min-width: 40px; height: 40px; aspect-ratio: 1 / 1; border-radius: 999px; }
+.care-notification-backdrop { position: fixed; z-index: 900; inset: 0; border: 0; background: rgba(18, 14, 37, .12); cursor: default; }
+.care-notification-panel { position: fixed; z-index: 901; top: 78px; right: 28px; width: min(420px, calc(100vw - 28px)); max-height: min(620px, calc(100dvh - 104px)); background: var(--card-solid); }
+@media (max-width: 640px) { .workspace-topbar-actions .care-notification-opener { flex-basis: 40px; width: 40px; min-width: 40px; height: 40px; }.care-notification-panel { top: auto; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); width: calc(100vw - 20px); max-height: 78dvh; } }
