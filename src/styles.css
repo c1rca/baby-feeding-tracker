@@ -680,6 +680,13 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 @media (max-width: 760px) { .app-shell { display: block; padding-bottom: 76px; }.premium-sidebar { position: fixed; z-index: 10; right: 0; bottom: 0; left: 0; display: grid; grid-template-columns: repeat(4, 1fr); min-height: auto; height: 70px; padding: 6px 10px; border-top: 1px solid var(--border); border-right: 0; background: color-mix(in srgb, var(--card-solid) 90%, transparent); }.sidebar-brand, .sidebar-section-label, .sidebar-spacer, .sidebar-soft-card, .sidebar-profile { display: none; }.sidebar-nav { display: contents; }.sidebar-nav-item, .sidebar-settings { display: grid; place-items: center; gap: 2px; margin: 0; padding: 3px; border: 0; }.sidebar-nav-item span:last-of-type, .sidebar-settings span { display: block; font-size: .62rem; }.sidebar-nav-item small, .sidebar-active-dot { display: none; }.sidebar-nav-icon { width: 30px; height: 30px; }.app-shell-content { padding: 20px 15px 30px; }.workspace-topbar { margin-bottom: 22px; }.workspace-topbar h1 { font-size: 1.65rem; }.care-preview-heading { display: block; }.care-date-pill { margin-top: 15px; }.care-hero-card { display: block; min-height: 0; padding: 22px; }.care-hero-card button { margin-top: 18px; }.care-routine-grid { grid-template-columns: 1fr; } }
 
 .care-active-actions { display: grid; grid-template-columns: 1fr; gap: 3px; margin: 2px 0 6px; }.care-active-actions .end-feed { width: 100%; margin: 0; }.care-active-actions .active-clear-link { justify-self: center; }
+
+/* Track page rhythm */
+.app-shell-content > .workspace-topbar { padding-block: 4px 2px; margin-bottom: 24px; }
+.app-shell-content > .medicine-reminder-stack { margin-bottom: 18px; }
+.app-shell-content > .tracker-view + .timeline-card { margin-top: 18px; }
+.tracker-view > .card:last-child { padding: 14px 16px 16px; }
+.tracker-view > .card:last-child .section-heading { margin-bottom: 10px; }
 .care-actions { display: grid; gap: 8px; margin: 10px 0 12px; }
 .care-actions .care-launcher { padding: 0; }
 .care-history-link { justify-self: center; padding: 4px 8px; border: 0; background: transparent; color: var(--ink-faint); font-size: .75rem; box-shadow: none; }
