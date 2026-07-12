@@ -20,7 +20,7 @@ export function CareNotificationCenter({ notifications }: Props) {
 
   if (notifications.length === 0) return null
   return <section className="care-notification-center" aria-label="Care notifications">
-    <button ref={openerRef} type="button" className="care-notification-opener" aria-label={`Open care notifications, ${notifications.length} unresolved`} aria-expanded={open} onClick={() => setOpen(true)}>
+    <button ref={openerRef} type="button" className="care-notification-opener" aria-label={`Open care notifications, ${notifications.length} unresolved`} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((current) => !current)}>
       <Bell size={18} /><span className="care-notification-count" aria-hidden="true">{notifications.length}</span>
     </button>
     {open ? <div className="care-notification-panel" role="dialog" aria-label="Care notifications" aria-modal="false">
