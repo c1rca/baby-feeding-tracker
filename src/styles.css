@@ -1816,5 +1816,10 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 /* Portal layer guarantees the preview can never be clipped by app-shell chrome. */
 .workspace-topbar-actions .care-notification-opener { box-sizing: border-box; flex: 0 0 40px; width: 40px; min-width: 40px; height: 40px; aspect-ratio: 1 / 1; border-radius: 999px; }
 .care-notification-backdrop { position: fixed; z-index: 900; inset: 0; border: 0; background: rgba(18, 14, 37, .12); cursor: default; }
+@keyframes care-notification-nudge { 0%, 100% { transform: translateX(0) scale(1); box-shadow: 0 0 0 0 color-mix(in srgb, var(--violet) 0%, transparent); } 18% { transform: translateX(-2px) rotate(-5deg) scale(1.04); } 36% { transform: translateX(2px) rotate(5deg) scale(1.06); box-shadow: 0 0 0 7px color-mix(in srgb, var(--violet) 12%, transparent); } 55% { transform: translateX(-1px) rotate(-2deg) scale(1.02); } }
+.workspace-topbar-actions .care-notification-opener.is-nudging { animation: care-notification-nudge 1.4s cubic-bezier(.2,.8,.2,1); }
+.workspace-topbar-actions .care-notification-opener.is-nudging .care-notification-count { animation: care-notification-badge-pulse 1.4s ease-out; }
+@keyframes care-notification-badge-pulse { 0%, 100% { transform: scale(1); } 38% { transform: scale(1.22); } }
 .care-notification-panel { position: fixed; z-index: 901; top: 78px; right: 28px; width: min(420px, calc(100vw - 28px)); max-height: min(620px, calc(100dvh - 104px)); background: var(--card-solid); }
 @media (max-width: 640px) { .workspace-topbar-actions .care-notification-opener { flex-basis: 40px; width: 40px; min-width: 40px; height: 40px; }.care-notification-panel { top: auto; right: 10px; bottom: max(10px, env(safe-area-inset-bottom)); width: calc(100vw - 20px); max-height: 78dvh; } }
+@media (prefers-reduced-motion: reduce) { .workspace-topbar-actions .care-notification-opener.is-nudging, .workspace-topbar-actions .care-notification-opener.is-nudging .care-notification-count { animation: none; } }
