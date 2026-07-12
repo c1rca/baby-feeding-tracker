@@ -11,7 +11,7 @@ export type MedicineReminder = {
   elapsedHours: number
 }
 
-type MedicineReminderBannerProps = {
+export type MedicineReminderBannerProps = {
   medicineReminder?: MedicineReminder | null
   medicineReminders?: MedicineReminder[]
   showMedicineReminder: boolean

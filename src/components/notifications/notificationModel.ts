@@ -1,0 +1,68 @@
+import type { MedicineKind } from '../../types'
+import type { MedicineReminder } from '../MedicineReminderBanner'
+
+export type CareNotification = {
+  id: string
+  kind: 'medicine' | 'vitamin_d' | 'tummy_time'
+  priority: 1 | 2 | 3
+  title: string
+  summary: string
+  actionLabel: string
+  ariaActionLabel: string
+  announcedRole: 'alert' | 'status'
+  dismissible: boolean
+  occurredAt: number
+  action: () => void
+  dismiss?: () => void
+}
+
+type BuildCareNotificationsInput = {
+  medicineReminders?: MedicineReminder[]
+  showMedicineReminder: boolean
+  dismissMedicineReminder: (id: string) => void
+  logMedicine: (kind: MedicineKind) => void
+  tummyTimeReminder: { copy: string } | null
+  startTummyTime: () => void
+}
+
+const medicineNotification = (reminder: MedicineReminder, logMedicine: (kind: MedicineKind) => void, dismissMedicineReminder: (id: string) => void): CareNotification => {
+  const isVitaminD = reminder.type === 'vitamin_d'
+  const title = isVitaminD ? 'Vitamin D reminder' : 'Medicine reminder'
+  const summary = isVitaminD
+    ? `Take Vitamin D. Last dose was ${reminder.elapsedHours}+ hours ago.`
+    : `Take ${reminder.recommendedLabel}. Last dose was ${reminder.label} ${reminder.elapsedHours}+ hours ago.`
+  return {
+    id: reminder.id,
+    kind: reminder.type,
+    priority: isVitaminD ? 2 : 1,
+    title,
+    summary,
+    actionLabel: `Log ${reminder.recommendedLabel}`,
+    ariaActionLabel: `Log ${reminder.recommendedLabel} now`,
+    announcedRole: 'alert',
+    dismissible: true,
+    occurredAt: reminder.at,
+    action: () => logMedicine(reminder.recommendedKind),
+    dismiss: () => dismissMedicineReminder(reminder.id),
+  }
+}
+
+export const buildCareNotifications = ({ medicineReminders = [], showMedicineReminder, dismissMedicineReminder, logMedicine, tummyTimeReminder, startTummyTime }: BuildCareNotificationsInput): CareNotification[] => {
+  const notifications = showMedicineReminder
+    ? medicineReminders.map((reminder) => medicineNotification(reminder, logMedicine, dismissMedicineReminder))
+    : []
+  if (tummyTimeReminder) {
+    notifications.push({
+      id: 'tummy-time', kind: 'tummy_time', priority: 3, title: 'Tummy Time reminder', summary: tummyTimeReminder.copy,
+      actionLabel: 'Start Tummy Time', ariaActionLabel: 'Start Tummy Time from reminder', announcedRole: 'status', dismissible: false,
+      occurredAt: Number.MAX_SAFE_INTEGER, action: startTummyTime,
+    })
+  }
+  return notifications.sort((a, b) => a.priority - b.priority || a.occurredAt - b.occurredAt || a.id.localeCompare(b.id))
+}
+
+export const careNotificationSummary = (notifications: CareNotification[]) => {
+  if (notifications.length === 0) return ''
+  if (notifications.length === 1) return notifications[0].summary
+  return `${notifications.length} care reminders · ${notifications.slice(0, 2).map((item) => item.actionLabel.replace('Log ', '').replace('Start ', '')).join(' · ')}`
+}

@@ -6,8 +6,8 @@ import { archiveBaby, createBaby, fetchBabies, type BabySummary } from './babies
 import { CarePreview } from './components/CarePreview'
 import { PremiumSidebar } from './components/PremiumSidebar'
 import { AppToast } from './components/AppToast'
-import { MedicineReminderBanner } from './components/MedicineReminderBanner'
-import { TummyTimeReminderBanner } from './components/TummyTimeReminderBanner'
+import { CareNotificationCenter } from './components/notifications/CareNotificationCenter'
+import { buildCareNotifications } from './components/notifications/notificationModel'
 import { StatsDashboard } from './components/StatsDashboard'
 import { TrackerModals } from './components/TrackerModals'
 import { TrackView } from './components/TrackView'
@@ -32,6 +32,7 @@ type TrackerAppProps = {
 
 function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBabyIdChange, onCreateBaby, onArchiveBaby }: TrackerAppProps) {
   const { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps } = useTrackerAppController({ selectedBabyId })
+  const careNotifications = buildCareNotifications({ ...medicineReminderProps, tummyTimeReminder: tummyTimeReminderProps.reminder, startTummyTime: tummyTimeReminderProps.startTummyTime })
   const [profileName, setProfileName] = useState(() => window.localStorage.getItem('baby-feeding-tracker:v1:profile-name') || 'Mom')
   const saveProfileName = (name: string) => { const next = name.trim() || 'Mom'; setProfileName(next); window.localStorage.setItem('baby-feeding-tracker:v1:profile-name', next) }
   const [workspace, setWorkspace] = useState<'track' | 'care' | 'stats'>(view)
@@ -50,7 +51,7 @@ function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBaby
       <PremiumSidebar view={activeWorkspace} setView={navigateWorkspace} settingsOpen={headerProps.settingsOpen} setSettingsOpen={headerProps.setSettingsOpen} />
       <div className="app-shell-content">
         <header className="workspace-topbar"><div><span className="workspace-eyebrow">{activeWorkspace === 'care' ? 'Care workspace' : activeWorkspace === 'stats' ? 'Insights' : 'Live care'}</span><h1>{activeWorkspace === 'care' ? 'Care' : activeWorkspace === 'stats' ? 'Patterns & progress' : 'Today'}</h1></div><div className="workspace-topbar-actions"><span className="sync-pill sync-synced">Online</span>{babies.length > 1 ? <select aria-label="Active baby" value={selectedBabyId} onChange={(event) => onSelectedBabyIdChange(event.target.value)}>{babies.map((baby) => <option key={baby.id} value={baby.id}>{baby.name}</option>)}</select> : null}<button className="avatar-button" aria-label="Open profile settings" onClick={() => headerProps.setSettingsOpen(true)}>{profileName.trim().slice(0, 1).toUpperCase()}</button></div></header>
-        {activeWorkspace !== 'care' ? <><MedicineReminderBanner {...medicineReminderProps} /><TummyTimeReminderBanner {...tummyTimeReminderProps} /></> : null}
+        {activeWorkspace !== 'care' ? <CareNotificationCenter notifications={careNotifications} /> : null}
         {activeWorkspace === 'care' ? <CarePreview /> : view === 'track' && activeWorkspace === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
       </div>
       <TrackerModals {...modalsProps} profileName={profileName} setProfileName={saveProfileName} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} onLogout={onLogout} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} />
