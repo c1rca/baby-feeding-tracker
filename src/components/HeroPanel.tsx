@@ -46,11 +46,15 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   stopTummyTime,
   startSleep,
   stopSleep,
+  pauseCareTimer,
+  resumeCareTimer,
   pumpSession,
   pumpActiveSeconds,
   startPumping,
   startManualPumping,
   stopPumping,
+  pausePumping,
+  resumePumping,
   savePumping,
   pumpCompletionOpen,
   setPumpCompletionOpen,
@@ -71,7 +75,8 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   return (
     <section className="card hero" ref={ref}>
       <HeroCue session={session} nextFeedWindowText={nextFeedWindowText} nextFeedSideText={nextFeedSideText} hasLastFeed={hasLastFeed} />
-      <TimerCluster session={session} activeSeconds={activeSeconds} activeSide={activeSide} suggestedSide={suggestedSide} tummySession={tummySession} tummyActiveSeconds={tummyActiveSeconds} pumpSession={pumpSession} pumpActiveSeconds={pumpActiveSeconds} pause={pause} resume={resume} />
+      <TimerCluster session={session} activeSeconds={activeSeconds} activeSide={activeSide} suggestedSide={suggestedSide} tummySession={tummySession} tummyActiveSeconds={tummyActiveSeconds} pumpSession={pumpSession} pumpActiveSeconds={pumpActiveSeconds} pause={pause} resume={resume} pauseCareTimer={pauseCareTimer} resumeCareTimer={resumeCareTimer} pausePumping={pausePumping} resumePumping={resumePumping} />
+      {tummySession ? <button type="button" className="success end-feed" onClick={stopTummyTime}>Stop & save {tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</button> : pumpSession ? <button type="button" className="success end-feed" onClick={stopPumping}>Finish & add output</button> : null}
       <div className="hero-micro-meta" aria-label="Feed timing summary">
         <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
         {avgGapShortText ? <span>{avgGapShortText}</span> : null}

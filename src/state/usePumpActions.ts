@@ -1,9 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { makeId } from '../domain/trackerDomain'
-import type { PumpEvent, UndoState } from '../types'
+import type { PumpEvent, PumpSession, UndoState } from '../types'
+export type { PumpSession } from '../types'
 
 type PumpSide = 'left' | 'both' | 'right'
-export type PumpSession = { id: string; startedAt: number; side: PumpSide }
+
 export type EditingPumpState = { id: string; leftOunces: string; rightOunces: string; note: string } | null
 
 type Options = {
@@ -27,12 +28,15 @@ const parseOutput = (value: string) => {
 }
 
 export function usePumpActions({ pumpSession, setPumpSession, setPumpEvents, setPumpCompletionOpen, editingPump, setEditingPump, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
-  const startPumping = (side: PumpSide) => setPumpSession({ id: makeId(), startedAt: Date.now(), side })
-  const startManualPumping = () => { setPumpSession({ id: makeId(), startedAt: Date.now(), side: 'both' }); setPumpCompletionOpen(true) }
+  const startPumping = (side: PumpSide) => { const now = Date.now(); setPumpSession({ id: makeId(), startedAt: now, runningStartedAt: now, elapsedSeconds: 0, side }) }
+  const startManualPumping = () => { const now = Date.now(); setPumpSession({ id: makeId(), startedAt: now, runningStartedAt: now, elapsedSeconds: 0, side: 'both' }); setPumpCompletionOpen(true) }
+  const pausePumping = () => setPumpSession((current) => current?.runningStartedAt ? { ...current, elapsedSeconds: (current.elapsedSeconds ?? 0) + Math.max(0, Math.floor((Date.now() - current.runningStartedAt) / 1000)), runningStartedAt: null } : current)
+  const resumePumping = () => setPumpSession((current) => current && !current.runningStartedAt ? { ...current, runningStartedAt: Date.now() } : current)
   const stopPumping = () => { if (pumpSession) setPumpCompletionOpen(true) }
   const savePumping = (leftText: string, rightText: string, note: string) => {
     if (!pumpSession) return
-    const pumpEvent: PumpEvent = { id: pumpSession.id, startedAt: pumpSession.startedAt, endedAt: Date.now(), leftOunces: parseOutput(leftText), rightOunces: parseOutput(rightText), note: note.trim() || undefined }
+    const elapsedSeconds = (pumpSession.elapsedSeconds ?? 0) + (pumpSession.runningStartedAt ? Math.max(0, Math.floor((Date.now() - pumpSession.runningStartedAt) / 1000)) : 0)
+    const pumpEvent: PumpEvent = { id: pumpSession.id, startedAt: pumpSession.startedAt, endedAt: pumpSession.startedAt + elapsedSeconds * 1000, leftOunces: parseOutput(leftText), rightOunces: parseOutput(rightText), note: note.trim() || undefined }
     setPumpEvents((prev) => sortPumpEvents([pumpEvent, ...prev]))
     setPumpSession(null)
     setPumpCompletionOpen(false)
@@ -60,5 +64,5 @@ export function usePumpActions({ pumpSession, setPumpSession, setPumpEvents, set
     setUndoState({ pumpEvent, timeoutId, kind: 'pump-delete' })
     showToast('Pumping deleted')
   }
-  return { startPumping, startManualPumping, stopPumping, savePumping, startPumpEdit, savePumpEdit, deletePump }
+  return { startPumping, startManualPumping, pausePumping, resumePumping, stopPumping, savePumping, startPumpEdit, savePumpEdit, deletePump }
 }

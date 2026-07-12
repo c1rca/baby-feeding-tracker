@@ -8,8 +8,9 @@ export type DiaperKind = 'wet' | 'stool'
 export type MedicineKind = 'tylenol' | 'motrin' | 'vitamin_d'
 export type CareTimerKind = 'tummy' | 'sleep'
 export type TummyTimeEvent = { id: string; startedAt: number; endedAt: number; note?: string; kind?: CareTimerKind }
-export type TummyTimeSession = { id: string; startedAt: number; note: string; kind?: CareTimerKind }
+export type TummyTimeSession = { id: string; startedAt: number; note: string; kind?: CareTimerKind; runningStartedAt?: number | null; elapsedSeconds?: number }
 export type PumpEvent = { id: string; startedAt: number; endedAt: number; leftOunces: number | null; rightOunces: number | null; note?: string }
+export type PumpSession = { id: string; startedAt: number; side: 'left' | 'both' | 'right'; runningStartedAt?: number | null; elapsedSeconds?: number }
 export type Theme = 'light' | 'dark'
 export type View = 'track' | 'stats'
 
@@ -61,6 +62,7 @@ export type ServerState = {
   medicines?: MedicineEvent[]
   tummyTimes?: TummyTimeEvent[]
   pumpEvents?: PumpEvent[]
+  pumpSession?: PumpSession | null
   tummySession?: TummyTimeSession | null
   tummyGoalMinutes?: number
   growthMeasurements?: GrowthMeasurement[]

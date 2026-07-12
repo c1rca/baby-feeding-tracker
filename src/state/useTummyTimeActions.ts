@@ -35,18 +35,22 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
       return
     }
     if (tummySession) return
-    setTummySession({ id: makeId(), startedAt: new Date().getTime(), note: '', kind })
+    const now = Date.now()
+    setTummySession({ id: makeId(), startedAt: now, runningStartedAt: now, elapsedSeconds: 0, note: '', kind })
     setAdditionalOptionsOpen(true)
     showToast(`${label} started`)
   }
 
   const startTummyTime = () => startCareTimer('tummy')
   const startSleep = () => startCareTimer('sleep')
+  const pauseCareTimer = () => setTummySession((current) => current?.runningStartedAt ? { ...current, elapsedSeconds: (current.elapsedSeconds ?? 0) + Math.max(0, Math.floor((Date.now() - current.runningStartedAt) / 1000)), runningStartedAt: null } : current)
+  const resumeCareTimer = () => setTummySession((current) => current && !current.runningStartedAt ? { ...current, runningStartedAt: Date.now() } : current)
 
   const stopCareTimer = () => {
     if (!tummySession) return
     const label = tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'
-    const tummyTime = { id: tummySession.id, startedAt: tummySession.startedAt, endedAt: new Date().getTime(), note: tummySession.note, kind: tummySession.kind }
+    const elapsedSeconds = (tummySession.elapsedSeconds ?? 0) + (tummySession.runningStartedAt ? Math.max(0, Math.floor((Date.now() - tummySession.runningStartedAt) / 1000)) : 0)
+    const tummyTime = { id: tummySession.id, startedAt: tummySession.startedAt, endedAt: tummySession.startedAt + elapsedSeconds * 1000, note: tummySession.note, kind: tummySession.kind }
     setTummyTimes((prev) => [tummyTime, ...prev].sort((a, b) => b.startedAt - a.startedAt))
     setTummySession(null)
     setAdditionalOptionsOpen(false)
@@ -85,5 +89,5 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
     showToast('Tummy Time deleted')
   }
 
-  return { logTummyTimeMinutes, startTummyTime, stopTummyTime, startSleep, stopSleep, startTummyTimeEdit, saveTummyTimeEdit, deleteTummyTime }
+  return { logTummyTimeMinutes, startTummyTime, pauseCareTimer, resumeCareTimer, stopTummyTime, startSleep, stopSleep, startTummyTimeEdit, saveTummyTimeEdit, deleteTummyTime }
 }
