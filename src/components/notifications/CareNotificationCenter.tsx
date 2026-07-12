@@ -9,7 +9,6 @@ const iconFor = (kind: CareNotification['kind']) => kind === 'tummy_time' ? <Dum
 
 export function CareNotificationCenter({ notifications }: Props) {
   const [open, setOpen] = useState(false)
-  const [briefVisible, setBriefVisible] = useState(true)
   const [briefIndex, setBriefIndex] = useState(0)
   const [briefHost, setBriefHost] = useState<HTMLElement | null>(null)
   const [isNudging, setIsNudging] = useState(false)
@@ -42,22 +41,13 @@ export function CareNotificationCenter({ notifications }: Props) {
     return () => { window.clearTimeout(initial); window.clearInterval(interval); if (settle) window.clearTimeout(settle) }
   }, [notifications.length, open])
 
-  useEffect(() => {
-    if (!notifications.length || open) return
-    const reveal = () => { setBriefIndex(Math.floor(Math.random() * notifications.length)); setBriefVisible(true); window.setTimeout(() => setBriefVisible(false), 9000) }
-    const hide = window.setTimeout(() => setBriefVisible(false), 9000)
-    const onVisibility = () => { if (document.visibilityState === 'visible') reveal() }
-    document.addEventListener('visibilitychange', onVisibility)
-    return () => { window.clearTimeout(hide); document.removeEventListener('visibilitychange', onVisibility) }
-  }, [notifications.length, open])
-
   if (notifications.length === 0) return null
   const brief = notifications[briefIndex % notifications.length]
   return <section className="care-notification-center" aria-label="Care notifications">
     <button ref={openerRef} type="button" className={`care-notification-opener${isNudging ? ' is-nudging' : ''}`} aria-label={`Open care notifications, ${notifications.length} unresolved`} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((current) => !current)}>
       <Bell size={18} /><span className="care-notification-count" aria-hidden="true">{notifications.length}</span>
     </button>
-    {briefVisible && !open && briefHost ? createPortal(<aside className="care-brief" role={brief.announcedRole} aria-label="Care reminder carousel" onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null }} onTouchEnd={(event) => { const end = event.changedTouches[0]?.clientX; if (touchStartX.current !== null && end !== undefined && Math.abs(end - touchStartX.current) > 36) cycleBrief(end < touchStartX.current ? 1 : -1); touchStartX.current = null }}><span className="care-brief-icon">{iconFor(brief.kind)}</span><div><strong>{brief.title}</strong><p>{brief.summary}</p></div><button type="button" className="care-brief-action" onClick={brief.action}>{brief.actionLabel}</button>{notifications.length > 1 ? <div className="care-brief-carousel"><button type="button" aria-label="Previous care reminder" onClick={() => cycleBrief(-1)}><ChevronLeft size={16} /></button><span>{briefIndex + 1}/{notifications.length}</span><button type="button" aria-label="Next care reminder" onClick={() => cycleBrief(1)}><ChevronRight size={16} /></button></div> : null}</aside>, briefHost) : null}
+    {!open && briefHost ? createPortal(<aside className="care-brief" role={brief.announcedRole} aria-label="Care reminder carousel" onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null }} onTouchEnd={(event) => { const end = event.changedTouches[0]?.clientX; if (touchStartX.current !== null && end !== undefined && Math.abs(end - touchStartX.current) > 36) cycleBrief(end < touchStartX.current ? 1 : -1); touchStartX.current = null }}><span className="care-brief-icon">{iconFor(brief.kind)}</span><div><strong>{brief.title}</strong><p>{brief.summary}</p></div><button type="button" className="care-brief-action" onClick={brief.action}>{brief.actionLabel}</button>{notifications.length > 1 ? <div className="care-brief-carousel"><button type="button" aria-label="Previous care reminder" onClick={() => cycleBrief(-1)}><ChevronLeft size={16} /></button><span>{briefIndex + 1}/{notifications.length}</span><button type="button" aria-label="Next care reminder" onClick={() => cycleBrief(1)}><ChevronRight size={16} /></button></div> : null}</aside>, briefHost) : null}
     {open ? createPortal(<><button type="button" className="care-notification-backdrop" aria-label="Close care notifications" onClick={close} /><div className="care-notification-panel" role="dialog" aria-label="Care notifications" aria-modal="true">
       <header className="care-notification-panel-header"><div><span>Care notifications</span><small>{notifications.length} {notifications.length === 1 ? 'needs' : 'need'} attention</small></div><button type="button" className="icon-plain" aria-label="Close care notifications" onClick={close}><X size={18} /></button></header>
       <div className="care-notification-list">
