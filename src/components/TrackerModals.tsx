@@ -54,7 +54,7 @@ export function TrackerModals({
   logBottle,
   saveManualFeed,
   savePastEvent,
-  enableFeedingNotifications,
+  enableBrowserReminders,
   setGotifyReminders,
   setMedicineReminderSettings,
   onCreateBaby,
@@ -79,7 +79,7 @@ export function TrackerModals({
       {bottleOpen ? <BottleModal session={session} bottleQuickOz={bottleQuickOz} setBottleOpen={setBottleOpen} setBottleQuickOz={setBottleQuickOz} logBottle={logBottle} /> : null}
       {manualOpen ? <ManualFeedModal manualDraft={manualDraft} setManualDraft={setManualDraft} setManualOpen={setManualOpen} saveManualFeed={saveManualFeed} /> : null}
       {pastEventOpen ? <PastEventModal draft={pastEventDraft} setDraft={setPastEventDraft} onClose={() => setPastEventOpen(false)} onSave={savePastEvent} /> : null}
-      {settingsOpen ? <SettingsModal entries={entries} diapers={diapers} babyDob={babyDob} tummyGoalMinutes={tummyGoalMinutes} feedingNotificationsEnabled={feedingNotificationsEnabled} browserRemindersEnabled={browserRemindersEnabled} notificationPermission={notificationPermission} notificationPreferences={notificationPreferences} gotifyAvailable={gotifyAvailable} gotifyRemindersEnabled={gotifyRemindersEnabled} medicineReminderSettings={medicineReminderSettings} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} profileName={profileName || 'Mom'} setProfileName={setProfileName || (() => undefined)} theme={theme} onLogout={onLogout} fileInputRef={fileInputRef} setSettingsOpen={setSettingsOpen} setEntries={setEntries} setDiapers={setDiapers} setBabyDob={setBabyDob} setTummyGoalMinutes={setTummyGoalMinutes} setSession={setSession} setUndoState={setUndoState} setFeedingNotificationsEnabled={setFeedingNotificationsEnabled} setBrowserRemindersEnabled={setBrowserRemindersEnabled} setNotificationPreferences={setNotificationPreferences} setTheme={setTheme} enableFeedingNotifications={enableFeedingNotifications} setGotifyReminders={setGotifyReminders} setMedicineReminderSettings={setMedicineReminderSettings} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} showToast={showToast} /> : null}
+      {settingsOpen ? <SettingsModal entries={entries} diapers={diapers} babyDob={babyDob} tummyGoalMinutes={tummyGoalMinutes} feedingNotificationsEnabled={feedingNotificationsEnabled} browserRemindersEnabled={browserRemindersEnabled} notificationPermission={notificationPermission} notificationPreferences={notificationPreferences} gotifyAvailable={gotifyAvailable} gotifyRemindersEnabled={gotifyRemindersEnabled} medicineReminderSettings={medicineReminderSettings} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} profileName={profileName || 'Mom'} setProfileName={setProfileName || (() => undefined)} theme={theme} onLogout={onLogout} fileInputRef={fileInputRef} setSettingsOpen={setSettingsOpen} setEntries={setEntries} setDiapers={setDiapers} setBabyDob={setBabyDob} setTummyGoalMinutes={setTummyGoalMinutes} setSession={setSession} setUndoState={setUndoState} setFeedingNotificationsEnabled={setFeedingNotificationsEnabled} setBrowserRemindersEnabled={setBrowserRemindersEnabled} setNotificationPreferences={setNotificationPreferences} setTheme={setTheme} enableBrowserReminders={enableBrowserReminders} setGotifyReminders={setGotifyReminders} setMedicineReminderSettings={setMedicineReminderSettings} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} showToast={showToast} /> : null}
     </>
   )
 }

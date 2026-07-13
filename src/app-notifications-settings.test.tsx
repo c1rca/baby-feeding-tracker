@@ -40,7 +40,7 @@ describe('App interactions', () => {
     expect(screen.queryByRole('dialog', { name: /Settings and data/i })).toBeNull()
   })
 
-  it('requests notification permission from settings', async () => {
+  it('enables and disables browser reminders from settings', async () => {
     const requestPermission = vi.fn(async () => 'granted' as NotificationPermission)
     const NotificationMock = vi.fn()
     Object.defineProperty(NotificationMock, 'permission', { value: 'default', configurable: true })
@@ -51,11 +51,18 @@ describe('App interactions', () => {
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /Open settings/i }))
-    await user.click(screen.getByRole('switch', { name: /^Browser reminders$/i }))
+    const toggle = screen.getByRole('switch', { name: /^Browser reminders$/i })
+    await user.click(toggle)
 
     await waitFor(() => expect(requestPermission).toHaveBeenCalled())
-    await waitFor(() => expect(localStorage.getItem('baby-feeding-tracker:v1:feeding-notifications')).toBe('1'))
-    expect(screen.getByText(/Feeding reminders enabled/i)).toBeTruthy()
+    await waitFor(() => expect(localStorage.getItem('baby-feeding-tracker:v1:browser-reminders')).toBe('1'))
+    expect(toggle.getAttribute('aria-checked')).toBe('true')
+    expect(screen.getByText(/Browser reminders enabled/i)).toBeTruthy()
+
+    await user.click(toggle)
+    await waitFor(() => expect(localStorage.getItem('baby-feeding-tracker:v1:browser-reminders')).toBe('0'))
+    expect(toggle.getAttribute('aria-checked')).toBe('false')
+    expect(screen.getByText(/Browser reminders disabled/i)).toBeTruthy()
   })
 
   it('schedules 2h and 3h feeding notifications from the feed start with a Feedr link', () => {

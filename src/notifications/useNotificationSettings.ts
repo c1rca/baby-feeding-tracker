@@ -6,11 +6,11 @@ import { DEFAULT_NOTIFICATION_PREFERENCES, normalizeNotificationPreferences, typ
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
 
 type NotificationSettingsOptions = {
-  setFeedingNotificationsEnabled: (enabled: boolean) => void
+  setBrowserRemindersEnabled: (enabled: boolean) => void
   showToast: (message: string) => void
 }
 
-export function useNotificationSettings({ setFeedingNotificationsEnabled, showToast }: NotificationSettingsOptions) {
+export function useNotificationSettings({ setBrowserRemindersEnabled, showToast }: NotificationSettingsOptions) {
   const [gotifyAvailable, setGotifyAvailable] = useState(false)
   const [gotifyRemindersEnabled, setGotifyRemindersEnabled] = useState(false)
   const [medicineReminderSettings, setMedicineReminderSettingsState] = useState<MedicineReminderSettings>(DEFAULT_MEDICINE_REMINDER_SETTINGS)
@@ -107,16 +107,16 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
     }
   }
 
-  const enableFeedingNotifications = async () => {
+  const enableBrowserReminders = async () => {
     if (typeof Notification === 'undefined') return showToast('Notifications are not supported in this browser')
     const permission = Notification.permission === 'default' ? await Notification.requestPermission() : Notification.permission
     setNotificationPermission(permission)
     if (permission !== 'granted') {
-      setFeedingNotificationsEnabled(false)
+      setBrowserRemindersEnabled(false)
       return showToast('Notification permission not granted')
     }
-    setFeedingNotificationsEnabled(true)
-    showToast('Feeding reminders enabled')
+    setBrowserRemindersEnabled(true)
+    showToast('Browser reminders enabled')
   }
 
   return {
@@ -130,6 +130,6 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
     setGotifyReminders,
     setMedicineReminderSettings,
     setNotificationPreferences,
-    enableFeedingNotifications,
+    enableBrowserReminders,
   }
 }

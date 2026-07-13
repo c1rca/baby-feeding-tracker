@@ -42,7 +42,7 @@ type SettingsModalProps = Pick<
   | 'setBrowserRemindersEnabled'
   | 'setNotificationPreferences'
   | 'setTheme'
-  | 'enableFeedingNotifications'
+  | 'enableBrowserReminders'
   | 'setGotifyReminders'
   | 'setMedicineReminderSettings'
   | 'onCreateBaby'
@@ -303,7 +303,7 @@ const TAB_ORDER: TabDef[] = [
   { id: 'data', label: 'Data', icon: Database, title: 'Data', blurb: 'Export, import, or clear the log on this device.' },
 ]
 
-export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, browserRemindersEnabled, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setNotificationPreferences, setTheme, enableFeedingNotifications, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
+export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, browserRemindersEnabled, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setNotificationPreferences, setTheme, enableBrowserReminders, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
   const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
   const [activeTab, setActiveTab] = useState<TabId>('reminders')
   const tablistRef = useRef<HTMLDivElement>(null)
@@ -385,7 +385,7 @@ export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, bro
                 gotifyAvailable={gotifyAvailable}
                 setNotificationPreferences={setNotificationPreferences}
                 setBrowserRemindersEnabled={setBrowserRemindersEnabled}
-                enableBrowserReminders={enableFeedingNotifications}
+                enableBrowserReminders={enableBrowserReminders}
                 showToast={showToast}
               />
             ) : null}
