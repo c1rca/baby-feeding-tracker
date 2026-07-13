@@ -24,3 +24,23 @@ export function buildFeedingNotificationPayload(reminder, timeZone) {
     priority: 5,
   }
 }
+
+export function buildVitaminDNotificationPayload() {
+  return {
+    title: 'Vitamin D reminder',
+    subject: 'Vitamin D reminder',
+    message: `Take Vitamin D. Last dose was 18+ hours ago.\n\nLog Vitamin D now: ${buildMedicineQuickLogUrl('vitamin_d')}`,
+    priority: 5,
+    extras: {
+      'client::notification': { click: { url: buildMedicineQuickLogUrl('vitamin_d') } },
+    },
+  }
+}
+
+export function buildTummyTimeNotificationPayload() {
+  return {
+    title: 'Tummy Time reminder',
+    message: `Time for tummy time. Open Feedr to log a session.\n\n${FEEDR_URL}`,
+    priority: 5,
+  }
+}

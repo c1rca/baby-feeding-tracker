@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App'
+import { DEFAULT_NOTIFICATION_PREFERENCES } from './state/notificationPreferences'
 import {
   STORAGE_KEY,
   STORAGE_MEDICINES_KEY,
@@ -32,7 +33,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(screen.getByRole('button', { name: /Open settings/i }))
     expect(screen.getByRole('dialog', { name: /Settings and data/i })).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: /Close settings/i }))
@@ -49,8 +50,8 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Show settings/i }))
-    await user.click(screen.getByRole('switch', { name: /Next feeding reminders/i }))
+    await user.click(screen.getByRole('button', { name: /Open settings/i }))
+    await user.click(screen.getByRole('switch', { name: /^Browser reminders$/i }))
 
     await waitFor(() => expect(requestPermission).toHaveBeenCalled())
     await waitFor(() => expect(localStorage.getItem('baby-feeding-tracker:v1:feeding-notifications')).toBe('1'))
@@ -104,14 +105,18 @@ describe('App interactions', () => {
     expect(openSpy).toHaveBeenCalledWith(window.location.origin, '_blank', 'noopener,noreferrer')
   })
 
-  it('toggles Gotify reminders from settings', async () => {
+  it('persists per-type Gotify delivery preferences from settings', async () => {
+    const enabledPreferences = {
+      ...DEFAULT_NOTIFICATION_PREFERENCES,
+      feeding: { ...DEFAULT_NOTIFICATION_PREFERENCES.feeding, gotify: false },
+    }
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/notification-settings' && !init) {
-        return new Response(JSON.stringify({ available: true, gotifyRemindersEnabled: false }), { status: 200 })
+        return new Response(JSON.stringify({ available: true, notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES }), { status: 200 })
       }
       if (url === '/api/notification-settings' && init?.method === 'PUT') {
-        return new Response(JSON.stringify({ available: true, gotifyRemindersEnabled: true }), { status: 200 })
+        return new Response(JSON.stringify({ available: true, notificationPreferences: enabledPreferences }), { status: 200 })
       }
       if (url === '/api/state') {
         return new Response(JSON.stringify({ entries: [], session: null, theme: 'light' }), { status: 200 })
@@ -122,25 +127,26 @@ describe('App interactions', () => {
 
     const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(screen.getByRole('button', { name: /Open settings/i }))
 
-    await waitFor(() => expect(screen.getByText(/Gotify reminders/i)).toBeTruthy())
-    const gotifySwitch = screen.getByRole('switch', { name: /Gotify reminders/i })
-    expect(gotifySwitch.getAttribute('aria-checked')).toBe('false')
+    const gotifySwitch = await screen.findByRole('switch', { name: /Feeding via Gotify/i })
+    expect(gotifySwitch.getAttribute('aria-checked')).toBe('true')
     await user.click(gotifySwitch)
 
-    await waitFor(() => expect(screen.getByText(/Gotify reminders enabled/i)).toBeTruthy())
-    expect(fetchMock).toHaveBeenCalledWith('/api/notification-settings', expect.objectContaining({ method: 'PUT' }))
+    await waitFor(() => expect(screen.getByText(/Notification settings saved/i)).toBeTruthy())
+    const putCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT')
+    expect(JSON.parse(String(putCall?.[1]?.body)).notificationPreferences.feeding.gotify).toBe(false)
   })
 
   it('updates per-medicine server reminder intervals from settings', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/notification-settings' && !init) {
-        return new Response(JSON.stringify({ available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 6, motrin: 6 } }), { status: 200 })
+        return new Response(JSON.stringify({ available: true, notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES }), { status: 200 })
       }
       if (url === '/api/notification-settings' && init?.method === 'PUT') {
-        return new Response(JSON.stringify({ available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 4, motrin: 0 } }), { status: 200 })
+        const body = JSON.parse(String(init.body))
+        return new Response(JSON.stringify({ available: true, notificationPreferences: body.notificationPreferences }), { status: 200 })
       }
       if (url === '/api/state') {
         return new Response(JSON.stringify({ entries: [], session: null, theme: 'light' }), { status: 200 })
@@ -151,7 +157,7 @@ describe('App interactions', () => {
 
     const user = userEvent.setup()
     render(<App />)
-    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(screen.getByRole('button', { name: /Open settings/i }))
 
     const tylenolSelect = await screen.findByLabelText(/Tylenol reminder interval/i)
     const motrinSelect = screen.getByLabelText(/Motrin reminder interval/i)
@@ -161,10 +167,9 @@ describe('App interactions', () => {
     await user.selectOptions(tylenolSelect, '4')
     await user.selectOptions(motrinSelect, '0')
 
-    await waitFor(() => expect(screen.getByText(/Medicine reminder settings saved/i)).toBeTruthy())
-    expect(fetchMock).toHaveBeenLastCalledWith('/api/notification-settings', expect.objectContaining({
-      method: 'PUT',
-      body: JSON.stringify({ medicineReminderSettings: { tylenol: 4, motrin: 0 } }),
-    }))
+    await waitFor(() => expect(screen.getByText(/Notification settings saved/i)).toBeTruthy())
+    const putCalls = fetchMock.mock.calls.filter(([, init]) => init?.method === 'PUT')
+    const lastBody = JSON.parse(String(putCalls.at(-1)?.[1]?.body))
+    expect(lastBody.notificationPreferences.medicineIntervals).toEqual({ tylenol: 4, motrin: 0 })
   })
 })

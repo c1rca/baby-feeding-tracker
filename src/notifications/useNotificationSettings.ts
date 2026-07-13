@@ -81,7 +81,12 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
   }
 
   const setNotificationPreferences = async (prefs: Partial<NotificationPreferences>) => {
-    const normalized = normalizeNotificationPreferences(prefs)
+    const merged = { ...notificationPreferences, ...prefs }
+    const normalized = normalizeNotificationPreferences(merged)
+
+    // Optimistic update
+    setNotificationPreferencesState(normalized)
+
     try {
       const response = await authFetch(API_NOTIFICATION_SETTINGS, {
         method: 'PUT',
@@ -96,6 +101,8 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
       setNotificationPreferencesState(normalizeNotificationPreferences(data.notificationPreferences))
       showToast('Notification settings saved')
     } catch {
+      // Revert on error
+      setNotificationPreferencesState(notificationPreferences)
       showToast('Could not update notification settings')
     }
   }

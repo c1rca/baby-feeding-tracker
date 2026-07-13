@@ -9,9 +9,9 @@ type ChannelSelectorProps = {
 }
 
 const channels = [
-  { key: 'inApp', label: 'In-app', icon: Bell },
-  { key: 'browser', label: 'Browser', icon: Smartphone },
-  { key: 'gotify', label: 'Gotify', icon: Server },
+  { key: 'inApp', label: 'In-app', icon: Bell, description: 'Notification appears in the app' },
+  { key: 'browser', label: 'Browser', icon: Smartphone, description: 'Browser notification on this device' },
+  { key: 'gotify', label: 'Gotify', icon: Server, description: 'Push notification via server' },
 ] as const
 
 export function ChannelSelector({ prefs, onChange, label, disabled = false }: ChannelSelectorProps) {
@@ -23,16 +23,17 @@ export function ChannelSelector({ prefs, onChange, label, disabled = false }: Ch
 
   return (
     <div className="notif-channel-selector" role="group" aria-label={label}>
-      {channels.map(({ key, label: channelLabel, icon: Icon }) => (
+      {channels.map(({ key, label: channelLabel, icon: Icon, description }) => (
         <button
           key={key}
           type="button"
           role="switch"
           aria-checked={prefs[key]}
-          aria-label={`${label} via ${channelLabel}`}
+          aria-label={`${label} via ${channelLabel}: ${description}. ${prefs[key] ? 'Currently enabled' : 'Currently disabled'}`}
           disabled={disabled}
           className={`notif-channel-toggle${prefs[key] ? ' is-on' : ''}`}
           onClick={() => toggle(key)}
+          title={description}
         >
           <Icon size={16} aria-hidden="true" />
           <span className="notif-channel-label">{channelLabel}</span>

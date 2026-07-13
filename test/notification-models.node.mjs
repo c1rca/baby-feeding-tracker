@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { buildMedicineQuickLogUrl, buildMedicineReminder, buildReminder, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeTextEmailRecipients } from '../server/notifications.js'
+import { buildTummyTimeReminder, normalizeNotificationPreferences } from '../server/notificationModels.js'
 
 test('buildReminder schedules the next feeding window two to three hours after latest feed start', () => {
   const startedAt = new Date('2026-06-05T08:00:00Z').getTime()
@@ -76,4 +77,31 @@ test('hasActiveSession detects persisted active sessions', () => {
   assert.equal(hasActiveSession({ session_json: null }), false)
   assert.equal(hasActiveSession({ session_json: 'null' }), false)
   assert.equal(hasActiveSession({ session_json: JSON.stringify({ startedAt: Date.now(), activeSide: 'left' }) }), true)
+})
+
+test('notification preferences preserve legacy enabled reminders when no saved preferences exist', () => {
+  assert.deepEqual(normalizeNotificationPreferences(), {
+    feeding: { inApp: false, browser: true, gotify: true },
+    tylenol: { inApp: true, browser: false, gotify: true },
+    motrin: { inApp: true, browser: false, gotify: true },
+    vitaminD: { inApp: true, browser: false, gotify: true },
+    tummyTime: { inApp: true, browser: false, gotify: false },
+    tummyActiveHours: { startHour: 8, endHour: 20 },
+    quietHours: { enabled: false, startHour: 22, endHour: 7 },
+    medicineIntervals: { tylenol: 6, motrin: 6 },
+  })
+})
+
+test('tummy reminder uses the configured time zone for the local calendar day', () => {
+  const now = new Date('2026-06-05T04:30:00Z').getTime()
+  const yesterdayLocal = new Date('2026-06-05T03:30:00Z').getTime()
+  const reminder = buildTummyTimeReminder(
+    [{ id: 'yesterday-local', startedAt: yesterdayLocal }],
+    now,
+    { startHour: 0, endHour: 2 },
+    'America/New_York',
+  )
+
+  assert.ok(reminder)
+  assert.equal(reminder.sessionId, 'tummy:2026-06-05')
 })

@@ -116,6 +116,7 @@ const notificationScheduler = createTrackerNotificationScheduler({
   upsertNotificationState,
   gotifyRemindersEnabled,
   getMedicineReminderSettings,
+  getNotificationPreferences,
   appendEventLog,
   redactError,
 })

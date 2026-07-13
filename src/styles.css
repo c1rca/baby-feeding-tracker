@@ -1870,4 +1870,30 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 
 /* Desktop uses a lean top workspace navigation; the mobile bottom navigation remains unchanged. */
 @media (min-width: 761px) { .app-shell { grid-template-columns: minmax(0, 1fr); max-width: 1320px; margin: 0 auto; }.premium-sidebar { display: none; }.desktop-workspace-nav { display: inline-flex; align-items: center; gap: 4px; margin-left: auto; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--card-solid) 82%, transparent); }.desktop-workspace-nav button { min-height: 32px; padding: 0 11px; border: 0; border-radius: 8px; background: transparent; color: var(--ink-soft); font-size: .74rem; font-weight: 850; box-shadow: none; }.desktop-workspace-nav button.is-active { color: var(--violet); background: color-mix(in srgb, var(--violet) 12%, transparent); }.workspace-brand { display: flex; align-items: center; gap: 9px; }.workspace-brand-mark { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 11px; color: #fff; background: var(--grad-primary); box-shadow: 0 8px 18px rgba(219, 95, 141, .26); }.workspace-brand h1 { margin: 0; font-size: 1.12rem; font-weight: 850; letter-spacing: -.035em; }.desktop-settings { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 10px; border: 1px solid var(--border); border-radius: 10px; background: transparent; color: var(--ink-soft); font-size: .72rem; font-weight: 850; box-shadow: none; }.desktop-settings:hover { transform: none; color: var(--ink); background: color-mix(in srgb, var(--violet) 7%, transparent); } } @media (max-width: 760px) { .desktop-workspace-nav, .desktop-settings { display: none; }.workspace-brand { display: flex; align-items: center; gap: 8px; }.workspace-topbar { justify-content: space-between; }.desktop-settings { display: none; }.premium-sidebar { grid-template-columns: repeat(3, minmax(0, 1fr)); }.workspace-brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; color: #fff; background: var(--grad-primary); }.workspace-brand h1 { margin: 0; font-size: 1rem; } }
+
+/* Accessibility: screen reader only text */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
+
+/* 12-hour time picker */
+.notif-hour-range-12h { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.notif-time-picker { display: flex; align-items: center; gap: 6px; }
+.notif-time-input-group { display: flex; align-items: baseline; gap: 2px; }
+.notif-time-label { display: block; font-size: .72rem; font-weight: 700; color: var(--ink-soft); margin-right: 4px; }
+.notif-hour-input-12h { width: 40px; padding: 6px 4px; border: 1px solid color-mix(in srgb, var(--violet) 24%, var(--line)); border-radius: 6px; background: var(--card); color: var(--ink); font-size: .8rem; font-weight: 600; font-family: var(--font-numeric); text-align: center; }
+.notif-hour-input-12h:focus { outline: 2px solid var(--violet); outline-offset: 2px; border-color: var(--violet); }
+.notif-hour-input-12h:disabled { opacity: 0.5; cursor: not-allowed; }
+.notif-time-colon { font-weight: 700; color: var(--ink-soft); }
+.notif-time-minutes { font-size: .72rem; font-weight: 600; color: var(--ink-soft); }
+.notif-period-selector { display: flex; gap: 2px; }
+.notif-period-button { padding: 5px 8px; border: 1px solid color-mix(in srgb, var(--violet) 24%, var(--line)); border-radius: 5px; background: var(--card); color: var(--ink-soft); font-size: .68rem; font-weight: 700; cursor: pointer; transition: all 0.15s ease; }
+.notif-period-button:hover:not(:disabled) { background: color-mix(in srgb, var(--violet) 6%, var(--card)); color: var(--ink); }
+.notif-period-button.is-active { background: color-mix(in srgb, var(--violet) 20%, transparent); color: var(--violet); border-color: var(--violet); }
+.notif-period-button:disabled { opacity: 0.5; cursor: not-allowed; }
+.notif-period-button:focus { outline: 2px solid var(--violet); outline-offset: 1px; }
+.notif-time-separator { font-size: .74rem; font-weight: 600; color: var(--ink-soft); white-space: nowrap; }
+
+@media (max-width: 640px) {
+  .notif-hour-range-12h { flex-direction: column; align-items: flex-start; gap: 10px; }
+  .notif-time-separator { align-self: center; margin-left: 44px; }
+}
 .past-event-card{width:min(620px,calc(100vw - 28px));padding:24px}.past-event-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:20px}.past-event-head span{color:var(--berry);font-size:.68rem;font-weight:900;text-transform:uppercase}.past-event-head h2{margin:4px 0;font-size:1.45rem}.past-event-head p{margin:0;color:var(--ink-soft)}.past-event-types{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:18px}.past-event-types button{display:grid;justify-items:center;gap:6px;min-height:74px;padding:9px 6px;border:1px solid var(--border);border-radius:14px;background:transparent;color:var(--ink-soft);font-size:.69rem;font-weight:850;box-shadow:none}.past-event-types button.is-active,.past-event-toggle button.is-active{color:var(--berry);border-color:color-mix(in srgb,var(--berry) 42%,var(--border));background:color-mix(in srgb,var(--berry) 10%,transparent)}.past-event-when,.past-event-fields{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:14px}.past-event-fields{grid-template-columns:repeat(3,1fr)}.past-event-card label{display:grid;gap:6px;color:var(--ink-soft);font-size:.7rem;font-weight:800}.past-event-card input{min-height:40px}.past-event-toggle{display:flex;flex-wrap:wrap;gap:8px;margin:3px 0 15px}.past-event-toggle button{min-height:38px;padding:0 14px;border:1px solid var(--border);border-radius:10px;background:transparent;color:var(--ink-soft);font-weight:850;box-shadow:none}.past-event-note{margin-bottom:18px}@media(max-width:520px){.past-event-card{padding:19px}.past-event-types{grid-template-columns:repeat(2,1fr)}.past-event-fields{grid-template-columns:repeat(2,1fr)}}

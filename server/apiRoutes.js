@@ -41,7 +41,7 @@ export const createDiagnosticsRouter = ({ config, getGotifyRemindersEnabled }) =
   return router
 }
 
-export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEnabled, setGotifyRemindersEnabled, getMedicineReminderSettings, setMedicineReminderSettings, getNotificationPreferences, setNotificationPreferences, writeBooleanSetting, writeJsonSetting, appendEventLog, notificationScheduler }) => {
+export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEnabled, setGotifyRemindersEnabled, getMedicineReminderSettings, setMedicineReminderSettings, getNotificationPreferences = () => normalizeNotificationPreferences(), setNotificationPreferences = () => {}, writeBooleanSetting, writeJsonSetting, appendEventLog, notificationScheduler }) => {
   const settingsPayload = () => ({
     available: config.notificationChannelsAvailable,
     gotifyRemindersEnabled: getGotifyRemindersEnabled(),

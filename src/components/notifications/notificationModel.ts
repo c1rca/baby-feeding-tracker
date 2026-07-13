@@ -59,10 +59,10 @@ export const buildCareNotifications = ({ medicineReminders = [], showMedicineRem
   // Medicine reminders: filter by inApp preference and quiet hours
   if (showMedicineReminder && !isQuietNow) {
     const filteredReminders = medicineReminders.filter((reminder) => {
-      if (reminder.type === 'vitamin_d') {
+      if (reminder.recommendedKind === 'vitamin_d') {
         return preferences?.vitaminD.inApp ?? true
       }
-      return preferences?.[reminder.type as 'tylenol' | 'motrin']?.inApp ?? true
+      return preferences?.[reminder.recommendedKind as 'tylenol' | 'motrin']?.inApp ?? true
     })
     notifications.push(...filteredReminders.map((reminder) => medicineNotification(reminder, logMedicine, dismissMedicineReminder)))
   }

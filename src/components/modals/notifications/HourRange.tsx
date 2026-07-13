@@ -22,8 +22,11 @@ export function HourRange({ window, onChange, label, disabled = false }: HourRan
     onChange({ ...window, endHour: value })
   }
 
+  const wrapsAtMidnight = window.startHour > window.endHour
+  const descId = `${label}-desc`.replace(/\s+/g, '-').toLowerCase()
+
   return (
-    <div className="notif-hour-range" aria-label={label}>
+    <div className="notif-hour-range" aria-label={label} aria-describedby={descId}>
       <div className="notif-hour-range-input">
         <label>
           <span className="notif-hour-label">Start</span>
@@ -57,6 +60,11 @@ export function HourRange({ window, onChange, label, disabled = false }: HourRan
           <span className="notif-hour-unit">:00</span>
         </label>
       </div>
+      <span id={descId} className="sr-only">
+        {wrapsAtMidnight
+          ? `This time range crosses midnight. Active from ${formatHour(window.startHour)}:00 through the end of the day, then resuming at midnight through ${formatHour(window.endHour)}:00.`
+          : `Active from ${formatHour(window.startHour)}:00 to ${formatHour(window.endHour)}:00.`}
+      </span>
     </div>
   )
 }

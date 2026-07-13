@@ -56,16 +56,19 @@ export function normalizeChannelPrefs(prefs = {}) {
 }
 
 export function normalizeNotificationPreferences(prefs = {}) {
+  const defaultChannels = { inApp: true, browser: false, gotify: true }
+  const defaultFeedingChannels = { inApp: false, browser: true, gotify: true }
+  const defaultTummyChannels = { ...defaultChannels, gotify: false }
   return {
-    feeding: normalizeChannelPrefs(prefs?.feeding),
-    tylenol: normalizeChannelPrefs(prefs?.tylenol),
-    motrin: normalizeChannelPrefs(prefs?.motrin),
-    vitaminD: normalizeChannelPrefs(prefs?.vitaminD),
-    tummyTime: normalizeChannelPrefs(prefs?.tummyTime),
-    tummyActiveHours: normalizeHourWindow(prefs?.tummyActiveHours),
+    feeding: normalizeChannelPrefs({ ...defaultFeedingChannels, ...prefs?.feeding }),
+    tylenol: normalizeChannelPrefs({ ...defaultChannels, ...prefs?.tylenol }),
+    motrin: normalizeChannelPrefs({ ...defaultChannels, ...prefs?.motrin }),
+    vitaminD: normalizeChannelPrefs({ ...defaultChannels, ...prefs?.vitaminD }),
+    tummyTime: normalizeChannelPrefs({ ...defaultTummyChannels, ...prefs?.tummyTime }),
+    tummyActiveHours: normalizeHourWindow({ startHour: 8, endHour: 20, ...prefs?.tummyActiveHours }),
     quietHours: {
       enabled: Boolean(prefs?.quietHours?.enabled),
-      ...normalizeHourWindow(prefs?.quietHours),
+      ...normalizeHourWindow({ startHour: 22, endHour: 7, ...prefs?.quietHours }),
     },
     medicineIntervals: {
       tylenol: normalizeMedicineReminderSettings(prefs?.medicineIntervals)?.tylenol ?? 6,
@@ -108,7 +111,18 @@ export function parseJsonArray(value) {
   }
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000
+const zonedDateKey = (timestamp, timeZone) => new Intl.DateTimeFormat('en-CA', {
+  timeZone,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+}).format(timestamp)
+
+const zonedHour = (timestamp, timeZone) => Number(new Intl.DateTimeFormat('en-US', {
+  timeZone,
+  hour: 'numeric',
+  hourCycle: 'h23',
+}).format(timestamp))
 
 export function buildVitaminDReminder(medicines, now = Date.now()) {
   const latestVitaminD = getLatestMedicineDosesByKind(medicines).find((dose) => dose.kind === 'vitamin_d')
@@ -130,14 +144,14 @@ export function buildVitaminDReminder(medicines, now = Date.now()) {
   }
 }
 
-export function buildTummyTimeReminder(tummyTimes, now = Date.now(), activeHours = { startHour: 8, endHour: 20 }) {
-  if (tummyTimes.length === 0) return null
+export function buildTummyTimeReminder(tummyTimes, now = Date.now(), activeHours = { startHour: 8, endHour: 20 }, timeZone = 'America/New_York') {
+  if (!Array.isArray(tummyTimes)) return null
 
-  const startOfDay = Math.floor(now / DAY_MS) * DAY_MS
-  const todayTummyTimes = tummyTimes.filter((t) => t.startedAt >= startOfDay && t.startedAt < startOfDay + DAY_MS)
+  const todayKey = zonedDateKey(now, timeZone)
+  const todayTummyTimes = tummyTimes.filter((t) => Number.isFinite(t?.startedAt) && zonedDateKey(t.startedAt, timeZone) === todayKey)
 
   // Only suggest once per day, and only during active hours
-  const currentHour = new Date(now).getHours()
+  const currentHour = zonedHour(now, timeZone)
   const isInActiveWindow = activeHours.startHour <= activeHours.endHour
     ? currentHour >= activeHours.startHour && currentHour < activeHours.endHour
     : currentHour >= activeHours.startHour || currentHour < activeHours.endHour
@@ -145,15 +159,13 @@ export function buildTummyTimeReminder(tummyTimes, now = Date.now(), activeHours
   if (!isInActiveWindow || todayTummyTimes.length > 0) return null
 
   // Suggest tummy time at the start of the active window
-  const dueAt = startOfDay + activeHours.startHour * 60 * 60 * 1000
-  const catchUpUntil = dueAt + 2 * 60 * 60 * 1000 // 2-hour catch-up window
-
-  if (now > catchUpUntil) return null
+  const dueAt = now
+  const catchUpUntil = now + 2 * 60 * 60 * 1000
 
   return {
     kind: 'tummy_time',
-    dueAt: Math.max(dueAt, now), // If we're past the start of the window, due now
+    dueAt,
     catchUpUntil,
-    sessionId: `tummy-${Math.floor(startOfDay / 1000)}`,
+    sessionId: `tummy:${todayKey}`,
   }
 }

@@ -74,6 +74,7 @@ test('notification settings route clamps disabled channels and persists the resu
     setGotifyRemindersEnabled: (value) => { enabled = value },
     getMedicineReminderSettings: () => medicineReminderSettings,
     setMedicineReminderSettings: (value) => { medicineReminderSettings = value },
+    getNotificationPreferences: () => ({}),
     writeBooleanSetting: (key, value) => writes.push({ key, value }),
     writeJsonSetting: (key, value) => writes.push({ key, value }),
     appendEventLog: (event, payload) => events.push({ event, payload }),
@@ -87,7 +88,7 @@ test('notification settings route clamps disabled channels and persists the resu
   assert.deepEqual(writes, [{ key: 'gotify_reminders_enabled', value: false }])
   assert.deepEqual(schedulerCalls, [false])
   assert.deepEqual(events, [{ event: 'settings_update', payload: { key: 'gotify_reminders_enabled', value: '0' } }])
-  assert.deepEqual(res.body, { ok: true, available: false, gotifyRemindersEnabled: false, medicineReminderSettings: { tylenol: 6, motrin: 6 } })
+  assert.deepEqual(res.body, { ok: true, available: false, gotifyRemindersEnabled: false, medicineReminderSettings: { tylenol: 6, motrin: 6 }, notificationPreferences: {} })
 })
 
 test('notification settings route persists per-kind medicine reminder intervals', () => {
@@ -102,6 +103,7 @@ test('notification settings route persists per-kind medicine reminder intervals'
     setGotifyRemindersEnabled: () => {},
     getMedicineReminderSettings: () => medicineReminderSettings,
     setMedicineReminderSettings: (value) => { medicineReminderSettings = value },
+    getNotificationPreferences: () => ({}),
     writeBooleanSetting: () => {},
     writeJsonSetting: (key, value) => writes.push({ key, value }),
     appendEventLog: (event, payload) => events.push({ event, payload }),
@@ -115,7 +117,7 @@ test('notification settings route persists per-kind medicine reminder intervals'
   assert.deepEqual(writes, [{ key: 'medicine_reminder_settings', value: { tylenol: 4, motrin: 0 } }])
   assert.deepEqual(schedulerCalls, ['evaluate'])
   assert.deepEqual(events, [{ event: 'settings_update', payload: { key: 'medicine_reminder_settings', value: { tylenol: 4, motrin: 0 } } }])
-  assert.deepEqual(res.body, { ok: true, available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 4, motrin: 0 } })
+  assert.deepEqual(res.body, { ok: true, available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 4, motrin: 0 }, notificationPreferences: {} })
 })
 
 test('notification settings mutation is rejected for non-owner members and changes nothing', () => {

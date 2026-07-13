@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { Bell, Dumbbell, Pill, Sun, X } from 'lucide-react'
 import type { CareNotification } from './notificationModel'
@@ -16,7 +16,7 @@ export function CareNotificationCenter({ notifications }: Props) {
   const openerRef = useRef<HTMLButtonElement>(null)
   const touchStartX = useRef<number | null>(null)
   const close = () => { setOpen(false); window.setTimeout(() => openerRef.current?.focus(), 0) }
-  const cycleBrief = (direction: -1 | 1 = 1) => { if (notifications.length < 2) return; setIsSliding(true); window.setTimeout(() => { setBriefIndex((current) => (current + direction + notifications.length) % notifications.length); setIsSliding(false) }, 130) }
+  const cycleBrief = useCallback((direction: -1 | 1 = 1) => { if (notifications.length < 2) return; setIsSliding(true); window.setTimeout(() => { setBriefIndex((current) => (current + direction + notifications.length) % notifications.length); setIsSliding(false) }, 130) }, [notifications.length])
 
   useEffect(() => {
     if (!open) return
@@ -49,7 +49,7 @@ export function CareNotificationCenter({ notifications }: Props) {
     const onVisibility = () => { if (document.visibilityState === 'visible') rotate() }
     document.addEventListener('visibilitychange', onVisibility)
     return () => { window.clearInterval(interval); document.removeEventListener('visibilitychange', onVisibility) }
-  }, [notifications.length, open])
+  }, [cycleBrief, notifications.length, open])
 
   const brief = notifications[briefIndex % Math.max(notifications.length, 1)]
   return <section className="care-notification-center" aria-label="Care notifications">

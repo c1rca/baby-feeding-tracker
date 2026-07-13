@@ -16,7 +16,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   feeding: { inApp: false, browser: true, gotify: true },
   tylenol: { inApp: true, browser: false, gotify: true },
   motrin: { inApp: true, browser: false, gotify: true },
-  vitaminD: { inApp: true, browser: false, gotify: false },
+  vitaminD: { inApp: true, browser: false, gotify: true },
   tummyTime: { inApp: true, browser: false, gotify: false },
   tummyActiveHours: { startHour: 8, endHour: 20 },
   quietHours: { enabled: false, startHour: 22, endHour: 7 },
@@ -42,15 +42,15 @@ const normalizeInterval = (value?: number): 0 | 4 | 6 => {
 
 export const normalizeNotificationPreferences = (prefs?: Partial<NotificationPreferences>): NotificationPreferences => {
   return {
-    feeding: normalizeChannelPrefs(prefs?.feeding),
-    tylenol: normalizeChannelPrefs(prefs?.tylenol),
-    motrin: normalizeChannelPrefs(prefs?.motrin),
-    vitaminD: normalizeChannelPrefs(prefs?.vitaminD),
-    tummyTime: normalizeChannelPrefs(prefs?.tummyTime),
-    tummyActiveHours: normalizeHourWindow(prefs?.tummyActiveHours),
+    feeding: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.feeding, ...prefs?.feeding }),
+    tylenol: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.tylenol, ...prefs?.tylenol }),
+    motrin: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.motrin, ...prefs?.motrin }),
+    vitaminD: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.vitaminD, ...prefs?.vitaminD }),
+    tummyTime: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.tummyTime, ...prefs?.tummyTime }),
+    tummyActiveHours: normalizeHourWindow({ ...DEFAULT_NOTIFICATION_PREFERENCES.tummyActiveHours, ...prefs?.tummyActiveHours }),
     quietHours: {
-      enabled: Boolean(prefs?.quietHours?.enabled),
-      ...normalizeHourWindow(prefs?.quietHours),
+      enabled: Boolean(prefs?.quietHours?.enabled ?? DEFAULT_NOTIFICATION_PREFERENCES.quietHours.enabled),
+      ...normalizeHourWindow({ ...DEFAULT_NOTIFICATION_PREFERENCES.quietHours, ...prefs?.quietHours }),
     },
     medicineIntervals: {
       tylenol: normalizeInterval(prefs?.medicineIntervals?.tylenol),
