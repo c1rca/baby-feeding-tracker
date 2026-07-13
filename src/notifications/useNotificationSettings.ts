@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { authFetch } from '../auth/authSession'
 import { DEFAULT_MEDICINE_REMINDER_SETTINGS, normalizeMedicineReminderSettings, type MedicineReminderSettings } from '../state/medicineReminderModel'
+import { DEFAULT_NOTIFICATION_PREFERENCES, normalizeNotificationPreferences, type NotificationPreferences } from '../state/notificationPreferences'
 
 const API_NOTIFICATION_SETTINGS = '/api/notification-settings'
 
@@ -14,20 +15,25 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
   const [gotifyRemindersEnabled, setGotifyRemindersEnabled] = useState(false)
   const [medicineReminderSettings, setMedicineReminderSettingsState] = useState<MedicineReminderSettings>(DEFAULT_MEDICINE_REMINDER_SETTINGS)
   const [medicineReminderSettingsLoaded, setMedicineReminderSettingsLoaded] = useState(false)
+  const [notificationPreferences, setNotificationPreferencesState] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES)
+  const [notificationPreferencesLoaded, setNotificationPreferencesLoaded] = useState(false)
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(() => (typeof Notification === 'undefined' ? 'denied' : Notification.permission))
 
   const loadGotifySettings = useCallback(async () => {
     try {
       const response = await authFetch(API_NOTIFICATION_SETTINGS)
       if (!response.ok) throw new Error('settings load failed')
-      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean; medicineReminderSettings?: Partial<Record<keyof MedicineReminderSettings, number>> }
+      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean; medicineReminderSettings?: Partial<Record<keyof MedicineReminderSettings, number>>; notificationPreferences?: Partial<NotificationPreferences> }
       setGotifyAvailable(Boolean(data.available))
       setGotifyRemindersEnabled(Boolean(data.gotifyRemindersEnabled))
       setMedicineReminderSettingsState(normalizeMedicineReminderSettings(data.medicineReminderSettings))
+      setNotificationPreferencesState(normalizeNotificationPreferences(data.notificationPreferences))
       setMedicineReminderSettingsLoaded(true)
+      setNotificationPreferencesLoaded(true)
     } catch {
       setGotifyAvailable(false)
       setMedicineReminderSettingsLoaded(true)
+      setNotificationPreferencesLoaded(true)
     }
   }, [])
 
@@ -43,10 +49,11 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
         body: JSON.stringify({ gotifyRemindersEnabled: enabled }),
       })
       if (!response.ok) throw new Error('settings save failed')
-      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean; medicineReminderSettings?: Partial<Record<keyof MedicineReminderSettings, number>> }
+      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean; medicineReminderSettings?: Partial<Record<keyof MedicineReminderSettings, number>>; notificationPreferences?: Partial<NotificationPreferences> }
       setGotifyAvailable(Boolean(data.available))
       setGotifyRemindersEnabled(Boolean(data.gotifyRemindersEnabled))
       setMedicineReminderSettingsState(normalizeMedicineReminderSettings(data.medicineReminderSettings))
+      setNotificationPreferencesState(normalizeNotificationPreferences(data.notificationPreferences))
       showToast(data.gotifyRemindersEnabled ? 'Gotify reminders enabled' : 'Gotify reminders disabled')
     } catch {
       showToast('Could not update Gotify reminders')
@@ -62,13 +69,34 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
         body: JSON.stringify({ medicineReminderSettings: normalized }),
       })
       if (!response.ok) throw new Error('settings save failed')
-      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean; medicineReminderSettings?: Partial<Record<keyof MedicineReminderSettings, number>> }
+      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean; medicineReminderSettings?: Partial<Record<keyof MedicineReminderSettings, number>>; notificationPreferences?: Partial<NotificationPreferences> }
       setGotifyAvailable(Boolean(data.available))
       setGotifyRemindersEnabled(Boolean(data.gotifyRemindersEnabled))
       setMedicineReminderSettingsState(normalizeMedicineReminderSettings(data.medicineReminderSettings))
+      setNotificationPreferencesState(normalizeNotificationPreferences(data.notificationPreferences))
       showToast('Medicine reminder settings saved')
     } catch {
       showToast('Could not update medicine reminder settings')
+    }
+  }
+
+  const setNotificationPreferences = async (prefs: Partial<NotificationPreferences>) => {
+    const normalized = normalizeNotificationPreferences(prefs)
+    try {
+      const response = await authFetch(API_NOTIFICATION_SETTINGS, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationPreferences: normalized }),
+      })
+      if (!response.ok) throw new Error('settings save failed')
+      const data = (await response.json()) as { available?: boolean; gotifyRemindersEnabled?: boolean; medicineReminderSettings?: Partial<Record<keyof MedicineReminderSettings, number>>; notificationPreferences?: Partial<NotificationPreferences> }
+      setGotifyAvailable(Boolean(data.available))
+      setGotifyRemindersEnabled(Boolean(data.gotifyRemindersEnabled))
+      setMedicineReminderSettingsState(normalizeMedicineReminderSettings(data.medicineReminderSettings))
+      setNotificationPreferencesState(normalizeNotificationPreferences(data.notificationPreferences))
+      showToast('Notification settings saved')
+    } catch {
+      showToast('Could not update notification settings')
     }
   }
 
@@ -89,9 +117,12 @@ export function useNotificationSettings({ setFeedingNotificationsEnabled, showTo
     gotifyRemindersEnabled,
     medicineReminderSettings,
     medicineReminderSettingsLoaded,
+    notificationPreferences,
+    notificationPreferencesLoaded,
     notificationPermission,
     setGotifyReminders,
     setMedicineReminderSettings,
+    setNotificationPreferences,
     enableFeedingNotifications,
   }
 }

@@ -10,6 +10,7 @@ export const TRACKER_STORAGE_KEYS = {
   theme: 'baby-feeding-tracker:v1:theme',
   settingsOpen: 'baby-feeding-tracker:v1:settings-open',
   feedingNotifications: 'baby-feeding-tracker:v1:feeding-notifications',
+  browserReminders: 'baby-feeding-tracker:v1:browser-reminders',
   diapers: 'baby-feeding-tracker:v1:diapers',
   medicines: 'baby-feeding-tracker:v1:medicines',
   tummyTimes: 'baby-feeding-tracker:v1:tummy-times',
@@ -37,6 +38,7 @@ export const getTrackerStorageKeys = (babyId?: string | null): TrackerStorageKey
   theme: TRACKER_STORAGE_KEYS.theme,
   settingsOpen: TRACKER_STORAGE_KEYS.settingsOpen,
   feedingNotifications: scopedKey(TRACKER_STORAGE_KEYS.feedingNotifications, babyId),
+  browserReminders: scopedKey(TRACKER_STORAGE_KEYS.browserReminders, babyId),
   diapers: scopedKey(TRACKER_STORAGE_KEYS.diapers, babyId),
   medicines: scopedKey(TRACKER_STORAGE_KEYS.medicines, babyId),
   tummyTimes: scopedKey(TRACKER_STORAGE_KEYS.tummyTimes, babyId),
@@ -96,6 +98,13 @@ export const readSession = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => 
 }
 
 export const readFeedingNotificationsEnabled = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => localStorage.getItem(keys.feedingNotifications) === '1'
+
+export const readBrowserRemindersEnabled = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
+  // Try new key first, fall back to legacy feedingNotifications key for backward compatibility
+  const newValue = localStorage.getItem(keys.browserReminders)
+  if (newValue !== null) return newValue === '1'
+  return localStorage.getItem(keys.feedingNotifications) === '1'
+}
 
 export const readBabyDob = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => localStorage.getItem(keys.babyDob) || '2026-06-03'
 export const readTummyGoalMinutes = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => normalizeTummyTimeGoalMinutes(localStorage.getItem(keys.tummyGoalMinutes) ?? TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES)

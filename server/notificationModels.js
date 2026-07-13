@@ -41,6 +41,39 @@ export function normalizeMedicineReminderSettings(settings = {}) {
   return { tylenol: intervalFor('tylenol'), motrin: intervalFor('motrin') }
 }
 
+export function normalizeHourWindow(window = {}) {
+  const start = Math.max(0, Math.min(23, Math.round(Number(window?.startHour) || 0)))
+  const end = Math.max(0, Math.min(23, Math.round(Number(window?.endHour) || 0)))
+  return { startHour: start, endHour: end }
+}
+
+export function normalizeChannelPrefs(prefs = {}) {
+  return {
+    inApp: Boolean(prefs?.inApp),
+    browser: Boolean(prefs?.browser),
+    gotify: Boolean(prefs?.gotify),
+  }
+}
+
+export function normalizeNotificationPreferences(prefs = {}) {
+  return {
+    feeding: normalizeChannelPrefs(prefs?.feeding),
+    tylenol: normalizeChannelPrefs(prefs?.tylenol),
+    motrin: normalizeChannelPrefs(prefs?.motrin),
+    vitaminD: normalizeChannelPrefs(prefs?.vitaminD),
+    tummyTime: normalizeChannelPrefs(prefs?.tummyTime),
+    tummyActiveHours: normalizeHourWindow(prefs?.tummyActiveHours),
+    quietHours: {
+      enabled: Boolean(prefs?.quietHours?.enabled),
+      ...normalizeHourWindow(prefs?.quietHours),
+    },
+    medicineIntervals: {
+      tylenol: normalizeMedicineReminderSettings(prefs?.medicineIntervals)?.tylenol || 6,
+      motrin: normalizeMedicineReminderSettings(prefs?.medicineIntervals)?.motrin || 6,
+    },
+  }
+}
+
 export function buildMedicineReminder(latestDose, now = Date.now(), settings = {}) {
   if (!latestDose) return null
   if (latestDose.kind === 'vitamin_d') {

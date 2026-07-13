@@ -8,7 +8,7 @@ import { createDiagnosticsRouter, createHealthRouter, createHouseholdRouter, cre
 import { openTrackerDatabase, prepareTrackerStatements, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './server/database.js'
 import { createEventLogger, redactError } from './server/eventLog.js'
 import { createTextEmailSender, createTrackerNotificationScheduler } from './server/notificationRuntime.js'
-import { normalizeMedicineReminderSettings } from './server/notificationModels.js'
+import { normalizeMedicineReminderSettings, normalizeNotificationPreferences } from './server/notificationModels.js'
 import { createRuntimeConfig } from './server/runtimeConfig.js'
 import { createSecurityHeaders } from './server/securityHeaders.js'
 import { createDeletedItemOptionsReader, createDeletedItemRecorder, serializeState, summarizeState } from './server/stateStore.js'
@@ -94,6 +94,7 @@ const writeJsonSetting = (key, value) => upsertSetting.run({ key, value: JSON.st
 
 let gotifyRemindersEnabled = config.notificationChannelsAvailable && readBooleanSetting('gotify_reminders_enabled', config.notificationsDefaultEnabled)
 let medicineReminderSettings = normalizeMedicineReminderSettings(readJsonSetting('medicine_reminder_settings', { tylenol: 6, motrin: 6 }))
+let notificationPreferences = normalizeNotificationPreferences(readJsonSetting('notification_preferences'))
 const getGotifyRemindersEnabled = () => gotifyRemindersEnabled
 const setGotifyRemindersEnabled = (enabled) => {
   gotifyRemindersEnabled = enabled
@@ -101,6 +102,10 @@ const setGotifyRemindersEnabled = (enabled) => {
 const getMedicineReminderSettings = () => medicineReminderSettings
 const setMedicineReminderSettings = (settings) => {
   medicineReminderSettings = normalizeMedicineReminderSettings(settings)
+}
+const getNotificationPreferences = () => notificationPreferences
+const setNotificationPreferences = (prefs) => {
+  notificationPreferences = normalizeNotificationPreferences(prefs)
 }
 
 const notificationScheduler = createTrackerNotificationScheduler({
@@ -166,6 +171,8 @@ createNotificationSettingsRouter({
   setGotifyRemindersEnabled,
   getMedicineReminderSettings,
   setMedicineReminderSettings,
+  getNotificationPreferences,
+  setNotificationPreferences,
   writeBooleanSetting,
   writeJsonSetting,
   appendEventLog,

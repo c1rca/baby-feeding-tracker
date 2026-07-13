@@ -1,6 +1,6 @@
 import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './database.js'
 import { hashSessionToken } from './authCrypto.js'
-import { normalizeMedicineReminderSettings } from './notificationModels.js'
+import { normalizeMedicineReminderSettings, normalizeNotificationPreferences } from './notificationModels.js'
 import { validateStatePayload } from './stateValidation.js'
 
 const normalizeTummyGoalMinutes = (value) => {
@@ -41,11 +41,12 @@ export const createDiagnosticsRouter = ({ config, getGotifyRemindersEnabled }) =
   return router
 }
 
-export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEnabled, setGotifyRemindersEnabled, getMedicineReminderSettings, setMedicineReminderSettings, writeBooleanSetting, writeJsonSetting, appendEventLog, notificationScheduler }) => {
+export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEnabled, setGotifyRemindersEnabled, getMedicineReminderSettings, setMedicineReminderSettings, getNotificationPreferences, setNotificationPreferences, writeBooleanSetting, writeJsonSetting, appendEventLog, notificationScheduler }) => {
   const settingsPayload = () => ({
     available: config.notificationChannelsAvailable,
     gotifyRemindersEnabled: getGotifyRemindersEnabled(),
     medicineReminderSettings: getMedicineReminderSettings(),
+    notificationPreferences: getNotificationPreferences(),
   })
   const router = (app) => {
     app.get('/api/notification-settings', (_req, res) => {
@@ -72,6 +73,13 @@ export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEna
         setMedicineReminderSettings(nextSettings)
         writeJsonSetting('medicine_reminder_settings', nextSettings)
         appendEventLog('settings_update', { key: 'medicine_reminder_settings', value: nextSettings })
+        notificationScheduler?.evaluate()
+      }
+      if (req.body?.notificationPreferences) {
+        const nextPrefs = normalizeNotificationPreferences(req.body.notificationPreferences)
+        setNotificationPreferences(nextPrefs)
+        writeJsonSetting('notification_preferences', nextPrefs)
+        appendEventLog('settings_update', { key: 'notification_preferences', value: nextPrefs })
         notificationScheduler?.evaluate()
       }
       res.json({ ok: true, ...settingsPayload() })

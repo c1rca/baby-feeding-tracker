@@ -5,6 +5,7 @@ import {
   getTrackerStorageKeys,
   persistTheme,
   readBabyDob,
+  readBrowserRemindersEnabled,
   readFeedingNotificationsEnabled,
   readSession,
   readSortedDiapers,
@@ -33,6 +34,7 @@ export function usePersistentTrackerState(selectedBabyId?: string | null) {
   const [theme, setTheme] = useState<Theme>(readTheme)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [feedingNotificationsEnabled, setFeedingNotificationsEnabled] = useState(() => readFeedingNotificationsEnabled(storageKeys))
+  const [browserRemindersEnabled, setBrowserRemindersEnabled] = useState(() => readBrowserRemindersEnabled(storageKeys))
 
   useEffect(() => localStorage.setItem(storageKeys.entries, JSON.stringify(entries)), [entries, storageKeys.entries])
   useEffect(() => localStorage.setItem(storageKeys.diapers, JSON.stringify(diapers)), [diapers, storageKeys.diapers])
@@ -47,6 +49,7 @@ export function usePersistentTrackerState(selectedBabyId?: string | null) {
   useEffect(() => persistTheme(theme), [theme])
   useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.settingsOpen, settingsOpen ? '1' : '0'), [settingsOpen])
   useEffect(() => localStorage.setItem(storageKeys.feedingNotifications, feedingNotificationsEnabled ? '1' : '0'), [feedingNotificationsEnabled, storageKeys.feedingNotifications])
+  useEffect(() => localStorage.setItem(storageKeys.browserReminders, browserRemindersEnabled ? '1' : '0'), [browserRemindersEnabled, storageKeys.browserReminders])
 
   return {
     entries,
@@ -75,5 +78,7 @@ export function usePersistentTrackerState(selectedBabyId?: string | null) {
     setSettingsOpen,
     feedingNotificationsEnabled,
     setFeedingNotificationsEnabled,
+    browserRemindersEnabled,
+    setBrowserRemindersEnabled,
   }
 }
