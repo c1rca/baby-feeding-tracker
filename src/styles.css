@@ -1789,6 +1789,38 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
   .password-form button, .invite-form button { width: 100%; justify-content: center; }
 }
 
+/* ---------- Notification settings (premium) ---------- */
+.notif-settings-container { display: grid; gap: 14px; }
+.notif-type-card { padding: 14px; background: color-mix(in srgb, var(--well) 35%, var(--card)); border: 1px solid color-mix(in srgb, var(--violet) 16%, var(--line)); border-radius: 16px; }
+.notif-type-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.notif-type-title { display: flex; align-items: center; gap: 8px; }
+.notif-type-title strong { font-size: .88rem; font-weight: 850; }
+.notif-type-icon { color: var(--violet); }
+.notif-channel-selector { display: flex; gap: 7px; }
+.notif-channel-toggle { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 6px 12px; border: 1px solid color-mix(in srgb, var(--violet) 24%, var(--line)); border-radius: 10px; background: transparent; color: var(--ink-soft); font-size: .72rem; font-weight: 750; box-shadow: none; cursor: pointer; transition: all .16s ease-out; }
+.notif-channel-toggle:hover:not(:disabled) { background: color-mix(in srgb, var(--violet) 8%, transparent); }
+.notif-channel-toggle:disabled { opacity: .5; cursor: not-allowed; }
+.notif-channel-toggle.is-on { color: var(--violet); border-color: color-mix(in srgb, var(--violet) 45%, transparent); background: color-mix(in srgb, var(--violet) 12%, transparent); }
+.notif-channel-label { white-space: nowrap; }
+.notif-hour-range { display: flex; align-items: center; gap: 8px; }
+.notif-hour-range-input { display: flex; align-items: center; gap: 4px; }
+.notif-hour-range-input label { display: flex; align-items: center; gap: 4px; }
+.notif-hour-label { font-size: .7rem; font-weight: 800; color: var(--ink-soft); white-space: nowrap; }
+.notif-hour-input { width: 45px; min-height: 32px; padding: 0 6px; border: 1px solid var(--line); border-radius: 8px; background: var(--well); color: var(--ink); font-size: .73rem; font-weight: 700; text-align: center; }
+.notif-hour-input:disabled { opacity: .5; }
+.notif-hour-unit { font-size: .7rem; font-weight: 650; color: var(--ink-soft); }
+.notif-hour-separator { color: var(--ink-soft); font-weight: 600; }
+.notif-quiet-hours-card { padding: 14px; background: color-mix(in srgb, var(--well) 35%, var(--card)); border: 1px solid color-mix(in srgb, var(--violet) 16%, var(--line)); border-radius: 16px; }
+.notif-quiet-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.notif-quiet-title { display: flex; align-items: center; gap: 8px; }
+.notif-quiet-title strong { font-size: .88rem; font-weight: 850; }
+.notif-quiet-icon { color: var(--violet); }
+.notif-unavailable-note { padding: 12px; background: color-mix(in srgb, var(--ink) 4%, transparent); border: 1px solid var(--line); border-radius: 13px; text-align: center; }
+.notif-unavailable-note p { margin: 0; color: var(--ink-soft); font-size: .74rem; font-weight: 650; }
+[data-theme='dark'] .notif-type-card { background: color-mix(in srgb, var(--well) 15%, var(--card)); border-color: color-mix(in srgb, var(--violet) 20%, var(--line)); }
+[data-theme='dark'] .notif-quiet-hours-card { background: color-mix(in srgb, var(--well) 15%, var(--card)); border-color: color-mix(in srgb, var(--violet) 20%, var(--line)); }
+[data-theme='dark'] .notif-hour-input { background: color-mix(in srgb, var(--well) 45%, transparent); }
+
 /* ---------- Care notification center ---------- */
 .care-notification-center { position: relative; z-index: 16; margin-bottom: 18px; }
 .care-notification-dock { display: flex; align-items: stretch; gap: 8px; min-height: 58px; padding: 7px; border: 1px solid color-mix(in srgb, var(--violet) 24%, var(--line)); border-radius: 20px; background: color-mix(in srgb, var(--card) 94%, var(--violet)); box-shadow: 0 15px 35px -25px rgba(31, 24, 58, .62); }

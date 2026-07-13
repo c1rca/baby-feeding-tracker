@@ -3,6 +3,7 @@ import type { DiaperEvent, Entry, Session } from '../../types'
 import type { PastEventDraft } from '../../state/pastEventModels'
 import type { AuthUser } from '../../auth/authApi'
 import type { BabySummary } from '../../babies/babyApi'
+import type { NotificationPreferences } from '../../state/notificationPreferences'
 
 export type ManualDraft = { date: string; time: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string }
 
@@ -22,7 +23,9 @@ export type TrackerModalsProps = {
   babyDob: string
   tummyGoalMinutes: number
   feedingNotificationsEnabled: boolean
+  browserRemindersEnabled: boolean
   notificationPermission: NotificationPermission
+  notificationPreferences: NotificationPreferences
   gotifyAvailable: boolean
   gotifyRemindersEnabled: boolean
   medicineReminderSettings: MedicineReminderSettings
@@ -48,6 +51,8 @@ export type TrackerModalsProps = {
   setSession: (session: Session | null) => void
   setUndoState: (state: null) => void
   setFeedingNotificationsEnabled: (enabled: boolean) => void
+  setBrowserRemindersEnabled: (enabled: boolean) => void
+  setNotificationPreferences: (prefs: Partial<NotificationPreferences>) => void | Promise<void>
   setTheme: (theme: 'light' | 'dark') => void
   logBottle: (oz?: number) => void
   saveManualFeed: () => void

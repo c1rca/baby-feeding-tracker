@@ -2,8 +2,7 @@ import { useEffect, useRef, useState, type ComponentType, type KeyboardEvent } f
 import { Baby, Bell, Database, Palette, ShieldCheck, Users } from 'lucide-react'
 import { ModalFrame } from './ModalFrame'
 import type { TrackerModalsProps } from './modalTypes'
-import { BrowserReminderSetting } from './BrowserReminderSetting'
-import { GotifyReminderSetting } from './GotifyReminderSetting'
+import { NotificationSettings } from './notifications/NotificationSettings'
 import { SettingsDataControls } from './SettingsDataControls'
 import { applySkin, readSkin } from '../../skin'
 import { SettingToggle } from './SettingToggle'
@@ -18,7 +17,9 @@ type SettingsModalProps = Pick<
   | 'babyDob'
   | 'tummyGoalMinutes'
   | 'feedingNotificationsEnabled'
+  | 'browserRemindersEnabled'
   | 'notificationPermission'
+  | 'notificationPreferences'
   | 'gotifyAvailable'
   | 'gotifyRemindersEnabled'
   | 'medicineReminderSettings'
@@ -38,6 +39,8 @@ type SettingsModalProps = Pick<
   | 'setSession'
   | 'setUndoState'
   | 'setFeedingNotificationsEnabled'
+  | 'setBrowserRemindersEnabled'
+  | 'setNotificationPreferences'
   | 'setTheme'
   | 'enableFeedingNotifications'
   | 'setGotifyReminders'
@@ -292,7 +295,7 @@ type TabDef = {
 
 const TAB_ORDER: TabDef[] = [
   { id: 'profile', label: 'Profile', icon: Baby, title: 'Your profile', blurb: 'The name and greeting shown throughout your tracker.' },
-  { id: 'reminders', label: 'Reminders', icon: Bell, title: 'Reminders', blurb: 'Feeding and medicine nudges — in this browser and from the server.' },
+  { id: 'reminders', label: 'Notifications', icon: Bell, title: 'Notifications', blurb: 'Premium notification control — choose which types alert you, how, and when.' },
   { id: 'baby', label: 'Baby', icon: Baby, title: 'Baby profile', blurb: 'Roster, birth date, and the daily tummy-time goal.' },
   { id: 'household', label: 'Household', icon: Users, title: 'Household access', blurb: 'Invite caregivers and manage who can do what.' },
   { id: 'appearance', label: 'Appearance', icon: Palette, title: 'Appearance', blurb: 'Theme and layout — remembered on this device.' },
@@ -300,7 +303,7 @@ const TAB_ORDER: TabDef[] = [
   { id: 'data', label: 'Data', icon: Database, title: 'Data', blurb: 'Export, import, or clear the log on this device.' },
 ]
 
-export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, notificationPermission, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, setTheme, enableFeedingNotifications, setGotifyReminders, setMedicineReminderSettings, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
+export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, browserRemindersEnabled, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setNotificationPreferences, setTheme, enableFeedingNotifications, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
   const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
   const [activeTab, setActiveTab] = useState<TabId>('reminders')
   const tablistRef = useRef<HTMLDivElement>(null)
@@ -375,27 +378,16 @@ export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, fee
           <div className="settings-panel-body" id="settings-tabpanel" role="tabpanel" aria-labelledby={`settings-tab-${active.id}`} tabIndex={0}>
             {active.id === 'profile' ? <ProfileSetting profileName={profileName} setProfileName={setProfileName} showToast={showToast} /> : null}
             {active.id === 'reminders' ? (
-              <>
-                <div className="settings-group">
-                  <p className="settings-group-label">This device</p>
-                  <div className="settings-card">
-                    <BrowserReminderSetting
-                      feedingNotificationsEnabled={feedingNotificationsEnabled}
-                      notificationPermission={notificationPermission}
-                      setFeedingNotificationsEnabled={setFeedingNotificationsEnabled}
-                      enableFeedingNotifications={enableFeedingNotifications}
-                      showToast={showToast}
-                    />
-                  </div>
-                </div>
-                <GotifyReminderSetting
-                  gotifyAvailable={gotifyAvailable}
-                  gotifyRemindersEnabled={gotifyRemindersEnabled}
-                  medicineReminderSettings={medicineReminderSettings}
-                  setGotifyReminders={setGotifyReminders}
-                  setMedicineReminderSettings={setMedicineReminderSettings}
-                />
-              </>
+              <NotificationSettings
+                notificationPreferences={notificationPreferences}
+                browserRemindersEnabled={browserRemindersEnabled}
+                notificationPermission={notificationPermission}
+                gotifyAvailable={gotifyAvailable}
+                setNotificationPreferences={setNotificationPreferences}
+                setBrowserRemindersEnabled={setBrowserRemindersEnabled}
+                enableBrowserReminders={enableFeedingNotifications}
+                showToast={showToast}
+              />
             ) : null}
 
             {active.id === 'baby' ? (
