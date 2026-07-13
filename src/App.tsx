@@ -52,8 +52,8 @@ function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBaby
       </div>
       <PremiumSidebar view={activeWorkspace} setView={navigateWorkspace} settingsOpen={headerProps.settingsOpen} setSettingsOpen={headerProps.setSettingsOpen} />
       <div className="app-shell-content">
-        <div id="care-brief-slot" />
         <header className="workspace-topbar"><div><span className="workspace-eyebrow">{activeWorkspace === 'care' ? 'Care workspace' : activeWorkspace === 'stats' ? 'Insights' : ''}</span><h1>{activeWorkspace === 'care' ? 'Care' : activeWorkspace === 'stats' ? 'Patterns & progress' : 'Today'}</h1></div><div className="workspace-topbar-actions">{headerProps.syncStatus !== 'synced' ? <span className={`sync-pill sync-${headerProps.syncStatus}`} aria-label={`Sync status: ${syncLabel[headerProps.syncStatus]}`}>{syncLabel[headerProps.syncStatus]}</span> : null}{activeWorkspace !== 'care' ? <CareNotificationCenter notifications={careNotifications} /> : null}{babies.length > 1 ? <select aria-label="Active baby" value={selectedBabyId} onChange={(event) => onSelectedBabyIdChange(event.target.value)}>{babies.map((baby) => <option key={baby.id} value={baby.id}>{baby.name}</option>)}</select> : null}</div></header>
+        <div id="care-brief-slot" />
         {activeWorkspace === 'care' ? <CarePreview /> : view === 'track' && activeWorkspace === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
       </div>
       <TrackerModals {...modalsProps} profileName={profileName} setProfileName={saveProfileName} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} onLogout={onLogout} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} />
