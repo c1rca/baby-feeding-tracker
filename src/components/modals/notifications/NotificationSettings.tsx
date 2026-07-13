@@ -1,8 +1,9 @@
 import { Bell, Pill, Clock, Moon } from 'lucide-react'
-import type { NotificationPreferences } from '../../../state/notificationPreferences'
+import type { ChannelPrefs, HourWindow, NotificationPreferences } from '../../../state/notificationPreferences'
 import { SettingToggle } from '../SettingToggle'
 import { ChannelSelector } from './ChannelSelector'
 import { HourRange } from './HourRange'
+import { HourRange12h } from './HourRange12h'
 
 type NotificationSettingsProps = {
   notificationPreferences: NotificationPreferences
@@ -21,12 +22,6 @@ const notificationTypes = [
   { key: 'motrin' as const, label: 'Motrin', icon: Pill, hasInterval: true },
   { key: 'vitaminD' as const, label: 'Vitamin D', icon: Pill, hasInterval: false },
   { key: 'tummyTime' as const, label: 'Tummy Time', icon: Clock, hasInterval: false },
-] as const
-
-const intervalOptions = [
-  { value: 0, label: 'Off' },
-  { value: 4, label: '4 hours' },
-  { value: 6, label: '6 hours' },
 ] as const
 
 export function NotificationSettings({
@@ -50,8 +45,10 @@ export function NotificationSettings({
     }
   }
 
-  const updateChannelPrefs = (type: keyof Omit<NotificationPreferences, 'tummyActiveHours' | 'quietHours' | 'medicineIntervals'>, prefs: any) => {
+  const updateChannelPrefs = (type: keyof Omit<NotificationPreferences, 'tummyActiveHours' | 'quietHours' | 'medicineIntervals'>, prefs: ChannelPrefs) => {
     setNotificationPreferences({ [type]: prefs })
+    const typeName = type.charAt(0).toUpperCase() + type.slice(1).replace(/([A-Z])/g, ' $1')
+    showToast(`${typeName} delivery preferences updated`)
   }
 
   const updateMedicineInterval = (kind: 'tylenol' | 'motrin', value: number) => {
@@ -61,6 +58,9 @@ export function NotificationSettings({
         [kind]: value as 0 | 4 | 6,
       },
     })
+    const kindName = kind.charAt(0).toUpperCase() + kind.slice(1)
+    const intervalText = value === 0 ? 'disabled' : `enabled (${value}h)`
+    showToast(`${kindName} reminders ${intervalText}`)
   }
 
   const toggleQuietHours = (enabled: boolean) => {
@@ -70,27 +70,63 @@ export function NotificationSettings({
         enabled,
       },
     })
+    showToast(enabled ? 'Quiet hours enabled' : 'Quiet hours disabled')
   }
 
-  const updateQuietHoursWindow = (window: any) => {
+  const updateQuietHoursWindow = (window: HourWindow) => {
     setNotificationPreferences({
       quietHours: {
         ...notificationPreferences.quietHours,
         ...window,
       },
     })
+    showToast(`Quiet hours window updated to ${String(window.startHour).padStart(2, '0')}:00–${String(window.endHour).padStart(2, '0')}:00`)
   }
 
-  const updateTummyActiveHours = (window: any) => {
+  const updateTummyActiveHours = (window: HourWindow) => {
     setNotificationPreferences({ tummyActiveHours: window })
+    const format12h = (hour24: number) => {
+      if (hour24 === 0) return '12:00 AM'
+      if (hour24 < 12) return `${hour24}:00 AM`
+      if (hour24 === 12) return '12:00 PM'
+      return `${hour24 - 12}:00 PM`
+    }
+    showToast(`Tummy Time active hours updated to ${format12h(window.startHour)}–${format12h(window.endHour)}`)
   }
 
   return (
     <div className="notif-settings-container">
+      <p className="sr-only">
+        Notification settings control how and when you receive reminders. Each reminder type (feeding, medicine, vitamin D, tummy time) can be delivered through three channels: in-app notifications, browser notifications, or server notifications. You can also configure quiet hours to silence all notifications during specific times, and set the active window for tummy time reminders.
+      </p>
+
+      {/* This device card - at the top */}
+      <div className="settings-card notif-device-card">
+        <div className="settings-group">
+          <p className="settings-group-label">This device</p>
+          <div className="setting-row">
+            <span className="setting-row-text">
+              <strong>Browser reminders</strong>
+              <small>
+                {browserBlocked
+                  ? 'Blocked in browser settings'
+                  : 'Deliver notifications on this device'}
+              </small>
+            </span>
+            <SettingToggle
+              checked={browserRemindersEnabled && notificationPermission === 'granted'}
+              onChange={toggleBrowserReminders}
+              label="Browser reminders"
+              disabled={browserBlocked}
+            />
+          </div>
+        </div>
+      </div>
+
       {/* Per-type reminder cards */}
       {notificationTypes.map(({ key, label, icon: Icon, hasInterval }) => {
         const prefs = notificationPreferences[key]
-        const interval = hasInterval ? notificationPreferences.medicineIntervals[key as 'tylenol' | 'motrin'] : undefined
+        const interval = hasInterval ? (notificationPreferences.medicineIntervals[key as 'tylenol' | 'motrin'] ?? 6) : undefined
 
         return (
           <div key={key} className="settings-card notif-type-card">
@@ -112,7 +148,7 @@ export function NotificationSettings({
               />
             </div>
 
-            {hasInterval && (
+            {hasInterval && interval !== undefined && (
               <div className="setting-row">
                 <span className="setting-row-text">
                   <small>Reminder timing</small>
@@ -121,13 +157,14 @@ export function NotificationSettings({
                   <select
                     aria-label={`${label} reminder interval`}
                     value={interval}
-                    onChange={(e) => updateMedicineInterval(key as 'tylenol' | 'motrin', Number(e.target.value) as 0 | 4 | 6)}
+                    onChange={(e) => {
+                      const value = Number(e.target.value)
+                      updateMedicineInterval(key as 'tylenol' | 'motrin', value as 0 | 4 | 6)
+                    }}
                   >
-                    {intervalOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
+                    <option value={0}>Off</option>
+                    <option value={4}>4 hours</option>
+                    <option value={6}>6 hours</option>
                   </select>
                 </span>
               </div>
@@ -138,7 +175,7 @@ export function NotificationSettings({
                 <span className="setting-row-text">
                   <small>Active hours</small>
                 </span>
-                <HourRange
+                <HourRange12h
                   window={notificationPreferences.tummyActiveHours}
                   onChange={updateTummyActiveHours}
                   label="Tummy Time active hours"
@@ -176,29 +213,6 @@ export function NotificationSettings({
             />
           </div>
         )}
-      </div>
-
-      {/* This device card */}
-      <div className="settings-card notif-device-card">
-        <div className="settings-group">
-          <p className="settings-group-label">This device</p>
-          <div className="setting-row">
-            <span className="setting-row-text">
-              <strong>Browser reminders</strong>
-              <small>
-                {browserBlocked
-                  ? 'Blocked in browser settings'
-                  : 'Deliver notifications on this device'}
-              </small>
-            </span>
-            <SettingToggle
-              checked={browserRemindersEnabled && notificationPermission === 'granted'}
-              onChange={toggleBrowserReminders}
-              label="Browser reminders"
-              disabled={browserBlocked}
-            />
-          </div>
-        </div>
       </div>
 
       {!gotifyAvailable && (

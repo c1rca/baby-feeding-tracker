@@ -68,8 +68,8 @@ export function normalizeNotificationPreferences(prefs = {}) {
       ...normalizeHourWindow(prefs?.quietHours),
     },
     medicineIntervals: {
-      tylenol: normalizeMedicineReminderSettings(prefs?.medicineIntervals)?.tylenol || 6,
-      motrin: normalizeMedicineReminderSettings(prefs?.medicineIntervals)?.motrin || 6,
+      tylenol: normalizeMedicineReminderSettings(prefs?.medicineIntervals)?.tylenol ?? 6,
+      motrin: normalizeMedicineReminderSettings(prefs?.medicineIntervals)?.motrin ?? 6,
     },
   }
 }
@@ -105,5 +105,55 @@ export function parseJsonArray(value) {
     return Array.isArray(parsed) ? parsed : []
   } catch {
     return null
+  }
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000
+
+export function buildVitaminDReminder(medicines, now = Date.now()) {
+  const latestVitaminD = getLatestMedicineDosesByKind(medicines).find((dose) => dose.kind === 'vitamin_d')
+  if (!latestVitaminD) return null
+
+  const dueAt = latestVitaminD.at + EIGHTEEN_HOURS_MS
+  const catchUpUntil = dueAt + MAX_CATCH_UP_MS
+
+  if (dueAt <= now - MAX_CATCH_UP_MS) return null
+
+  return {
+    kind: 'vitamin_d',
+    doseId: latestVitaminD.id ?? String(latestVitaminD.at),
+    medicineKind: 'vitamin_d',
+    recommendedKind: 'vitamin_d',
+    dueAt,
+    catchUpUntil,
+    intervalHours: 18,
+  }
+}
+
+export function buildTummyTimeReminder(tummyTimes, now = Date.now(), activeHours = { startHour: 8, endHour: 20 }) {
+  if (tummyTimes.length === 0) return null
+
+  const startOfDay = Math.floor(now / DAY_MS) * DAY_MS
+  const todayTummyTimes = tummyTimes.filter((t) => t.startedAt >= startOfDay && t.startedAt < startOfDay + DAY_MS)
+
+  // Only suggest once per day, and only during active hours
+  const currentHour = new Date(now).getHours()
+  const isInActiveWindow = activeHours.startHour <= activeHours.endHour
+    ? currentHour >= activeHours.startHour && currentHour < activeHours.endHour
+    : currentHour >= activeHours.startHour || currentHour < activeHours.endHour
+
+  if (!isInActiveWindow || todayTummyTimes.length > 0) return null
+
+  // Suggest tummy time at the start of the active window
+  const dueAt = startOfDay + activeHours.startHour * 60 * 60 * 1000
+  const catchUpUntil = dueAt + 2 * 60 * 60 * 1000 // 2-hour catch-up window
+
+  if (now > catchUpUntil) return null
+
+  return {
+    kind: 'tummy_time',
+    dueAt: Math.max(dueAt, now), // If we're past the start of the window, due now
+    catchUpUntil,
+    sessionId: `tummy-${Math.floor(startOfDay / 1000)}`,
   }
 }
