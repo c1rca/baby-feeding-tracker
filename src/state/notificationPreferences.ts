@@ -1,5 +1,5 @@
 export type ChannelPrefs = { inApp: boolean; browser: boolean; gotify: boolean }
-export type HourWindow = { startHour: number; endHour: number }
+export type HourWindow = { startHour: number; endHour: number; startMinute?: number; endMinute?: number }
 
 export type NotificationPreferences = {
   feeding: ChannelPrefs
@@ -9,7 +9,8 @@ export type NotificationPreferences = {
   tummyTime: ChannelPrefs
   tummyActiveHours: HourWindow
   quietHours: { enabled: boolean } & HourWindow
-  medicineIntervals: { tylenol: 0 | 4 | 6; motrin: 0 | 4 | 6 }
+  medicineIntervals: { tylenol: 0 | number; motrin: 0 | number }
+  reminderIntervals?: { feeding: number; vitaminD: number; tummyTime: number }
 }
 
 export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
@@ -18,15 +19,18 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   motrin: { inApp: true, browser: false, gotify: true },
   vitaminD: { inApp: true, browser: false, gotify: true },
   tummyTime: { inApp: true, browser: false, gotify: false },
-  tummyActiveHours: { startHour: 8, endHour: 20 },
-  quietHours: { enabled: false, startHour: 22, endHour: 7 },
+  tummyActiveHours: { startHour: 8, startMinute: 0, endHour: 20, endMinute: 0 },
+  quietHours: { enabled: false, startHour: 22, startMinute: 0, endHour: 7, endMinute: 0 },
   medicineIntervals: { tylenol: 6, motrin: 6 },
+  reminderIntervals: { feeding: 2, vitaminD: 18, tummyTime: 2 },
 }
 
 const normalizeHourWindow = (window?: Partial<HourWindow>): HourWindow => {
   const start = Math.max(0, Math.min(23, Math.round(Number(window?.startHour) || 0)))
   const end = Math.max(0, Math.min(23, Math.round(Number(window?.endHour) || 0)))
-  return { startHour: start, endHour: end }
+  const startMinute = Math.max(0, Math.min(59, Math.round(Number(window?.startMinute) || 0)))
+  const endMinute = Math.max(0, Math.min(59, Math.round(Number(window?.endMinute) || 0)))
+  return { startHour: start, startMinute, endHour: end, endMinute }
 }
 
 const normalizeChannelPrefs = (prefs?: Partial<ChannelPrefs>): ChannelPrefs => ({
@@ -35,12 +39,13 @@ const normalizeChannelPrefs = (prefs?: Partial<ChannelPrefs>): ChannelPrefs => (
   gotify: Boolean(prefs?.gotify),
 })
 
-const normalizeInterval = (value?: number): 0 | 4 | 6 => {
+const normalizeInterval = (value?: number): number => {
   const num = Number(value)
-  return num === 0 || num === 4 || num === 6 ? num : 6
+  return Number.isFinite(num) && num >= 0 && num <= 72 ? num : 6
 }
 
 export const normalizeNotificationPreferences = (prefs?: Partial<NotificationPreferences>): NotificationPreferences => {
+  const defaultReminderIntervals = DEFAULT_NOTIFICATION_PREFERENCES.reminderIntervals!
   return {
     feeding: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.feeding, ...prefs?.feeding }),
     tylenol: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.tylenol, ...prefs?.tylenol }),
@@ -55,6 +60,11 @@ export const normalizeNotificationPreferences = (prefs?: Partial<NotificationPre
     medicineIntervals: {
       tylenol: normalizeInterval(prefs?.medicineIntervals?.tylenol),
       motrin: normalizeInterval(prefs?.medicineIntervals?.motrin),
+    },
+    reminderIntervals: {
+      feeding: normalizeInterval(prefs?.reminderIntervals?.feeding ?? defaultReminderIntervals.feeding),
+      vitaminD: normalizeInterval(prefs?.reminderIntervals?.vitaminD ?? defaultReminderIntervals.vitaminD),
+      tummyTime: normalizeInterval(prefs?.reminderIntervals?.tummyTime ?? defaultReminderIntervals.tummyTime),
     },
   }
 }

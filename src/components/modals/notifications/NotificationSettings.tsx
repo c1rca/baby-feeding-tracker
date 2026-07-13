@@ -2,7 +2,6 @@ import { Bell, Pill, Clock, Moon } from 'lucide-react'
 import type { ChannelPrefs, HourWindow, NotificationPreferences } from '../../../state/notificationPreferences'
 import { SettingToggle } from '../SettingToggle'
 import { ChannelSelector } from './ChannelSelector'
-import { HourRange } from './HourRange'
 import { HourRange12h } from './HourRange12h'
 
 type NotificationSettingsProps = {
@@ -112,6 +111,14 @@ export function NotificationSettings({
         </div>
       </div>
 
+      <div className="settings-card notif-quiet-hours-card">
+        <div className="notif-quiet-header">
+          <div className="notif-quiet-title"><Moon size={18} aria-hidden="true" className="notif-quiet-icon" /><span><strong>Quiet hours</strong><small>Silence all reminders during this window</small></span></div>
+          <SettingToggle checked={notificationPreferences.quietHours.enabled} onChange={toggleQuietHours} label="Enable quiet hours" />
+        </div>
+        {notificationPreferences.quietHours.enabled ? <HourRange12h window={notificationPreferences.quietHours} onChange={updateQuietHoursWindow} label="Quiet hours window" /> : null}
+      </div>
+
       {/* Per-type reminder cards */}
       {notificationTypes.map(({ key, label, icon: Icon, hasInterval }) => {
         const prefs = notificationPreferences[key]
@@ -124,18 +131,7 @@ export function NotificationSettings({
                 <Icon size={18} aria-hidden="true" className="notif-type-icon" />
                 <strong>{label}</strong>
               </div>
-            </div>
-
-            <div className="setting-row">
-              <span className="setting-row-text">
-                <small>Delivery channels</small>
-              </span>
-              <ChannelSelector
-                prefs={prefs}
-                onChange={(next) => updateChannelPrefs(key, next)}
-                label={label}
-                gotifyAvailable={gotifyAvailable}
-              />
+              <ChannelSelector prefs={prefs} onChange={(next) => updateChannelPrefs(key, next)} label={label} gotifyAvailable={gotifyAvailable} />
             </div>
 
             {hasInterval && interval !== undefined && (
@@ -175,35 +171,6 @@ export function NotificationSettings({
           </div>
         )
       })}
-
-      {/* Quiet hours card */}
-      <div className="settings-card notif-quiet-hours-card">
-        <div className="notif-quiet-header">
-          <div className="notif-quiet-title">
-            <Moon size={18} aria-hidden="true" className="notif-quiet-icon" />
-            <strong>Quiet hours</strong>
-          </div>
-          <SettingToggle
-            checked={notificationPreferences.quietHours.enabled}
-            onChange={toggleQuietHours}
-            label="Enable quiet hours"
-          />
-        </div>
-
-        {notificationPreferences.quietHours.enabled && (
-          <div className="setting-row">
-            <span className="setting-row-text">
-              <small>Silence all notifications during</small>
-            </span>
-            <HourRange
-              window={notificationPreferences.quietHours}
-              onChange={updateQuietHoursWindow}
-              label="Quiet hours window"
-              disabled={!notificationPreferences.quietHours.enabled}
-            />
-          </div>
-        )}
-      </div>
 
       {!gotifyAvailable && (
         <div className="settings-card notif-unavailable-note">

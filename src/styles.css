@@ -1879,9 +1879,9 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .notif-time-picker { display: flex; align-items: center; gap: 6px; }
 .notif-time-input-group { display: flex; align-items: baseline; gap: 2px; }
 .notif-time-label { display: block; font-size: .72rem; font-weight: 700; color: var(--ink-soft); margin-right: 4px; }
-.notif-hour-input-12h { width: 40px; padding: 6px 4px; border: 1px solid color-mix(in srgb, var(--violet) 24%, var(--line)); border-radius: 6px; background: var(--card); color: var(--ink); font-size: .8rem; font-weight: 600; font-family: var(--font-numeric); text-align: center; }
-.notif-hour-input-12h:focus { outline: 2px solid var(--violet); outline-offset: 2px; border-color: var(--violet); }
-.notif-hour-input-12h:disabled { opacity: 0.5; cursor: not-allowed; }
+.notif-hour-input-12h, .notif-minute-input-12h { width: 40px; padding: 6px 4px; border: 1px solid color-mix(in srgb, var(--violet) 24%, var(--line)); border-radius: 6px; background: var(--card); color: var(--ink); font-size: .8rem; font-weight: 600; font-family: var(--font-numeric); text-align: center; appearance: textfield; }
+.notif-hour-input-12h:focus, .notif-minute-input-12h:focus { outline: 2px solid var(--violet); outline-offset: 2px; border-color: var(--violet); }
+.notif-hour-input-12h:disabled, .notif-minute-input-12h:disabled { opacity: 0.5; cursor: not-allowed; }
 .notif-time-colon { font-weight: 700; color: var(--ink-soft); }
 .notif-time-minutes { font-size: .72rem; font-weight: 600; color: var(--ink-soft); }
 .notif-period-selector { display: flex; gap: 2px; }

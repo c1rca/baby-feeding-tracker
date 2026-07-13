@@ -31,6 +31,11 @@ export function HourRange12h({ window, onChange, label, disabled = false }: Hour
     onChange({ ...window, startHour: hour24 })
   }
 
+  const handleStartMinuteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const startMinute = Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0))
+    onChange({ ...window, startMinute })
+  }
+
   const handleStartPeriodChange = (period: 'AM' | 'PM') => {
     const hour24 = to24Hour(startFormatted.hour, period)
     onChange({ ...window, startHour: hour24 })
@@ -40,6 +45,11 @@ export function HourRange12h({ window, onChange, label, disabled = false }: Hour
     const value = Math.max(1, Math.min(12, parseInt(e.target.value, 10) || 1))
     const hour24 = to24Hour(value, endFormatted.period)
     onChange({ ...window, endHour: hour24 })
+  }
+
+  const handleEndMinuteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const endMinute = Math.max(0, Math.min(59, parseInt(e.target.value, 10) || 0))
+    onChange({ ...window, endMinute })
   }
 
   const handleEndPeriodChange = (period: 'AM' | 'PM') => {
@@ -53,18 +63,9 @@ export function HourRange12h({ window, onChange, label, disabled = false }: Hour
       <div className="notif-time-picker">
         <div className="notif-time-input-group">
           <label className="notif-time-label">Start</label>
-          <input
-            type="number"
-            min="1"
-            max="12"
-            value={startFormatted.hour}
-            onChange={handleStartHourChange}
-            disabled={disabled}
-            className="notif-hour-input-12h"
-            aria-label={`${label} start hour`}
-          />
+          <input type="text" inputMode="numeric" pattern="[0-9]*" value={String(startFormatted.hour)} onChange={handleStartHourChange} disabled={disabled} className="notif-hour-input-12h" aria-label={`${label} start hour`} />
           <span className="notif-time-colon">:</span>
-          <span className="notif-time-minutes">00</span>
+          <input type="text" inputMode="numeric" pattern="[0-9]*" value={String(window.startMinute ?? 0).padStart(2, '0')} onChange={handleStartMinuteChange} disabled={disabled} className="notif-minute-input-12h" aria-label={`${label} start minute`} />
         </div>
         <div className="notif-period-selector">
           {(['AM', 'PM'] as const).map((period) => (
@@ -91,18 +92,9 @@ export function HourRange12h({ window, onChange, label, disabled = false }: Hour
       <div className="notif-time-picker">
         <div className="notif-time-input-group">
           <label className="notif-time-label">End</label>
-          <input
-            type="number"
-            min="1"
-            max="12"
-            value={endFormatted.hour}
-            onChange={handleEndHourChange}
-            disabled={disabled}
-            className="notif-hour-input-12h"
-            aria-label={`${label} end hour`}
-          />
+          <input type="text" inputMode="numeric" pattern="[0-9]*" value={String(endFormatted.hour)} onChange={handleEndHourChange} disabled={disabled} className="notif-hour-input-12h" aria-label={`${label} end hour`} />
           <span className="notif-time-colon">:</span>
-          <span className="notif-time-minutes">00</span>
+          <input type="text" inputMode="numeric" pattern="[0-9]*" value={String(window.endMinute ?? 0).padStart(2, '0')} onChange={handleEndMinuteChange} disabled={disabled} className="notif-minute-input-12h" aria-label={`${label} end minute`} />
         </div>
         <div className="notif-period-selector">
           {(['AM', 'PM'] as const).map((period) => (
