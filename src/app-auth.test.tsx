@@ -244,7 +244,7 @@ describe('App auth shell', () => {
     const stateCall = fetchMock.mock.calls.find(([input, init]) => String(input) === '/api/state' && !init?.method)
     expect(new Headers(stateCall?.[1]?.headers).get('x-baby-id')).toBe('baby-new')
     expect(screen.queryByText(/Offline changes saved/i)).toBeNull()
-    expect(screen.getByLabelText(/Sync status: Online/i)).toBeTruthy()
+    expect(screen.queryByLabelText(/Sync status: Online/i)).toBeNull()
   })
 
   it('requests and confirms a password reset from the login screen', async () => {

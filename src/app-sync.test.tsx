@@ -11,14 +11,9 @@ import {
 describe('App interactions', () => {
   setupAppTestEnvironment()
 
-  it('shows sync status to the left of the stats toggle', () => {
+  it('keeps healthy sync status quiet', () => {
     render(<App />)
-
-    const syncBadge = screen.getByLabelText(/Sync status: Online/i)
-    const statsToggle = screen.getByRole('button', { name: /Show stats/i })
-
-    expect(syncBadge.textContent).toBe('Online')
-    expect(syncBadge.compareDocumentPosition(statsToggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.queryByLabelText(/Sync status: Online/i)).toBeNull()
   })
 
   it('quick logs medicine from a notification link after server hydration', async () => {
