@@ -17,9 +17,9 @@ type BrowserRemindersOptions = {
   tummyTimeReminder?: { copy: string } | null
 }
 
-function scheduleNotification(title: string, body: string, tag: string, delayMs: number, requireInteraction = false): ReturnType<typeof setTimeout> {
+function scheduleNotification(title: string, body: string, tag: string, delayMs: number, requireInteraction = false, shouldNotify: () => boolean = () => true): ReturnType<typeof setTimeout> {
   return window.setTimeout(() => {
-    if (typeof Notification === 'undefined') return
+    if (typeof Notification === 'undefined' || !shouldNotify()) return
     const notification = new Notification(title, { body, tag, requireInteraction })
     notification.onclick = () => {
       window.open(NOTIFICATION_APP_URL, '_blank', 'noopener,noreferrer')
@@ -34,6 +34,7 @@ export function useBrowserFeedNotifications({ browserRemindersEnabled, notificat
     if (!preferences) return // No preferences loaded yet
 
     const isQuietNow = isQuietHour(now, preferences.quietHours)
+    const canNotifyNow = () => !isQuietHour(Date.now(), preferences.quietHours)
     const timers: ReturnType<typeof setTimeout>[] = []
 
     // Feeding reminders
@@ -48,7 +49,8 @@ export function useBrowserFeedNotifications({ browserRemindersEnabled, notificat
             `${hours} hours since the last feed started. Open Feedr to log or resume.`,
             `next-feeding-${lastFeed.id}-${hours}h`,
             delayMs,
-            hours === 3
+            hours === 3,
+            canNotifyNow
           ))
         })
     }
@@ -65,7 +67,9 @@ export function useBrowserFeedNotifications({ browserRemindersEnabled, notificat
               `${reminder.recommendedLabel} reminder`,
               `Last dose was ${hours} hours ago. Open Feedr to log the next dose.`,
               `medicine-${reminder.id}-${kind}`,
-              delayMs
+              delayMs,
+              false,
+              canNotifyNow
             ))
           }
         }
@@ -78,7 +82,9 @@ export function useBrowserFeedNotifications({ browserRemindersEnabled, notificat
         'Tummy Time reminder',
         tummyTimeReminder.copy,
         'tummy-time-reminder',
-        0 // Immediate
+        0,
+        false,
+        canNotifyNow
       ))
     }
 

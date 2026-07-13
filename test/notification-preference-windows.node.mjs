@@ -25,6 +25,18 @@ function schedulerHarness({ initialNow, preferences, row }) {
   return { scheduler, timers, sent, setNow: (value) => { clock = value } }
 }
 
+test('scheduler uses medicine intervals saved in notification preferences', () => {
+  const doseAt = new Date('2026-06-05T12:00:00Z').getTime()
+  const harness = schedulerHarness({
+    initialNow: doseAt,
+    preferences: { medicineIntervals: { tylenol: 4, motrin: 0 } },
+    row: { entries_json: '[]', medicines_json: JSON.stringify([{ id: 'dose-1', kind: 'tylenol', at: doseAt }]), tummy_times_json: '[]' },
+  })
+
+  harness.scheduler.evaluate()
+  assert.equal(harness.timers[0].delay, 4 * HOUR)
+})
+
 test('scheduler wakes when quiet hours end and delivers a still-current due reminder', async () => {
   const quietNow = new Date('2026-06-06T10:30:00Z').getTime() // 6:30 AM Eastern
   const harness = schedulerHarness({

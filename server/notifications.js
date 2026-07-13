@@ -61,7 +61,7 @@ export function createNotificationScheduler({
 
     // Medicine reminders (Tylenol, Motrin, Vitamin D)
     if (!isQuiet && sendGotify) {
-      const medicineReminderSettings = getMedicineReminderSettings()
+      const medicineReminderSettings = preferences?.medicineIntervals ?? getMedicineReminderSettings()
       for (const latestDose of getLatestMedicineDosesByKind(medicines)) {
         const kind = latestDose.kind
         const shouldRemind = kind === 'vitamin_d' ? preferences?.vitaminD.gotify : kind === 'tylenol' ? preferences?.tylenol.gotify : kind === 'motrin' ? preferences?.motrin.gotify : false

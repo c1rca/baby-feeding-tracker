@@ -47,8 +47,6 @@ export function NotificationSettings({
 
   const updateChannelPrefs = (type: keyof Omit<NotificationPreferences, 'tummyActiveHours' | 'quietHours' | 'medicineIntervals'>, prefs: ChannelPrefs) => {
     setNotificationPreferences({ [type]: prefs })
-    const typeName = type.charAt(0).toUpperCase() + type.slice(1).replace(/([A-Z])/g, ' $1')
-    showToast(`${typeName} delivery preferences updated`)
   }
 
   const updateMedicineInterval = (kind: 'tylenol' | 'motrin', value: number) => {
@@ -58,9 +56,7 @@ export function NotificationSettings({
         [kind]: value as 0 | 4 | 6,
       },
     })
-    const kindName = kind.charAt(0).toUpperCase() + kind.slice(1)
-    const intervalText = value === 0 ? 'disabled' : `enabled (${value}h)`
-    showToast(`${kindName} reminders ${intervalText}`)
+
   }
 
   const toggleQuietHours = (enabled: boolean) => {
@@ -70,7 +66,7 @@ export function NotificationSettings({
         enabled,
       },
     })
-    showToast(enabled ? 'Quiet hours enabled' : 'Quiet hours disabled')
+
   }
 
   const updateQuietHoursWindow = (window: HourWindow) => {
@@ -80,18 +76,11 @@ export function NotificationSettings({
         ...window,
       },
     })
-    showToast(`Quiet hours window updated to ${String(window.startHour).padStart(2, '0')}:00–${String(window.endHour).padStart(2, '0')}:00`)
+
   }
 
   const updateTummyActiveHours = (window: HourWindow) => {
     setNotificationPreferences({ tummyActiveHours: window })
-    const format12h = (hour24: number) => {
-      if (hour24 === 0) return '12:00 AM'
-      if (hour24 < 12) return `${hour24}:00 AM`
-      if (hour24 === 12) return '12:00 PM'
-      return `${hour24 - 12}:00 PM`
-    }
-    showToast(`Tummy Time active hours updated to ${format12h(window.startHour)}–${format12h(window.endHour)}`)
   }
 
   return (
@@ -145,6 +134,7 @@ export function NotificationSettings({
                 prefs={prefs}
                 onChange={(next) => updateChannelPrefs(key, next)}
                 label={label}
+                gotifyAvailable={gotifyAvailable}
               />
             </div>
 

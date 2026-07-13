@@ -18,3 +18,14 @@ export function isQuietHour(now: number, quietHours: { enabled: boolean; startHo
   if (!quietHours.enabled) return false
   return isWithinWindow(now, { startHour: quietHours.startHour, endHour: quietHours.endHour })
 }
+
+export function millisecondsUntilWindowChange(now: number, window: HourWindow): number | null {
+  const currentState = isWithinWindow(now, window)
+  const minuteMs = 60 * 1000
+  const firstBoundary = Math.floor(now / minuteMs) * minuteMs + minuteMs
+  for (let index = 0; index <= 26 * 60; index += 1) {
+    const candidate = firstBoundary + index * minuteMs
+    if (isWithinWindow(candidate, window) !== currentState) return candidate - now
+  }
+  return null
+}

@@ -6,6 +6,7 @@ type ChannelSelectorProps = {
   onChange: (prefs: ChannelPrefs) => void
   label: string
   disabled?: boolean
+  gotifyAvailable?: boolean
 }
 
 const channels = [
@@ -14,9 +15,9 @@ const channels = [
   { key: 'gotify', label: 'Gotify', icon: Server, description: 'Push notification via server' },
 ] as const
 
-export function ChannelSelector({ prefs, onChange, label, disabled = false }: ChannelSelectorProps) {
+export function ChannelSelector({ prefs, onChange, label, disabled = false, gotifyAvailable = true }: ChannelSelectorProps) {
   const toggle = (channel: keyof ChannelPrefs) => {
-    if (!disabled) {
+    if (!disabled && (channel !== 'gotify' || gotifyAvailable)) {
       onChange({ ...prefs, [channel]: !prefs[channel] })
     }
   }
@@ -30,7 +31,7 @@ export function ChannelSelector({ prefs, onChange, label, disabled = false }: Ch
           role="switch"
           aria-checked={prefs[key]}
           aria-label={`${label} via ${channelLabel}: ${description}. ${prefs[key] ? 'Currently enabled' : 'Currently disabled'}`}
-          disabled={disabled}
+          disabled={disabled || (key === 'gotify' && !gotifyAvailable)}
           className={`notif-channel-toggle${prefs[key] ? ' is-on' : ''}`}
           onClick={() => toggle(key)}
           title={description}
