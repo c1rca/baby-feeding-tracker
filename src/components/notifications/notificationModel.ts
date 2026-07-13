@@ -1,5 +1,7 @@
 import type { MedicineKind } from '../../types'
 import type { MedicineReminder } from '../MedicineReminderBanner'
+import type { NotificationPreferences } from '../../state/notificationPreferences'
+import { isQuietHour, isWithinWindow } from '../../domain/notificationWindows'
 
 export type CareNotification = {
   id: string
@@ -23,6 +25,8 @@ type BuildCareNotificationsInput = {
   logMedicine: (kind: MedicineKind) => void
   tummyTimeReminder: { copy: string } | null
   startTummyTime: () => void
+  preferences?: NotificationPreferences
+  now?: number
 }
 
 const medicineNotification = (reminder: MedicineReminder, logMedicine: (kind: MedicineKind) => void, dismissMedicineReminder: (id: string) => void): CareNotification => {
@@ -47,17 +51,35 @@ const medicineNotification = (reminder: MedicineReminder, logMedicine: (kind: Me
   }
 }
 
-export const buildCareNotifications = ({ medicineReminders = [], showMedicineReminder, dismissMedicineReminder, logMedicine, tummyTimeReminder, startTummyTime }: BuildCareNotificationsInput): CareNotification[] => {
-  const notifications = showMedicineReminder
-    ? medicineReminders.map((reminder) => medicineNotification(reminder, logMedicine, dismissMedicineReminder))
-    : []
-  if (tummyTimeReminder) {
-    notifications.push({
-      id: 'tummy-time', kind: 'tummy_time', priority: 3, title: 'Tummy Time reminder', summary: tummyTimeReminder.copy,
-      actionLabel: 'Start Tummy Time', ariaActionLabel: 'Start Tummy Time from reminder', announcedRole: 'status', dismissible: false,
-      occurredAt: Number.MAX_SAFE_INTEGER, action: startTummyTime,
+export const buildCareNotifications = ({ medicineReminders = [], showMedicineReminder, dismissMedicineReminder, logMedicine, tummyTimeReminder, startTummyTime, preferences, now }: BuildCareNotificationsInput): CareNotification[] => {
+  const isQuietNow = now && preferences ? isQuietHour(now, preferences.quietHours) : false
+
+  const notifications: CareNotification[] = []
+
+  // Medicine reminders: filter by inApp preference and quiet hours
+  if (showMedicineReminder && !isQuietNow) {
+    const filteredReminders = medicineReminders.filter((reminder) => {
+      if (reminder.type === 'vitamin_d') {
+        return preferences?.vitaminD.inApp ?? true
+      }
+      return preferences?.[reminder.type as 'tylenol' | 'motrin']?.inApp ?? true
     })
+    notifications.push(...filteredReminders.map((reminder) => medicineNotification(reminder, logMedicine, dismissMedicineReminder)))
   }
+
+  // Tummy time reminder: filter by inApp, quiet hours, and active window
+  if (tummyTimeReminder && !isQuietNow) {
+    const tummyPref = preferences?.tummyTime.inApp ?? true
+    const isInActiveWindow = !now ? true : isWithinWindow(now, preferences?.tummyActiveHours ?? { startHour: 8, endHour: 20 })
+    if (tummyPref && isInActiveWindow) {
+      notifications.push({
+        id: 'tummy-time', kind: 'tummy_time', priority: 3, title: 'Tummy Time reminder', summary: tummyTimeReminder.copy,
+        actionLabel: 'Start Tummy Time', ariaActionLabel: 'Start Tummy Time from reminder', announcedRole: 'status', dismissible: false,
+        occurredAt: Number.MAX_SAFE_INTEGER, action: startTummyTime,
+      })
+    }
+  }
+
   return notifications.sort((a, b) => a.priority - b.priority || a.occurredAt - b.occurredAt || a.id.localeCompare(b.id))
 }
 

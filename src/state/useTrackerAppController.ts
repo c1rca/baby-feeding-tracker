@@ -114,11 +114,11 @@ export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyI
   const { today, trend, stats, lastFeed, lastFeedMetaText, avgGapShortText, suggestedSide, nextFeedSideText, nextFeedWindowText, medicineReminder, medicineReminders, showMedicineReminder } = useTrackerPageModel({ entries, diapers, medicines, tummyTimes, tummyGoalMinutes, session, now, dismissedMedicineReminderIds, medicineReminderSettings })
   const { selectedStartMinutesAgo, activeSplit, activeSeconds, activeSide, activeOppositeSide, startSession, switchSide, pause, resume, clearSession, endSession } = useActiveFeedActions({ now, setNow, session, setSession, setEntries, selectedDiapers, setSelectedDiapers, startOffsetOpen, startInputMode, startClockText, startMinutesAgo, setStartOffsetOpen, setStartInputMode, setStartClockText, setStartMinutesAgo, suggestedSide, undoState, setUndoState, setToast, showToast, setBottleOpen })
 
-  useBrowserFeedNotifications({ feedingNotificationsEnabled, notificationPermission, lastFeed })
-
   const headerProps: AppHeaderProps = { view, syncStatus, settingsOpen, setView, setSettingsOpen }
   const medicineReminderProps: MedicineReminderBannerProps = { medicineReminder, medicineReminders, showMedicineReminder: hasHydrated && showMedicineReminder, dismissMedicineReminder: (id) => setDismissedMedicineReminderIds((prev) => prev.includes(id) ? prev : [...prev, id]), logMedicine }
-  const tummyTimeReminder = hasHydrated && shouldShowTummyTimeReminder(tummyTimes, tummySession, now, tummyGoalMinutes) ? { copy: tummyTimeReminderCopy(tummyTimes, now, tummyGoalMinutes) } : null
+  const tummyTimeReminder = hasHydrated && shouldShowTummyTimeReminder(tummyTimes, tummySession, now, tummyGoalMinutes, notificationPreferences?.tummyActiveHours) ? { copy: tummyTimeReminderCopy(tummyTimes, now, tummyGoalMinutes) } : null
+
+  useBrowserFeedNotifications({ browserRemindersEnabled, notificationPermission, preferences: notificationPreferences, now, lastFeed, medicineReminders, tummyTimeReminder })
   const tummyTimeReminderProps: TummyTimeReminderBannerProps = { reminder: tummyTimeReminder, startTummyTime }
   const statsProps: StatsDashboardProps = { stats, trend, growthMeasurements, setGrowthMeasurements, babyDob }
   const tummyActiveSeconds = tummySession ? Math.max(0, Math.floor((now - tummySession.startedAt) / 1000)) : 0

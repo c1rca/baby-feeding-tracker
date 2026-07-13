@@ -34,7 +34,7 @@ const syncLabel = { syncing: 'Syncing', synced: 'Online', offline: 'Offline chan
 
 function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBabyIdChange, onCreateBaby, onArchiveBaby }: TrackerAppProps) {
   const { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps } = useTrackerAppController({ selectedBabyId })
-  const careNotifications = buildCareNotifications({ ...medicineReminderProps, tummyTimeReminder: tummyTimeReminderProps.reminder, startTummyTime: tummyTimeReminderProps.startTummyTime })
+  const careNotifications = buildCareNotifications({ ...medicineReminderProps, tummyTimeReminder: tummyTimeReminderProps.reminder, startTummyTime: tummyTimeReminderProps.startTummyTime, preferences: modalsProps.notificationPreferences, now: trackViewProps.timeline.now })
   const [profileName, setProfileName] = useState(() => window.localStorage.getItem('baby-feeding-tracker:v1:profile-name') || 'Mom')
   const saveProfileName = (name: string) => { const next = name.trim() || 'Mom'; setProfileName(next); window.localStorage.setItem('baby-feeding-tracker:v1:profile-name', next) }
   const [workspace, setWorkspace] = useState<'track' | 'care' | 'stats'>(view)

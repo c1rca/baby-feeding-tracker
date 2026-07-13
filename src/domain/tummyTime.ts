@@ -1,4 +1,6 @@
 import type { TummyTimeEvent } from '../types'
+import type { HourWindow } from '../state/notificationPreferences'
+import { isWithinWindow } from './notificationWindows'
 
 export const TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES = 20
 export const normalizeTummyTimeGoalMinutes = (value: unknown) => {
@@ -21,14 +23,20 @@ export function tummyTimesToday(tummyTimes: TummyTimeEvent[], now: number) {
   return tummyTimes.filter((event) => event.startedAt >= start && event.startedAt < end)
 }
 
-export function shouldShowTummyTimeReminder(tummyTimes: TummyTimeEvent[], tummySession: unknown, now: number, goalMinutes = TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES) {
+export function shouldShowTummyTimeReminder(
+  tummyTimes: TummyTimeEvent[],
+  tummySession: unknown,
+  now: number,
+  goalMinutes = TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES,
+  activeWindow: HourWindow = { startHour: 8, endHour: 20 }
+) {
   const dailyGoalMinutes = normalizeTummyTimeGoalMinutes(goalMinutes)
   if (tummySession) return false
   const todayTummyTimes = tummyTimesToday(tummyTimes, now)
   const todayMinutes = tummyTimeMinutesToday(tummyTimes, now)
   if (todayMinutes >= dailyGoalMinutes) return false
+  if (!isWithinWindow(now, activeWindow)) return false
   const hour = new Date(now).getHours()
-  if (hour < 8 || hour >= 20) return false
   const latestEndedAt = Math.max(0, ...todayTummyTimes.map((event) => event.endedAt))
   if (hour < 18 && latestEndedAt > 0 && now - latestEndedAt < TUMMY_TIME_RECENT_SESSION_COOLDOWN_MS) return false
   const expectedMinutesByNow = Math.min(dailyGoalMinutes, Math.max(5, Math.floor((hour - 6) / 3) * 5))
