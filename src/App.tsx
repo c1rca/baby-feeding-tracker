@@ -3,7 +3,6 @@ import { LoginScreen } from './auth/LoginScreen'
 import { useAuthGate } from './auth/useAuthGate'
 import { createHouseholdForOnboarding, type AuthUser } from './auth/authApi'
 import { archiveBaby, createBaby, fetchBabies, type BabySummary } from './babies/babyApi'
-import { CarePreview } from './components/CarePreview'
 import { PremiumSidebar } from './components/PremiumSidebar'
 import { AppToast } from './components/AppToast'
 import { CareNotificationCenter } from './components/notifications/CareNotificationCenter'
@@ -38,11 +37,11 @@ function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBaby
   const [profileName, setProfileName] = useState(() => window.localStorage.getItem('baby-feeding-tracker:v1:profile-name') || 'Mom')
   const saveProfileName = (name: string) => { const next = name.trim() || 'Mom'; setProfileName(next); window.localStorage.setItem('baby-feeding-tracker:v1:profile-name', next) }
   const [workspace, setWorkspace] = useState<'track' | 'care' | 'stats'>(view)
-  const activeWorkspace = workspace === 'stats' || workspace === 'track' ? workspace : 'care'
+  const activeWorkspace: 'track' | 'care' | 'stats' = workspace === 'stats' ? 'stats' : 'track'
   const navigateWorkspace = (next: 'track' | 'care' | 'stats') => { setWorkspace(next); if (next === 'track' || next === 'stats') headerProps.setView(next) }
 
   return (
-    <main className={`app app-shell ${activeWorkspace === 'care' ? 'workspace-care' : ''}`}>
+    <main className="app app-shell">
       <div className="bg-scene" aria-hidden="true">
         <div className="aurora aurora-1" />
         <div className="aurora aurora-2" />
@@ -52,9 +51,9 @@ function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBaby
       </div>
       <PremiumSidebar view={activeWorkspace} setView={navigateWorkspace} settingsOpen={headerProps.settingsOpen} setSettingsOpen={headerProps.setSettingsOpen} />
       <div className="app-shell-content">
-        <header className="workspace-topbar"><div><span className="workspace-eyebrow">{activeWorkspace === 'care' ? 'Care workspace' : activeWorkspace === 'stats' ? 'Insights' : ''}</span><h1>{activeWorkspace === 'care' ? 'Care' : activeWorkspace === 'stats' ? 'Patterns & progress' : 'Today'}</h1></div><div className="workspace-topbar-actions">{headerProps.syncStatus !== 'synced' ? <span className={`sync-pill sync-${headerProps.syncStatus}`} aria-label={`Sync status: ${syncLabel[headerProps.syncStatus]}`}>{syncLabel[headerProps.syncStatus]}</span> : null}{activeWorkspace !== 'care' ? <CareNotificationCenter notifications={careNotifications} /> : null}{babies.length > 1 ? <select aria-label="Active baby" value={selectedBabyId} onChange={(event) => onSelectedBabyIdChange(event.target.value)}>{babies.map((baby) => <option key={baby.id} value={baby.id}>{baby.name}</option>)}</select> : null}</div></header>
+        <header className="workspace-topbar"><div><span className="workspace-eyebrow">{activeWorkspace === 'stats' ? 'Insights' : ''}</span><h1>{activeWorkspace === 'stats' ? 'Patterns & progress' : 'Today'}</h1></div><nav className="desktop-workspace-nav" aria-label="Workspace"><button type="button" className={activeWorkspace === 'track' ? 'is-active' : ''} aria-current={activeWorkspace === 'track' ? 'page' : undefined} onClick={() => navigateWorkspace('track')}>Track</button><button type="button" className={activeWorkspace === 'stats' ? 'is-active' : ''} aria-current={activeWorkspace === 'stats' ? 'page' : undefined} onClick={() => navigateWorkspace('stats')}>Insights</button></nav><div className="workspace-topbar-actions">{headerProps.syncStatus !== 'synced' ? <span className={`sync-pill sync-${headerProps.syncStatus}`} aria-label={`Sync status: ${syncLabel[headerProps.syncStatus]}`}>{syncLabel[headerProps.syncStatus]}</span> : null}<CareNotificationCenter notifications={careNotifications} />{babies.length > 1 ? <select aria-label="Active baby" value={selectedBabyId} onChange={(event) => onSelectedBabyIdChange(event.target.value)}>{babies.map((baby) => <option key={baby.id} value={baby.id}>{baby.name}</option>)}</select> : null}</div></header>
         <div id="care-brief-slot" />
-        {activeWorkspace === 'care' ? <CarePreview /> : view === 'track' && activeWorkspace === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
+        {activeWorkspace === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
       </div>
       <TrackerModals {...modalsProps} profileName={profileName} setProfileName={saveProfileName} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} onLogout={onLogout} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} />
       <AppToast {...toastProps} />

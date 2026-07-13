@@ -1,4 +1,4 @@
-import { BarChart3, Baby, ClipboardList, LayoutDashboard, Settings2, Sparkles } from 'lucide-react'
+import { BarChart3, Baby, LayoutDashboard, Settings2, Sparkles } from 'lucide-react'
 import type { View } from '../types'
 
 type Props = { view: View | 'care'; setView: (view: View | 'care') => void; settingsOpen: boolean; setSettingsOpen: (open: boolean) => void }
@@ -6,7 +6,6 @@ type Props = { view: View | 'care'; setView: (view: View | 'care') => void; sett
 export function PremiumSidebar({ view, setView, settingsOpen, setSettingsOpen }: Props) {
   const items = [
     { id: 'track' as const, label: 'Track', detail: 'Live care dashboard', icon: LayoutDashboard },
-    { id: 'care' as const, label: 'Care', detail: 'Daily routines', icon: ClipboardList },
     { id: 'stats' as const, label: 'Insights', detail: 'Patterns & progress', icon: BarChart3 },
   ]
   return <aside className="premium-sidebar" aria-label="Primary navigation">
