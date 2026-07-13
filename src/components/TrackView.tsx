@@ -17,7 +17,7 @@ export function TrackView({ heroRef, hero, overview, timeline }: TrackViewProps)
         <HeroPanel ref={heroRef} {...hero} />
         <TrackOverview {...overview} />
       </div>
-      <Timeline {...timeline} onLogPastFeed={() => hero.setManualOpen(true)} />
+      <Timeline {...timeline} onLogPastEvent={() => hero.setPastEventOpen(true)} />
     </>
   )
 }

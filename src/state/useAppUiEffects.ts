@@ -9,6 +9,7 @@ type AppUiEffectsOptions = {
   heroRef: RefObject<HTMLElement | null>
   setBottleOpen: Dispatch<SetStateAction<boolean>>
   setManualOpen: Dispatch<SetStateAction<boolean>>
+  setPastEventOpen: Dispatch<SetStateAction<boolean>>
   setSettingsOpen: Dispatch<SetStateAction<boolean>>
   setSelectedDiapers: Dispatch<SetStateAction<DiaperKind[]>>
   setEditingDiaper: Dispatch<SetStateAction<EditingDiaperState>>
@@ -24,6 +25,7 @@ export function useAppUiEffects({
   heroRef,
   setBottleOpen,
   setManualOpen,
+  setPastEventOpen,
   setSettingsOpen,
   setSelectedDiapers,
   setEditingDiaper,
@@ -50,6 +52,7 @@ export function useAppUiEffects({
       if (event.key !== 'Escape') return
       setBottleOpen(false)
       setManualOpen(false)
+      setPastEventOpen(false)
       setSettingsOpen(false)
       setSelectedDiapers([])
       setEditingDiaper(null)
@@ -58,7 +61,7 @@ export function useAppUiEffects({
     }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
-  }, [setBottleOpen, setConfirmingDeleteEntryId, setEditingDiaper, setManualOpen, setOpenEntryMenuId, setSelectedDiapers, setSettingsOpen])
+  }, [setBottleOpen, setConfirmingDeleteEntryId, setEditingDiaper, setManualOpen, setPastEventOpen, setOpenEntryMenuId, setSelectedDiapers, setSettingsOpen])
 
   useEffect(() => {
     if (!openEntryMenuId) return

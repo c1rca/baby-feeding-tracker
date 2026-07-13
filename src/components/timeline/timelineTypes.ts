@@ -39,7 +39,7 @@ export type TimelineProps = {
   saveMedicineEdit: (medicine: MedicineEvent) => void
   saveTummyTimeEdit: (tummyTime: TummyTimeEvent) => void
   savePumpEdit: (pumpEvent: PumpEvent) => void
-  onLogPastFeed?: () => void
+  onLogPastEvent?: () => void
   showToast: (message: string) => void
 }
 

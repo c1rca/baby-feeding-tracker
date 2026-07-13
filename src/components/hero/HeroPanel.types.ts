@@ -31,6 +31,7 @@ export type HeroPanelProps = {
   setAdditionalOptionsOpen: (updater: (open: boolean) => boolean) => void
   setBottleOpen: (open: boolean) => void
   setManualOpen: (open: boolean) => void
+  setPastEventOpen: (open: boolean) => void
   setSession: (session: Session) => void
   startSession: (side: Side) => void
   switchSide: (side: Side) => void

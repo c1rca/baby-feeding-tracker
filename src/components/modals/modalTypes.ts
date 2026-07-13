@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
 import type { DiaperEvent, Entry, Session } from '../../types'
+import type { PastEventDraft } from '../../state/pastEventModels'
 import type { AuthUser } from '../../auth/authApi'
 import type { BabySummary } from '../../babies/babyApi'
 
@@ -10,10 +11,12 @@ export type MedicineReminderSettings = { tylenol: 0 | 4 | 6; motrin: 0 | 4 | 6 }
 export type TrackerModalsProps = {
   bottleOpen: boolean
   manualOpen: boolean
+  pastEventOpen: boolean
   settingsOpen: boolean
   session: Session | null
   bottleQuickOz: number
   manualDraft: ManualDraft
+  pastEventDraft: PastEventDraft
   entries: Entry[]
   diapers: DiaperEvent[]
   babyDob: string
@@ -33,9 +36,11 @@ export type TrackerModalsProps = {
   fileInputRef: RefObject<HTMLInputElement | null>
   setBottleOpen: (open: boolean) => void
   setManualOpen: (open: boolean) => void
+  setPastEventOpen: (open: boolean) => void
   setSettingsOpen: (open: boolean) => void
   setBottleQuickOz: (updater: (value: number) => number) => void
   setManualDraft: (draft: ManualDraft) => void
+  setPastEventDraft: (draft: PastEventDraft | ((current: PastEventDraft) => PastEventDraft)) => void
   setEntries: (updater: Entry[] | ((prev: Entry[]) => Entry[])) => void
   setDiapers: (updater: DiaperEvent[] | ((prev: DiaperEvent[]) => DiaperEvent[])) => void
   setBabyDob: (dob: string) => void
@@ -46,6 +51,7 @@ export type TrackerModalsProps = {
   setTheme: (theme: 'light' | 'dark') => void
   logBottle: (oz?: number) => void
   saveManualFeed: () => void
+  savePastEvent: () => void
   enableFeedingNotifications: () => void
   setGotifyReminders: (enabled: boolean) => void | Promise<void>
   setMedicineReminderSettings: (settings: MedicineReminderSettings) => void | Promise<void>
