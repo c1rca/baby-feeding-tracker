@@ -5,7 +5,6 @@ import type { NotificationPreferences } from '../state/notificationPreferences'
 import { isQuietHour, isWithinWindow } from '../domain/notificationWindows'
 
 const NOTIFICATION_APP_URL = import.meta.env.VITE_NOTIFICATION_APP_URL || window.location.origin
-const NEXT_FEEDING_REMINDER_OFFSETS_MS = [2 * 60 * 60 * 1000, 3 * 60 * 60 * 1000]
 
 type BrowserRemindersOptions = {
   browserRemindersEnabled: boolean
@@ -38,21 +37,17 @@ export function useBrowserFeedNotifications({ browserRemindersEnabled, notificat
     const timers: ReturnType<typeof setTimeout>[] = []
 
     // Feeding reminders
-    if (!isQuietNow && preferences.feeding.browser && lastFeed) {
-      NEXT_FEEDING_REMINDER_OFFSETS_MS
-        .map((offsetMs) => ({ offsetMs, delayMs: lastFeed.startedAt + offsetMs - now }))
-        .filter(({ delayMs }) => delayMs > 0)
-        .forEach(({ offsetMs, delayMs }) => {
-          const hours = Math.round(offsetMs / (60 * 60 * 1000))
-          timers.push(scheduleNotification(
-            'Feeding window reminder',
-            `${hours} hours since the last feed started. Open Feedr to log or resume.`,
-            `next-feeding-${lastFeed.id}-${hours}h`,
-            delayMs,
-            hours === 3,
-            canNotifyNow
-          ))
-        })
+    if (!isQuietNow && preferences.feeding.browser && lastFeed && (preferences.reminderIntervals?.feeding ?? 2) > 0) {
+      const hours = preferences.reminderIntervals?.feeding ?? 2
+      const delayMs = lastFeed.startedAt + hours * 60 * 60 * 1000 - now
+      if (delayMs > 0) timers.push(scheduleNotification(
+        'Feeding reminder',
+        `${hours} hours since the last feed started. Open Feedr to log or resume.`,
+        `next-feeding-${lastFeed.id}-${hours}h`,
+        delayMs,
+        true,
+        canNotifyNow
+      ))
     }
 
     // Medicine reminders (Tylenol and Motrin)

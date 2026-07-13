@@ -23,11 +23,11 @@ export function getLatestMedicineDosesByKind(medicines) {
     .filter(Boolean)
 }
 
-export function buildReminder(latestFeed, now = Date.now()) {
-  if (!latestFeed) return null
+export function buildReminder(latestFeed, now = Date.now(), intervalHours = 2) {
+  if (!latestFeed || !Number.isFinite(intervalHours) || intervalHours <= 0) return null
   const feedStartAt = Number.isFinite(latestFeed.startedAt) && latestFeed.startedAt > 0 ? latestFeed.startedAt : latestFeed.endedAt
-  const dueAt = feedStartAt + TWO_HOURS_MS
-  const windowEndAt = feedStartAt + THREE_HOURS_MS
+  const dueAt = feedStartAt + intervalHours * 60 * 60 * 1000
+  const windowEndAt = dueAt + 60 * 60 * 1000
   const catchUpUntil = dueAt + MAX_CATCH_UP_MS
   if (windowEndAt <= now - MAX_CATCH_UP_MS) return null
   return { kind: 'feeding', entryId: latestFeed.id ?? String(latestFeed.endedAt), dueAt, windowEndAt, catchUpUntil }
@@ -44,7 +44,9 @@ export function normalizeMedicineReminderSettings(settings = {}) {
 export function normalizeHourWindow(window = {}) {
   const start = Math.max(0, Math.min(23, Math.round(Number(window?.startHour) || 0)))
   const end = Math.max(0, Math.min(23, Math.round(Number(window?.endHour) || 0)))
-  return { startHour: start, endHour: end }
+  const startMinute = Math.max(0, Math.min(59, Math.round(Number(window?.startMinute) || 0)))
+  const endMinute = Math.max(0, Math.min(59, Math.round(Number(window?.endMinute) || 0)))
+  return { startHour: start, startMinute, endHour: end, endMinute }
 }
 
 export function normalizeChannelPrefs(prefs = {}) {
@@ -53,6 +55,11 @@ export function normalizeChannelPrefs(prefs = {}) {
     browser: Boolean(prefs?.browser),
     gotify: Boolean(prefs?.gotify),
   }
+}
+
+export function normalizeReminderInterval(value, fallback) {
+  const numeric = Number(value)
+  return Number.isFinite(numeric) && numeric >= 0 && numeric <= 72 ? numeric : fallback
 }
 
 export function normalizeNotificationPreferences(prefs = {}) {
@@ -73,6 +80,11 @@ export function normalizeNotificationPreferences(prefs = {}) {
     medicineIntervals: {
       tylenol: normalizeMedicineReminderSettings(prefs?.medicineIntervals)?.tylenol ?? 6,
       motrin: normalizeMedicineReminderSettings(prefs?.medicineIntervals)?.motrin ?? 6,
+    },
+    reminderIntervals: {
+      feeding: normalizeReminderInterval(prefs?.reminderIntervals?.feeding, 2),
+      vitaminD: normalizeReminderInterval(prefs?.reminderIntervals?.vitaminD, 18),
+      tummyTime: normalizeReminderInterval(prefs?.reminderIntervals?.tummyTime, 2),
     },
   }
 }
@@ -124,11 +136,12 @@ const zonedHour = (timestamp, timeZone) => Number(new Intl.DateTimeFormat('en-US
   hourCycle: 'h23',
 }).format(timestamp))
 
-export function buildVitaminDReminder(medicines, now = Date.now()) {
+export function buildVitaminDReminder(medicines, now = Date.now(), intervalHours = 18) {
+  if (!Number.isFinite(intervalHours) || intervalHours <= 0) return null
   const latestVitaminD = getLatestMedicineDosesByKind(medicines).find((dose) => dose.kind === 'vitamin_d')
   if (!latestVitaminD) return null
 
-  const dueAt = latestVitaminD.at + EIGHTEEN_HOURS_MS
+  const dueAt = latestVitaminD.at + intervalHours * 60 * 60 * 1000
   const catchUpUntil = dueAt + MAX_CATCH_UP_MS
 
   if (dueAt <= now - MAX_CATCH_UP_MS) return null
@@ -144,28 +157,21 @@ export function buildVitaminDReminder(medicines, now = Date.now()) {
   }
 }
 
-export function buildTummyTimeReminder(tummyTimes, now = Date.now(), activeHours = { startHour: 8, endHour: 20 }, timeZone = 'America/New_York') {
-  if (!Array.isArray(tummyTimes)) return null
+const zonedMinuteOfDay = (timestamp, timeZone) => {
+  const parts = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: 'numeric', hourCycle: 'h23' }).formatToParts(timestamp)
+  const value = (type) => Number(parts.find((part) => part.type === type)?.value ?? 0)
+  return value('hour') * 60 + value('minute')
+}
 
+export function buildTummyTimeReminder(tummyTimes, now = Date.now(), activeHours = { startHour: 8, endHour: 20 }, timeZone = 'America/New_York', intervalHours = 2) {
+  if (!Array.isArray(tummyTimes) || !Number.isFinite(intervalHours) || intervalHours <= 0) return null
+  const currentMinute = zonedMinuteOfDay(now, timeZone)
+  const startMinute = activeHours.startHour * 60 + (activeHours.startMinute ?? 0)
+  const endMinute = activeHours.endHour * 60 + (activeHours.endMinute ?? 0)
+  const inWindow = startMinute === endMinute || (startMinute < endMinute ? currentMinute >= startMinute && currentMinute < endMinute : currentMinute >= startMinute || currentMinute < endMinute)
+  if (!inWindow) return null
+  const elapsed = (currentMinute - startMinute + 1440) % 1440
+  const slot = Math.floor(elapsed / (intervalHours * 60))
   const todayKey = zonedDateKey(now, timeZone)
-  const todayTummyTimes = tummyTimes.filter((t) => Number.isFinite(t?.startedAt) && zonedDateKey(t.startedAt, timeZone) === todayKey)
-
-  // Only suggest once per day, and only during active hours
-  const currentHour = zonedHour(now, timeZone)
-  const isInActiveWindow = activeHours.startHour <= activeHours.endHour
-    ? currentHour >= activeHours.startHour && currentHour < activeHours.endHour
-    : currentHour >= activeHours.startHour || currentHour < activeHours.endHour
-
-  if (!isInActiveWindow || todayTummyTimes.length > 0) return null
-
-  // Suggest tummy time at the start of the active window
-  const dueAt = now
-  const catchUpUntil = now + 2 * 60 * 60 * 1000
-
-  return {
-    kind: 'tummy_time',
-    dueAt,
-    catchUpUntil,
-    sessionId: `tummy:${todayKey}`,
-  }
+  return { kind: 'tummy_time', dueAt: now, catchUpUntil: now + 2 * 60 * 60 * 1000, sessionId: `tummy:${todayKey}:${slot}` }
 }

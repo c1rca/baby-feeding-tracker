@@ -1,18 +1,26 @@
-export function getZonedHour(now, timeZone = 'America/New_York') {
-  return Number(new Intl.DateTimeFormat('en-US', {
+export function getZonedMinuteOfDay(now, timeZone = 'America/New_York') {
+  const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
     hour: 'numeric',
+    minute: 'numeric',
     hourCycle: 'h23',
-  }).format(now))
+  }).formatToParts(now)
+  const value = (type) => Number(parts.find((part) => part.type === type)?.value ?? 0)
+  return value('hour') * 60 + value('minute')
+}
+
+export function getZonedHour(now, timeZone = 'America/New_York') {
+  return Math.floor(getZonedMinuteOfDay(now, timeZone) / 60)
 }
 
 export function isWithinWindow(now, window, timeZone = 'America/New_York') {
-  const currentHour = getZonedHour(now, timeZone)
-  const { startHour, endHour } = window
+  const currentMinute = getZonedMinuteOfDay(now, timeZone)
+  const startMinute = Number(window.startHour) * 60 + Number(window.startMinute ?? 0)
+  const endMinute = Number(window.endHour) * 60 + Number(window.endMinute ?? 0)
 
-  if (startHour === endHour) return true
-  if (startHour < endHour) return currentHour >= startHour && currentHour < endHour
-  return currentHour >= startHour || currentHour < endHour
+  if (startMinute === endMinute) return true
+  if (startMinute < endMinute) return currentMinute >= startMinute && currentMinute < endMinute
+  return currentMinute >= startMinute || currentMinute < endMinute
 }
 
 export function isQuietHour(now, quietHours, timeZone = 'America/New_York') {

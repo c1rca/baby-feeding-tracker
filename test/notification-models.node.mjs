@@ -86,9 +86,10 @@ test('notification preferences preserve legacy enabled reminders when no saved p
     motrin: { inApp: true, browser: false, gotify: true },
     vitaminD: { inApp: true, browser: false, gotify: true },
     tummyTime: { inApp: true, browser: false, gotify: false },
-    tummyActiveHours: { startHour: 8, endHour: 20 },
-    quietHours: { enabled: false, startHour: 22, endHour: 7 },
+    tummyActiveHours: { startHour: 8, startMinute: 0, endHour: 20, endMinute: 0 },
+    quietHours: { enabled: false, startHour: 22, startMinute: 0, endHour: 7, endMinute: 0 },
     medicineIntervals: { tylenol: 6, motrin: 6 },
+    reminderIntervals: { feeding: 2, vitaminD: 18, tummyTime: 2 },
   })
 })
 
@@ -103,5 +104,5 @@ test('tummy reminder uses the configured time zone for the local calendar day', 
   )
 
   assert.ok(reminder)
-  assert.equal(reminder.sessionId, 'tummy:2026-06-05')
+  assert.equal(reminder.sessionId, 'tummy:2026-06-05:0')
 })

@@ -2,16 +2,13 @@ import type { HourWindow } from '../state/notificationPreferences'
 
 export function isWithinWindow(now: number, window: HourWindow): boolean {
   const date = new Date(now)
-  const currentHour = date.getHours()
-  const { startHour, endHour } = window
+  const currentMinute = date.getHours() * 60 + date.getMinutes()
+  const startMinute = window.startHour * 60 + (window.startMinute ?? 0)
+  const endMinute = window.endHour * 60 + (window.endMinute ?? 0)
 
-  // If window doesn't wrap midnight (e.g., 8–20)
-  if (startHour <= endHour) {
-    return currentHour >= startHour && currentHour < endHour
-  }
-
-  // Window wraps midnight (e.g., 22–7): hour is in range if >= startHour OR < endHour
-  return currentHour >= startHour || currentHour < endHour
+  if (startMinute === endMinute) return true
+  if (startMinute < endMinute) return currentMinute >= startMinute && currentMinute < endMinute
+  return currentMinute >= startMinute || currentMinute < endMinute
 }
 
 export function isQuietHour(now: number, quietHours: { enabled: boolean; startHour: number; endHour: number }): boolean {

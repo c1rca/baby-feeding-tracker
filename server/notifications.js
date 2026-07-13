@@ -55,7 +55,7 @@ export function createNotificationScheduler({
 
     // Feeding reminder (if gotify enabled + no active session)
     if (!isQuiet && sendGotify && preferences?.feeding.gotify && !hasActiveSession(row)) {
-      const feeding = buildReminder(getLatestEndedFeed(entries), now())
+      const feeding = buildReminder(getLatestEndedFeed(entries), now(), preferences?.reminderIntervals?.feeding ?? 2)
       if (feeding) reminders.push({ ...feeding, householdId: row.household_id, babyId: row.baby_id, notificationId: feeding.entryId })
     }
 
@@ -68,7 +68,7 @@ export function createNotificationScheduler({
         if (!shouldRemind) continue
 
         if (kind === 'vitamin_d') {
-          const vitamin = buildVitaminDReminder(medicines, now())
+          const vitamin = buildVitaminDReminder(medicines, now(), preferences?.reminderIntervals?.vitaminD ?? 18)
           if (vitamin) reminders.push({ ...vitamin, householdId: row.household_id, babyId: row.baby_id, notificationId: `medicine:vitamin_d:${vitamin.doseId}` })
         } else {
           const medicine = buildMedicineReminder(latestDose, now(), medicineReminderSettings)
@@ -79,7 +79,7 @@ export function createNotificationScheduler({
 
     // Tummy Time reminder (if gotify enabled + within active window)
     if (!isQuiet && sendGotify && preferences?.tummyTime.gotify && tummyTimes) {
-      const tummy = buildTummyTimeReminder(tummyTimes, now(), preferences?.tummyActiveHours ?? { startHour: 8, endHour: 20 }, timeZone)
+      const tummy = buildTummyTimeReminder(entries, now(), preferences.tummyActiveHours, timeZone, preferences.reminderIntervals?.tummyTime ?? 2)
       if (tummy) reminders.push({ ...tummy, householdId: row.household_id, babyId: row.baby_id, notificationId: `tummy:${tummy.sessionId}` })
     }
 

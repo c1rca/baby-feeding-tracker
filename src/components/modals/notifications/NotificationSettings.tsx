@@ -1,8 +1,9 @@
 import { Bell, Pill, Clock, Moon } from 'lucide-react'
-import type { ChannelPrefs, HourWindow, NotificationPreferences } from '../../../state/notificationPreferences'
+import { DEFAULT_NOTIFICATION_PREFERENCES, type ChannelPrefs, type HourWindow, type NotificationPreferences } from '../../../state/notificationPreferences'
 import { SettingToggle } from '../SettingToggle'
 import { ChannelSelector } from './ChannelSelector'
 import { HourRange12h } from './HourRange12h'
+import { ReminderTimingControl } from './ReminderTimingControl'
 
 type NotificationSettingsProps = {
   notificationPreferences: NotificationPreferences
@@ -16,11 +17,11 @@ type NotificationSettingsProps = {
 }
 
 const notificationTypes = [
-  { key: 'feeding' as const, label: 'Feeding', icon: Bell, hasInterval: false },
+  { key: 'feeding' as const, label: 'Feeding', icon: Bell, hasInterval: true },
   { key: 'tylenol' as const, label: 'Tylenol', icon: Pill, hasInterval: true },
   { key: 'motrin' as const, label: 'Motrin', icon: Pill, hasInterval: true },
-  { key: 'vitaminD' as const, label: 'Vitamin D', icon: Pill, hasInterval: false },
-  { key: 'tummyTime' as const, label: 'Tummy Time', icon: Clock, hasInterval: false },
+  { key: 'vitaminD' as const, label: 'Vitamin D', icon: Pill, hasInterval: true },
+  { key: 'tummyTime' as const, label: 'Tummy Time', icon: Clock, hasInterval: true },
 ] as const
 
 export function NotificationSettings({
@@ -56,6 +57,10 @@ export function NotificationSettings({
       },
     })
 
+  }
+
+  const updateReminderInterval = (kind: 'feeding' | 'vitaminD' | 'tummyTime', value: number) => {
+    setNotificationPreferences({ reminderIntervals: { ...DEFAULT_NOTIFICATION_PREFERENCES.reminderIntervals!, ...notificationPreferences.reminderIntervals, [kind]: value } })
   }
 
   const toggleQuietHours = (enabled: boolean) => {
@@ -122,7 +127,9 @@ export function NotificationSettings({
       {/* Per-type reminder cards */}
       {notificationTypes.map(({ key, label, icon: Icon, hasInterval }) => {
         const prefs = notificationPreferences[key]
-        const interval = hasInterval ? (notificationPreferences.medicineIntervals[key as 'tylenol' | 'motrin'] ?? 6) : undefined
+        const interval = key === 'tylenol' || key === 'motrin'
+          ? notificationPreferences.medicineIntervals[key]
+          : notificationPreferences.reminderIntervals?.[key as 'feeding' | 'vitaminD' | 'tummyTime']
 
         return (
           <div key={key} className="settings-card notif-type-card">
@@ -139,20 +146,10 @@ export function NotificationSettings({
                 <span className="setting-row-text">
                   <small>Reminder timing</small>
                 </span>
-                <span className="settings-select">
-                  <select
-                    aria-label={`${label} reminder interval`}
-                    value={interval}
-                    onChange={(e) => {
-                      const value = Number(e.target.value)
-                      updateMedicineInterval(key as 'tylenol' | 'motrin', value as 0 | 4 | 6)
-                    }}
-                  >
-                    <option value={0}>Off</option>
-                    <option value={4}>4 hours</option>
-                    <option value={6}>6 hours</option>
-                  </select>
-                </span>
+                <ReminderTimingControl value={interval} label={label} presets={key === 'feeding' ? [2, 3, 4] : key === 'vitaminD' ? [12, 18, 24] : key === 'tummyTime' ? [1, 2, 3] : [4, 6, 8]} onChange={(value) => {
+                  if (key === 'tylenol' || key === 'motrin') updateMedicineInterval(key, value)
+                  else updateReminderInterval(key, value)
+                }} />
               </div>
             )}
 
