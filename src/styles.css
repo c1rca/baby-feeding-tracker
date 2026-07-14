@@ -1419,61 +1419,55 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .diaper-signal-card p { margin: 0; color: var(--ink-faint); font-weight: 650; font-size: .8rem; }
 .vitamin-stats-card .diaper-signal-values strong { color: color-mix(in srgb, var(--gold) 72%, var(--ink)); }
 
-.feeding-hours-card {
-  display: grid; grid-template-columns: minmax(210px, .62fr) minmax(0, 1fr);
-  gap: 22px; align-items: stretch;
-  padding: 22px;
+/* Bar-chart hero — copy column + 7-day chart.
+   Shared by Time invested, Feeding rhythm, and Tummy Time so the three
+   read as one instrument. Category accent is layered on per card below. */
+.stat-hero {
+  display: grid; grid-template-columns: minmax(200px, .6fr) minmax(0, 1fr);
+  gap: 26px; align-items: stretch;
+  padding: 22px 24px;
 }
-.feeding-hours-copy { display: grid; align-content: center; justify-items: start; gap: 4px; }
-.feeding-hours-copy h2 { margin: 0; font-family: var(--font-numeric); font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.02; letter-spacing: -.035em; font-weight: 800; }
-.feeding-hours-copy p { max-width: 380px; margin: 4px 0 0; color: var(--ink-soft); font-weight: 650; }
-.feeding-hours-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; padding: 6px 0 0 22px; border-left: 1px solid var(--border); }
-.feeding-hours-day { display: grid; grid-template-rows: 1fr auto auto; gap: 6px; min-width: 0; text-align: center; color: var(--ink-faint); font-size: .7rem; font-weight: 850; text-transform: uppercase; letter-spacing: .04em; }
-.feeding-hours-track { width: min(100%, 56px); height: 132px; margin: 0 auto; display: flex; align-items: end; justify-content: center; overflow: hidden; border-radius: 10px; background: var(--well); }
-.feeding-hours-track div { width: 100%; border-radius: 8px 8px 0 0; background: color-mix(in srgb, var(--berry) 38%, var(--card-solid)); transition: height .45s cubic-bezier(.2, .9, .3, 1); }
-.feeding-hours-day:last-child .feeding-hours-track div { background: var(--berry); }
-.feeding-hours-day strong { min-height: 1em; color: var(--ink); font-family: var(--font-numeric); font-size: .88rem; letter-spacing: -.02em; font-variant-numeric: tabular-nums; text-transform: none; }
+.stat-hero-copy { display: grid; align-content: center; justify-items: start; gap: 4px; }
+.stat-hero-copy h2 { margin: 0; font-family: var(--font-numeric); font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.02; letter-spacing: -.035em; font-weight: 800; }
+.stat-hero-copy p { max-width: 400px; margin: 5px 0 0; color: var(--ink-soft); font-weight: 650; line-height: 1.45; }
+.stat-bars { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: clamp(8px, 1.6vw, 16px); align-items: end; padding: 6px 2px 0 26px; border-left: 1px solid var(--border); }
+.stat-bar-day { display: grid; grid-template-rows: 1fr auto auto; gap: 7px; min-width: 0; text-align: center; color: var(--ink-faint); font-size: .7rem; font-weight: 850; text-transform: uppercase; letter-spacing: .04em; }
+.stat-bar-track { position: relative; width: min(100%, 56px); height: 150px; margin: 0 auto; display: flex; align-items: end; justify-content: center; overflow: hidden; border-radius: 13px; background: var(--well); box-shadow: inset 0 0 0 1px var(--border); }
+.stat-bar-track > div { width: 100%; min-height: 4px; border-radius: 11px 11px 5px 5px; transition: height .55s cubic-bezier(.2, .9, .3, 1); }
+.stat-bar-day strong { min-height: 1em; color: var(--ink); font-family: var(--font-numeric); font-size: .9rem; letter-spacing: -.02em; font-variant-numeric: tabular-nums; text-transform: none; }
 
-.tummy-stats-card {
-  display: grid; grid-template-columns: minmax(210px, .8fr) 140px minmax(0, 1fr);
-  gap: 20px; align-items: center;
-  padding: 22px;
-}
-.tummy-stats-copy { display: grid; align-content: center; justify-items: start; gap: 4px; }
-.tummy-stats-copy h2 { margin: 0; font-family: var(--font-numeric); font-size: clamp(1.6rem, 3vw, 2.2rem); line-height: 1.02; letter-spacing: -.035em; font-weight: 800; }
-.tummy-stats-copy p { margin: 4px 0 0; color: var(--ink-soft); font-weight: 650; }
+/* Feeding category = berry (Time invested + Feeding rhythm) */
+.feeding-hours-bars .stat-bar-track > div,
+.rhythm-bars .stat-bar-track > div { background: linear-gradient(180deg, color-mix(in srgb, var(--berry) 52%, var(--card-solid)), color-mix(in srgb, var(--berry) 30%, var(--card-solid))); }
+.feeding-hours-day:last-child .stat-bar-track > div,
+.rhythm-day:last-child .stat-bar-track > div { background: linear-gradient(180deg, color-mix(in srgb, var(--berry) 88%, white), var(--berry)); box-shadow: 0 -7px 20px -6px var(--glow-live); }
+
+.tummy-stats-card { grid-template-columns: minmax(250px, .78fr) minmax(0, 1fr); gap: 28px; align-items: center; }
+.tummy-stats-main { display: grid; grid-template-columns: 132px minmax(0, 1fr); grid-template-areas: 'copy copy' 'orb mini'; gap: 18px; align-content: center; }
+.tummy-stats-copy { grid-area: copy; }
 .tummy-progress-orb {
-  width: 140px; height: 140px;
+  grid-area: orb;
+  width: 132px; height: 132px;
   border-radius: 999px;
   display: grid; place-items: center; align-content: center;
   text-align: center;
   background: conic-gradient(var(--hue-tummy) var(--progress), var(--well) 0);
-  box-shadow: inset 0 0 0 1px var(--border);
+  box-shadow: inset 0 0 0 1px var(--border), 0 10px 28px -12px color-mix(in srgb, var(--hue-tummy) 60%, transparent);
   position: relative;
 }
 .tummy-progress-orb::after { content: ''; position: absolute; inset: 11px; border-radius: 999px; background: var(--card-solid); box-shadow: inset 0 0 0 1px var(--border); }
 .tummy-progress-orb strong, .tummy-progress-orb span { position: relative; z-index: 1; }
-.tummy-progress-orb strong { font-family: var(--font-numeric); font-size: 1.9rem; letter-spacing: -.04em; font-weight: 800; font-variant-numeric: tabular-nums; }
-.tummy-progress-orb span { color: var(--ink-faint); font-weight: 900; text-transform: uppercase; font-size: .64rem; letter-spacing: .1em; }
-.tummy-mini-stats { display: grid; gap: 8px; }
+.tummy-progress-orb strong { font-family: var(--font-numeric); font-size: 1.85rem; letter-spacing: -.04em; font-weight: 800; font-variant-numeric: tabular-nums; }
+.tummy-progress-orb span { color: var(--ink-faint); font-weight: 900; text-transform: uppercase; font-size: .62rem; letter-spacing: .1em; }
+.tummy-mini-stats { grid-area: mini; display: grid; align-content: center; gap: 8px; }
 .tummy-mini-stats div { padding: 10px 13px; border: 1px solid var(--border); border-radius: 14px; background: var(--well); }
-.tummy-mini-stats span { display: block; color: var(--ink-faint); font-size: .68rem; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
+.tummy-mini-stats span { display: block; color: var(--ink-faint); font-size: .66rem; font-weight: 900; text-transform: uppercase; letter-spacing: .08em; }
 .tummy-mini-stats strong { display: block; margin-top: 2px; color: var(--ink); font-family: var(--font-numeric); font-size: 1.05rem; letter-spacing: -.02em; }
-.tummy-week-bars { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; padding-top: 14px; border-top: 1px solid var(--border); }
-.tummy-week-day { display: grid; grid-template-rows: 76px auto auto; gap: 6px; text-align: center; color: var(--ink-faint); font-size: .68rem; font-weight: 850; min-width: 0; text-transform: uppercase; }
-.tummy-week-track { width: min(100%, 56px); margin: 0 auto; display: flex; align-items: end; justify-content: center; overflow: hidden; border-radius: 10px; background: var(--well); }
-.tummy-week-track div { width: 100%; border-radius: 8px 8px 0 0; background: color-mix(in srgb, var(--hue-tummy) 38%, var(--card-solid)); transition: height .45s cubic-bezier(.2, .9, .3, 1); }
-.tummy-week-day:last-child .tummy-week-track div { background: var(--hue-tummy); }
-.tummy-week-day strong { min-height: 1em; color: var(--ink); font-family: var(--font-numeric); font-variant-numeric: tabular-nums; text-transform: none; }
+.tummy-week-bars .stat-bar-track > div { background: linear-gradient(180deg, color-mix(in srgb, var(--hue-tummy) 52%, var(--card-solid)), color-mix(in srgb, var(--hue-tummy) 30%, var(--card-solid))); }
+.tummy-week-day:last-child .stat-bar-track > div { background: linear-gradient(180deg, color-mix(in srgb, var(--hue-tummy) 88%, white), var(--hue-tummy)); box-shadow: 0 -7px 20px -6px color-mix(in srgb, var(--hue-tummy) 45%, transparent); }
 
-.rhythm-bars { height: 200px; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; align-items: end; padding-top: 8px; }
-.rhythm-day { display: grid; grid-template-rows: 1fr auto auto; gap: 6px; min-width: 0; text-align: center; color: var(--ink-faint); font-size: .7rem; font-weight: 850; text-transform: uppercase; letter-spacing: .04em; }
-.rhythm-track { width: min(100%, 56px); height: 148px; margin: 0 auto; display: flex; align-items: end; justify-content: center; border-radius: 10px; background: var(--well); overflow: hidden; }
-.rhythm-track div { width: 100%; border-radius: 8px 8px 0 0; background: color-mix(in srgb, var(--berry) 38%, var(--card-solid)); transition: height .45s cubic-bezier(.2, .9, .3, 1); }
-.rhythm-day:last-child .rhythm-track div { background: var(--berry); }
-.rhythm-day strong { color: var(--ink); font-family: var(--font-numeric); font-size: .92rem; font-variant-numeric: tabular-nums; }
-
-.stats-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.stats-split { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch; }
+.balance-card { display: grid; align-content: center; gap: 8px; }
 .balance-card, .night-card { min-height: 230px; }
 .balance-orb {
   --left: 50%;
@@ -1494,12 +1488,21 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .balance-labels span:first-child { color: color-mix(in srgb, var(--berry) 80%, var(--ink)); }
 .balance-labels span:last-child { color: color-mix(in srgb, var(--teal) 64%, var(--ink)); }
 
-.night-card { display: grid; align-content: start; gap: 8px; }
-.night-count { display: flex; align-items: center; gap: 14px; margin-top: 10px; }
-.night-count svg { width: 40px; height: 40px; padding: 9px; border-radius: 13px; color: var(--violet); background: color-mix(in srgb, var(--violet) 10%, transparent); }
-.night-count svg { width: 44px; height: 44px; padding: 10px; border-radius: 14px; }
-.night-count strong { font-family: var(--font-numeric); font-size: 3.2rem; line-height: .9; letter-spacing: -.04em; font-weight: 800; font-variant-numeric: tabular-nums; }
-.night-card p { margin: 0; color: var(--ink-soft); font-weight: 650; }
+.night-card { display: grid; align-content: start; gap: 14px; }
+.night-hero { display: flex; align-items: center; gap: 14px; margin-top: 2px; }
+.night-hero-icon { flex: 0 0 auto; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 15px; color: var(--violet); background: color-mix(in srgb, var(--violet) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--violet) 22%, transparent); }
+.night-hero-figure { display: grid; gap: 1px; min-width: 0; }
+.night-hero-figure strong { font-family: var(--font-numeric); font-size: 2.9rem; line-height: .84; letter-spacing: -.045em; font-weight: 800; font-variant-numeric: tabular-nums; }
+.night-hero-figure span { color: var(--ink-soft); font-weight: 700; font-size: .82rem; }
+.night-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.night-metrics div { display: grid; gap: 3px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 14px; background: var(--well); }
+.night-metrics span { color: var(--ink-faint); font-size: .6rem; font-weight: 900; text-transform: uppercase; letter-spacing: .06em; }
+.night-metrics strong { color: var(--ink); font-family: var(--font-numeric); font-size: 1.02rem; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.night-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; align-items: end; padding-top: 13px; border-top: 1px solid var(--border); }
+.night-strip-day { display: grid; grid-template-rows: 46px auto; gap: 6px; min-width: 0; text-align: center; color: var(--ink-faint); font-size: .58rem; font-weight: 850; text-transform: uppercase; letter-spacing: .03em; }
+.night-strip-track { width: min(100%, 30px); margin: 0 auto; display: flex; align-items: end; justify-content: center; overflow: hidden; border-radius: 8px; background: var(--well); box-shadow: inset 0 0 0 1px var(--border); }
+.night-strip-track > div { width: 100%; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, color-mix(in srgb, var(--violet) 68%, var(--card-solid)), color-mix(in srgb, var(--violet) 42%, var(--card-solid))); transition: height .55s cubic-bezier(.2, .9, .3, 1); }
+.night-strip-day:last-child .night-strip-track > div { background: linear-gradient(180deg, color-mix(in srgb, var(--violet) 90%, white), var(--violet)); }
 
 /* ---------- 15. Growth section ---------- */
 .growth-section { display: grid; gap: 16px; }
@@ -1620,10 +1623,9 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
   .top-actions { flex: 0 0 auto; flex-wrap: nowrap; justify-content: flex-end; }
   .insight-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .stats-story-grid { grid-template-columns: 1fr; }
-  .feeding-hours-card { grid-template-columns: 1fr; }
-  .feeding-hours-bars { padding: 16px 0 0; border-left: 0; border-top: 1px solid var(--border); }
-  .tummy-stats-card { grid-template-columns: 1fr auto; }
-  .tummy-week-bars { grid-column: 1 / -1; }
+  .stat-hero { grid-template-columns: 1fr; gap: 20px; }
+  .stat-bars { padding: 18px 0 0; border-left: 0; border-top: 1px solid var(--border); }
+  .tummy-stats-card { align-items: stretch; }
   .stats-split { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
@@ -1651,16 +1653,15 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
   .timeline { padding-left: 18px; }
   .timeline-item::before { left: -17.5px; width: 9px; height: 9px; }
   .insight-grid { grid-template-columns: 1fr 1fr; }
-  .rhythm-bars { gap: 6px; }
-  .feeding-hours-card { padding: 18px; }
-  .tummy-stats-card { grid-template-columns: 1fr; padding: 18px; }
-  .tummy-progress-orb { width: 124px; height: 124px; justify-self: start; }
-  .tummy-week-bars { gap: 6px; }
-  .tummy-week-day { grid-template-rows: 64px auto auto; font-size: .64rem; }
-  .feeding-hours-bars { gap: 6px; padding-top: 12px; }
-  .feeding-hours-track { height: 108px; }
-  .feeding-hours-day strong { font-size: .8rem; }
-  .rhythm-track { height: 118px; }
+  .stat-hero { padding: 18px; gap: 16px; }
+  .stat-bars { gap: 7px; padding-top: 14px; }
+  .stat-bar-track { height: 120px; }
+  .stat-bar-day strong { font-size: .82rem; }
+  .tummy-stats-main { grid-template-columns: 116px minmax(0, 1fr); gap: 14px; }
+  .tummy-progress-orb { width: 116px; height: 116px; }
+  .night-hero-figure strong { font-size: 2.5rem; }
+  .night-metrics { gap: 6px; }
+  .night-metrics div { padding: 9px 10px; }
 }
 @media (max-width: 980px) {
   .growth-hero-panel { grid-template-columns: 1fr; }

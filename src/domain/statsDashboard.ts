@@ -41,10 +41,23 @@ export const calculateStats = (
   const leftPercent = Math.round((totalLeft / balanceTotal) * 100)
   const bestDay = trendDays.reduce((best, day) => (day.count > best.count ? day : best), trendDays[0] ?? { label: 'Not yet', count: 0 })
   const avgGap = averageGapSeconds(recentEntries)
-  const nightFeeds = recentEntries.filter((entry) => {
-    const hour = new Date(entry.endedAt).getHours()
+  const isOvernight = (endedAt: number) => {
+    const hour = new Date(endedAt).getHours()
     return hour < 6 || hour >= 22
-  }).length
+  }
+  const nightFeeds = recentEntries.filter((entry) => isOvernight(entry.endedAt)).length
+  const nightByDay = weekWindows.map((window, index) => {
+    const count = recentEntries.filter(
+      (entry) => entry.endedAt >= window.startMs && entry.endedAt < window.endMs && isOvernight(entry.endedAt),
+    ).length
+    return { label: trendDays[index]?.label ?? window.label, count }
+  })
+  const nightAvgPerNight = roundTenth(nightFeeds / 7)
+  const nightShare = recentEntries.length ? Math.round((nightFeeds / recentEntries.length) * 100) : 0
+  const nightBusiest = nightByDay.reduce(
+    (best, day) => (day.count > best.count ? day : best),
+    nightByDay[0] ?? { label: 'Not yet', count: 0 },
+  )
   const last24Entries = entriesSince(entries, now - DAY_MS)
   const avgFeedsPerDay = recentEntries.length ? roundTenth(recentEntries.length / 7) : 0
   const longestNursing = nursingFeeds.reduce((max, entry) => Math.max(max, nursingSeconds(entry)), 0)
@@ -93,6 +106,10 @@ export const calculateStats = (
     bestDay,
     avgGap,
     nightFeeds,
+    nightByDay,
+    nightAvgPerNight,
+    nightShare,
+    nightBusiest,
     last24Entries,
     avgFeedsPerDay,
     longestNursing,
