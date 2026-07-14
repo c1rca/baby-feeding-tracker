@@ -16,10 +16,10 @@ export function timelineItems(entries: Entry[], diapers: DiaperEvent[], medicine
 
 export function formatTimelineAge(time: number, now = Date.now()) {
   const minutes = Math.max(0, Math.floor((now - time) / 60000))
-  if (minutes < 60) return `~${Math.max(1, minutes)}m`
+  if (minutes < 60) return `about ${Math.max(1, minutes)}m ago`
   const hours = Math.floor(minutes / 60)
-  if (hours < 24) return `~${hours}h`
-  return `~${Math.floor(hours / 24)}d`
+  if (hours < 24) return `about ${hours}h ago`
+  return `about ${Math.floor(hours / 24)}d ago`
 }
 
 export function openMenu(id: string, menuOpen: boolean, actions: TimelineActions) {

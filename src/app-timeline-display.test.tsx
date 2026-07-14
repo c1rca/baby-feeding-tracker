@@ -27,7 +27,7 @@ describe('App interactions', () => {
     expect(screen.getByText(/Jun 4/i)).toBeTruthy()
     expect(screen.getByText(/^5:00 AM$/i)).toBeTruthy()
     expect(screen.queryByText(/Jun 4.*5:00 AM/i)).toBeNull()
-    expect(screen.getByText(/~6d/i)).toBeTruthy()
+    expect(screen.getByText(/about 6d ago/i)).toBeTruthy()
   })
 
   it('keeps timeline rows scan-first with actions tucked into a compact menu', async () => {
@@ -56,7 +56,7 @@ describe('App interactions', () => {
     expect(within(firstItem).getByText(/Right: 5m 00s/i)).toBeTruthy()
     expect(within(firstItem).getByText(/2\.5 oz/i)).toBeTruthy()
     expect(within(firstItem).getByText(/sleepy feed/i)).toBeTruthy()
-    expect(within(firstItem).getByText(/~\d+[mhd]/i).className).toContain('timeline-age')
+    expect(within(firstItem).getByText(/about \d+[mhd] ago/i).className).toContain('timeline-age')
     expect(within(firstItem).getByRole('button', { name: /Resume recent entry/i })).toBeTruthy()
     expect(within(firstItem).queryByRole('button', { name: /^Edit entry$/i })).toBeNull()
     expect(within(firstItem).queryByRole('button', { name: /^Delete entry$/i })).toBeNull()
@@ -102,9 +102,9 @@ describe('App interactions', () => {
 
     const items = screen.getAllByRole('listitem')
     expect(within(items[0]).getByText(/newer feed/i)).toBeTruthy()
-    expect(within(items[0]).getByText(/~2h/i)).toBeTruthy()
+    expect(within(items[0]).getByText(/about 2h ago/i)).toBeTruthy()
     expect(within(items[1]).getByText(/older backfill/i)).toBeTruthy()
-    expect(within(items[1]).getByText(/~4h/i)).toBeTruthy()
+    expect(within(items[1]).getByText(/about 4h ago/i)).toBeTruthy()
   })
 
   it('shows only the last 24 hours first and loads one older day at a time', async () => {
