@@ -1,11 +1,10 @@
-import { formatDistanceToNow } from 'date-fns'
 import { MoreHorizontal, Pencil, RotateCcw, Trash2 } from 'lucide-react'
 import { diaperKindsLabel, entryDiaperKinds, formatTimelineTimestamp, timelineFeedLabel } from '../../domain/trackerDomain'
 import type { Entry } from '../../types'
 import { DeleteConfirmation } from './DeleteConfirmation'
 import { EntryEditPanel, FeedMetricChips } from './EntryEditPanel'
 import type { TimelineActions } from './timelineTypes'
-import { openMenu } from './timelineUtils'
+import { formatTimelineAge, openMenu } from './timelineUtils'
 
 export function EntryTimelineItem({ entry, index, actions }: { entry: Entry; index: number; actions: TimelineActions }) {
   const isEditing = actions.editing?.id === entry.id
@@ -23,8 +22,8 @@ export function EntryTimelineItem({ entry, index, actions }: { entry: Entry; ind
             <span className={`badge badge-${entry.type}`}>{timelineFeedLabel(entry)}</span>
             {entryDiapers.length ? <span className="badge badge-diaper">{diaperKindsLabel(entryDiapers)}</span> : null}
             <FeedMetricChips entry={entry} />
-            <span className="timeline-age">{formatDistanceToNow(entry.startedAt, { addSuffix: true })}</span>
           </div>
+          <span className="timeline-age">{formatTimelineAge(entry.startedAt)}</span>
           {entry.note ? <div className="note-chip">📝 {entry.note}</div> : null}
         </div>
         {!isEditing ? (

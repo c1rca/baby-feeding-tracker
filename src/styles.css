@@ -997,7 +997,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .timeline-main { min-width: 0; display: grid; gap: 2px; padding-top: 1px; }
 .timeline-head { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
 .timeline-head strong { font-size: .9rem; font-weight: 800; letter-spacing: -.01em; white-space: nowrap; }
-.timeline-age { margin-left: auto; padding-left: 8px; color: var(--ink-faint); font-size: .68rem; font-weight: 750; white-space: nowrap; }
+.timeline-age { display: block; width: fit-content; margin: 1px 0 0; padding: 0; color: var(--ink-faint); font-size: .64rem; font-weight: 750; line-height: 1.1; letter-spacing: .01em; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .timeline-metrics { display: inline-flex; gap: 4px 6px; flex-wrap: wrap; align-items: baseline; }
 
 .badge {

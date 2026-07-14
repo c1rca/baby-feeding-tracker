@@ -1,10 +1,9 @@
-import { formatDistanceToNow } from 'date-fns'
 import { MoreHorizontal, Pencil, Pill, Save, Trash2 } from 'lucide-react'
 import { formatTimelineTimestamp, medicineLabel } from '../../domain/trackerDomain'
 import type { MedicineEvent } from '../../types'
 import { DeleteConfirmation } from './DeleteConfirmation'
 import type { TimelineActions } from './timelineTypes'
-import { MEDICINE_KINDS, openMenu } from './timelineUtils'
+import { MEDICINE_KINDS, formatTimelineAge, openMenu } from './timelineUtils'
 
 export function MedicineTimelineItem({ medicine, actions }: { medicine: MedicineEvent; actions: TimelineActions }) {
   const isEditing = actions.editingMedicine?.id === medicine.id
@@ -19,8 +18,8 @@ export function MedicineTimelineItem({ medicine, actions }: { medicine: Medicine
           <div className="timeline-head">
             <strong>{timestamp.primary}</strong>
             <span className={`badge badge-medicine badge-medicine-${medicine.kind}`}><Pill size={13} /> {medicineLabel(medicine.kind)}</span>
-            <span className="timeline-age">{formatDistanceToNow(medicine.at, { addSuffix: true })}</span>
           </div>
+          <span className="timeline-age">{formatTimelineAge(medicine.at)}</span>
         </div>
         {!isEditing ? (
           <div className="entry-action-wrap">

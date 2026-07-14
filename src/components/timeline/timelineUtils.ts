@@ -14,6 +14,14 @@ export function timelineItems(entries: Entry[], diapers: DiaperEvent[], medicine
   ].sort((a, b) => b.time - a.time)
 }
 
+export function formatTimelineAge(time: number, now = Date.now()) {
+  const minutes = Math.max(0, Math.floor((now - time) / 60000))
+  if (minutes < 60) return `~${Math.max(1, minutes)}m`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `~${hours}h`
+  return `~${Math.floor(hours / 24)}d`
+}
+
 export function openMenu(id: string, menuOpen: boolean, actions: TimelineActions) {
   actions.setOpenEntryMenuId(menuOpen ? null : id)
   actions.setConfirmingDeleteEntryId(null)

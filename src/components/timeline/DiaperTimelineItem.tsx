@@ -1,10 +1,9 @@
-import { formatDistanceToNow } from 'date-fns'
 import { MoreHorizontal, Pencil, Save, Trash2 } from 'lucide-react'
 import { diaperEventLabel, diaperKinds, diaperLabel, formatTimelineTimestamp } from '../../domain/trackerDomain'
 import type { DiaperEvent } from '../../types'
 import { DeleteConfirmation } from './DeleteConfirmation'
 import type { TimelineActions } from './timelineTypes'
-import { DIAPER_KINDS, openMenu } from './timelineUtils'
+import { DIAPER_KINDS, formatTimelineAge, openMenu } from './timelineUtils'
 
 export function DiaperTimelineItem({ diaper, actions }: { diaper: DiaperEvent; actions: TimelineActions }) {
   const kinds = diaperKinds(diaper)
@@ -17,7 +16,8 @@ export function DiaperTimelineItem({ diaper, actions }: { diaper: DiaperEvent; a
     <li className={`timeline-item timeline-diaper timeline-diaper-${kinds.includes('stool') ? 'stool' : 'wet'} ${menuOpen ? 'menu-open' : ''}`}>
       <div className="timeline-row">
         <div className="timeline-main">
-          <div className="timeline-head"><strong>{timestamp.primary}</strong><span className={`badge badge-diaper ${kinds.includes('stool') ? 'badge-diaper-stool' : ''}`}>{diaperEventLabel(diaper)}</span><span className="timeline-age">{formatDistanceToNow(diaper.at, { addSuffix: true })}</span></div>
+          <div className="timeline-head"><strong>{timestamp.primary}</strong><span className={`badge badge-diaper ${kinds.includes('stool') ? 'badge-diaper-stool' : ''}`}>{diaperEventLabel(diaper)}</span></div>
+          <span className="timeline-age">{formatTimelineAge(diaper.at)}</span>
         </div>
         {!isEditing ? (
           <div className="entry-action-wrap">

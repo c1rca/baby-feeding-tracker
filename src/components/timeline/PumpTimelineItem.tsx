@@ -1,10 +1,9 @@
 import { MoreHorizontal, Pencil, Save, Trash2 } from 'lucide-react'
-import { formatDistanceToNow } from 'date-fns'
 import type { PumpEvent } from '../../types'
 import type { TimelineActions } from './timelineTypes'
 import { DeleteConfirmation } from './DeleteConfirmation'
 import { formatTimelineTimestamp } from '../../domain/trackerDomain'
-import { openMenu } from './timelineUtils'
+import { formatTimelineAge, openMenu } from './timelineUtils'
 
 const total = (event: PumpEvent) => (event.leftOunces ?? 0) + (event.rightOunces ?? 0)
 
@@ -16,7 +15,8 @@ export function PumpTimelineItem({ pumpEvent, actions }: { pumpEvent: PumpEvent;
   return <li className={`timeline-item timeline-pump ${menuOpen ? 'menu-open' : ''}`}>
     <div className="timeline-row">
       <div className="timeline-main">
-        <div className="timeline-head"><strong>{formatTimelineTimestamp(pumpEvent.startedAt).primary}</strong><span className="badge badge-pump">Pumping</span><span className="timeline-age">{formatDistanceToNow(pumpEvent.startedAt, { addSuffix: true })}</span></div>
+        <div className="timeline-head"><strong>{formatTimelineTimestamp(pumpEvent.startedAt).primary}</strong><span className="badge badge-pump">Pumping</span></div>
+        <span className="timeline-age">{formatTimelineAge(pumpEvent.startedAt)}</span>
         <div className="timeline-metrics">
           {pumpEvent.leftOunces !== null ? <span className="metric-chip">Left {pumpEvent.leftOunces} oz</span> : null}
           {pumpEvent.rightOunces !== null ? <span className="metric-chip">Right {pumpEvent.rightOunces} oz</span> : null}
