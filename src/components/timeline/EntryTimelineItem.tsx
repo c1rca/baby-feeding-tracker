@@ -23,8 +23,8 @@ export function EntryTimelineItem({ entry, index, actions }: { entry: Entry; ind
             <span className={`badge badge-${entry.type}`}>{timelineFeedLabel(entry)}</span>
             {entryDiapers.length ? <span className="badge badge-diaper">{diaperKindsLabel(entryDiapers)}</span> : null}
             <FeedMetricChips entry={entry} />
+            <span className="timeline-age">{formatDistanceToNow(entry.startedAt, { addSuffix: true })}</span>
           </div>
-          <span className="timeline-age">{formatDistanceToNow(entry.startedAt, { addSuffix: true })}</span>
           {entry.note ? <div className="note-chip">📝 {entry.note}</div> : null}
         </div>
         {!isEditing ? (

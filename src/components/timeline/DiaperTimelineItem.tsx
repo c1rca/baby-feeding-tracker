@@ -17,8 +17,7 @@ export function DiaperTimelineItem({ diaper, actions }: { diaper: DiaperEvent; a
     <li className={`timeline-item timeline-diaper timeline-diaper-${kinds.includes('stool') ? 'stool' : 'wet'} ${menuOpen ? 'menu-open' : ''}`}>
       <div className="timeline-row">
         <div className="timeline-main">
-          <div className="timeline-head"><strong>{timestamp.primary}</strong><span className={`badge badge-diaper ${kinds.includes('stool') ? 'badge-diaper-stool' : ''}`}>{diaperEventLabel(diaper)}</span></div>
-          <span className="timeline-age">{formatDistanceToNow(diaper.at, { addSuffix: true })}</span>
+          <div className="timeline-head"><strong>{timestamp.primary}</strong><span className={`badge badge-diaper ${kinds.includes('stool') ? 'badge-diaper-stool' : ''}`}>{diaperEventLabel(diaper)}</span><span className="timeline-age">{formatDistanceToNow(diaper.at, { addSuffix: true })}</span></div>
         </div>
         {!isEditing ? (
           <div className="entry-action-wrap">

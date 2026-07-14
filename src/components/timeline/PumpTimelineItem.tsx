@@ -16,8 +16,7 @@ export function PumpTimelineItem({ pumpEvent, actions }: { pumpEvent: PumpEvent;
   return <li className={`timeline-item timeline-pump ${menuOpen ? 'menu-open' : ''}`}>
     <div className="timeline-row">
       <div className="timeline-main">
-        <div className="timeline-head"><strong>{formatTimelineTimestamp(pumpEvent.startedAt).primary}</strong><span className="badge badge-pump">Pumping</span></div>
-        <span className="timeline-age">{formatDistanceToNow(pumpEvent.startedAt, { addSuffix: true })}</span>
+        <div className="timeline-head"><strong>{formatTimelineTimestamp(pumpEvent.startedAt).primary}</strong><span className="badge badge-pump">Pumping</span><span className="timeline-age">{formatDistanceToNow(pumpEvent.startedAt, { addSuffix: true })}</span></div>
         <div className="timeline-metrics">
           {pumpEvent.leftOunces !== null ? <span className="metric-chip">Left {pumpEvent.leftOunces} oz</span> : null}
           {pumpEvent.rightOunces !== null ? <span className="metric-chip">Right {pumpEvent.rightOunces} oz</span> : null}

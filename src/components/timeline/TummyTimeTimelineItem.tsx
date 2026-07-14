@@ -25,8 +25,8 @@ export function TummyTimeTimelineItem({ tummyTime, actions }: { tummyTime: Tummy
             <strong>{timestamp.primary}</strong>
             <span className={`badge badge-medicine ${isSleep ? 'badge-sleep' : 'badge-tummy'}`}>{isSleep ? <Moon size={13} /> : <Dumbbell size={13} />} {label}</span>
             <span className="metric-chip">{duration}</span>
+            <span className="timeline-age">{formatDistanceToNow(tummyTime.startedAt, { addSuffix: true })}</span>
           </div>
-          <span className="timeline-age">{formatDistanceToNow(tummyTime.startedAt, { addSuffix: true })}</span>
           {tummyTime.note ? <p className="entry-note">{tummyTime.note}</p> : null}
         </div>
         {!isEditing ? (

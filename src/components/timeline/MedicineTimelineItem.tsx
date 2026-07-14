@@ -19,8 +19,8 @@ export function MedicineTimelineItem({ medicine, actions }: { medicine: Medicine
           <div className="timeline-head">
             <strong>{timestamp.primary}</strong>
             <span className={`badge badge-medicine badge-medicine-${medicine.kind}`}><Pill size={13} /> {medicineLabel(medicine.kind)}</span>
+            <span className="timeline-age">{formatDistanceToNow(medicine.at, { addSuffix: true })}</span>
           </div>
-          <span className="timeline-age">{formatDistanceToNow(medicine.at, { addSuffix: true })}</span>
         </div>
         {!isEditing ? (
           <div className="entry-action-wrap">
