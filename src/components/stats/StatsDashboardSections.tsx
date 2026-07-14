@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { Activity, Baby, BarChart3, CalendarDays, Clock3, Droplets, Dumbbell, HeartPulse, Sparkles, Target, Trophy, Waves } from 'lucide-react'
+import { Activity, Baby, Clock3, Droplets, HeartPulse, MoonStar, Target, Trophy, Waves } from 'lucide-react'
 import { formatDuration } from '../../domain/feedingUtils'
 import type { calculateStats, calculateTrend } from '../../domain/trackerDomain'
 
@@ -8,29 +8,16 @@ type Trend = ReturnType<typeof calculateTrend>
 
 const formatAverage = (value: number) => value.toFixed(1)
 
-export function StatsHero({ stats }: { stats: Stats }) {
-  return (
-    <div className="stats-hero card">
-      <div className="stats-hero-copy">
-        <span className="stats-kicker"><Sparkles size={16} /> 7-day family rhythm</span>
-        <h2>{stats.recentEntries.length ? `${stats.recentEntries.length} feeds, beautifully tracked` : 'A beautiful stats story starts here'}</h2>
-        <p>{stats.recentEntries.length ? `A calm snapshot of feeding cadence, balance, bottles, and those tiny overnight hero moments.` : 'Log a few feeds and this page turns into a polished readout of your baby’s feeding rhythm.'}</p>
-      </div>
-      <div className="orbital-stat" aria-label="Weekly feeds"><strong>{stats.recentEntries.length}</strong><span>feeds this week</span></div>
-    </div>
-  )
-}
-
 export function InsightGrid({ stats }: { stats: Stats }) {
   return (
     <div className="insight-grid">
-      <article className="insight-card primary-insight"><Clock3 size={19} /><span>Average spacing</span><strong>{stats.avgGap ? formatDuration(stats.avgGap) : '—'}</strong><small>between recent feeds</small></article>
+      <article className="insight-card primary-insight"><Clock3 size={19} /><span>Average spacing</span><strong>{stats.avgGap ? formatDuration(stats.avgGap) : 'Not yet'}</strong><small>between recent feeds</small></article>
       <article className="insight-card"><Droplets size={19} /><span>Total bottle</span><strong>{stats.totalBottle.toFixed(1)} oz</strong><small>{stats.bottleFeeds} bottle feeds this week</small></article>
-      <article className="insight-card"><Baby size={19} /><span>Avg nursing</span><strong>{stats.avgNursing ? formatDuration(stats.avgNursing) : '—'}</strong><small>per nursing feed</small></article>
+      <article className="insight-card"><Baby size={19} /><span>Avg nursing</span><strong>{stats.avgNursing ? formatDuration(stats.avgNursing) : 'Not yet'}</strong><small>per nursing feed</small></article>
       <article className="insight-card"><Trophy size={19} /><span>Busiest day</span><strong>{stats.bestDay.label}</strong><small>{stats.bestDay.count} feeds logged</small></article>
       <article className="insight-card"><Activity size={19} /><span>24h momentum</span><strong>{stats.last24Entries.length}</strong><small>{stats.momentumLabel}</small></article>
       <article className="insight-card"><Waves size={19} /><span>Longest stretch</span><strong>{stats.longestGapLabel}</strong><small>between feeds this week</small></article>
-      <article className="insight-card"><HeartPulse size={19} /><span>Longest nursing</span><strong>{stats.longestNursing ? formatDuration(stats.longestNursing) : '—'}</strong><small>single feed stamina</small></article>
+      <article className="insight-card"><HeartPulse size={19} /><span>Longest nursing</span><strong>{stats.longestNursing ? formatDuration(stats.longestNursing) : 'Not yet'}</strong><small>single feed stamina</small></article>
       <article className="insight-card"><Target size={19} /><span>Next side cue</span><strong>{stats.nextSideLabel}</strong><small>{stats.balanceLabel}</small></article>
     </div>
   )
@@ -39,13 +26,13 @@ export function InsightGrid({ stats }: { stats: Stats }) {
 export function StatsStoryGrid({ stats }: { stats: Stats }) {
   return (
     <section className="stats-story-grid">
-      <article className="card story-card glow-story">
-        <span className="stats-kicker"><Sparkles size={15} /> Smart read</span>
+      <article className="card story-card">
+        <span className="stats-kicker">Smart read</span>
         <h2>{stats.recentEntries.length ? `${stats.avgFeedsPerDay} feeds/day cadence` : 'Cadence will appear here'}</h2>
         <p>{stats.recentEntries.length ? `The last 24 hours logged ${stats.last24Entries.length} feeds, with the longest calm stretch at ${stats.longestGapLabel}.` : 'Once feeds are logged, this card summarizes pace, recovery windows, and the shape of the week.'}</p>
       </article>
       <article className="card diaper-signal-card">
-        <div><span className="muted">Diaper signal</span><div className="diaper-signal-values"><strong>{stats.wetCount}<small>wet</small></strong><strong>{stats.stoolCount}<small>stool</small></strong></div></div>
+        <div><span className="stats-kicker">Diaper signal</span><div className="diaper-signal-values"><strong>{stats.wetCount}<small>wet</small></strong><strong>{stats.stoolCount}<small>stool</small></strong></div></div>
         <div className="diaper-average-grid" aria-label="Diaper daily averages">
           <div className="diaper-average-row">
             <span>Wet/day</span>
@@ -58,10 +45,10 @@ export function StatsStoryGrid({ stats }: { stats: Stats }) {
             <small>Today: {stats.diaperAverages.stool.today} · All-time: {formatAverage(stats.diaperAverages.stool.allTime)}</small>
           </div>
         </div>
-        <p>7-day averages with today and all-time context, counting mixed diapers toward both signals.</p>
+        <p>Averages cover the last 7 days; mixed diapers count toward both signals.</p>
       </article>
       <article className="card diaper-signal-card vitamin-stats-card">
-        <div><span className="muted">Vitamin D</span><div className="diaper-signal-values"><strong>{stats.vitaminDTakenToday ? '✓' : '—'}<small>{stats.vitaminDTakenToday ? 'Taken today' : 'Not today'}</small></strong><strong>{stats.vitaminDDosesThisWeek}<small>week</small></strong></div></div>
+        <div><span className="stats-kicker">Vitamin D</span><div className="diaper-signal-values"><strong>{stats.vitaminDTakenToday ? '✓' : '0'}<small>{stats.vitaminDTakenToday ? 'Taken today' : 'Not today'}</small></strong><strong>{stats.vitaminDDosesThisWeek}<small>week</small></strong></div></div>
         <div className="diaper-average-grid" aria-label="Vitamin D summary">
           <div className="diaper-average-row">
             <span>Daily vitamin</span>
@@ -69,7 +56,7 @@ export function StatsStoryGrid({ stats }: { stats: Stats }) {
             <small>{stats.vitaminDDosesThisWeek} {stats.vitaminDDosesThisWeek === 1 ? 'dose' : 'doses'} this week</small>
           </div>
         </div>
-        <p>Once-daily Vitamin D tracking with a daily status and weekly dose count.</p>
+        <p>One dose a day, tracked against the week.</p>
       </article>
     </section>
   )
@@ -79,7 +66,7 @@ export function FeedingHoursCard({ stats }: { stats: Stats }) {
   return (
     <section className="card feeding-hours-card" aria-label="Daily feeding hours">
       <div className="feeding-hours-copy">
-        <span className="stats-kicker"><BarChart3 size={15} /> Time invested</span>
+        <span className="stats-kicker">Time invested</span>
         <h2>{stats.totalNursing ? `${stats.avgFeedingHoursPerDay} hrs/day` : 'Hours per day will appear here'}</h2>
         <p>{stats.totalNursing ? `${formatDuration(stats.totalNursing)} of nursing time captured across the last 7 days.` : 'Log nursing sessions to see daily feeding-time intensity and patterns.'}</p>
       </div>
@@ -89,7 +76,7 @@ export function FeedingHoursCard({ stats }: { stats: Stats }) {
             <div className="feeding-hours-track" aria-label={`${day.label}: ${day.hours} feeding hours`}>
               <div style={{ height: `${Math.max(day.seconds ? 12 : 0, (day.seconds / stats.maxFeedingSeconds) * 100)}%` }} />
             </div>
-            <strong>{day.hours ? `${day.hours}h` : '—'}</strong>
+            <strong>{day.hours ? `${day.hours}h` : ''}</strong>
             <span>{day.label}</span>
           </div>
         ))}
@@ -103,7 +90,7 @@ export function TummyTimeStatsCard({ stats }: { stats: Stats }) {
   return (
     <section className="card tummy-stats-card" aria-label="Tummy Time stats">
       <div className="tummy-stats-copy">
-        <span className="stats-kicker"><Dumbbell size={15} /> Tummy Time</span>
+        <span className="stats-kicker">Tummy Time</span>
         <h2>{hasTummyTime ? `${stats.tummyMinutesToday}/${stats.tummyDailyGoalMinutes} min today` : 'Tummy Time starts here'}</h2>
         <p>{hasTummyTime ? `${stats.tummyTotalMinutes} minutes captured this week · ${stats.tummyGoalDays} goal ${stats.tummyGoalDays === 1 ? 'day' : 'days'}.` : 'Log quick adds or use the timer to see daily progress, weekly consistency, and best-day momentum.'}</p>
       </div>
@@ -113,13 +100,13 @@ export function TummyTimeStatsCard({ stats }: { stats: Stats }) {
       </div>
       <div className="tummy-mini-stats" aria-label="Tummy Time summary">
         <div><span>Daily avg</span><strong>{stats.tummyAverageMinutesPerDay}m</strong></div>
-        <div><span>Best day</span><strong>{stats.tummyBestDay.minutes ? `${stats.tummyBestDay.label} · ${stats.tummyBestDay.minutes}m` : '—'}</strong></div>
+        <div><span>Best day</span><strong>{stats.tummyBestDay.minutes ? `${stats.tummyBestDay.label} · ${stats.tummyBestDay.minutes}m` : 'Not yet'}</strong></div>
       </div>
       <div className="tummy-week-bars" aria-label="Tummy Time last 7 days">
         {stats.tummyDays.map((day) => (
           <div key={day.label} className="tummy-week-day">
             <div className="tummy-week-track" aria-label={`${day.label}: ${day.minutes} Tummy Time minutes`}><div style={{ height: `${Math.max(day.minutes ? 12 : 0, day.goalPercent)}%` }} /></div>
-            <strong>{day.minutes ? `${day.minutes}m` : '—'}</strong>
+            <strong>{day.minutes ? `${day.minutes}m` : ''}</strong>
             <span>{day.label}</span>
           </div>
         ))}
@@ -132,7 +119,7 @@ export function RhythmCard({ trend }: { trend: Trend }) {
   return (
     <section className="card rhythm-card">
       <div className="section-heading"><h2>Feeding rhythm</h2><span className="muted">Last 7 days</span></div>
-      <div className="rhythm-bars">{trend.days.map((day) => <div key={day.label} className="rhythm-day"><div className="rhythm-track"><div style={{ height: `${Math.max(10, (day.count / trend.max) * 100)}%` }} /></div><strong>{day.count}</strong><span>{day.label}</span></div>)}</div>
+      <div className="rhythm-bars">{trend.days.map((day) => <div key={day.label} className="rhythm-day"><div className="rhythm-track"><div style={{ height: `${Math.max(day.count ? 10 : 0, (day.count / trend.max) * 100)}%` }} /></div><strong>{day.count}</strong><span>{day.label}</span></div>)}</div>
     </section>
   )
 }
@@ -146,10 +133,9 @@ export function BalanceAndNightCards({ stats }: { stats: Stats }) {
         <div className="balance-labels"><span>L {formatDuration(stats.totalLeft)}</span><span>R {formatDuration(stats.totalRight)}</span></div>
       </article>
       <article className="card night-card">
-        <CalendarDays size={22} />
-        <h2>Night watch</h2>
-        <strong>{stats.nightFeeds}</strong>
-        <p>feeds logged between 10 PM and 6 AM this week.</p>
+        <div className="section-heading"><h2>Night watch</h2><span className="muted">10 PM to 6 AM</span></div>
+        <div className="night-count"><MoonStar size={22} /><strong>{stats.nightFeeds}</strong></div>
+        <p>{stats.nightFeeds === 1 ? 'overnight feed logged this week.' : 'overnight feeds logged this week.'}</p>
       </article>
     </section>
   )

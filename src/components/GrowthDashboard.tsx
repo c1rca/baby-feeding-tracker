@@ -118,9 +118,8 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
     <section className="growth-section growth-premium" aria-label="Growth percentile tracker">
       <div className="growth-hero-panel">
         <div className="growth-hero-copy">
-          <p className="eyebrow">Growth clinic</p>
-          <h2>Percentile tracking, beautifully organized.</h2>
-          <p>Chart weight, length, and head circumference against the currently loaded WHO/CDC male 0–24 month reference curves. If baby is not male, use the plotted measurements only until female standards are configured.</p>
+          <h2>Growth percentiles</h2>
+          <p>Weight, length, and head circumference plotted against the loaded WHO/CDC male 0-24 month reference curves. If baby is not male, read the plotted measurements rather than the percentile bands until female standards are configured.</p>
           <div className="growth-hero-actions">
             <button className="primary growth-open-modal" type="button" onClick={openAddModal}><Plus size={16} /> Add measurement</button>
             <span>{GROWTH_REFERENCE_SOURCE}</span>
@@ -128,7 +127,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
         </div>
         <div className="growth-hero-metric" aria-label="Latest growth snapshot">
           <span>{activeModel.metric.label}</span>
-          <strong>{activeModel.latest ? formatPercentileEstimate(activeModel.latest.percentileEstimate) : '—'}</strong>
+          <strong>{activeModel.latest ? formatPercentileEstimate(activeModel.latest.percentileEstimate) : 'No data'}</strong>
           <small>{activeModel.latest ? `${activeModel.metric.key === 'weight' ? formatWeight(activeModel.latest.value) : `${activeModel.latest.value} ${activeModel.metric.unit}`} · ${activeModel.latest.ageMonths} mo` : 'No measurement yet'}</small>
         </div>
       </div>
@@ -225,9 +224,6 @@ function GrowthChart({ model }: GrowthChartProps) {
   const y = (value: number) => 302 - ((value - min) / (max - min || 1)) * 230
   return (
     <svg className="growth-chart growth-chart-large" viewBox="0 0 650 340" role="img" aria-label={`${metric.label} percentile chart`}>
-      <defs>
-        <linearGradient id={`growthLine-${metric.key}`} x1="0" x2="1"><stop stopColor="#06b6d4" /><stop offset="1" stopColor="#6366f1" /></linearGradient>
-      </defs>
       <line x1="48" x2="608" y1="302" y2="302" />
       <line x1="48" x2="48" y1="54" y2="302" />
       {[0, 6, 12, 18, 24].map((month) => <text key={month} x={x(month)} y="326">{month} mo</text>)}

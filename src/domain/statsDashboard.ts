@@ -39,7 +39,7 @@ export const calculateStats = (
   const totalRight = recentEntries.reduce((sum, entry) => sum + entry.rightSeconds, 0)
   const balanceTotal = Math.max(1, totalLeft + totalRight)
   const leftPercent = Math.round((totalLeft / balanceTotal) * 100)
-  const bestDay = trendDays.reduce((best, day) => (day.count > best.count ? day : best), trendDays[0] ?? { label: '—', count: 0 })
+  const bestDay = trendDays.reduce((best, day) => (day.count > best.count ? day : best), trendDays[0] ?? { label: 'Not yet', count: 0 })
   const avgGap = averageGapSeconds(recentEntries)
   const nightFeeds = recentEntries.filter((entry) => {
     const hour = new Date(entry.endedAt).getHours()
@@ -80,7 +80,7 @@ export const calculateStats = (
   const tummyGoalPercentToday = Math.min(100, Math.round((tummyMinutesToday / tummyDailyGoalMinutes) * 100))
   const tummyGoalDays = tummyDays.filter((day) => day.minutes >= tummyDailyGoalMinutes).length
   const tummyAverageMinutesPerDay = roundTenth(tummyTotalMinutes / 7)
-  const tummyBestDay = tummyDays.reduce((best, day) => (day.minutes > best.minutes ? day : best), tummyDays[0] ?? { label: '—', minutes: 0, goalPercent: 0 })
+  const tummyBestDay = tummyDays.reduce((best, day) => (day.minutes > best.minutes ? day : best), tummyDays[0] ?? { label: 'Not yet', minutes: 0, goalPercent: 0 })
 
   return {
     recentEntries,
@@ -97,7 +97,7 @@ export const calculateStats = (
     avgFeedsPerDay,
     longestNursing,
     longestGap,
-    longestGapLabel: longestGap ? formatDuration(Math.round(longestGap / 1000)) : '—',
+    longestGapLabel: longestGap ? formatDuration(Math.round(longestGap / 1000)) : 'Not yet',
     bottleFeeds,
     wetCount,
     stoolCount,
