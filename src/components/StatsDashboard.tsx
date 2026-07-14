@@ -3,7 +3,7 @@ import { Baby, ChartNoAxesCombined, Droplets, Dumbbell, Milk } from 'lucide-reac
 import type { GrowthMeasurement } from '../domain/growthTypes'
 import type { calculateStats, calculateTrend } from '../domain/trackerDomain'
 import { GrowthDashboard } from './GrowthDashboard'
-import { BalanceAndNightCards, FeedingHoursCard, InsightGrid, RhythmCard, StatsHero, StatsStoryGrid, TummyTimeStatsCard } from './stats/StatsDashboardSections'
+import { BalanceAndNightCards, FeedingHoursCard, InsightGrid, RhythmCard, StatsStoryGrid, TummyTimeStatsCard } from './stats/StatsDashboardSections'
 
 const statsDestinations = [
   { href: '#feeding-stats', label: 'Feeding', detail: 'Rhythm & time', icon: Milk },
@@ -23,9 +23,8 @@ type StatsDashboardProps = {
 export function StatsDashboard({ stats, trend, growthMeasurements, setGrowthMeasurements, babyDob }: StatsDashboardProps) {
   return (
     <section className="stats-page" aria-label="Stats dashboard">
-      <StatsHero stats={stats} />
       <nav className="stats-jump-menu" aria-label="Jump to care insights">
-        <div className="stats-jump-menu-intro"><span><Baby size={15} /> Care at a glance</span><strong>Jump to what matters</strong></div>
+        <div className="stats-jump-menu-intro"><span><Baby size={15} /> Care at a glance</span><strong>{stats.recentEntries.length} feeds this week</strong></div>
         <div className="stats-jump-menu-links">
           {statsDestinations.map(({ href, label, detail, icon: Icon }) => (
             <a key={href} href={href} className="stats-jump-link"><Icon size={18} /><span><strong>{label}</strong><small>{detail}</small></span></a>

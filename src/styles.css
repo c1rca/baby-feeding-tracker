@@ -1691,11 +1691,11 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 @media (max-width: 760px) {
   .desktop-workspace-nav, .desktop-settings { display: none; }
   .top { align-items: center; gap: 8px; }
-  .stats-jump-menu { grid-template-columns: 1fr; gap: 8px; padding: 12px; border-radius: 20px; }
+  .stats-jump-menu { position: static; grid-template-columns: 1fr; gap: 8px; padding: 12px; border-radius: 20px; }
   .stats-jump-menu-intro { display: flex; align-items: baseline; justify-content: space-between; padding: 0 3px; }
-  .stats-jump-menu-links { display: flex; overflow-x: auto; padding: 1px; scroll-snap-type: x proximity; scrollbar-width: none; }
-  .stats-jump-menu-links::-webkit-scrollbar { display: none; }
-  .stats-jump-link { flex: 0 0 142px; scroll-snap-align: start; }
+  .stats-jump-menu-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; overflow: visible; padding: 0; }
+  .stats-jump-link { flex: none; min-height: 46px; padding: 7px 8px; }
+  .stats-jump-link small { display: none; }
   .top h1 { min-width: 0; flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .top-actions { flex: 0 0 auto; flex-wrap: nowrap; justify-content: flex-end; }
   .stats-hero { grid-template-columns: 1fr; min-height: unset; }

@@ -3,11 +3,11 @@ import { createPortal } from 'react-dom'
 import { Bell, Dumbbell, Pill, Sun, X } from 'lucide-react'
 import type { CareNotification } from './notificationModel'
 
-type Props = { notifications: CareNotification[] }
+type Props = { notifications: CareNotification[]; showBrief?: boolean }
 
 const iconFor = (kind: CareNotification['kind']) => kind === 'tummy_time' ? <Dumbbell size={17} /> : kind === 'vitamin_d' ? <Sun size={17} /> : <Pill size={17} />
 
-export function CareNotificationCenter({ notifications }: Props) {
+export function CareNotificationCenter({ notifications, showBrief = true }: Props) {
   const [open, setOpen] = useState(false)
   const [briefIndex, setBriefIndex] = useState(() => Math.floor(Math.random() * Math.max(notifications.length, 1)))
   const [isSliding, setIsSliding] = useState(false)
@@ -56,7 +56,7 @@ export function CareNotificationCenter({ notifications }: Props) {
     <button ref={openerRef} type="button" className={`care-notification-opener${isNudging ? ' is-nudging' : ''}`} aria-label={`Open care notifications, ${notifications.length} unresolved`} aria-expanded={open} aria-haspopup="dialog" onClick={() => setOpen((current) => !current)}>
       <Bell size={18} />{notifications.length ? <span className="care-notification-count" aria-hidden="true">{notifications.length}</span> : null}
     </button>
-    {!open && briefHost && brief ? createPortal(<aside className={`care-brief care-brief--${brief.kind}${isSliding ? ' is-sliding' : ''}`} role={brief.announcedRole} aria-label="Care reminder carousel" onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null }} onTouchEnd={(event) => { const end = event.changedTouches[0]?.clientX; if (touchStartX.current !== null && end !== undefined && Math.abs(end - touchStartX.current) > 36) cycleBrief(end < touchStartX.current ? 1 : -1); touchStartX.current = null }}><span className="care-brief-icon">{iconFor(brief.kind)}</span><div><strong>{brief.title}</strong><p>{brief.summary}</p></div><button type="button" className="care-brief-action" onClick={brief.action}>{brief.actionLabel}</button>{notifications.length > 1 ? <span className="care-brief-progress" aria-label={`Reminder ${briefIndex + 1} of ${notifications.length}`}>{notifications.map((notification, index) => <i key={notification.id} className={index === briefIndex ? 'is-active' : ''} />)}</span> : null}</aside>, briefHost) : null}
+    {showBrief && !open && briefHost && brief ? createPortal(<aside className={`care-brief care-brief--${brief.kind}${isSliding ? ' is-sliding' : ''}`} role={brief.announcedRole} aria-label="Care reminder carousel" onTouchStart={(event) => { touchStartX.current = event.touches[0]?.clientX ?? null }} onTouchEnd={(event) => { const end = event.changedTouches[0]?.clientX; if (touchStartX.current !== null && end !== undefined && Math.abs(end - touchStartX.current) > 36) cycleBrief(end < touchStartX.current ? 1 : -1); touchStartX.current = null }}><span className="care-brief-icon">{iconFor(brief.kind)}</span><div><strong>{brief.title}</strong><p>{brief.summary}</p></div><button type="button" className="care-brief-action" onClick={brief.action}>{brief.actionLabel}</button>{notifications.length > 1 ? <span className="care-brief-progress" aria-label={`Reminder ${briefIndex + 1} of ${notifications.length}`}>{notifications.map((notification, index) => <i key={notification.id} className={index === briefIndex ? 'is-active' : ''} />)}</span> : null}</aside>, briefHost) : null}
     {open ? createPortal(<><button type="button" className="care-notification-backdrop" aria-label="Close care notifications" onClick={close} /><div className="care-notification-panel" role="dialog" aria-label="Care notifications" aria-modal="true">
       <header className="care-notification-panel-header"><div><span>Care notifications</span><small>{notifications.length ? `${notifications.length} ${notifications.length === 1 ? 'needs' : 'need'} attention` : 'All caught up'}</small></div><button type="button" className="icon-plain" aria-label="Close care notifications" onClick={close}><X size={18} /></button></header>
       <div className="care-notification-list">
