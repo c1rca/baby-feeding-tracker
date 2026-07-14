@@ -1678,7 +1678,18 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .growth-modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
 
 /* ---------- 16. Responsive ---------- */
+/* Desktop uses the compact top workspace navigation; the sidebar remains a mobile-only bottom navigation. */
+@media (min-width: 761px) {
+  .app-shell { grid-template-columns: minmax(0, 1fr); }
+  .premium-sidebar { display: none; }
+  .desktop-workspace-nav { display: inline-flex; align-items: center; gap: 3px; padding: 4px; border: 1px solid var(--border); border-radius: 14px; background: color-mix(in srgb, var(--card-solid) 82%, transparent); }
+  .desktop-workspace-nav button { min-height: 34px; padding: 6px 12px; border: 0; border-radius: 10px; color: var(--ink-soft); background: transparent; box-shadow: none; font-size: .78rem; font-weight: 850; }
+  .desktop-workspace-nav button:hover { color: var(--ink); background: var(--raise); transform: none; }
+  .desktop-workspace-nav button.is-active { color: var(--ink); background: color-mix(in srgb, var(--berry) 13%, var(--card-solid)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--berry) 18%, transparent); }
+  .desktop-settings { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 6px 10px; font-size: .78rem; }
+}
 @media (max-width: 760px) {
+  .desktop-workspace-nav, .desktop-settings { display: none; }
   .top { align-items: center; gap: 8px; }
   .stats-jump-menu { grid-template-columns: 1fr; gap: 8px; padding: 12px; border-radius: 20px; }
   .stats-jump-menu-intro { display: flex; align-items: baseline; justify-content: space-between; padding: 0 3px; }
