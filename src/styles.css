@@ -1349,6 +1349,8 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 [data-theme='dark'] .settings-form-msg.is-success { color: #6ee7b7; }
 
 /* ---------- 14. Stats page ---------- */
+/* Let the Stats quick menu remain sticky within the document scroll container. */
+.app-shell { overflow: visible; }
 .stats-page { display: grid; gap: 16px; }
 .stats-anchor-section { display: grid; gap: 16px; scroll-margin-top: 104px; }
 .stats-jump-menu {
