@@ -56,16 +56,9 @@ export const parseDateAndTime = (dateValue: string, timeValue: string) => {
   return Number.isFinite(timestamp) ? timestamp : null
 }
 
-export const formatTimelineTimestamp = (timestamp: number, now = new Date().getTime()) => {
-  const ageMs = Math.max(0, now - timestamp)
-  if (ageMs < DAY_MS) return { primary: formatTime(timestamp), showRelative: true }
-  const date = new Date(timestamp)
-  const sameYear = date.getFullYear() === new Date(now).getFullYear()
-  return {
-    primary: `${date.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) })} · ${formatTime(timestamp)}`,
-    showRelative: true,
-  }
-}
+// Timeline rows sit under a sticky day-group header that already carries the
+// date, so each row only needs the time — no repeated "Sat, Jul 11" prefix.
+export const formatTimelineTimestamp = (timestamp: number) => ({ primary: formatTime(timestamp) })
 
 export const parseClockTimeToday = (value: string, referenceTime: number) => {
   const trimmed = value.trim().toLowerCase().replace(/\s+/g, '')

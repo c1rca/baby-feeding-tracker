@@ -10,7 +10,7 @@ import {
 describe('App interactions', () => {
   setupAppTestEnvironment()
 
-  it('shows an older entry with a calendar date after loading its day', async () => {
+  it('shows the date once in the day header and only the time on the older entry', async () => {
     const now = new Date(2026, 5, 10, 12, 0).getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(now)
@@ -23,7 +23,10 @@ describe('App interactions', () => {
     render(<App />)
     for (let day = 0; day < 6; day += 1) await user.click(screen.getByRole('button', { name: /Load older events/i }))
 
-    expect(screen.getByText(/Jun 4.*5:00 AM/i)).toBeTruthy()
+    // Date lives in the (sticky) day-group header, not on every row.
+    expect(screen.getByText(/Jun 4/i)).toBeTruthy()
+    expect(screen.getByText(/^5:00 AM$/i)).toBeTruthy()
+    expect(screen.queryByText(/Jun 4.*5:00 AM/i)).toBeNull()
     expect(screen.getByText(/6 days ago/i)).toBeTruthy()
   })
 

@@ -52,11 +52,10 @@ describe('trackerDomain', () => {
     expect(parseClockTimeToday('25:99', todayAt(12))).toBeNull()
   })
 
-  it('shows calendar date for timeline events older than 24 hours', () => {
-    const now = new Date(2026, 5, 21, 12, 0).getTime()
+  it('shows only the time for timeline events; the day header carries the date', () => {
     const olderThan24Hours = new Date(2026, 5, 20, 10, 30).getTime()
 
-    expect(formatTimelineTimestamp(olderThan24Hours, now).primary).toMatch(/^Sat, Jun 20 · 10:30 AM$/)
+    expect(formatTimelineTimestamp(olderThan24Hours).primary).toMatch(/^10:30 AM$/)
   })
 
   it('converts a saved entry into a resumable session on the correct side', () => {
