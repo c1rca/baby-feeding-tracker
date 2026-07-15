@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react'
 import type { DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, EditingTummyTimeState, View } from '../types'
 import { formatClockInput, formatDateInput, formatTimeInput } from '../domain/trackerDomain'
 import { useServerSync } from '../sync/useServerSync'
+import { persistLiveSyncEnabled, readLiveSyncEnabled } from '../sync/liveSyncSettings'
 import { usePersistentTrackerState } from './usePersistentTrackerState'
 import { useNotificationSettings } from '../notifications/useNotificationSettings'
 import { useUndoToast } from './useUndoToast'
@@ -84,8 +85,10 @@ export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyI
   const [resumeFocusTick, setResumeFocusTick] = useState(0)
   const heroRef = useRef<HTMLElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [liveSyncEnabled, setLiveSyncEnabledState] = useState(readLiveSyncEnabled)
+  const setLiveSyncEnabled = (enabled: boolean) => { setLiveSyncEnabledState(enabled); persistLiveSyncEnabled(enabled) }
 
-  const { syncStatus, hasHydrated } = useServerSync({ entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, selectedBabyId, setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setTummySession, setTummyGoalMinutes, setGrowthMeasurements, setBabyDob, setSession, setTheme })
+  const { syncStatus, hasHydrated, liveConflict, resolveLiveConflict, liveConnected } = useServerSync({ entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, selectedBabyId, liveSyncEnabled, setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setTummySession, setTummyGoalMinutes, setGrowthMeasurements, setBabyDob, setSession, setTheme })
   const { toast, undoState, setToast, setUndoState, showToast, undoToastText, undoLabel, undo } = useUndoToast({ setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setSession })
 
   useAppUiEffects({ setNow, resumeFocusTick, session, heroRef, setBottleOpen, setManualOpen, setPastEventOpen, setSettingsOpen, setSelectedDiapers, setEditingDiaper, openEntryMenuId, setOpenEntryMenuId, setConfirmingDeleteEntryId })
@@ -129,8 +132,9 @@ export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyI
     overview: { today, trend, tummyMinutesToday: stats.tummyMinutesToday, tummyGoalMinutes: stats.tummyDailyGoalMinutes, tummyGoalPercentToday: stats.tummyGoalPercentToday },
     timeline: { now, entries, diapers, medicines, tummyTimes, pumpEvents, editing, editingDiaper, editingMedicine, editingTummyTime, editingPump, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setEditingTummyTime, setEditingPump, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, deleteEntry, deleteDiaper, deleteMedicine, deleteTummyTime, deletePump: pumpActions.deletePump, startMedicineEdit, startTummyTimeEdit, startPumpEdit: pumpActions.startPumpEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, saveTummyTimeEdit, savePumpEdit: pumpActions.savePumpEdit, showToast },
   }
-  const modalsProps: TrackerModalsProps = { bottleOpen, manualOpen, pastEventOpen, settingsOpen, session, bottleQuickOz, manualDraft, pastEventDraft, entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, browserRemindersEnabled, notificationPermission, notificationPreferences, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, theme, fileInputRef, setBottleOpen, setManualOpen, setPastEventOpen, setSettingsOpen, setBottleQuickOz, setManualDraft, setPastEventDraft, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, setBrowserRemindersEnabled, setNotificationPreferences, setTheme, logBottle, saveManualFeed, savePastEvent, enableBrowserReminders, setGotifyReminders, setMedicineReminderSettings, showToast }
+  const modalsProps: TrackerModalsProps = { bottleOpen, manualOpen, pastEventOpen, settingsOpen, session, bottleQuickOz, manualDraft, pastEventDraft, entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, browserRemindersEnabled, liveSyncEnabled, notificationPermission, notificationPreferences, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, theme, fileInputRef, setBottleOpen, setManualOpen, setPastEventOpen, setSettingsOpen, setBottleQuickOz, setManualDraft, setPastEventDraft, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, setBrowserRemindersEnabled, setLiveSyncEnabled, setNotificationPreferences, setTheme, logBottle, saveManualFeed, savePastEvent, enableBrowserReminders, setGotifyReminders, setMedicineReminderSettings, showToast }
   const toastProps: AppToastProps = { toast, undoState, undoToastText, undoLabel, undo }
+  const liveSyncProps = { conflict: liveConflict, onResolve: resolveLiveConflict, connected: liveConnected }
 
-  return { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps }
+  return { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps, liveSyncProps }
 }

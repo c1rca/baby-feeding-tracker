@@ -7,6 +7,7 @@ import { archiveBaby, createBaby, fetchBabies, type BabySummary } from './babies
 import { PremiumSidebar } from './components/PremiumSidebar'
 import { AppToast } from './components/AppToast'
 import { CareNotificationCenter } from './components/notifications/CareNotificationCenter'
+import { LiveSyncConflictBanner } from './components/LiveSyncConflictBanner'
 import { buildCareNotifications } from './components/notifications/notificationModel'
 import { StatsDashboard } from './components/StatsDashboard'
 import { TrackerModals } from './components/TrackerModals'
@@ -33,7 +34,7 @@ type TrackerAppProps = {
 const syncLabel = { syncing: 'Syncing', synced: 'Online', offline: 'Offline changes saved', issue: 'Sync issue' } as const
 
 function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBabyIdChange, onCreateBaby, onArchiveBaby }: TrackerAppProps) {
-  const { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps } = useTrackerAppController({ selectedBabyId })
+  const { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps, liveSyncProps } = useTrackerAppController({ selectedBabyId })
   const careNotifications = buildCareNotifications({ ...medicineReminderProps, tummyTimeReminder: tummyTimeReminderProps.reminder, startTummyTime: tummyTimeReminderProps.startTummyTime, preferences: modalsProps.notificationPreferences, now: trackViewProps.timeline.now })
   const [profileName, setProfileName] = useState(() => window.localStorage.getItem('baby-feeding-tracker:v1:profile-name') || 'Mom')
   const saveProfileName = (name: string) => { const next = name.trim() || 'Mom'; setProfileName(next); window.localStorage.setItem('baby-feeding-tracker:v1:profile-name', next) }
@@ -54,6 +55,7 @@ function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBaby
       <div className="app-shell-content">
         <header className="workspace-topbar"><div className="workspace-brand"><span className="workspace-brand-mark"><Baby size={18} /></span><h1>Baby Tracker</h1></div><nav className="desktop-workspace-nav" aria-label="Workspace"><button type="button" className={activeWorkspace === 'track' ? 'is-active' : ''} aria-current={activeWorkspace === 'track' ? 'page' : undefined} onClick={() => navigateWorkspace('track')}>Track</button><button type="button" className={activeWorkspace === 'stats' ? 'is-active' : ''} aria-current={activeWorkspace === 'stats' ? 'page' : undefined} onClick={() => navigateWorkspace('stats')}>Insights</button></nav><div className="workspace-topbar-actions">{headerProps.syncStatus !== 'synced' ? <span className={`sync-pill sync-${headerProps.syncStatus}`} aria-label={`Sync status: ${syncLabel[headerProps.syncStatus]}`}>{syncLabel[headerProps.syncStatus]}</span> : null}<button type="button" className="desktop-settings" aria-label="Open settings" onClick={() => headerProps.setSettingsOpen(true)}><Settings2 size={18} /><span>Settings</span></button><CareNotificationCenter notifications={careNotifications} showBrief={activeWorkspace !== 'stats'} />{babies.length > 1 ? <select aria-label="Active baby" value={selectedBabyId} onChange={(event) => onSelectedBabyIdChange(event.target.value)}>{babies.map((baby) => <option key={baby.id} value={baby.id}>{baby.name}</option>)}</select> : null}</div></header>
         <div id="care-brief-slot" />
+        <LiveSyncConflictBanner conflict={liveSyncProps.conflict} onResolve={liveSyncProps.onResolve} />
         {activeWorkspace === 'track' ? <TrackView {...trackViewProps} /> : <StatsDashboard {...statsProps} />}
       </div>
       <TrackerModals {...modalsProps} profileName={profileName} setProfileName={saveProfileName} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} onLogout={onLogout} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} />

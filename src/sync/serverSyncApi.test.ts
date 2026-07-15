@@ -28,11 +28,11 @@ describe('serverSyncApi', () => {
 
     await saveServerState({ entries: [] }, { babyId: 'baby-2' })
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/state', {
+    expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'X-Baby-Id': 'baby-2' },
+      headers: expect.objectContaining({ 'Content-Type': 'application/json', 'X-Baby-Id': 'baby-2', 'X-Client-Id': expect.any(String) }),
       body: JSON.stringify({ entries: [] }),
-    })
+    }))
   })
 
   it('omits baby scope header when no selected baby exists', async () => {

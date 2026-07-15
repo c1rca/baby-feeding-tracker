@@ -51,15 +51,16 @@ describe('App interactions', () => {
     })
   })
 
-  it('hydrates saved server state without subscribing to live server events', async () => {
+  it('hydrates saved server state and opens the live event subscription by default', async () => {
     class MockEventSource {
       static instance: MockEventSource | null = null
       url: string
+      addEventListener = vi.fn()
+      close = vi.fn()
       constructor(url: string) {
         this.url = url
         MockEventSource.instance = this
       }
-      close = vi.fn()
     }
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -74,9 +75,11 @@ describe('App interactions', () => {
     render(<App />)
 
     await new Promise((resolve) => window.setTimeout(resolve, 10))
-    expect(MockEventSource.instance).toBeNull()
     expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' }))
     expect(screen.getByText(/On right/i)).toBeTruthy()
+    // Live sync is ON by default, so a read-only event subscription is opened.
+    expect(MockEventSource.instance).not.toBeNull()
+    expect(MockEventSource.instance?.url).toContain('/api/state/events')
   })
 
   it('saves local changes back to the server without pending cross-browser sync banners', async () => {

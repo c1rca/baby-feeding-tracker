@@ -1,5 +1,6 @@
 import { authFetch } from '../auth/authSession'
 import type { ServerState } from '../types'
+import { CLIENT_ID } from './clientId'
 import { API_STATE } from './serverSyncTypes'
 
 type ServerStateScope = {
@@ -19,7 +20,9 @@ export async function loadServerState(scope?: ServerStateScope) {
 }
 
 export async function saveServerState(body: unknown, scope?: ServerStateScope) {
-  const headers = { 'Content-Type': 'application/json', ...babyScopeHeaders(scope) }
+  // X-Client-Id lets the live stream tag this write's broadcast as ours so
+  // this tab ignores its own echo (other tabs/devices still receive it).
+  const headers = { 'Content-Type': 'application/json', 'X-Client-Id': CLIENT_ID, ...babyScopeHeaders(scope) }
   const response = await authFetch(API_STATE, {
     method: 'PUT',
     headers,

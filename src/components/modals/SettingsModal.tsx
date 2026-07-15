@@ -40,6 +40,8 @@ type SettingsModalProps = Pick<
   | 'setUndoState'
   | 'setFeedingNotificationsEnabled'
   | 'setBrowserRemindersEnabled'
+  | 'liveSyncEnabled'
+  | 'setLiveSyncEnabled'
   | 'setNotificationPreferences'
   | 'setTheme'
   | 'enableBrowserReminders'
@@ -50,11 +52,18 @@ type SettingsModalProps = Pick<
   | 'showToast'
 >
 
-function AppearanceSetting({ theme, setTheme }: { theme: 'light' | 'dark'; setTheme: (theme: 'light' | 'dark') => void }) {
+function AppearanceSetting({ theme, setTheme, liveSyncEnabled = true, setLiveSyncEnabled }: { theme: 'light' | 'dark'; setTheme: (theme: 'light' | 'dark') => void; liveSyncEnabled?: boolean; setLiveSyncEnabled?: (enabled: boolean) => void }) {
   const [skin, setSkin] = useState(readSkin)
 
   return (
     <div className="settings-card">
+      <div className="setting-row">
+        <span className="setting-row-text">
+          <strong>Live sync</strong>
+          <small>Show other devices' changes in real time as they happen. Turn off to fall back to sync-on-open on this device.</small>
+        </span>
+        <SettingToggle checked={liveSyncEnabled} onChange={(next) => setLiveSyncEnabled?.(next)} label="Live sync" disabled={!setLiveSyncEnabled} />
+      </div>
       <div className="setting-row">
         <span className="setting-row-text">
           <strong>Dark mode</strong>
@@ -303,7 +312,7 @@ const TAB_ORDER: TabDef[] = [
   { id: 'data', label: 'Data', icon: Database, title: 'Data', blurb: 'Export, import, or clear the log on this device.' },
 ]
 
-export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, browserRemindersEnabled, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setNotificationPreferences, setTheme, enableBrowserReminders, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
+export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, browserRemindersEnabled, liveSyncEnabled = true, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setLiveSyncEnabled, setNotificationPreferences, setTheme, enableBrowserReminders, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
   const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
   const [activeTab, setActiveTab] = useState<TabId>('reminders')
   const tablistRef = useRef<HTMLDivElement>(null)
@@ -437,7 +446,7 @@ export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, bro
             ) : null}
 
             {active.id === 'appearance' ? (
-              <AppearanceSetting theme={theme} setTheme={setTheme} />
+              <AppearanceSetting theme={theme} setTheme={setTheme} liveSyncEnabled={liveSyncEnabled} setLiveSyncEnabled={setLiveSyncEnabled} />
             ) : null}
 
             {active.id === 'account' ? (

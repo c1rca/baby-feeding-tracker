@@ -63,3 +63,43 @@ test('state event hub sends initial state, broadcasts updates, and removes close
   assert.equal(writes.at(-1), 'ended')
   assert.equal(writes.some((chunk) => chunk.includes('after-close')), false)
 })
+
+test('broadcastStateChange tags the origin so the writing client can ignore its own echo', () => {
+  const writes = []
+  const closeHandlers = []
+  const response = { set() {}, flushHeaders() {}, write: (chunk) => writes.push(chunk), end: () => {} }
+  const request = { on: (event, handler) => { if (event === 'close') closeHandlers.push(handler) } }
+  const hub = createStateEventHub({ selectState: { get: () => ({ theme: 'x' }) }, serializeState: (row) => ({ theme: row.theme }) })
+
+  hub.handleStateEvents(request, response)
+  hub.broadcastStateChange({ updatedAt: 'next' }, null, 'client-abc')
+  hub.broadcastStateChange({ updatedAt: 'plain' }, null, null)
+
+  assert.equal(writes.some((chunk) => chunk.includes('"origin":"client-abc"')), true)
+  // A broadcast without an origin must not inject an origin key.
+  assert.equal(writes.some((chunk) => chunk.includes('plain') && chunk.includes('"origin":')), false)
+  closeHandlers.forEach((handler) => handler())
+})
+
+test('state event hub scopes by the babyId query param when auth carries no baby (EventSource cannot send headers)', () => {
+  const babyAWrites = []
+  const babyBWrites = []
+  const closeHandlers = []
+  const makeResponse = (writes) => ({ set() {}, flushHeaders() {}, write: (chunk) => writes.push(chunk), end: () => {} })
+  const makeRequest = (query) => ({ query, on: (event, handler) => { if (event === 'close') closeHandlers.push(handler) } })
+  const hub = createStateEventHub({
+    selectState: { get: () => ({}) },
+    selectStateForBaby: { get: (householdId, babyId) => ({ theme: `${householdId}:${babyId}` }) },
+    serializeState: (row) => ({ theme: row.theme }),
+  })
+
+  hub.handleStateEvents(makeRequest({ babyId: 'baby-A' }), makeResponse(babyAWrites))
+  hub.handleStateEvents(makeRequest({ babyId: 'baby-B' }), makeResponse(babyBWrites))
+  hub.broadcastStateChange({ theme: 'A only' }, { householdId: 'default-household', babyId: 'baby-A' })
+
+  assert.equal(babyAWrites[1], 'data: {"theme":"default-household:baby-A"}\n\n')
+  assert.equal(babyBWrites[1], 'data: {"theme":"default-household:baby-B"}\n\n')
+  assert.equal(babyAWrites.some((chunk) => chunk.includes('A only')), true)
+  assert.equal(babyBWrites.some((chunk) => chunk.includes('A only')), false)
+  closeHandlers.forEach((handler) => handler())
+})

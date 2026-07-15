@@ -5,10 +5,17 @@ export const sendStateEvent = (res, event, payload) => {
   res.write(`data: ${JSON.stringify(payload)}\n\n`)
 }
 
-const scopeFromRequest = (req) => ({
-  householdId: req.auth?.householdId || DEFAULT_HOUSEHOLD_ID,
-  babyId: req.auth?.babyId || DEFAULT_BABY_ID,
-})
+// EventSource cannot send custom headers (no X-Baby-Id), so the live stream
+// accepts the baby scope via query param and falls back to the auth/default
+// scope. The client sends the SAME babyId it uses for its PUT/GET header, so
+// an SSE subscriber and a writer resolve to the same scope key and pair up.
+const scopeFromRequest = (req) => {
+  const queryBabyId = typeof req.query?.babyId === 'string' ? req.query.babyId.trim() : ''
+  return {
+    householdId: req.auth?.householdId || DEFAULT_HOUSEHOLD_ID,
+    babyId: queryBabyId || req.auth?.babyId || DEFAULT_BABY_ID,
+  }
+}
 
 const scopeKey = (scope) => `${scope.householdId}:${scope.babyId}`
 
@@ -20,10 +27,13 @@ export const createStateEventHub = ({ selectState, selectStateForBaby = null, se
     return selectState.get()
   }
 
-  const broadcastStateChange = (payload, scope = null) => {
+  // `origin` is the writer's X-Client-Id; it is echoed in the event so the
+  // originating tab can drop its own broadcast while other subscribers apply it.
+  const broadcastStateChange = (payload, scope = null, origin = null) => {
+    const data = origin ? { ...payload, origin } : payload
     for (const client of clients.values()) {
       if (scope && client.scopeKey !== scopeKey(scope)) continue
-      sendStateEvent(client.res, 'state', payload)
+      sendStateEvent(client.res, 'state', data)
     }
   }
 

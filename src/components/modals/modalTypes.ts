@@ -24,6 +24,7 @@ export type TrackerModalsProps = {
   tummyGoalMinutes: number
   feedingNotificationsEnabled: boolean
   browserRemindersEnabled: boolean
+  liveSyncEnabled: boolean
   notificationPermission: NotificationPermission
   notificationPreferences: NotificationPreferences
   gotifyAvailable: boolean
@@ -52,6 +53,7 @@ export type TrackerModalsProps = {
   setUndoState: (state: null) => void
   setFeedingNotificationsEnabled: (enabled: boolean) => void
   setBrowserRemindersEnabled: (enabled: boolean) => void
+  setLiveSyncEnabled: (enabled: boolean) => void
   setNotificationPreferences: (prefs: Partial<NotificationPreferences>) => void | Promise<void>
   setTheme: (theme: 'light' | 'dark') => void
   logBottle: (oz?: number) => void
