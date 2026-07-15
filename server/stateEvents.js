@@ -44,6 +44,12 @@ export const createStateEventHub = ({ selectState, selectStateForBaby = null, se
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
       Connection: 'keep-alive',
+      // Tell nginx/OpenResty-family reverse proxies NOT to buffer this response.
+      // Without it, proxy_buffering (on by default) holds back the small live
+      // frames — the large initial snapshot flushes so data loads on open, but
+      // subsequent pushes/heartbeats never reach the browser and live sync
+      // silently appears broken behind the proxy while working same-origin.
+      'X-Accel-Buffering': 'no',
     })
     res.flushHeaders?.()
     clients.set(clientId, { res, scope, scopeKey: scopeKey(scope) })

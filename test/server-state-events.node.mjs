@@ -40,6 +40,8 @@ test('state event hub sends initial state, broadcasts updates, and removes close
       assert.equal(headers['Content-Type'], 'text/event-stream')
       assert.equal(headers['Cache-Control'], 'no-cache')
       assert.equal(headers.Connection, 'keep-alive')
+      // Disables reverse-proxy (nginx/OpenResty) buffering so live frames stream.
+      assert.equal(headers['X-Accel-Buffering'], 'no')
     },
     flushHeaders() {},
     write: (chunk) => writes.push(chunk),
