@@ -13,14 +13,8 @@ type TodaySummary = {
   stool: number
 }
 
-type TrendSummary = {
-  max: number
-  days: Array<{ label: string; count: number }>
-}
-
 type TrackOverviewProps = {
   today: TodaySummary
-  trend: TrendSummary
   pumpedOzToday: number
   pumpCountToday: number
   showBottleStat: boolean
@@ -28,7 +22,7 @@ type TrackOverviewProps = {
   rhythm: DayRhythm
 }
 
-export function TrackOverview({ today, trend, pumpedOzToday, pumpCountToday, showBottleStat, showPumpStat, rhythm }: TrackOverviewProps) {
+export function TrackOverview({ today, pumpedOzToday, pumpCountToday, showBottleStat, showPumpStat, rhythm }: TrackOverviewProps) {
   return (
     <>
       <section className="grid">
@@ -40,11 +34,6 @@ export function TrackOverview({ today, trend, pumpedOzToday, pumpCountToday, sho
       </section>
 
       <DayRibbon rhythm={rhythm} />
-
-      <section className="card">
-        <div className="section-heading"><h2>7-Day Trend</h2><span className="muted">feeds per day</span></div>
-        <div className="trend" role="group" aria-label="7-day feeding trend">{trend.days.map((d) => <div key={d.label} className="trend-col" aria-label={`${d.label}: ${d.count} feeds`}><strong>{d.count}</strong><div className="trend-track"><div className="trend-bar" style={{ height: `${Math.max(12, (d.count / trend.max) * 100)}%` }} /></div><span>{d.label}</span></div>)}</div>
-      </section>
     </>
   )
 }
