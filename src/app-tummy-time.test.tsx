@@ -44,8 +44,8 @@ describe('care launcher timers', () => {
     await user.click(screen.getByRole('button', { name: /Start live timer/i }))
 
     expect(document.querySelector('.timer-value')).toBeTruthy()
-    expect(document.querySelector('.timer-mode-pill')).toBeTruthy()
     expect(document.querySelector('.timer-display-row')).toBeTruthy()
+    expect(document.querySelector('.timer-display-row .timer-mode-pill')).toBeTruthy()
   })
 
   it('starts Sleep directly from its visible launcher and exposes the same transport', async () => {
