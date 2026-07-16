@@ -139,7 +139,7 @@ describe('caregiver today brief', () => {
     ]))
     render(<App />)
 
-    const ribbon = screen.getByRole('img', { name: /Today's rhythm: 2 feeds, 1 diaper, 1 sleep, 1 tummy session/i })
+    const ribbon = screen.getByRole('group', { name: /Today's rhythm: 2 feeds, 1 diaper, 1 sleep, 1 tummy session/i })
     expect(ribbon).toBeTruthy()
     expect(document.querySelectorAll('.day-ribbon-feed')).toHaveLength(2)
     expect(document.querySelectorAll('.day-ribbon-tick')).toHaveLength(1)
@@ -173,7 +173,7 @@ describe('caregiver today brief', () => {
 
     expect(document.querySelector('.stat-bottle')).toBeNull()
     expect(document.querySelector('.pump-stat')).toBeNull()
-    expect(document.querySelector('.stat-feeds')).toBeTruthy()
+    expect(document.querySelector('.stat-feeds')).toBeNull()
     unmount()
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify([

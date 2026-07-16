@@ -18,6 +18,6 @@ describe('TrackOverview main page', () => {
     expect(screen.queryByRole('heading', { name: /Diapers today/i })).toBeNull()
     expect(screen.queryByRole('heading', { name: /Feeds today/i })).toBeNull()
     expect(screen.queryByRole('heading', { name: /^Nursing$/i })).toBeNull()
-    expect(screen.getByRole('img', { name: /today's rhythm/i })).toBeTruthy()
+    expect(screen.getByRole('group', { name: /today's rhythm/i })).toBeTruthy()
   })
 })
