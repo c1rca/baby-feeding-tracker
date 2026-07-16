@@ -139,6 +139,7 @@ export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyI
     hero: { session, activeSeconds, activeSplit, activeSide, activeOppositeSide, suggestedSide, nextFeedWindowText, nextFeedSideText, lastFeedMetaText, avgGapShortText, hasLastFeed: Boolean(lastFeed), startOffsetOpen, startInputMode, startClockText, startMinutesAgo, selectedStartMinutesAgo, selectedDiapers, availableSelectedDiapers, additionalOptionsOpen, tummySession, tummyActiveSeconds, setTummySession, setStartOffsetOpen, setStartInputMode, setStartClockText, setStartMinutesAgo, setAdditionalOptionsOpen, setBottleOpen, setManualOpen, setPastEventOpen, setSession, startSession, switchSide, pause, resume, endSession, clearSession, toggleDiaperSelection, logSelectedDiapers, logDiaperKinds, logMedicine, logTummyTimeMinutes, startTummyTime, pauseTummyTime: pauseCareTimer, resumeTummyTime: resumeCareTimer, stopTummyTime, startSleep, stopSleep, pumpSession, pumpActiveSeconds, startPumping: pumpActions.startPumping, startManualPumping: pumpActions.startManualPumping, pausePumping: pumpActions.pausePumping, resumePumping: pumpActions.resumePumping, stopPumping: pumpActions.stopPumping, clearPumping: pumpActions.clearPumping, savePumping: pumpActions.savePumping, pumpCompletionOpen, setPumpCompletionOpen },
     brief: {
       now,
+      hasHydrated,
       nextFeedWindow,
       vitaminDTakenToday: stats.vitaminDTakenToday,
       latestVitaminDAt: stats.latestVitaminD?.at ?? null,

@@ -48,6 +48,7 @@ type SettingsModalProps = Pick<
   | 'setGotifyReminders'
   | 'setMedicineReminderSettings'
   | 'onCreateBaby'
+  | 'onRenameBaby'
   | 'onArchiveBaby'
   | 'showToast'
 >
@@ -242,10 +243,12 @@ function HouseholdAccessSetting({ role, showToast }: { role?: string; showToast:
   )
 }
 
-function BabyManagementSetting({ babies = [], selectedBabyId = '', role, onCreateBaby, onArchiveBaby, showToast }: { babies?: SettingsModalProps['babies']; selectedBabyId?: string; role?: string; onCreateBaby?: SettingsModalProps['onCreateBaby']; onArchiveBaby?: SettingsModalProps['onArchiveBaby']; showToast: (message: string) => void }) {
+function BabyManagementSetting({ babies = [], selectedBabyId = '', role, onCreateBaby, onRenameBaby, onArchiveBaby, showToast }: { babies?: SettingsModalProps['babies']; selectedBabyId?: string; role?: string; onCreateBaby?: SettingsModalProps['onCreateBaby']; onRenameBaby?: SettingsModalProps['onRenameBaby']; onArchiveBaby?: SettingsModalProps['onArchiveBaby']; showToast: (message: string) => void }) {
   const [name, setName] = useState('')
   const [dob, setDob] = useState('')
-  const canManage = role !== 'viewer' && !!onCreateBaby && !!onArchiveBaby
+  const [editingBabyId, setEditingBabyId] = useState<string | null>(null)
+  const [nameDraft, setNameDraft] = useState('')
+  const canManage = role !== 'viewer' && !!onCreateBaby && !!onRenameBaby && !!onArchiveBaby
 
   const submitBaby = async () => {
     const trimmedName = name.trim()
@@ -262,12 +265,22 @@ function BabyManagementSetting({ babies = [], selectedBabyId = '', role, onCreat
     <div className="settings-group">
       <p className="settings-group-label">Babies</p>
       <div className="settings-card">
-        {babies.map((baby) => (
-          <div key={baby.id} className="setting-row settings-list-row">
-            <span><strong>{baby.name}</strong>{baby.id === selectedBabyId ? <small>Active</small> : null}</span>
-            {canManage && babies.length > 1 ? <button type="button" className="danger" onClick={async () => { const ok = await onArchiveBaby(baby.id); showToast(ok ? 'Baby archived' : 'Could not archive baby') }} disabled={baby.id === selectedBabyId} aria-label={`Archive ${baby.name}`}>Archive</button> : null}
-          </div>
-        ))}
+        {babies.map((baby) => {
+          const editing = editingBabyId === baby.id
+          const saveName = async () => {
+            const nextName = nameDraft.trim()
+            if (!nextName || nextName === baby.name || !onRenameBaby) { setEditingBabyId(null); return }
+            const ok = await onRenameBaby(baby.id, nextName)
+            showToast(ok ? 'Baby name saved' : 'Could not save baby name')
+            if (ok) setEditingBabyId(null)
+          }
+          return (
+            <div key={baby.id} className="setting-row settings-list-row baby-name-row">
+              <span>{editing ? <input aria-label={`Baby name for ${baby.name}`} value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void saveName(); if (event.key === 'Escape') setEditingBabyId(null) }} autoFocus /> : <><strong>{baby.name}</strong>{baby.id === selectedBabyId ? <small>Active</small> : null}</>}</span>
+              {canManage ? <span className="baby-row-actions">{editing ? <><button type="button" className="primary" onClick={() => void saveName()} disabled={!nameDraft.trim()}>Save</button><button type="button" className="secondary" onClick={() => setEditingBabyId(null)}>Cancel</button></> : <button type="button" className="secondary" aria-label={`Edit ${baby.name} name`} onClick={() => { setNameDraft(baby.name); setEditingBabyId(baby.id) }}>Edit name</button>}{babies.length > 1 ? <button type="button" className="danger" onClick={async () => { const ok = await onArchiveBaby?.(baby.id); showToast(ok ? 'Baby archived' : 'Could not archive baby') }} disabled={baby.id === selectedBabyId} aria-label={`Archive ${baby.name}`}>Archive</button> : null}</span> : null}
+            </div>
+          )
+        })}
         {canManage ? (
           <div className="settings-form invite-form">
             <label>
@@ -312,7 +325,7 @@ const TAB_ORDER: TabDef[] = [
   { id: 'data', label: 'Data', icon: Database, title: 'Data', blurb: 'Export, import, or clear the log on this device.' },
 ]
 
-export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, browserRemindersEnabled, liveSyncEnabled = true, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setLiveSyncEnabled, setNotificationPreferences, setTheme, enableBrowserReminders, onCreateBaby, onArchiveBaby, showToast }: SettingsModalProps) {
+export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, browserRemindersEnabled, liveSyncEnabled = true, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setLiveSyncEnabled, setNotificationPreferences, setTheme, enableBrowserReminders, onCreateBaby, onRenameBaby, onArchiveBaby, showToast }: SettingsModalProps) {
   const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
   const [activeTab, setActiveTab] = useState<TabId>('reminders')
   const tablistRef = useRef<HTMLDivElement>(null)
@@ -401,7 +414,7 @@ export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, bro
 
             {active.id === 'baby' ? (
               <>
-                <BabyManagementSetting babies={babies} selectedBabyId={selectedBabyId} role={authUser?.role} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} showToast={showToast} />
+                <BabyManagementSetting babies={babies} selectedBabyId={selectedBabyId} role={authUser?.role} onCreateBaby={onCreateBaby} onRenameBaby={onRenameBaby} onArchiveBaby={onArchiveBaby} showToast={showToast} />
                 <div className="settings-card">
                   <label className="setting-row">
                     <span className="setting-row-text">

@@ -3,7 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { LoginScreen } from './auth/LoginScreen'
 import { useAuthGate } from './auth/useAuthGate'
 import { createHouseholdForOnboarding, type AuthUser } from './auth/authApi'
-import { archiveBaby, createBaby, fetchBabies, type BabySummary } from './babies/babyApi'
+import { archiveBaby, createBaby, fetchBabies, renameBaby, type BabySummary } from './babies/babyApi'
 import { PremiumSidebar } from './components/PremiumSidebar'
 import { AppToast } from './components/AppToast'
 import { CareNotificationCenter } from './components/notifications/CareNotificationCenter'
@@ -28,12 +28,13 @@ type TrackerAppProps = {
   selectedBabyId: string
   onSelectedBabyIdChange: (babyId: string) => void
   onCreateBaby: (input: { name: string; dob?: string }) => Promise<boolean>
+  onRenameBaby: (babyId: string, name: string) => Promise<boolean>
   onArchiveBaby: (babyId: string) => Promise<boolean>
 }
 
 const syncLabel = { syncing: 'Syncing', synced: 'Online', offline: 'Offline changes saved', issue: 'Sync issue' } as const
 
-function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBabyIdChange, onCreateBaby, onArchiveBaby }: TrackerAppProps) {
+function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBabyIdChange, onCreateBaby, onRenameBaby, onArchiveBaby }: TrackerAppProps) {
   const { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps, liveSyncProps } = useTrackerAppController({ selectedBabyId })
   const careNotifications = buildCareNotifications({ ...medicineReminderProps, tummyTimeReminder: tummyTimeReminderProps.reminder, startTummyTime: tummyTimeReminderProps.startTummyTime, preferences: modalsProps.notificationPreferences, now: trackViewProps.timeline.now })
   const [profileName, setProfileName] = useState(() => window.localStorage.getItem('baby-feeding-tracker:v1:profile-name') || 'Mom')
@@ -61,7 +62,7 @@ function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBaby
         <LiveSyncConflictBanner conflict={liveSyncProps.conflict} onResolve={liveSyncProps.onResolve} />
         {activeWorkspace === 'track' ? <TrackView {...trackViewProps} babyName={babies.find((baby) => baby.id === selectedBabyId)?.name} profileName={profileName} /> : <StatsDashboard {...statsProps} />}
       </div>
-      <TrackerModals {...modalsProps} profileName={profileName} setProfileName={saveProfileName} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} onLogout={onLogout} onCreateBaby={onCreateBaby} onArchiveBaby={onArchiveBaby} />
+      <TrackerModals {...modalsProps} profileName={profileName} setProfileName={saveProfileName} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} onLogout={onLogout} onCreateBaby={onCreateBaby} onRenameBaby={onRenameBaby} onArchiveBaby={onArchiveBaby} />
       <AppToast {...toastProps} />
     </main>
   )
@@ -152,6 +153,13 @@ function App() {
     return true
   }
 
+  const handleRenameBaby = async (babyId: string, name: string) => {
+    const baby = await renameBaby(babyId, name)
+    if (!baby) return false
+    setBabies((current) => current.map((item) => item.id === baby.id ? { ...item, name: baby.name } : item))
+    return true
+  }
+
   const handleArchiveBaby = async (babyId: string) => {
     const ok = await archiveBaby(babyId)
     if (!ok) return false
@@ -168,7 +176,7 @@ function App() {
   const selectedBabyExists = selectedBabyId ? babies.some((baby) => baby.id === selectedBabyId) : false
   const effectiveBabyId = selectedBabyExists ? selectedBabyId : (authUser?.babyId || selectedBabyId)
   const keyBabyId = effectiveBabyId || 'default'
-  return <TrackerApp key={`${epoch}:${keyBabyId}`} authUser={authUser} onLogout={logout} babies={babies} selectedBabyId={keyBabyId === 'default' ? '' : effectiveBabyId} onSelectedBabyIdChange={handleSelectedBabyIdChange} onCreateBaby={handleCreateBaby} onArchiveBaby={handleArchiveBaby} />
+  return <TrackerApp key={`${epoch}:${keyBabyId}`} authUser={authUser} onLogout={logout} babies={babies} selectedBabyId={keyBabyId === 'default' ? '' : effectiveBabyId} onSelectedBabyIdChange={handleSelectedBabyIdChange} onCreateBaby={handleCreateBaby} onRenameBaby={handleRenameBaby} onArchiveBaby={handleArchiveBaby} />
 }
 
 export default App

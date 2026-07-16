@@ -146,7 +146,7 @@ describe('App interactions', () => {
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')).toHaveLength(0)
   })
 
-  it('creates and archives babies from settings controls', async () => {
+  it('creates, renames, and archives babies from settings controls', async () => {
     const user = userEvent.setup()
     let babies = [
       { id: 'baby-1', name: 'Avery', dob: '2026-01-01' },
@@ -161,6 +161,11 @@ describe('App interactions', () => {
         const body = JSON.parse(String(init?.body || '{}')) as { name?: string; dob?: string }
         babies = [...babies, { id: 'baby-3', name: body.name || '', dob: body.dob || '' }]
         return new Response(JSON.stringify({ ok: true, baby: babies[2] }), { status: 201 })
+      }
+      if (url === '/api/babies/baby-1' && method === 'PATCH') {
+        const body = JSON.parse(String(init?.body || '{}')) as { name?: string }
+        babies = babies.map((baby) => baby.id === 'baby-1' ? { ...baby, name: body.name || baby.name } : baby)
+        return new Response(JSON.stringify({ ok: true, baby: { id: 'baby-1', name: babies[0].name } }), { status: 200 })
       }
       if (url === '/api/babies/baby-2' && method === 'DELETE') {
         babies = babies.filter((baby) => baby.id !== 'baby-2')
@@ -177,6 +182,12 @@ describe('App interactions', () => {
     await screen.findByLabelText(/Active baby/i)
     await user.click(screen.getByRole('button', { name: /Show settings/i }))
     await user.click(await screen.findByRole('tab', { name: /Baby/i }))
+    await user.click(screen.getByRole('button', { name: /Edit Avery name/i }))
+    await user.clear(screen.getByLabelText(/Baby name for Avery/i))
+    await user.type(screen.getByLabelText(/Baby name for Avery/i), 'Avery Rose')
+    await user.click(screen.getByRole('button', { name: /^Save$/i }))
+    await waitFor(() => expect(screen.getByText(/Baby name saved/i)).toBeTruthy())
+    expect(fetchMock).toHaveBeenCalledWith('/api/babies/baby-1', expect.objectContaining({ method: 'PATCH', body: JSON.stringify({ name: 'Avery Rose' }) }))
     await user.type(await screen.findByLabelText(/New baby name/i), 'Morgan')
     await user.type(screen.getByLabelText(/New baby date of birth/i), '2026-03-15')
     await user.click(screen.getByRole('button', { name: /Add baby/i }))

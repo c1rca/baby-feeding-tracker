@@ -149,7 +149,7 @@ describe('caregiver today brief', () => {
     render(<App />)
 
     // the needs list owns the reminder on the idle page; no duplicate floating banner
-    expect(screen.getByText(/Tylenol due/i)).toBeTruthy()
+    expect(await screen.findByText(/Tylenol due/i)).toBeTruthy()
     expect(document.querySelector('#care-brief-slot .care-brief')).toBeNull()
 
     // once a timer takes over the panel, the banner earns its slot back
@@ -186,7 +186,7 @@ describe('caregiver today brief', () => {
     localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'med-1', kind: 'tylenol', at: sevenHoursAgo }]))
     render(<App />)
 
-    expect(screen.getByText(/Tylenol due/i)).toBeTruthy()
+    expect(await screen.findByText(/Tylenol due/i)).toBeTruthy()
     expect(screen.getByText(/0 of 3 done/i)).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Log Tylenol dose/i }))
 

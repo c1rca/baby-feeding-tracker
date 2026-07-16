@@ -33,6 +33,21 @@ export async function createBaby(input: { name: string; dob?: string }): Promise
   }
 }
 
+export async function renameBaby(babyId: string, name: string): Promise<BabySummary | null> {
+  try {
+    const response = await authFetch(`/api/babies/${encodeURIComponent(babyId)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    })
+    if (!response.ok) return null
+    const data = await response.json() as { baby?: BabySummary }
+    return data.baby && typeof data.baby.id === 'string' && typeof data.baby.name === 'string' ? data.baby : null
+  } catch {
+    return null
+  }
+}
+
 export async function archiveBaby(babyId: string): Promise<boolean> {
   try {
     const response = await authFetch(`/api/babies/${encodeURIComponent(babyId)}`, { method: 'DELETE' })

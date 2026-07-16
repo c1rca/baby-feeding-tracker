@@ -90,6 +90,26 @@ test('baby create route rejects viewer role without inserting', () => {
   assert.deepEqual(calls, { inserts: 0, events: 0 })
 })
 
+test('baby rename route updates only the authenticated household and records the change', () => {
+  const calls = { updates: [], events: [] }
+  const app = mountRouter({
+    renameBaby: { run: (payload) => (calls.updates.push(payload), { changes: payload.id === 'baby-1' ? 1 : 0 }) },
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+  })
+  const res = createJsonResponse()
+
+  app.route('PATCH', '/api/babies/:id')({
+    params: { id: 'baby-1' },
+    auth: { userId: 'user-1', householdId: 'household-1', role: 'caregiver' },
+    body: { name: ' Rowan ' },
+  }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.deepEqual(res.body, { ok: true, baby: { id: 'baby-1', name: 'Rowan' } })
+  assert.deepEqual(calls.updates, [{ id: 'baby-1', household_id: 'household-1', name: 'Rowan' }])
+  assert.deepEqual(calls.events, [{ event: 'baby_rename', payload: { babyId: 'baby-1', householdId: 'household-1', userId: 'user-1' } }])
+})
+
 test('baby archive route archives only babies in the authenticated household', () => {
   const calls = { archives: [], events: [] }
   const app = mountRouter({

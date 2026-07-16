@@ -304,6 +304,11 @@ export function prepareTrackerStatements(db) {
       INSERT INTO babies (id, household_id, name, dob, archived_at, created_at)
       VALUES (@id, @household_id, @name, @dob, @archived_at, @created_at)
     `),
+    renameBaby: db.prepare(`
+      UPDATE babies
+      SET name = @name
+      WHERE id = @id AND household_id = @household_id AND archived_at IS NULL
+    `),
     archiveBaby: db.prepare(`
       UPDATE babies
       SET archived_at = @archived_at

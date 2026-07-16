@@ -12,6 +12,7 @@ export type CareBriefExtras = {
   now: number
   babyName?: string
   profileName?: string
+  hasHydrated: boolean
   nextFeedWindow: { startMs: number; endMs: number } | null
   vitaminDTakenToday: boolean
   latestVitaminDAt: number | null
@@ -54,7 +55,7 @@ const feedCue = (window: { startMs: number; endMs: number } | null, hasLastFeed:
 
 export function CareBrief(props: CareBriefProps) {
   const {
-    now, babyName, profileName, nextFeedWindow, vitaminDTakenToday, latestVitaminDAt, dueMedicines, givenMedicines, tummyMinutesToday, tummyGoalMinutes,
+    now, babyName, profileName, hasHydrated, nextFeedWindow, vitaminDTakenToday, latestVitaminDAt, dueMedicines, givenMedicines, tummyMinutesToday, tummyGoalMinutes,
     session, suggestedSide, nextFeedWindowText, lastFeedMetaText, avgGapShortText, hasLastFeed,
     startSession, logMedicine, startTummyTime,
     startOffsetOpen, startInputMode, startClockText, startMinutesAgo, selectedStartMinutesAgo,
@@ -66,8 +67,10 @@ export function CareBrief(props: CareBriefProps) {
   const cue = feedCue(nextFeedWindow, hasLastFeed, now)
   const tummyDone = tummyGoalMinutes > 0 && tummyMinutesToday >= tummyGoalMinutes
   const tummyPercent = Math.min(100, Math.round((tummyMinutesToday / Math.max(1, tummyGoalMinutes)) * 100))
-  const doneCount = (vitaminDTakenToday ? 1 : 0) + (tummyDone ? 1 : 0) + givenMedicines.length
-  const needsTotal = 2 + dueMedicines.length + givenMedicines.length
+  const visibleDueMedicines = hasHydrated ? dueMedicines : []
+  const visibleGivenMedicines = hasHydrated ? givenMedicines : []
+  const doneCount = (vitaminDTakenToday ? 1 : 0) + (tummyDone ? 1 : 0) + visibleGivenMedicines.length
+  const needsTotal = 2 + visibleDueMedicines.length + visibleGivenMedicines.length
   const otherSide = oppositeSide(suggestedSide)
 
   return (
@@ -88,8 +91,8 @@ export function CareBrief(props: CareBriefProps) {
         </div>
         <div className="hero-micro-meta today-brief-meta" aria-label="Feed timing summary">
           <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
+          {cue.state === 'first' || cue.state === 'rest' ? null : <span className="today-brief-cue" data-state={cue.state}>Next {cue.text}</span>}
           {avgGapShortText ? <span>{avgGapShortText}</span> : null}
-          {cue.state === 'first' || cue.state === 'rest' ? null : <span className="today-brief-cue" data-state={cue.state}>{cue.text}</span>}
         </div>
       </div>
 
@@ -137,7 +140,7 @@ export function CareBrief(props: CareBriefProps) {
             </div>
             {tummyDone ? null : <button type="button" className="care-need-action" aria-label="Start Tummy Time timer" onClick={startTummyTime}>Start</button>}
           </div>
-          {dueMedicines.map((medicine) => (
+          {visibleDueMedicines.map((medicine) => (
             <div key={medicine.id} className={`care-need care-need--${medicine.kind}`}>
               <span className="care-need-icon" aria-hidden="true"><Pill size={17} /></span>
               <div className="care-need-copy">
@@ -147,7 +150,7 @@ export function CareBrief(props: CareBriefProps) {
               <button type="button" className="care-need-action" aria-label={`Log ${medicine.label} dose`} onClick={() => logMedicine(medicine.kind)}>Log dose</button>
             </div>
           ))}
-          {givenMedicines.map((medicine) => (
+          {visibleGivenMedicines.map((medicine) => (
             <div key={medicine.kind} className={`care-need care-need--${medicine.kind} is-done`}>
               <span className="care-need-icon" aria-hidden="true"><Check size={17} /></span>
               <div className="care-need-copy">

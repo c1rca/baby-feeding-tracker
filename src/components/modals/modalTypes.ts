@@ -63,6 +63,7 @@ export type TrackerModalsProps = {
   setGotifyReminders: (enabled: boolean) => void | Promise<void>
   setMedicineReminderSettings: (settings: MedicineReminderSettings) => void | Promise<void>
   onCreateBaby?: (input: { name: string; dob?: string }) => Promise<boolean>
+  onRenameBaby?: (babyId: string, name: string) => Promise<boolean>
   onArchiveBaby?: (babyId: string) => Promise<boolean>
   showToast: (message: string) => void
 }
