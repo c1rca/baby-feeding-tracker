@@ -55,9 +55,9 @@ const feedCue = (window: { startMs: number; endMs: number } | null, hasLastFeed:
 
 export function CareBrief(props: CareBriefProps) {
   const {
-    now, babyName, profileName, hasHydrated, nextFeedWindow, vitaminDTakenToday, latestVitaminDAt, dueMedicines, givenMedicines, tummyMinutesToday, tummyGoalMinutes,
+    now, babyName, profileName, nextFeedWindow,
     session, suggestedSide, nextFeedWindowText, lastFeedMetaText, avgGapShortText, hasLastFeed,
-    startSession, logMedicine, startTummyTime,
+    startSession,
     startOffsetOpen, startInputMode, startClockText, startMinutesAgo, selectedStartMinutesAgo,
     setStartOffsetOpen, setStartInputMode, setStartClockText, setStartMinutesAgo,
   } = props
@@ -65,12 +65,6 @@ export function CareBrief(props: CareBriefProps) {
   const greetingLine = profileName?.trim() ? `${greeting}, ${profileName.trim()}` : greeting
   const dateText = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
   const cue = feedCue(nextFeedWindow, hasLastFeed, now)
-  const tummyDone = tummyGoalMinutes > 0 && tummyMinutesToday >= tummyGoalMinutes
-  const tummyPercent = Math.min(100, Math.round((tummyMinutesToday / Math.max(1, tummyGoalMinutes)) * 100))
-  const visibleDueMedicines = hasHydrated ? dueMedicines : []
-  const visibleGivenMedicines = hasHydrated ? givenMedicines : []
-  const doneCount = (vitaminDTakenToday ? 1 : 0) + (tummyDone ? 1 : 0) + visibleGivenMedicines.length
-  const needsTotal = 2 + visibleDueMedicines.length + visibleGivenMedicines.length
   const otherSide = oppositeSide(suggestedSide)
 
   return (
@@ -113,55 +107,6 @@ export function CareBrief(props: CareBriefProps) {
         setStartMinutesAgo={setStartMinutesAgo}
       />
 
-      <div className="care-needs">
-        <div className="care-needs-heading">
-          <h3>Today's needs</h3>
-          <span>{doneCount === needsTotal ? 'All caught up' : `${doneCount} of ${needsTotal} done`}</span>
-        </div>
-        <div className="care-needs-list" role="group" aria-label="Today's needs">
-          <div className={`care-need care-need--vitamin ${vitaminDTakenToday ? 'is-done' : ''}`}>
-            <span className="care-need-icon" aria-hidden="true">{vitaminDTakenToday ? <Check size={17} /> : <Sun size={17} />}</span>
-            <div className="care-need-copy">
-              <strong>Vitamin D</strong>
-              <small>{vitaminDTakenToday ? (latestVitaminDAt ? `Given at ${clockTime(latestVitaminDAt)}` : 'Done for today') : 'Not given yet'}</small>
-            </div>
-            {vitaminDTakenToday ? null : <button type="button" className="care-need-action" aria-label="Log Vitamin D dose" onClick={() => logMedicine('vitamin_d')}>Log dose</button>}
-          </div>
-          <div className={`care-need care-need--tummy ${tummyDone ? 'is-done' : ''}`}>
-            <span className="care-need-icon" aria-hidden="true">{tummyDone ? <Check size={17} /> : <Dumbbell size={17} />}</span>
-            <div className="care-need-copy">
-              <strong>Tummy time</strong>
-              <small>{tummyDone ? `Goal met with ${tummyMinutesToday} min` : `${tummyMinutesToday} of ${tummyGoalMinutes} min`}</small>
-              {tummyDone ? null : (
-                <div className="care-need-progress" role="progressbar" aria-label="Tummy time progress" aria-valuemin={0} aria-valuemax={tummyGoalMinutes} aria-valuenow={Math.min(tummyMinutesToday, tummyGoalMinutes)}>
-                  <div style={{ width: `${tummyPercent}%` }} />
-                </div>
-              )}
-            </div>
-            {tummyDone ? null : <button type="button" className="care-need-action" aria-label="Start Tummy Time timer" onClick={startTummyTime}>Start</button>}
-          </div>
-          {visibleDueMedicines.map((medicine) => (
-            <div key={medicine.id} className={`care-need care-need--${medicine.kind}`}>
-              <span className="care-need-icon" aria-hidden="true"><Pill size={17} /></span>
-              <div className="care-need-copy">
-                <strong>{medicine.label} due</strong>
-                <small>Last dose at {clockTime(medicine.at)}</small>
-              </div>
-              <button type="button" className="care-need-action" aria-label={`Log ${medicine.label} dose`} onClick={() => logMedicine(medicine.kind)}>Log dose</button>
-            </div>
-          ))}
-          {visibleGivenMedicines.map((medicine) => (
-            <div key={medicine.kind} className={`care-need care-need--${medicine.kind} is-done`}>
-              <span className="care-need-icon" aria-hidden="true"><Check size={17} /></span>
-              <div className="care-need-copy">
-                <strong>{medicine.label}</strong>
-                <small>Given at {clockTime(medicine.at)}</small>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
       <AdditionalOptions
         session={props.session}
         additionalOptionsOpen={props.additionalOptionsOpen}
@@ -187,4 +132,19 @@ export function CareBrief(props: CareBriefProps) {
       />
     </section>
   )
+}
+
+export function CareNeedsCard({ hasHydrated, vitaminDTakenToday, latestVitaminDAt, dueMedicines, givenMedicines, tummyMinutesToday, tummyGoalMinutes, logMedicine, startTummyTime }: Pick<CareBriefProps, 'hasHydrated' | 'vitaminDTakenToday' | 'latestVitaminDAt' | 'dueMedicines' | 'givenMedicines' | 'tummyMinutesToday' | 'tummyGoalMinutes' | 'logMedicine' | 'startTummyTime'>) {
+  const tummyDone = tummyGoalMinutes > 0 && tummyMinutesToday >= tummyGoalMinutes
+  const tummyPercent = Math.min(100, Math.round((tummyMinutesToday / Math.max(1, tummyGoalMinutes)) * 100))
+  const due = hasHydrated ? dueMedicines : []
+  const given = hasHydrated ? givenMedicines : []
+  const done = (vitaminDTakenToday ? 1 : 0) + (tummyDone ? 1 : 0) + given.length
+  const total = 2 + due.length + given.length
+  return <section className="card care-needs-card" aria-label="Today's needs"><div className="care-needs"><div className="care-needs-heading"><h3>Today's needs</h3><span>{done === total ? 'All caught up' : `${done} of ${total} done`}</span></div><div className="care-needs-list" role="group" aria-label="Today's needs">
+    <div className={`care-need care-need--vitamin ${vitaminDTakenToday ? 'is-done' : ''}`}><span className="care-need-icon" aria-hidden="true">{vitaminDTakenToday ? <Check size={17} /> : <Sun size={17} />}</span><div className="care-need-copy"><strong>Vitamin D</strong><small>{vitaminDTakenToday ? (latestVitaminDAt ? `Given at ${clockTime(latestVitaminDAt)}` : 'Done for today') : 'Not given yet'}</small></div>{vitaminDTakenToday ? null : <button type="button" className="care-need-action" aria-label="Log Vitamin D dose" onClick={() => logMedicine('vitamin_d')}>Log dose</button>}</div>
+    <div className={`care-need care-need--tummy ${tummyDone ? 'is-done' : ''}`}><span className="care-need-icon" aria-hidden="true">{tummyDone ? <Check size={17} /> : <Dumbbell size={17} />}</span><div className="care-need-copy"><strong>Tummy time</strong><small>{tummyDone ? `Goal met with ${tummyMinutesToday} min` : `${tummyMinutesToday} of ${tummyGoalMinutes} min`}</small>{tummyDone ? null : <div className="care-need-progress" role="progressbar" aria-label="Tummy time progress" aria-valuemin={0} aria-valuemax={tummyGoalMinutes} aria-valuenow={Math.min(tummyMinutesToday, tummyGoalMinutes)}><div style={{ width: `${tummyPercent}%` }} /></div>}</div>{tummyDone ? null : <button type="button" className="care-need-action" aria-label="Start Tummy Time timer" onClick={startTummyTime}>Start</button>}</div>
+    {due.map((medicine) => <div key={medicine.id} className={`care-need care-need--${medicine.kind}`}><span className="care-need-icon" aria-hidden="true"><Pill size={17} /></span><div className="care-need-copy"><strong>{medicine.label} due</strong><small>Last dose at {clockTime(medicine.at)}</small></div><button type="button" className="care-need-action" aria-label={`Log ${medicine.label} dose`} onClick={() => logMedicine(medicine.kind)}>Log dose</button></div>)}
+    {given.map((medicine) => <div key={medicine.kind} className={`care-need care-need--${medicine.kind} is-done`}><span className="care-need-icon" aria-hidden="true"><Check size={17} /></span><div className="care-need-copy"><strong>{medicine.label}</strong><small>Given at {clockTime(medicine.at)}</small></div></div>)}
+  </div></div></section>
 }

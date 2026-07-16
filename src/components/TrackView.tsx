@@ -1,5 +1,5 @@
 import type { ComponentProps, RefObject } from 'react'
-import { CareBrief, type CareBriefExtras } from './CareBrief'
+import { CareBrief, CareNeedsCard, type CareBriefExtras } from './CareBrief'
 import { HeroPanel } from './HeroPanel'
 import { Timeline } from './Timeline'
 import { TrackOverview } from './TrackOverview'
@@ -19,7 +19,7 @@ export function TrackView({ heroRef, hero, brief, babyName, profileName, overvie
   return (
     <>
       <div className="tracker-view">
-        {timing ? <HeroPanel ref={heroRef} {...hero} /> : <CareBrief {...hero} {...brief} babyName={babyName} profileName={profileName} />}
+        {timing ? <HeroPanel ref={heroRef} {...hero} /> : <><CareBrief {...hero} {...brief} babyName={babyName} profileName={profileName} /><CareNeedsCard {...hero} {...brief} /></>}
         <TrackOverview {...overview} />
       </div>
       <Timeline {...timeline} onLogPastEvent={() => hero.setPastEventOpen(true)} />

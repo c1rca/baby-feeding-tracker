@@ -19,7 +19,11 @@ describe('caregiver today brief', () => {
     expect(brief.textContent).toMatch(/Good afternoon, Mom/i)
     expect(brief.textContent).toMatch(/Friday, June 5/i)
     expect(brief.textContent).toMatch(/Next feed/i)
-    expect(brief.textContent).toMatch(/Today's needs/i)
+    expect(brief.textContent).not.toMatch(/Today's needs/i)
+    const needsCard = document.querySelector('.care-needs-card') as HTMLElement
+    expect(needsCard).toBeTruthy()
+    expect(needsCard.textContent).toMatch(/Today's needs/i)
+    expect(screen.getByRole('group', { name: /Care action launcher/i }).compareDocumentPosition(needsCard) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     // the feed timer stays out of the way until something is being timed
     expect(document.querySelector('.timer-shell')).toBeNull()
     expect(brief.textContent).not.toMatch(/0m 00s/)
