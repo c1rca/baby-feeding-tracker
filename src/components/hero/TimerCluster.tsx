@@ -31,7 +31,7 @@ export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide
       {pumpSession ? <span className="timer-mode-pill">Pumping</span> : tummySession ? <span className="timer-mode-pill">{tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</span> : null}
       <div className={`timer-shell ${timerState}`}>
         <div className="timer-halo" aria-hidden="true" />
-        <div className="timer">{formatDuration(displaySeconds)}</div>
+        <div className="timer timer-value">{formatDuration(displaySeconds)}</div>
       </div>
       {transport ? (
         <button

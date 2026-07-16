@@ -471,7 +471,8 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .suggestion { display: inline-flex; align-items: center; border-radius: 999px; padding: 7px 12px; background: var(--grad-primary); color: #fff; font-weight: 850; }
 
 /* timer */
-.timer-cluster { display: flex; align-items: center; gap: 14px; width: fit-content; max-width: 100%; margin: 10px 0 4px; }
+.timer-cluster { display: grid; grid-template-columns: max-content minmax(0, 1fr) max-content; align-items: center; column-gap: 14px; width: 100%; margin: 10px 0 4px; }
+.timer-cluster .timer-shell { justify-self: center; }
 .timer-mode-pill {
   display: inline-flex; align-items: center;
   border: 1px solid color-mix(in srgb, var(--hue-tummy) 40%, transparent);
@@ -483,6 +484,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
   font-weight: 900;
   letter-spacing: .06em;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 .timer-shell { position: relative; display: inline-grid; place-items: center; isolation: isolate; }
 .timer-halo {
@@ -498,6 +500,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 @keyframes breathe { 0%, 100% { transform: scale(.94); opacity: .75; } 50% { transform: scale(1.06); opacity: 1; } }
 .timer {
   font-family: var(--font-numeric);
+  white-space: nowrap;
   font-size: clamp(3.4rem, 12vw, 6.4rem);
   font-weight: 800;
   letter-spacing: -0.035em;

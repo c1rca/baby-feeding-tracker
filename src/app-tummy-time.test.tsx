@@ -37,6 +37,16 @@ describe('care launcher timers', () => {
     expect(JSON.parse(localStorage.getItem(TUMMY_SESSION_STORAGE_KEY) ?? 'null')).toBeNull()
   })
 
+  it('keeps the active timer duration and care mode label in explicit responsive no-wrap elements', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /^Tummy$/i }))
+    await user.click(screen.getByRole('button', { name: /Start live timer/i }))
+
+    expect(document.querySelector('.timer-value')).toBeTruthy()
+    expect(document.querySelector('.timer-mode-pill')).toBeTruthy()
+  })
+
   it('starts Sleep directly from its visible launcher and exposes the same transport', async () => {
     const user = userEvent.setup()
     render(<App />)
