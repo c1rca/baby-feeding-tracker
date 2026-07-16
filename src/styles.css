@@ -473,9 +473,10 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 /* timer */
 .timer-cluster { display: grid; justify-items: stretch; width: 100%; margin: 10px 0 4px; }
 .timer-display-row { display:grid; grid-template-columns:minmax(0,1fr) max-content minmax(0,1fr); align-items:center; column-gap:clamp(12px, 2vw, 28px); width:100%; }
-.timer-display-row--feed { grid-template-columns:max-content minmax(0,1fr); }
+.timer-display-row--feed { grid-template-columns:max-content max-content; column-gap:clamp(14px, 2vw, 22px); }
 .timer-display-row--feed .timer-shell { justify-self:start; }
-.timer-display-row--feed .transport-toggle { justify-self:end; }
+.timer-display-row--feed .timer { font-size:clamp(3.4rem, 10vw, 6.4rem); }
+.timer-display-row--feed .transport-toggle { justify-self:start; }
 .timer-display-row--balanced .timer-shell { min-width:0; }
 .timer-display-row .timer-mode-pill { justify-self:start; }
 .timer-display-row .timer-shell { justify-self:center; }
