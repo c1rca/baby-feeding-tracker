@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { DayRhythm } from '../domain/dayRhythm'
 
 const clockTime = (at: number) => new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -18,6 +18,15 @@ export function DayRibbon({ rhythm }: { rhythm: DayRhythm }) {
   const { dayStartMs, dayEndMs, nowMs, feeds, diapers, spans, summary } = rhythm
   const [active, setActive] = useState<Detail | null>(null)
   const [pinned, setPinned] = useState(false)
+  const cardRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const dismissOutside = (event: PointerEvent) => {
+      if (cardRef.current?.contains(event.target as Node)) return
+      setActive(null); setPinned(false)
+    }
+    document.addEventListener('pointerdown', dismissOutside)
+    return () => document.removeEventListener('pointerdown', dismissOutside)
+  }, [])
   const dayMs = dayEndMs - dayStartMs
   const pct = (at: number) => `${(((at - dayStartMs) / dayMs) * 100).toFixed(2)}%`
   const widthPct = (start: number, end: number) => `${(Math.max(end - start, 0) / dayMs * 100).toFixed(2)}%`
@@ -27,7 +36,7 @@ export function DayRibbon({ rhythm }: { rhythm: DayRhythm }) {
   const leave = () => { if (!pinned) setActive(null) }
 
   return (
-    <section className="card day-ribbon-card">
+    <section ref={cardRef} className="card day-ribbon-card">
       <div className="section-heading"><h2>Today's rhythm</h2><span className="muted">{isEmpty ? 'a fresh day' : summary}</span></div>
       <div className="day-ribbon" role="group" aria-label={isEmpty ? "Today's rhythm: nothing logged yet" : `Today's rhythm: ${summary}`} onMouseLeave={leave}>
         <div className="day-ribbon-track">

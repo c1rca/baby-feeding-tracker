@@ -15,6 +15,17 @@ const rhythm = {
 }
 
 describe('DayRibbon details', () => {
+  it('dismisses a pinned detail when the caregiver taps outside the rhythm card', async () => {
+    const user = userEvent.setup()
+    const { unmount } = render(<><DayRibbon rhythm={rhythm} /><button type="button">Outside</button></>)
+
+    await user.click(screen.getByRole('button', { name: /Nursing at/i }))
+    expect(screen.getByRole('tooltip')).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: 'Outside' }))
+    expect(screen.queryByRole('tooltip')).toBeNull()
+    unmount()
+  })
+
   it('opens polished event data on click and switches between rhythm items', async () => {
     const user = userEvent.setup()
     render(<DayRibbon rhythm={rhythm} />)
