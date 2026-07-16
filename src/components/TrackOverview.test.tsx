@@ -15,9 +15,8 @@ describe('TrackOverview trend', () => {
     />)
 
     const chart = screen.getByRole('group', { name: /7-day feeding trend/i })
-    expect(within(chart).getByText(/Daily feed count/i)).toBeTruthy()
-    expect(within(chart).getByLabelText(/Sat: 9 feeds, today/i)).toBeTruthy()
+    expect(within(chart).queryByText(/Daily feed count/i)).toBeNull()
     expect(within(chart).getByLabelText('Sun: 19 feeds')).toBeTruthy()
-    expect(within(chart).getByLabelText(/Sat: 9 feeds, today/i)).toBeTruthy()
+    expect(within(chart).getByLabelText('Sat: 9 feeds')).toBeTruthy()
   })
 })

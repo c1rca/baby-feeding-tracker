@@ -28,22 +28,24 @@ export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide
 
   return (
     <div className="timer-cluster">
-      {pumpSession ? <span className="timer-mode-pill">Pumping</span> : tummySession ? <span className="timer-mode-pill">{tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</span> : null}
-      <div className={`timer-shell ${timerState}`}>
-        <div className="timer-halo" aria-hidden="true" />
-        <div className="timer timer-value">{formatDuration(displaySeconds)}</div>
+      {pumpSession || tummySession ? <span className="timer-mode-pill">{pumpSession ? 'Pumping' : tummySession?.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</span> : null}
+      <div className="timer-display-row">
+        <div className={`timer-shell ${timerState}`}>
+          <div className="timer-halo" aria-hidden="true" />
+          <div className="timer timer-value">{formatDuration(displaySeconds)}</div>
+        </div>
+        {transport ? (
+          <button
+            type="button"
+            className={`transport-toggle ${transport.paused ? 'is-paused' : 'is-playing'}`}
+            aria-label={ariaLabel}
+            title={transport.paused ? 'Resume' : 'Pause'}
+            onClick={transport.onToggle}
+          >
+            {transport.paused ? <CirclePlay size={22} /> : <CirclePause size={22} />}
+          </button>
+        ) : null}
       </div>
-      {transport ? (
-        <button
-          type="button"
-          className={`transport-toggle ${transport.paused ? 'is-paused' : 'is-playing'}`}
-          aria-label={ariaLabel}
-          title={transport.paused ? 'Resume' : 'Pause'}
-          onClick={transport.onToggle}
-        >
-          {transport.paused ? <CirclePlay size={22} /> : <CirclePause size={22} />}
-        </button>
-      ) : null}
     </div>
   )
 }

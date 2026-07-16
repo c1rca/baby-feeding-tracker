@@ -45,6 +45,7 @@ describe('care launcher timers', () => {
 
     expect(document.querySelector('.timer-value')).toBeTruthy()
     expect(document.querySelector('.timer-mode-pill')).toBeTruthy()
+    expect(document.querySelector('.timer-display-row')).toBeTruthy()
   })
 
   it('starts Sleep directly from its visible launcher and exposes the same transport', async () => {

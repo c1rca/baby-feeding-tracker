@@ -14,7 +14,7 @@ const feed = (id: string, h: number, type: Entry['type'] = 'breast'): Entry => (
 
 describe('buildDayRhythm', () => {
   it('collects only today, classifies markers, and summarizes accessibly', () => {
-    const entries = [feed('f-today', 8), feed('f-bottle', 11, 'bottle'), feed('f-yesterday', -5)]
+    const entries: Entry[] = [{ ...feed('f-today', 8), diaperKinds: ['wet'] }, feed('f-bottle', 11, 'bottle'), feed('f-yesterday', -5)]
     const diapers: DiaperEvent[] = [
       { id: 'd-wet', kinds: ['wet'], at: at(9), context: 'standalone' },
       { id: 'd-both', kinds: ['wet', 'stool'], at: at(12), context: 'standalone' },
@@ -28,9 +28,10 @@ describe('buildDayRhythm', () => {
     const rhythm = buildDayRhythm(entries, diapers, tummyTimes, now)
 
     expect(rhythm.feeds.map((f) => f.id)).toEqual(['f-today', 'f-bottle'])
-    expect(rhythm.diapers.map((d) => d.kind)).toEqual(['wet', 'mixed'])
+    expect(rhythm.diapers.map((d) => d.kind)).toEqual(['wet', 'wet', 'mixed'])
+    expect(rhythm.diapers.map((d) => d.id)).toContain('feed-diaper:f-today')
     expect(rhythm.spans.map((s) => s.kind)).toEqual(['tummy', 'sleep'])
-    expect(rhythm.summary).toBe('2 feeds, 2 diapers, 1 sleep, 1 tummy session')
+    expect(rhythm.summary).toBe('2 feeds, 3 diapers, 1 sleep, 1 tummy session')
     expect(rhythm.nowMs).toBe(now)
   })
 

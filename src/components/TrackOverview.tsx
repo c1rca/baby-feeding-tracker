@@ -42,14 +42,8 @@ export function TrackOverview({ today, trend, pumpedOzToday, pumpCountToday, sho
       <DayRibbon rhythm={rhythm} />
 
       <section className="card">
-        <div className="section-heading"><div><h2>7-Day Trend</h2><span className="muted">A compact view of feeding rhythm</span></div><span className="trend-average">{(trend.days.reduce((sum, day) => sum + day.count, 0) / Math.max(1, trend.days.length)).toFixed(1)} avg</span></div>
-        <div className="trend" role="group" aria-label="7-day feeding trend">
-          <span className="sr-only">Daily feed count</span>
-          {trend.days.map((d, index) => {
-            const isToday = index === trend.days.length - 1
-            return <div key={d.label} className={`trend-col${isToday ? ' is-today' : ''}`} aria-label={`${d.label}: ${d.count} feeds${isToday ? ', today' : ''}`}><strong>{d.count}</strong><div className="trend-track"><div className="trend-bar" style={{ height: `${Math.max(10, (d.count / Math.max(1, trend.max)) * 100)}%` }} /></div><span>{d.label}</span></div>
-          })}
-        </div>
+        <div className="section-heading"><h2>7-Day Trend</h2><span className="muted">feeds per day</span></div>
+        <div className="trend" role="group" aria-label="7-day feeding trend">{trend.days.map((d) => <div key={d.label} className="trend-col" aria-label={`${d.label}: ${d.count} feeds`}><strong>{d.count}</strong><div className="trend-track"><div className="trend-bar" style={{ height: `${Math.max(12, (d.count / trend.max) * 100)}%` }} /></div><span>{d.label}</span></div>)}</div>
       </section>
     </>
   )

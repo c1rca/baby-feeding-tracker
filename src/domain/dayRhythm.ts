@@ -1,4 +1,5 @@
 import type { DiaperEvent, Entry, TummyTimeEvent } from '../types'
+import { entryDiaperKinds } from './labels'
 import { startOfLocalDayMs } from './tummyTime'
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -39,13 +40,22 @@ export function buildDayRhythm(entries: Entry[], diapers: DiaperEvent[], tummyTi
     }))
     .sort((a, b) => a.atMs - b.atMs)
 
-  const rhythmDiapers = diapers
-    .filter((diaper) => inDay(diaper.at))
-    .map((diaper) => {
-      const kinds = diaperKindsOf(diaper)
-      const kind: RhythmDiaper['kind'] = kinds.length > 1 ? 'mixed' : (kinds[0] ?? 'wet')
-      return { id: diaper.id, atMs: diaper.at, kind }
-    })
+  const rhythmDiapers = [
+    ...diapers
+      .filter((diaper) => inDay(diaper.at))
+      .map((diaper) => {
+        const kinds = diaperKindsOf(diaper)
+        const kind: RhythmDiaper['kind'] = kinds.length > 1 ? 'mixed' : (kinds[0] ?? 'wet')
+        return { id: diaper.id, atMs: diaper.at, kind }
+      }),
+    ...entries
+      .filter((entry) => inDay(entry.endedAt) && entryDiaperKinds(entry).length > 0)
+      .map((entry) => {
+        const kinds = entryDiaperKinds(entry)
+        const kind: RhythmDiaper['kind'] = kinds.length > 1 ? 'mixed' : kinds[0]
+        return { id: `feed-diaper:${entry.id}`, atMs: entry.endedAt, kind }
+      }),
+  ]
     .sort((a, b) => a.atMs - b.atMs)
 
   const spans = tummyTimes
