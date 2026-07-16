@@ -202,12 +202,10 @@ body { margin: 0; }
 .tracker-view > .card:last-child .section-heading { margin-bottom:4px; }
 .tracker-view > .card:last-child .section-heading h2 { font-size:.92rem; }
 .tracker-view > .card:last-child .trend-track, .tracker-view > .card:last-child .trend-bar { max-height:18px; }
-.today-brief-status { display:inline-flex; align-items:center; gap:6px; margin-top:3px; font-size:.9rem; font-weight:850; color:#475569; }
-.today-brief-focal[data-state='open'] .today-brief-status { color:#b45309; }
-.today-brief-focal[data-state='late'] .today-brief-status { color:#be123c; }
-[data-theme='dark'] .today-brief-status { color:#94a3b8; }
-[data-theme='dark'] .today-brief-focal[data-state='open'] .today-brief-status { color:#fbbf24; }
-[data-theme='dark'] .today-brief-focal[data-state='late'] .today-brief-status { color:#fda4af; }
+.today-brief-cue[data-state='open'] { color:#b45309; }
+.today-brief-cue[data-state='late'] { color:#be123c; }
+[data-theme='dark'] .today-brief-cue[data-state='open'] { color:#fbbf24; }
+[data-theme='dark'] .today-brief-cue[data-state='late'] { color:#fda4af; }
 .day-ribbon-card .section-heading { margin-bottom:10px; }
 .day-ribbon-card .section-heading h2 { white-space:nowrap; }
 .day-ribbon-card .section-heading .muted { text-align:right; }

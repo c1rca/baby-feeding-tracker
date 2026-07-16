@@ -274,4 +274,68 @@ describe('useServerSync', () => {
     expect(localStorage.getItem('baby-feeding-tracker:v1:pending-sync')).toBeNull()
     expect(MockEventSource.instances).toHaveLength(0)
   })
+
+  it('fast-forwards a quiet tab to newer server state when it regains focus', async () => {
+    let getCount = 0
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PUT') return { ok: true, json: async () => ({ updatedAt: 'v-put' }) }
+      getCount += 1
+      if (getCount === 1) return { ok: true, json: async () => ({ entries: [entry('server-1', 2000)], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'v1' }) }
+      return { ok: true, json: async () => ({ entries: [entry('server-2', 5000)], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'v2' }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness />)
+    await waitFor(() => expect(screen.getByTestId('entries').textContent).toBe('server-1'))
+
+    // A backgrounded tab returning to the foreground pulls the latest snapshot.
+    window.dispatchEvent(new Event('focus'))
+    await waitFor(() => expect(screen.getByTestId('entries').textContent).toBe('server-2'))
+    expect(putCalls(fetchMock).length).toBe(0)
+  })
+
+  it('coalesces a focus + visibility burst into a single background pull', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PUT') return { ok: true, json: async () => ({ updatedAt: 'v-put' }) }
+      return { ok: true, json: async () => ({ entries: [entry('server-1', 2000)], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'v1' }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness />)
+    await waitFor(() => expect(screen.getByTestId('entries').textContent).toBe('server-1'))
+    const getsAfterLoad = fetchMock.mock.calls.filter((call) => call[1]?.method !== 'PUT').length
+
+    // Returning to a tab fires focus and visibilitychange together; the throttle
+    // must collapse them into one fetch, not a thundering herd.
+    window.dispatchEvent(new Event('focus'))
+    document.dispatchEvent(new Event('visibilitychange'))
+    window.dispatchEvent(new Event('focus'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const getsAfterBurst = fetchMock.mock.calls.filter((call) => call[1]?.method !== 'PUT').length
+    expect(getsAfterBurst - getsAfterLoad).toBe(1)
+  })
+
+  it('never overwrites unsaved local work with a background pull', async () => {
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PUT') return { ok: true, json: async () => ({ updatedAt: 'v-put', state: JSON.parse(String(init.body)) }) }
+      return { ok: true, json: async () => ({ entries: [entry('server-only', 2000)], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'v1' }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness />)
+    await waitFor(() => expect(screen.getByTestId('entries').textContent).toBe('server-only'))
+    const getsAfterLoad = fetchMock.mock.calls.filter((call) => call[1]?.method !== 'PUT').length
+
+    // Simulate unsaved local work queued for this baby. The read-only pull must
+    // stand down entirely (no GET, no apply) and leave reconciliation to the
+    // push path, so an in-progress edit is never clobbered by a stale fetch.
+    localStorage.setItem('baby-feeding-tracker:v1:pending-sync', '1')
+    window.dispatchEvent(new Event('focus'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const getsAfterFocus = fetchMock.mock.calls.filter((call) => call[1]?.method !== 'PUT').length
+    expect(getsAfterFocus).toBe(getsAfterLoad)
+    expect(screen.getByTestId('entries').textContent).toBe('server-only')
+  })
 })

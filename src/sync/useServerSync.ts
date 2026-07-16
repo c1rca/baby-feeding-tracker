@@ -1,12 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ServerState } from '../types'
-import { saveServerState } from './serverSyncApi'
+import { loadServerState, saveServerState } from './serverSyncApi'
 import { buildApiStatePayload } from './serverSyncModels'
 import { clearPendingSync, hasPendingSyncForBaby, markPendingSync, type SyncStatus, type SyncToApiOverrides, type UseServerSyncOptions } from './serverSyncTypes'
 import { useInitialServerSync } from './useInitialServerSync'
 import { useLatestServerPayload, useServerStateApplier } from './useServerStateApplier'
 import { usePendingSyncRetry, usePersistLocalChanges } from './useServerSyncEffects'
 import { useLiveStateStream } from './useLiveStateStream'
+import { useBackgroundResync } from './useBackgroundResync'
+
+// Coalesce a focus+visibilitychange burst (they fire together on tab return)
+// into a single fetch, while still letting the periodic poll through.
+const RESYNC_MIN_GAP_MS = 4000
 
 export type LiveSyncConflictChoice = 'theirs' | 'mine'
 
@@ -27,6 +32,8 @@ export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?
   // reads the latest payload — so the newest state still lands.
   const inFlightRef = useRef(false)
   const rerunRef = useRef(false)
+  const pullingRef = useRef(false)
+  const lastPullAtRef = useRef(0)
   const syncToApiRef = useRef<(overrides?: SyncToApiOverrides) => Promise<void>>(async () => {})
 
   const syncToApi = useCallback(async (overrides: SyncToApiOverrides = {}) => {
@@ -105,6 +112,41 @@ export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?
       return null
     })
   }, [applyServerState, selectedBabyId])
+
+  // Background resync (visibility/focus/online + a periodic fallback). This is
+  // read-only and strictly additive: it only ever fast-forwards a quiet viewer
+  // to a newer server snapshot. It bails whenever this device has unsaved work
+  // in flight or queued, whenever it is mid-apply, and whenever the fetched
+  // snapshot is not strictly newer than what we already hold — so it can never
+  // regress serverUpdatedAtRef, echo a write, or overwrite an in-progress edit.
+  // Anything pending is left to the push path, which merges via the server.
+  const pullLatest = useCallback(() => {
+    if (pullingRef.current || inFlightRef.current || applyingServerStateRef.current) return
+    if (hasPendingSyncForBaby(selectedBabyId)) return
+    const startedAt = Date.now()
+    if (startedAt - lastPullAtRef.current < RESYNC_MIN_GAP_MS) return
+    lastPullAtRef.current = startedAt
+    pullingRef.current = true
+    void (async () => {
+      try {
+        const incoming = await loadServerState({ babyId: selectedBabyId })
+        if (!incoming?.updatedAt) return
+        const known = serverUpdatedAtRef.current
+        if (known && incoming.updatedAt <= known) return // same or older snapshot — nothing to do
+        // Re-check after the await: a local edit or push may have begun while
+        // the fetch was outstanding, so defer to the push path if so.
+        if (inFlightRef.current || hasPendingSyncForBaby(selectedBabyId)) return
+        applyServerState(incoming)
+        setLiveConflict(null)
+      } catch {
+        // Transient network/offline errors are non-fatal — the next trigger retries.
+      } finally {
+        pullingRef.current = false
+      }
+    })()
+  }, [applyServerState, applyingServerStateRef, selectedBabyId, serverUpdatedAtRef])
+
+  useBackgroundResync({ pullLatest, liveConnected })
 
   useLiveStateStream({
     enabled: liveSyncEnabled,
