@@ -57,12 +57,15 @@
   --hue-breast: #e83e8c;
   --hue-bottle: #14b8a6;
   --hue-mixed: #8b5cf6;
-  --hue-wet: #38bdf8;
-  --hue-stool: #d97706;
+  --hue-diaper: #0284c7;
+  --hue-wet: #0ea5e9;
+  --hue-stool: #c77b18;
+  --hue-sleep: #4f46e5;
+  --hue-pumping: #0e7490;
   --hue-tylenol: #f97316;
   --hue-motrin: #ef4444;
   --hue-vitamin: #f59e0b;
-  --hue-tummy: #8b5cf6;
+  --hue-tummy: #7c3aed;
 
   --radius-card: 26px;
   --radius-chip: 999px;
@@ -108,12 +111,15 @@
   --hue-breast: #f472b6;
   --hue-bottle: #2dd4bf;
   --hue-mixed: #a78bfa;
+  --hue-diaper: #38bdf8;
   --hue-wet: #7dd3fc;
   --hue-stool: #fbbf24;
+  --hue-sleep: #a5b4fc;
+  --hue-pumping: #22d3ee;
   --hue-tylenol: #fb923c;
   --hue-motrin: #f87171;
   --hue-vitamin: #fbbf24;
-  --hue-tummy: #a78bfa;
+  --hue-tummy: #c084fc;
 }
 
 /* ---------- 2. Base ---------- */
@@ -698,7 +704,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .care-launcher { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 4px; }
 .care-launcher-button { --launcher-accent: var(--berry); min-height: 72px; display: grid; place-items: center; align-content: center; gap: 5px; padding: 8px 4px; border-radius: 16px; color: var(--launcher-accent); background: color-mix(in srgb, var(--launcher-accent) 9%, var(--card-solid)); border-color: color-mix(in srgb, var(--launcher-accent) 26%, transparent); box-shadow: none; font-size: .68rem; font-weight: 850; }
 .care-launcher-button:hover { transform: translateY(-2px); background: color-mix(in srgb, var(--launcher-accent) 16%, var(--card-solid)); border-color: color-mix(in srgb, var(--launcher-accent) 55%, transparent); }
-.care-launcher--diapers { --launcher-accent: #0f766e; }.care-launcher--tummy { --launcher-accent: var(--hue-tummy); }.care-launcher--sleep { --launcher-accent: #4f46e5; }.care-launcher--pumping { --launcher-accent: #0e7490; }.care-launcher--medicine { --launcher-accent: var(--hue-tylenol); }.care-launcher--bottle { --launcher-accent: var(--hue-bottle); }
+.care-launcher--diapers { --launcher-accent: var(--hue-diaper); }.care-launcher--tummy { --launcher-accent: var(--hue-tummy); }.care-launcher--sleep { --launcher-accent: var(--hue-sleep); }.care-launcher--pumping { --launcher-accent: var(--hue-pumping); }.care-launcher--medicine { --launcher-accent: var(--hue-tylenol); }.care-launcher--bottle { --launcher-accent: var(--hue-bottle); }
 @media (max-width: 560px) { .care-launcher { grid-template-columns: repeat(3, minmax(0, 1fr)); }.care-launcher-button { min-height: 64px; } }
 
 /* Premium sidebar preview */
@@ -748,9 +754,9 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
   animation: ao-card-in .3s both cubic-bezier(.2, .9, .3, 1.2);
 }
 .ao-card--tummy { --ao-accent: var(--hue-tummy); }
-.ao-card--sleep { --ao-accent: #4f46e5; }
-.ao-card--pumping { --ao-accent: #0e7490; }
-.ao-card--diapers { --ao-accent: #0f766e; }
+.ao-card--sleep { --ao-accent: var(--hue-sleep); }
+.ao-card--pumping { --ao-accent: var(--hue-pumping); }
+.ao-card--diapers { --ao-accent: var(--hue-diaper); }
 .ao-card--medicine { --ao-accent: var(--hue-tylenol); }
 .ao-card--bottle { --ao-accent: var(--hue-bottle); }
 .ao-card--missed { --ao-accent: var(--berry); }
@@ -1112,7 +1118,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .day-ribbon-tooltip > div { display:flex; align-items:baseline; justify-content:space-between; gap:10px; color:var(--ink-soft); font-size:.76rem; font-weight:700; }
 .day-ribbon-tooltip b { color:var(--ink); font-family:var(--font-numeric); font-size:.72rem; white-space:nowrap; }
 .day-ribbon-tooltip i { position:absolute; left:50%; top:100%; width:10px; height:10px; transform:translate(-50%,-5px) rotate(45deg); border-right:1px solid color-mix(in srgb,var(--tooltip-hue) 24%,var(--border)); border-bottom:1px solid color-mix(in srgb,var(--tooltip-hue) 24%,var(--border)); background:var(--card-solid); }
-.day-ribbon-tooltip--sleep { --tooltip-hue:var(--azure); } .day-ribbon-tooltip--tummy { --tooltip-hue:var(--hue-tummy); } .day-ribbon-tooltip--bottle { --tooltip-hue:var(--teal); }
+.day-ribbon-tooltip--sleep { --tooltip-hue:var(--hue-sleep); } .day-ribbon-tooltip--tummy { --tooltip-hue:var(--hue-tummy); } .day-ribbon-tooltip--bottle { --tooltip-hue:var(--teal); }
 .day-ribbon-tooltip--diaper-wet,.day-ribbon-tooltip--diaper-mixed { --tooltip-hue:var(--hue-wet); } .day-ribbon-tooltip--diaper-stool { --tooltip-hue:var(--hue-stool); }
 @keyframes rhythm-tip-in { from { opacity:0; transform:translate(-50%,5px) scale(.97); } to { opacity:1; transform:translate(-50%,0) scale(1); } }
 
