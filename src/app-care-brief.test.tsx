@@ -157,6 +157,29 @@ describe('caregiver today brief', () => {
     expect(document.querySelector('#care-brief-slot .care-brief')).toBeTruthy()
   })
 
+  it('hides bottle and pump stat cards after 72 quiet hours', () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-06-05T14:00:00'))
+    const now = Date.now()
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([
+      { id: 'nurse-only', type: 'breast', startedAt: now - 2 * 3_600_000, endedAt: now - 2 * 3_600_000 + 20 * 60_000, leftSeconds: 600, rightSeconds: 600, bottleOunces: null, note: '' },
+      { id: 'old-bottle', type: 'bottle', startedAt: now - 80 * 3_600_000, endedAt: now - 80 * 3_600_000 + 10 * 60_000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: '' },
+    ]))
+    const { unmount } = render(<App />)
+
+    expect(document.querySelector('.stat-bottle')).toBeNull()
+    expect(document.querySelector('.pump-stat')).toBeNull()
+    expect(document.querySelector('.stat-feeds')).toBeTruthy()
+    unmount()
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([
+      { id: 'recent-bottle', type: 'bottle', startedAt: now - 5 * 3_600_000, endedAt: now - 5 * 3_600_000 + 10 * 60_000, leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: '' },
+    ]))
+    render(<App />)
+    expect(document.querySelector('.stat-bottle')).toBeTruthy()
+    expect(document.querySelector('.pump-stat')).toBeNull()
+  })
+
   it('surfaces a due medicine as an actionable need', async () => {
     const user = userEvent.setup()
     const sevenHoursAgo = Date.now() - 7 * 3_600_000
