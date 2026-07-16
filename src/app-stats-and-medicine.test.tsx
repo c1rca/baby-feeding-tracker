@@ -354,8 +354,9 @@ describe('App interactions', () => {
     render(<App />)
     await vi.advanceTimersByTimeAsync(0)
 
-    const alert = await screen.findByRole('alert')
-    expect(alert.textContent).toMatch(/Take Motrin/i)
-    expect(alert.textContent).toMatch(/Last dose was Motrin/i)
+    // on the idle page the due kind surfaces as an actionable need in the brief
+    expect(await screen.findByText(/Motrin due/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Log Motrin dose/i })).toBeTruthy()
+    expect(screen.queryByText(/Tylenol due/i)).toBeNull()
   })
 })

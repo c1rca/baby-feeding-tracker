@@ -10,6 +10,8 @@ export type DueMedicine = { id: string; kind: MedicineKind; label: string; at: n
 export type CareBriefExtras = {
   now: number
   babyName?: string
+  profileName?: string
+  nextFeedWindow: { startMs: number; endMs: number } | null
   vitaminDTakenToday: boolean
   latestVitaminDAt: number | null
   dueMedicines: DueMedicine[]
@@ -18,6 +20,8 @@ export type CareBriefExtras = {
 }
 
 type CareBriefProps = HeroPanelProps & CareBriefExtras
+
+const LATE_WINDOW_MS = 6 * 60 * 60 * 1000
 
 const clockTime = (at: number) => new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 
@@ -28,16 +32,36 @@ const greetingFor = (hour: number) => {
   return 'Good evening'
 }
 
+const formatDelta = (ms: number) => {
+  const minutes = Math.max(1, Math.round(ms / 60000))
+  const hours = Math.floor(minutes / 60)
+  if (hours === 0) return `${minutes}m`
+  const rest = minutes % 60
+  return rest === 0 ? `${hours}h` : `${hours}h ${rest}m`
+}
+
+type FeedCueState = 'first' | 'upcoming' | 'open' | 'late' | 'rest'
+
+const feedCue = (window: { startMs: number; endMs: number } | null, hasLastFeed: boolean, now: number): { state: FeedCueState; text: string } => {
+  if (!hasLastFeed || !window) return { state: 'first', text: 'After first feed' }
+  if (now < window.startMs) return { state: 'upcoming', text: `in ${formatDelta(window.startMs - now)}` }
+  if (now <= window.endMs) return { state: 'open', text: 'Window open' }
+  if (now - window.endMs <= LATE_WINDOW_MS) return { state: 'late', text: 'Running late' }
+  return { state: 'rest', text: 'Ready when you are' }
+}
+
 export function CareBrief(props: CareBriefProps) {
   const {
-    now, babyName, vitaminDTakenToday, latestVitaminDAt, dueMedicines, tummyMinutesToday, tummyGoalMinutes,
+    now, babyName, profileName, nextFeedWindow, vitaminDTakenToday, latestVitaminDAt, dueMedicines, tummyMinutesToday, tummyGoalMinutes,
     session, suggestedSide, nextFeedWindowText, lastFeedMetaText, avgGapShortText, hasLastFeed,
     startSession, logMedicine, startTummyTime,
     startOffsetOpen, startInputMode, startClockText, startMinutesAgo, selectedStartMinutesAgo,
     setStartOffsetOpen, setStartInputMode, setStartClockText, setStartMinutesAgo,
   } = props
   const greeting = greetingFor(new Date(now).getHours())
+  const greetingLine = profileName?.trim() ? `${greeting}, ${profileName.trim()}` : greeting
   const dateText = new Date(now).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
+  const cue = feedCue(nextFeedWindow, hasLastFeed, now)
   const tummyDone = tummyGoalMinutes > 0 && tummyMinutesToday >= tummyGoalMinutes
   const tummyPercent = Math.min(100, Math.round((tummyMinutesToday / Math.max(1, tummyGoalMinutes)) * 100))
   const doneCount = (vitaminDTakenToday ? 1 : 0) + (tummyDone ? 1 : 0)
@@ -48,19 +72,20 @@ export function CareBrief(props: CareBriefProps) {
     <section className="card today-brief" aria-label="Today's care summary">
       <header className="today-brief-head">
         <div>
-          <span className="today-brief-kicker">{greeting}</span>
+          <span className="today-brief-kicker">{greetingLine}</span>
           <h2 className="today-brief-date">{dateText}</h2>
         </div>
         {babyName ? <span className="today-brief-baby">{babyName}</span> : null}
       </header>
 
-      <div className="today-brief-focal">
+      <div className="today-brief-focal" data-state={cue.state}>
         <span className="today-brief-focal-label">Next feed</span>
         <div className="today-brief-window">
-          <strong>{nextFeedWindowText}</strong>
+          <strong>{cue.text}</strong>
           {hasLastFeed ? <span className="next-feed-side" aria-label={`${sideLabel(suggestedSide)} side next`}>{sideLabel(suggestedSide)}</span> : null}
         </div>
         <div className="hero-micro-meta today-brief-meta" aria-label="Feed timing summary">
+          {hasLastFeed && cue.state !== 'rest' ? <span>{nextFeedWindowText}</span> : null}
           <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
           {avgGapShortText ? <span>{avgGapShortText}</span> : null}
         </div>

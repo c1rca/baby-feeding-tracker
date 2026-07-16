@@ -9,16 +9,17 @@ type TrackViewProps = {
   hero: ComponentProps<typeof HeroPanel>
   brief: CareBriefExtras
   babyName?: string
+  profileName?: string
   overview: ComponentProps<typeof TrackOverview>
   timeline: ComponentProps<typeof Timeline>
 }
 
-export function TrackView({ heroRef, hero, brief, babyName, overview, timeline }: TrackViewProps) {
+export function TrackView({ heroRef, hero, brief, babyName, profileName, overview, timeline }: TrackViewProps) {
   const timing = Boolean(hero.session || hero.tummySession || hero.pumpSession)
   return (
     <>
       <div className="tracker-view">
-        {timing ? <HeroPanel ref={heroRef} {...hero} /> : <CareBrief {...hero} {...brief} babyName={babyName} />}
+        {timing ? <HeroPanel ref={heroRef} {...hero} /> : <CareBrief {...hero} {...brief} babyName={babyName} profileName={profileName} />}
         <TrackOverview {...overview} />
       </div>
       <Timeline {...timeline} onLogPastEvent={() => hero.setPastEventOpen(true)} />

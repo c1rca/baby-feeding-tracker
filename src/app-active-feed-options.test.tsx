@@ -1,6 +1,6 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import App from './App'
 import type { Entry } from './types'
 import {
@@ -25,6 +25,8 @@ describe('App interactions', () => {
   })
 
   it('shows the next feeding window two to three hours after the last feed start', () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 5, 5, 9, 30))
     const startedAt = new Date(2026, 5, 5, 8, 0).getTime()
     const endedAt = new Date(2026, 5, 5, 11, 0).getTime()
     localStorage.setItem(
@@ -47,7 +49,9 @@ describe('App interactions', () => {
 
     expect(screen.getByText(/^Next feed$/i)).toBeTruthy()
     const briefText = document.querySelector('.today-brief')?.textContent || ''
-    expect(briefText).toMatch(/Next feed\s*10:00.*11:00.*AM\s*Left/i)
+    // 09:30 now, feed started 08:00: the cue reads the clock and the raw window moves to the meta line
+    expect(briefText).toMatch(/Next feed\s*in 30m\s*Left/i)
+    expect(briefText).toMatch(/10:00.*11:00.*AM/i)
     const nextSide = document.querySelector('.next-feed-side') as HTMLElement
     expect(nextSide?.textContent?.trim()).toBe('Left')
     expect(nextSide?.className).toBe('next-feed-side')

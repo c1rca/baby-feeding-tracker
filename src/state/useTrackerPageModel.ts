@@ -57,6 +57,9 @@ export function useTrackerPageModel({ entries, diapers, medicines, tummyTimes = 
     nextFeedWindowText: nextFeedStartedAt
       ? formatShortTimeRange(nextFeedStartedAt + NEXT_FEED_WINDOW_START_MS, nextFeedStartedAt + NEXT_FEED_WINDOW_END_MS)
       : 'After first feed',
+    nextFeedWindow: nextFeedStartedAt
+      ? { startMs: nextFeedStartedAt + NEXT_FEED_WINDOW_START_MS, endMs: nextFeedStartedAt + NEXT_FEED_WINDOW_END_MS }
+      : null,
     medicineReminder: visibleMedicineReminders[0] ?? null,
     medicineReminders: visibleMedicineReminders,
     showMedicineReminder: visibleMedicineReminders.length > 0,

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App'
-import { STORAGE_MEDICINES_KEY, setupAppTestEnvironment } from './appTestSetup'
+import { STORAGE_KEY, STORAGE_MEDICINES_KEY, setupAppTestEnvironment } from './appTestSetup'
 
 const TUMMY_STORAGE_KEY = 'baby-feeding-tracker:v1:tummy-times'
 
@@ -16,7 +16,7 @@ describe('caregiver today brief', () => {
 
     const brief = document.querySelector('.today-brief') as HTMLElement
     expect(brief).toBeTruthy()
-    expect(brief.textContent).toMatch(/Good afternoon/i)
+    expect(brief.textContent).toMatch(/Good afternoon, Mom/i)
     expect(brief.textContent).toMatch(/Friday, June 5/i)
     expect(brief.textContent).toMatch(/Next feed/i)
     expect(brief.textContent).toMatch(/Today's needs/i)
@@ -86,6 +86,75 @@ describe('caregiver today brief', () => {
     expect(document.querySelector('.today-brief')).toBeNull()
     expect(screen.getByText(/^Tummy Time$/i)).toBeTruthy()
     expect(screen.getByRole('button', { name: /Stop & Save Tummy Time/i })).toBeTruthy()
+  })
+
+  it('reads the clock for the caregiver: upcoming, open, and late feed cues', () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    const feedStart = new Date('2026-06-05T08:00:00').getTime()
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([
+      { id: 'cue-feed', type: 'breast', startedAt: feedStart, endedAt: feedStart + 20 * 60_000, leftSeconds: 600, rightSeconds: 600, bottleOunces: null, note: '' },
+    ]))
+
+    vi.setSystemTime(new Date('2026-06-05T08:45:00'))
+    const first = render(<App />)
+    let focal = document.querySelector('.today-brief-focal') as HTMLElement
+    expect(focal.getAttribute('data-state')).toBe('upcoming')
+    expect(focal.textContent).toMatch(/in 1h 15m/i)
+    first.unmount()
+
+    vi.setSystemTime(new Date('2026-06-05T10:30:00'))
+    const second = render(<App />)
+    focal = document.querySelector('.today-brief-focal') as HTMLElement
+    expect(focal.getAttribute('data-state')).toBe('open')
+    expect(focal.textContent).toMatch(/Window open/i)
+    second.unmount()
+
+    vi.setSystemTime(new Date('2026-06-05T12:00:00'))
+    render(<App />)
+    focal = document.querySelector('.today-brief-focal') as HTMLElement
+    expect(focal.getAttribute('data-state')).toBe('late')
+    expect(focal.textContent).toMatch(/Running late/i)
+    // the raw window stays available as supporting detail
+    expect(focal.textContent).toMatch(/10:00/)
+  })
+
+  it('draws the day rhythm ribbon from today\'s events with an accessible summary', () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-06-05T14:00:00'))
+    const at = (h: number, m = 0) => new Date(2026, 5, 5, h, m).getTime()
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([
+      { id: 'r-f1', type: 'breast', startedAt: at(6), endedAt: at(6, 25), leftSeconds: 700, rightSeconds: 700, bottleOunces: null, note: '' },
+      { id: 'r-f2', type: 'bottle', startedAt: at(9, 30), endedAt: at(9, 45), leftSeconds: 0, rightSeconds: 0, bottleOunces: 3, note: '' },
+    ]))
+    localStorage.setItem('baby-feeding-tracker:v1:diapers', JSON.stringify([
+      { id: 'r-d1', kinds: ['wet'], at: at(7), context: 'standalone' },
+    ]))
+    localStorage.setItem('baby-feeding-tracker:v1:tummy-times', JSON.stringify([
+      { id: 'r-t1', startedAt: at(11), endedAt: at(11, 10), kind: 'tummy' },
+      { id: 'r-s1', startedAt: at(12), endedAt: at(13), kind: 'sleep' },
+    ]))
+    render(<App />)
+
+    const ribbon = screen.getByRole('img', { name: /Today's rhythm: 2 feeds, 1 diaper, 1 sleep, 1 tummy session/i })
+    expect(ribbon).toBeTruthy()
+    expect(document.querySelectorAll('.day-ribbon-feed')).toHaveLength(2)
+    expect(document.querySelectorAll('.day-ribbon-tick')).toHaveLength(1)
+    expect(document.querySelectorAll('.day-ribbon-span--sleep')).toHaveLength(1)
+    expect(document.querySelector('.day-ribbon-now')).toBeTruthy()
+  })
+
+  it('stands the reminder banner down while the brief lists the same needs', async () => {
+    const user = userEvent.setup()
+    localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'med-banner', kind: 'tylenol', at: Date.now() - 7 * 3_600_000 }]))
+    render(<App />)
+
+    // the needs list owns the reminder on the idle page; no duplicate floating banner
+    expect(screen.getByText(/Tylenol due/i)).toBeTruthy()
+    expect(document.querySelector('#care-brief-slot .care-brief')).toBeNull()
+
+    // once a timer takes over the panel, the banner earns its slot back
+    await user.click(screen.getByRole('button', { name: /Start suggested side/i }))
+    expect(document.querySelector('#care-brief-slot .care-brief')).toBeTruthy()
   })
 
   it('surfaces a due medicine as an actionable need', async () => {

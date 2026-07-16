@@ -904,9 +904,10 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
     grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
     align-items: start;
   }
-  .tracker-view > .hero, .tracker-view > .today-brief { grid-column: 1; grid-row: 1 / 3; }
+  .tracker-view > .hero, .tracker-view > .today-brief { grid-column: 1; grid-row: 1 / 4; }
   .tracker-view > .grid { grid-column: 2; grid-row: 1; }
-  .tracker-view > .card:last-child { grid-column: 2; grid-row: 2; }
+  .tracker-view > .day-ribbon-card { grid-column: 2; grid-row: 2; }
+  .tracker-view > .card:last-child { grid-column: 2; grid-row: 3; }
 }
 
 /* ---------- 9b. Care brief (idle caregiver overview) ---------- */
@@ -976,6 +977,21 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 
 .today-brief-actions { margin-bottom: 10px; }
 
+/* next-feed cue states: label dot + focal gradient shift with urgency */
+.today-brief-focal[data-state='open'] .today-brief-focal-label,
+.today-brief-focal[data-state='late'] .today-brief-focal-label { display: inline-flex; align-items: center; gap: 7px; }
+.today-brief-focal[data-state='open'] .today-brief-focal-label::before,
+.today-brief-focal[data-state='late'] .today-brief-focal-label::before {
+  content: '';
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+.today-brief-focal[data-state='late'] .today-brief-focal-label::before { background: var(--rose); }
+.today-brief-focal[data-state='open'] .today-brief-window strong { background-image: linear-gradient(115deg, var(--gold) 5%, var(--coral) 55%, var(--berry) 95%); }
+.today-brief-focal[data-state='late'] .today-brief-window strong { background-image: linear-gradient(115deg, var(--coral) 10%, var(--rose) 72%); }
+
 .care-needs { margin: 16px 0 6px; }
 .care-needs-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 9px; }
 .care-needs-heading h3 { margin: 0; font-size: .98rem; letter-spacing: -.01em; }
@@ -1042,6 +1058,15 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
   border-radius: inherit;
   background: var(--grad-primary);
   transition: width .5s ease;
+  transform-origin: left center;
+  animation: bar-grow .7s cubic-bezier(.2, .9, .3, 1.15) both;
+}
+@keyframes bar-grow { from { transform: scaleX(0); } }
+.care-need.is-done .care-need-icon svg { animation: check-pop .45s cubic-bezier(.2, .9, .3, 1.4) both; }
+@keyframes check-pop {
+  0% { transform: scale(.3); opacity: 0; }
+  60% { transform: scale(1.22); opacity: 1; }
+  100% { transform: scale(1); }
 }
 
 @media (max-width: 560px) {
@@ -1051,8 +1076,96 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 }
 @media (prefers-reduced-motion: reduce) {
   .today-brief { animation: none; }
-  .care-need-progress > div { transition: none; }
+  .care-need-progress > div { transition: none; animation: none; }
+  .care-need.is-done .care-need-icon svg { animation: none; }
+  .today-brief-focal[data-state='open'] .today-brief-focal-label::before,
+  .today-brief-focal[data-state='late'] .today-brief-focal-label::before { animation: none; }
 }
+
+/* ---------- 9c. Day rhythm ribbon ---------- */
+.day-ribbon-card { padding: 14px 16px 13px; }
+.day-ribbon-card .section-heading { margin-bottom: 10px; }
+.day-ribbon-card .section-heading h2 { white-space: nowrap; }
+.day-ribbon-card .section-heading .muted { text-align: right; }
+.day-ribbon-track {
+  position: relative;
+  height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0, transparent calc(25% - 1px), var(--border) calc(25% - 1px), var(--border) 25%),
+    var(--well);
+  overflow: hidden;
+}
+.day-ribbon-span {
+  position: absolute;
+  top: 6px; bottom: 6px;
+  min-width: 6px;
+  border-radius: 9px;
+}
+.day-ribbon-span--sleep {
+  background: color-mix(in srgb, var(--azure) 22%, transparent);
+  border: 1px solid color-mix(in srgb, var(--azure) 38%, transparent);
+}
+.day-ribbon-span--tummy {
+  background: color-mix(in srgb, var(--hue-tummy) 18%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--hue-tummy) 45%, transparent);
+}
+.day-ribbon-feed {
+  position: absolute;
+  top: 8px;
+  width: 11px; height: 11px;
+  border-radius: 50%;
+  transform: translateX(-50%);
+  background: var(--grad-primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--card-solid) 85%, transparent), 0 3px 8px -2px var(--ring);
+}
+.day-ribbon-feed--bottle { background: linear-gradient(135deg, #2dd4bf, #0d9488); box-shadow: 0 0 0 2px color-mix(in srgb, var(--card-solid) 85%, transparent), 0 3px 8px -2px rgba(20, 184, 166, .45); }
+.day-ribbon-feed--mixed { background: linear-gradient(135deg, var(--coral) 30%, var(--teal) 80%); }
+.day-ribbon-tick {
+  position: absolute;
+  bottom: 7px;
+  width: 5px; height: 12px;
+  border-radius: 3px;
+  transform: translateX(-50%);
+  background: var(--hue-wet);
+}
+.day-ribbon-tick--stool { background: var(--hue-stool); }
+.day-ribbon-tick--mixed { background: linear-gradient(180deg, var(--hue-wet), var(--hue-stool)); }
+.day-ribbon-now {
+  position: absolute;
+  top: -2px; bottom: -2px;
+  width: 2px;
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: var(--berry);
+  box-shadow: 0 0 10px var(--ring);
+}
+.day-ribbon-hours {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  color: var(--ink-faint);
+  font-size: .66rem;
+  font-weight: 800;
+  letter-spacing: .04em;
+}
+.day-ribbon-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px 13px;
+  margin-top: 9px;
+  color: var(--ink-soft);
+  font-size: .72rem;
+  font-weight: 750;
+}
+.day-ribbon-legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.day-ribbon-legend-item::before { content: ''; width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+.legend-breast::before { background: var(--grad-primary); }
+.legend-bottle::before { background: #14b8a6; }
+.legend-diaper::before { background: var(--hue-wet); border-radius: 3px; }
+.legend-sleep::before { background: color-mix(in srgb, var(--azure) 42%, transparent); border-radius: 3px; }
+.legend-tummy::before { background: color-mix(in srgb, var(--hue-tummy) 42%, transparent); border-radius: 3px; }
 
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .stat { padding: 15px 16px; overflow: hidden; }

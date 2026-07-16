@@ -9,6 +9,7 @@ describe('TrackOverview trend', () => {
       trend={{ max: 20, days: [{ label: 'Sun', count: 19 }, { label: 'Mon', count: 13 }, { label: 'Tue', count: 14 }, { label: 'Wed', count: 14 }, { label: 'Thu', count: 14 }, { label: 'Fri', count: 13 }, { label: 'Sat', count: 9 }] }}
       pumpedOzToday={0}
       pumpCountToday={0}
+      rhythm={{ dayStartMs: 0, dayEndMs: 86_400_000, nowMs: 43_200_000, feeds: [], diapers: [], spans: [], summary: '0 feeds, 0 diapers' }}
     />)
 
     const chart = screen.getByRole('group', { name: /7-day feeding trend/i })
