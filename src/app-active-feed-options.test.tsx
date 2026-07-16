@@ -45,11 +45,11 @@ describe('App interactions', () => {
 
     render(<App />)
 
-    expect(screen.getByText(/^Next$/i)).toBeTruthy()
-    const heroText = document.querySelector('.hero')?.textContent || ''
-    expect(heroText).toMatch(/Next\s+10:00.*11:00.*AM\s+L/i)
+    expect(screen.getByText(/^Next feed$/i)).toBeTruthy()
+    const briefText = document.querySelector('.today-brief')?.textContent || ''
+    expect(briefText).toMatch(/Next feed\s*10:00.*11:00.*AM\s*Left/i)
     const nextSide = document.querySelector('.next-feed-side') as HTMLElement
-    expect(nextSide?.textContent?.trim()).toBe('L')
+    expect(nextSide?.textContent?.trim()).toBe('Left')
     expect(nextSide?.className).toBe('next-feed-side')
   })
 
