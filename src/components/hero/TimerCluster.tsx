@@ -19,6 +19,7 @@ export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide
         ? { paused: !activeSide, onToggle: activeSide ? pause : () => resume(suggestedSide), label: 'feed' }
         : null
 
+  const hasCareMode = Boolean(pumpSession || tummySession)
   const timerState = transport ? (transport.paused ? 'is-paused' : 'is-live') : 'is-idle'
   const ariaLabel = transport
     ? transport.paused
@@ -28,8 +29,8 @@ export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide
 
   return (
     <div className="timer-cluster">
-      <div className="timer-display-row timer-display-row--balanced">
-        {pumpSession || tummySession ? <span className="timer-mode-pill">{pumpSession ? 'Pumping' : tummySession?.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</span> : <span aria-hidden="true" />}
+      <div className={`timer-display-row ${hasCareMode ? 'timer-display-row--balanced' : 'timer-display-row--feed'}`}>
+        {hasCareMode ? <span className="timer-mode-pill">{pumpSession ? 'Pumping' : tummySession?.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</span> : null}
         <div className={`timer-shell ${timerState}`}>
           <div className="timer-halo" aria-hidden="true" />
           <div className="timer timer-value">{formatDuration(displaySeconds)}</div>

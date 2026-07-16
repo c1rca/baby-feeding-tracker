@@ -48,6 +48,14 @@ describe('care launcher timers', () => {
     expect(document.querySelector('.timer-display-row .timer-mode-pill')).toBeTruthy()
   })
 
+  it('left-aligns a feed timer when there is no care-mode label', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(screen.getByRole('button', { name: /Start suggested side/i }))
+    expect(document.querySelector('.timer-display-row--feed')).toBeTruthy()
+    expect(document.querySelector('.timer-display-row--feed .timer-mode-pill')).toBeNull()
+  })
+
   it('starts Sleep directly from its visible launcher and exposes the same transport', async () => {
     const user = userEvent.setup()
     render(<App />)
