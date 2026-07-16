@@ -6,6 +6,7 @@ import type { HeroPanelProps } from './hero/HeroPanel.types'
 import type { MedicineKind } from '../types'
 
 export type DueMedicine = { id: string; kind: MedicineKind; label: string; at: number }
+export type GivenMedicine = { kind: MedicineKind; label: string; at: number }
 
 export type CareBriefExtras = {
   now: number
@@ -15,6 +16,7 @@ export type CareBriefExtras = {
   vitaminDTakenToday: boolean
   latestVitaminDAt: number | null
   dueMedicines: DueMedicine[]
+  givenMedicines: GivenMedicine[]
   tummyMinutesToday: number
   tummyGoalMinutes: number
 }
@@ -52,7 +54,7 @@ const feedCue = (window: { startMs: number; endMs: number } | null, hasLastFeed:
 
 export function CareBrief(props: CareBriefProps) {
   const {
-    now, babyName, profileName, nextFeedWindow, vitaminDTakenToday, latestVitaminDAt, dueMedicines, tummyMinutesToday, tummyGoalMinutes,
+    now, babyName, profileName, nextFeedWindow, vitaminDTakenToday, latestVitaminDAt, dueMedicines, givenMedicines, tummyMinutesToday, tummyGoalMinutes,
     session, suggestedSide, nextFeedWindowText, lastFeedMetaText, avgGapShortText, hasLastFeed,
     startSession, logMedicine, startTummyTime,
     startOffsetOpen, startInputMode, startClockText, startMinutesAgo, selectedStartMinutesAgo,
@@ -64,8 +66,8 @@ export function CareBrief(props: CareBriefProps) {
   const cue = feedCue(nextFeedWindow, hasLastFeed, now)
   const tummyDone = tummyGoalMinutes > 0 && tummyMinutesToday >= tummyGoalMinutes
   const tummyPercent = Math.min(100, Math.round((tummyMinutesToday / Math.max(1, tummyGoalMinutes)) * 100))
-  const doneCount = (vitaminDTakenToday ? 1 : 0) + (tummyDone ? 1 : 0)
-  const needsTotal = 2 + dueMedicines.length
+  const doneCount = (vitaminDTakenToday ? 1 : 0) + (tummyDone ? 1 : 0) + givenMedicines.length
+  const needsTotal = 2 + dueMedicines.length + givenMedicines.length
   const otherSide = oppositeSide(suggestedSide)
 
   return (
@@ -143,6 +145,15 @@ export function CareBrief(props: CareBriefProps) {
                 <small>Last dose at {clockTime(medicine.at)}</small>
               </div>
               <button type="button" className="care-need-action" aria-label={`Log ${medicine.label} dose`} onClick={() => logMedicine(medicine.kind)}>Log dose</button>
+            </div>
+          ))}
+          {givenMedicines.map((medicine) => (
+            <div key={medicine.kind} className={`care-need care-need--${medicine.kind} is-done`}>
+              <span className="care-need-icon" aria-hidden="true"><Check size={17} /></span>
+              <div className="care-need-copy">
+                <strong>{medicine.label}</strong>
+                <small>Given at {clockTime(medicine.at)}</small>
+              </div>
             </div>
           ))}
         </div>

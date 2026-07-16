@@ -703,11 +703,15 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .app-shell-content > .workspace-topbar { padding-block: 4px 2px; margin-bottom: 24px; }
 .app-shell-content > .medicine-reminder-stack { margin-bottom: 18px; }
 .app-shell-content > .tracker-view + .timeline-card { margin-top: 18px; }
-.tracker-view > .card:last-child { padding: 12px 14px 13px; }
-.tracker-view > .card:last-child .section-heading { margin-bottom: 7px; }
-.tracker-view > .card:last-child .trend { gap: 4px; }
-.tracker-view > .card:last-child .trend-col { grid-template-rows: auto 34px auto; padding: 3px 1px 1px; gap: 3px; }
-.tracker-view > .card:last-child .trend-track { height: 34px; width: min(20px, 70%); }
+.tracker-view > .card:last-child { padding: 9px 12px 9px; }
+.tracker-view > .card:last-child .section-heading { margin-bottom: 4px; }
+.tracker-view > .card:last-child .section-heading h2 { font-size: .92rem; }
+.tracker-view > .card:last-child .section-heading .muted { font-size: .7rem; }
+.tracker-view > .card:last-child .trend { gap: 3px; }
+.tracker-view > .card:last-child .trend-col { grid-template-rows: auto 16px auto; padding: 2px 1px 0; gap: 2px; }
+.tracker-view > .card:last-child .trend-col strong { font-size: .7rem; }
+.tracker-view > .card:last-child .trend-col span { font-size: .54rem; letter-spacing: 0; }
+.tracker-view > .card:last-child .trend-track { height: 16px; width: min(15px, 62%); }
 .workspace-topbar > div:first-child { min-width: 0; }
 .workspace-topbar h1 { margin: 4px 0 0; font-size: clamp(1.65rem, 2.8vw, 2.25rem); font-weight: 800; letter-spacing: -.045em; line-height: 1.05; }
 .workspace-topbar .workspace-eyebrow { letter-spacing: .16em; }
@@ -904,7 +908,8 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
     grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
     align-items: start;
   }
-  .tracker-view > .hero, .tracker-view > .today-brief { grid-column: 1; grid-row: 1 / 4; }
+  .tracker-view { grid-template-rows: auto auto auto 1fr; }
+  .tracker-view > .hero, .tracker-view > .today-brief { grid-column: 1; grid-row: 1 / 5; }
   .tracker-view > .grid { grid-column: 2; grid-row: 1; }
   .tracker-view > .day-ribbon-card { grid-column: 2; grid-row: 2; }
   .tracker-view > .card:last-child { grid-column: 2; grid-row: 3; }
@@ -1177,6 +1182,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .legend-tummy::before { background: color-mix(in srgb, var(--hue-tummy) 42%, transparent); border-radius: 3px; }
 
 .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.grid > .stat:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .stat { padding: 15px 16px; overflow: hidden; }
 .stat::after {
   content: '';

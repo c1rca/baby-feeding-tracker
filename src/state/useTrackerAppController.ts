@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ComponentProps } from 'react'
 import type { DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, EditingTummyTimeState, View } from '../types'
-import { formatClockInput, formatDateInput, formatTimeInput } from '../domain/trackerDomain'
+import { formatClockInput, formatDateInput, formatTimeInput, medicineLabel } from '../domain/trackerDomain'
 import { useServerSync } from '../sync/useServerSync'
 import { persistLiveSyncEnabled, readLiveSyncEnabled } from '../sync/liveSyncSettings'
 import { usePersistentTrackerState } from './usePersistentTrackerState'
@@ -142,6 +142,12 @@ export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyI
       vitaminDTakenToday: stats.vitaminDTakenToday,
       latestVitaminDAt: stats.latestVitaminD?.at ?? null,
       dueMedicines: medicineReminders.filter((reminder) => reminder.type === 'medicine').map((reminder) => ({ id: reminder.id, kind: reminder.recommendedKind, label: reminder.recommendedLabel, at: reminder.at })),
+      givenMedicines: (['tylenol', 'motrin'] as const)
+        .filter((kind) => !medicineReminders.some((reminder) => reminder.type === 'medicine' && reminder.recommendedKind === kind))
+        .flatMap((kind) => {
+          const latestToday = medicines.filter((medicine) => medicine.kind === kind && medicine.at >= startOfLocalDayMs(now)).sort((a, b) => b.at - a.at)[0]
+          return latestToday ? [{ kind, label: medicineLabel(kind), at: latestToday.at }] : []
+        }),
       tummyMinutesToday: stats.tummyMinutesToday,
       tummyGoalMinutes: stats.tummyDailyGoalMinutes,
     },

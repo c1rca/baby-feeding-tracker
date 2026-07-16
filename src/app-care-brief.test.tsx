@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import App from './App'
@@ -187,9 +187,16 @@ describe('caregiver today brief', () => {
     render(<App />)
 
     expect(screen.getByText(/Tylenol due/i)).toBeTruthy()
+    expect(screen.getByText(/0 of 3 done/i)).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Log Tylenol dose/i }))
 
+    // the row flips to a completed state instead of disappearing
     expect(screen.queryByText(/Tylenol due/i)).toBeNull()
+    const needsList = document.querySelector('.care-needs-list') as HTMLElement
+    const doneRow = within(needsList).getByText(/^Tylenol$/i).closest('.care-need') as HTMLElement
+    expect(doneRow.className).toContain('is-done')
+    expect(doneRow.textContent).toMatch(/Given at/i)
+    expect(screen.getByText(/1 of 3 done/i)).toBeTruthy()
     const saved = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) ?? '[]')
     expect(saved).toHaveLength(2)
   })
