@@ -1,5 +1,7 @@
 import { Baby, Droplets, HeartPulse, Milk, Scale, TimerReset } from 'lucide-react'
 import { formatDuration } from '../domain/feedingUtils'
+import type { DayRhythm } from '../domain/dayRhythm'
+import { DayRibbon } from './DayRibbon'
 
 type TodaySummary = {
   count: number
@@ -21,9 +23,10 @@ type TrackOverviewProps = {
   trend: TrendSummary
   pumpedOzToday: number
   pumpCountToday: number
+  rhythm: DayRhythm
 }
 
-export function TrackOverview({ today, trend, pumpedOzToday, pumpCountToday }: TrackOverviewProps) {
+export function TrackOverview({ today, trend, pumpedOzToday, pumpCountToday, rhythm }: TrackOverviewProps) {
   return (
     <>
       <section className="grid">
@@ -34,6 +37,8 @@ export function TrackOverview({ today, trend, pumpedOzToday, pumpCountToday }: T
         <div className="card stat pump-stat"><h3><TimerReset size={15} /> Pumped today</h3><p>{pumpedOzToday.toFixed(1)} oz</p><small>{pumpCountToday === 1 ? '1 session' : `${pumpCountToday} sessions`}</small></div>
         <div className="card stat diaper-stat"><h3><Droplets size={15} /> Diapers today</h3><p>{today.wet} wet · {today.stool} stool</p></div>
       </section>
+
+      <DayRibbon rhythm={rhythm} />
 
       <section className="card">
         <div className="section-heading"><h2>7-Day Trend</h2><span className="muted">feeds per day</span></div>

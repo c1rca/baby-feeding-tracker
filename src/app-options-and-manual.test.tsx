@@ -96,6 +96,8 @@ describe('App interactions', () => {
   })
 
   it('puts priority feed cues above the counter with micro timing below', () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 5, 5, 11, 30))
     const firstEndedAt = new Date(2026, 5, 5, 8, 0).getTime()
     const secondEndedAt = new Date(2026, 5, 5, 10, 30).getTime()
     localStorage.setItem(
@@ -131,7 +133,8 @@ describe('App interactions', () => {
     expect(screen.queryByText(/^Ready$/i)).toBeNull()
     expect(screen.getByText(/Avg 2h 30m/i)).toBeTruthy()
     expect(screen.getByText(/^Next feed$/i)).toBeTruthy()
-    expect(briefText).toMatch(/12:20.*1:20.*PM.*L/i)
+    expect(briefText).toMatch(/in 50m/i)
+    expect(briefText).toMatch(/12:20.*1:20.*PM/i)
     expect(document.querySelector('.next-feed-side')?.textContent?.trim()).toBe('Left')
     expect(screen.getByText(/Last /i)).toBeTruthy()
     expect(briefText).not.toMatch(/Suggested:/i)

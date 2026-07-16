@@ -17,10 +17,14 @@ export function startOfLocalDayMs(timestamp: number) {
   return date.getTime()
 }
 
+// The tummyTimes array also stores sleep sessions (kind: 'sleep'); naps must
+// never count toward the tummy time goal.
+export const isTummyTimeEvent = (event: TummyTimeEvent) => event.kind !== 'sleep'
+
 export function tummyTimesToday(tummyTimes: TummyTimeEvent[], now: number) {
   const start = startOfLocalDayMs(now)
   const end = start + DAY_MS
-  return tummyTimes.filter((event) => event.startedAt >= start && event.startedAt < end)
+  return tummyTimes.filter((event) => isTummyTimeEvent(event) && event.startedAt >= start && event.startedAt < end)
 }
 
 export function shouldShowTummyTimeReminder(
