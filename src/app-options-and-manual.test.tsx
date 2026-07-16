@@ -125,18 +125,20 @@ describe('App interactions', () => {
     )
 
     const { container } = render(<App />)
-    const heroText = container.querySelector('.hero')?.textContent || ''
+    const briefText = container.querySelector('.today-brief')?.textContent || ''
 
     expect(screen.queryByText(/Active Feed/i)).toBeNull()
     expect(screen.queryByText(/^Ready$/i)).toBeNull()
     expect(screen.getByText(/Avg 2h 30m/i)).toBeTruthy()
-    expect(screen.getByText(/^Next$/i)).toBeTruthy()
-    expect(heroText).toMatch(/12:20.*1:20.*PM.*L/i)
-    expect(document.querySelector('.next-feed-side')?.textContent?.trim()).toBe('L')
+    expect(screen.getByText(/^Next feed$/i)).toBeTruthy()
+    expect(briefText).toMatch(/12:20.*1:20.*PM.*L/i)
+    expect(document.querySelector('.next-feed-side')?.textContent?.trim()).toBe('Left')
     expect(screen.getByText(/Last /i)).toBeTruthy()
-    expect(heroText).not.toMatch(/Suggested:/i)
-    expect(heroText.indexOf('Next')).toBeLessThan(heroText.indexOf('0m 00s'))
-    expect(heroText.indexOf('0m 00s')).toBeLessThan(heroText.indexOf('Last '))
-    expect(heroText.indexOf('Last ')).toBeLessThan(heroText.indexOf('Avg 2h 30m'))
+    expect(briefText).not.toMatch(/Suggested:/i)
+    // idle page leads with the caregiver brief: next feed cue, then timing meta, then start actions
+    expect(briefText.indexOf('Next feed')).toBeLessThan(briefText.indexOf('Last '))
+    expect(briefText.indexOf('Last ')).toBeLessThan(briefText.indexOf('Avg 2h 30m'))
+    expect(briefText.indexOf('Avg 2h 30m')).toBeLessThan(briefText.indexOf('Start Left'))
+    expect(briefText).not.toMatch(/0m 00s/)
   })
 })
