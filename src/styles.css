@@ -1133,8 +1133,9 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
   border: 1px solid color-mix(in srgb, var(--azure) 38%, transparent);
 }
 .day-ribbon-span--tummy {
-  background: color-mix(in srgb, var(--hue-tummy) 18%, transparent);
-  border: 1px dashed color-mix(in srgb, var(--hue-tummy) 45%, transparent);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--hue-tummy) 72%, transparent), color-mix(in srgb, var(--hue-tummy) 48%, transparent));
+  border: 1px solid color-mix(in srgb, var(--hue-tummy) 92%, var(--card-solid));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, white 38%, transparent), 0 0 0 1px color-mix(in srgb, var(--hue-tummy) 18%, transparent);
 }
 .day-ribbon-feed {
   position: absolute;
