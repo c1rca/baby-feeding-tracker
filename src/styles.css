@@ -1090,8 +1090,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 
 /* ---------- 9c. Day rhythm ribbon ---------- */
 .day-ribbon-card { padding: 14px 16px 13px; }
-.day-ribbon-card .section-heading { margin-bottom: 10px; transition: margin-bottom .2s cubic-bezier(.2,.8,.2,1); }
-.day-ribbon-card.is-inspecting .section-heading { margin-bottom: 104px; }
+.day-ribbon-card .section-heading { margin-bottom: 10px; }
 .day-ribbon-card .section-heading h2 { white-space: nowrap; }
 .day-ribbon-card .section-heading .muted { text-align: right; }
 .day-ribbon-track {
@@ -1931,7 +1930,6 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
   .stats-split { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
-  .day-ribbon-card.is-inspecting .section-heading { margin-bottom: 108px; }
   .day-ribbon-tooltip { width:min(244px,calc(100vw - 64px)); }
   .app { padding: 10px 12px 80px; gap: 13px; }
   .top { top: 6px; gap: 6px; padding: 8px 9px; border-radius: 18px; }

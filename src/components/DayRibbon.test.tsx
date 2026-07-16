@@ -20,6 +20,7 @@ describe('DayRibbon details', () => {
     render(<DayRibbon rhythm={rhythm} />)
 
     await user.click(screen.getByRole('button', { name: /Nursing at/i }))
+    expect(document.querySelector('.day-ribbon-card')?.className).not.toContain('is-inspecting')
     const feedTip = screen.getByRole('tooltip')
     expect(feedTip.textContent).toMatch(/Nursing/i)
     expect(feedTip.textContent).toMatch(/25 min/i)

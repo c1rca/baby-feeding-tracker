@@ -27,7 +27,7 @@ export function DayRibbon({ rhythm }: { rhythm: DayRhythm }) {
   const leave = () => { if (!pinned) setActive(null) }
 
   return (
-    <section className={`card day-ribbon-card ${active ? 'is-inspecting' : ''}`}>
+    <section className="card day-ribbon-card">
       <div className="section-heading"><h2>Today's rhythm</h2><span className="muted">{isEmpty ? 'a fresh day' : summary}</span></div>
       <div className="day-ribbon" role="group" aria-label={isEmpty ? "Today's rhythm: nothing logged yet" : `Today's rhythm: ${summary}`} onMouseLeave={leave}>
         <div className="day-ribbon-track">
