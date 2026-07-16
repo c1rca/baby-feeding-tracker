@@ -977,20 +977,29 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 
 .today-brief-actions { margin-bottom: 10px; }
 
-/* next-feed cue states: label dot + focal gradient shift with urgency */
-.today-brief-focal[data-state='open'] .today-brief-focal-label,
-.today-brief-focal[data-state='late'] .today-brief-focal-label { display: inline-flex; align-items: center; gap: 7px; }
-.today-brief-focal[data-state='open'] .today-brief-focal-label::before,
-.today-brief-focal[data-state='late'] .today-brief-focal-label::before {
+/* next-feed cue status line: reads the clock under the window range */
+.today-brief-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 3px;
+  font-size: .92rem;
+  font-weight: 850;
+  letter-spacing: -.01em;
+  color: var(--ink-soft);
+}
+.today-brief-focal[data-state='open'] .today-brief-status,
+.today-brief-focal[data-state='late'] .today-brief-status { color: color-mix(in srgb, var(--gold) 72%, var(--ink)); }
+.today-brief-focal[data-state='late'] .today-brief-status { color: color-mix(in srgb, var(--rose) 76%, var(--ink)); }
+.today-brief-focal[data-state='open'] .today-brief-status::before,
+.today-brief-focal[data-state='late'] .today-brief-status::before {
   content: '';
   width: 7px; height: 7px;
   border-radius: 50%;
   background: var(--gold);
   animation: pulse-dot 1.8s ease-in-out infinite;
 }
-.today-brief-focal[data-state='late'] .today-brief-focal-label::before { background: var(--rose); }
-.today-brief-focal[data-state='open'] .today-brief-window strong { background-image: linear-gradient(115deg, var(--gold) 5%, var(--coral) 55%, var(--berry) 95%); }
-.today-brief-focal[data-state='late'] .today-brief-window strong { background-image: linear-gradient(115deg, var(--coral) 10%, var(--rose) 72%); }
+.today-brief-focal[data-state='late'] .today-brief-status::before { background: var(--rose); }
 
 .care-needs { margin: 16px 0 6px; }
 .care-needs-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 9px; }

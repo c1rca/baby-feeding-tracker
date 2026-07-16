@@ -81,11 +81,11 @@ export function CareBrief(props: CareBriefProps) {
       <div className="today-brief-focal" data-state={cue.state}>
         <span className="today-brief-focal-label">Next feed</span>
         <div className="today-brief-window">
-          <strong>{cue.text}</strong>
+          <strong>{nextFeedWindowText}</strong>
           {hasLastFeed ? <span className="next-feed-side" aria-label={`${sideLabel(suggestedSide)} side next`}>{sideLabel(suggestedSide)}</span> : null}
         </div>
+        {cue.state === 'first' || cue.state === 'rest' ? null : <span className="today-brief-status">{cue.text}</span>}
         <div className="hero-micro-meta today-brief-meta" aria-label="Feed timing summary">
-          {hasLastFeed && cue.state !== 'rest' ? <span>{nextFeedWindowText}</span> : null}
           <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
           {avgGapShortText ? <span>{avgGapShortText}</span> : null}
         </div>

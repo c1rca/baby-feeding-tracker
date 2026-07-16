@@ -126,6 +126,11 @@ export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyI
   const tummyTimeReminderProps: TummyTimeReminderBannerProps = { reminder: tummyTimeReminder, startTummyTime }
   const statsProps: StatsDashboardProps = { stats, trend, growthMeasurements, setGrowthMeasurements, babyDob }
   const pumpsToday = pumpEvents.filter((event) => event.startedAt >= startOfLocalDayMs(now))
+  // Bottle and pump cards earn their spot only with activity in the last 72h,
+  // so an exclusively-nursing stretch keeps the overview to what's in use.
+  const statActivityCutoff = now - 72 * 60 * 60 * 1000
+  const showBottleStat = entries.some((entry) => (entry.bottleOunces ?? 0) > 0 && entry.endedAt >= statActivityCutoff)
+  const showPumpStat = Boolean(pumpSession) || pumpEvents.some((event) => event.endedAt >= statActivityCutoff)
   const tummyActiveSeconds = tummySession ? Math.max(0, Math.floor((now - tummySession.startedAt) / 1000)) : 0
   const pumpActiveSeconds = pumpSession ? Math.max(0, Math.floor((now - pumpSession.startedAt) / 1000)) : 0
   const trackViewProps: TrackViewProps = {
@@ -140,7 +145,7 @@ export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyI
       tummyMinutesToday: stats.tummyMinutesToday,
       tummyGoalMinutes: stats.tummyDailyGoalMinutes,
     },
-    overview: { today, trend, pumpedOzToday: pumpsToday.reduce((sum, event) => sum + (event.leftOunces ?? 0) + (event.rightOunces ?? 0), 0), pumpCountToday: pumpsToday.length, rhythm: buildDayRhythm(entries, diapers, tummyTimes, now) },
+    overview: { today, trend, pumpedOzToday: pumpsToday.reduce((sum, event) => sum + (event.leftOunces ?? 0) + (event.rightOunces ?? 0), 0), pumpCountToday: pumpsToday.length, showBottleStat, showPumpStat, rhythm: buildDayRhythm(entries, diapers, tummyTimes, now) },
     timeline: { now, entries, diapers, medicines, tummyTimes, pumpEvents, editing, editingDiaper, editingMedicine, editingTummyTime, editingPump, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setEditingTummyTime, setEditingPump, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, deleteEntry, deleteDiaper, deleteMedicine, deleteTummyTime, deletePump: pumpActions.deletePump, startMedicineEdit, startTummyTimeEdit, startPumpEdit: pumpActions.startPumpEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, saveTummyTimeEdit, savePumpEdit: pumpActions.savePumpEdit, showToast },
   }
   const modalsProps: TrackerModalsProps = { bottleOpen, manualOpen, pastEventOpen, settingsOpen, session, bottleQuickOz, manualDraft, pastEventDraft, entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, browserRemindersEnabled, liveSyncEnabled, notificationPermission, notificationPreferences, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, theme, fileInputRef, setBottleOpen, setManualOpen, setPastEventOpen, setSettingsOpen, setBottleQuickOz, setManualDraft, setPastEventDraft, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, setBrowserRemindersEnabled, setLiveSyncEnabled, setNotificationPreferences, setTheme, logBottle, saveManualFeed, savePastEvent, enableBrowserReminders, setGotifyReminders, setMedicineReminderSettings, showToast }

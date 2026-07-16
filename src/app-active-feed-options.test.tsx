@@ -49,9 +49,8 @@ describe('App interactions', () => {
 
     expect(screen.getByText(/^Next feed$/i)).toBeTruthy()
     const briefText = document.querySelector('.today-brief')?.textContent || ''
-    // 09:30 now, feed started 08:00: the cue reads the clock and the raw window moves to the meta line
-    expect(briefText).toMatch(/Next feed\s*in 30m\s*Left/i)
-    expect(briefText).toMatch(/10:00.*11:00.*AM/i)
+    // 09:30 now, feed started 08:00: the range stays focal with the clock cue right below it
+    expect(briefText).toMatch(/Next feed\s*10:00.*11:00.*AM\s*Left\s*in 30m/i)
     const nextSide = document.querySelector('.next-feed-side') as HTMLElement
     expect(nextSide?.textContent?.trim()).toBe('Left')
     expect(nextSide?.className).toBe('next-feed-side')
