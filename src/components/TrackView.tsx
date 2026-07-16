@@ -19,8 +19,8 @@ export function TrackView({ heroRef, hero, brief, babyName, profileName, overvie
   return (
     <>
       <div className="tracker-view">
-        {timing ? <HeroPanel ref={heroRef} {...hero} /> : <><CareBrief {...hero} {...brief} babyName={babyName} profileName={profileName} /><CareNeedsCard {...hero} {...brief} /></>}
-        <TrackOverview {...overview} />
+        {timing ? <HeroPanel ref={heroRef} {...hero} /> : <CareBrief {...hero} {...brief} babyName={babyName} profileName={profileName} />}
+        <div className="track-dashboard-side">{timing ? null : <CareNeedsCard {...hero} {...brief} />}<TrackOverview {...overview} /></div>
       </div>
       <Timeline {...timeline} onLogPastEvent={() => hero.setPastEventOpen(true)} />
     </>

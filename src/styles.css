@@ -912,16 +912,11 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 
 /* ---------- 9. Track view layout + overview stats ---------- */
 .tracker-view { display: grid; gap: 18px; }
+.track-dashboard-side { display: grid; gap: 18px; min-width: 0; }
 @media (min-width: 940px) {
-  .tracker-view {
-    grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr);
-    align-items: start;
-  }
-  .tracker-view { grid-template-rows: auto auto auto 1fr; }
-  .tracker-view > .hero, .tracker-view > .today-brief { grid-column: 1; grid-row: 1 / 5; }
-  .tracker-view > .grid { grid-column: 2; grid-row: 1; }
-  .tracker-view > .day-ribbon-card { grid-column: 2; grid-row: 2; }
-  .tracker-view > .card:last-child { grid-column: 2; grid-row: 3; }
+  .tracker-view { grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); align-items: start; }
+  .tracker-view > .hero, .tracker-view > .today-brief { grid-column: 1; }
+  .track-dashboard-side { grid-column: 2; grid-row: 1; }
 }
 
 /* ---------- 9b. Care brief (idle caregiver overview) ---------- */
@@ -996,6 +991,9 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .today-brief-cue[data-state='open'] { color: color-mix(in srgb, var(--gold) 72%, var(--ink)); }
 .today-brief-cue[data-state='late'] { color: color-mix(in srgb, var(--rose) 76%, var(--ink)); }
 
+.care-needs-card { padding: 13px 14px 14px; }
+.care-needs-card .care-needs { margin: 0; }
+.care-needs-card .care-needs-heading { margin-bottom: 7px; }
 .care-needs { margin: 16px 0 6px; }
 .care-needs-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 9px; }
 .care-needs-heading h3 { margin: 0; font-size: .98rem; letter-spacing: -.01em; }
