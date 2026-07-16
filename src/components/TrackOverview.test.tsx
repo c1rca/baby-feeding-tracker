@@ -16,6 +16,8 @@ describe('TrackOverview main page', () => {
     expect(screen.queryByRole('heading', { name: '7-Day Trend' })).toBeNull()
     expect(screen.queryByRole('group', { name: /7-day feeding trend/i })).toBeNull()
     expect(screen.queryByRole('heading', { name: /Diapers today/i })).toBeNull()
+    expect(screen.queryByRole('heading', { name: /Feeds today/i })).toBeNull()
+    expect(screen.queryByRole('heading', { name: /^Nursing$/i })).toBeNull()
     expect(screen.getByRole('img', { name: /today's rhythm/i })).toBeTruthy()
   })
 })
