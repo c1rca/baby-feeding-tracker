@@ -84,8 +84,8 @@ export function CareBrief(props: CareBriefProps) {
           {hasLastFeed ? <span className="next-feed-side" aria-label={`${sideLabel(suggestedSide)} side next`}>{sideLabel(suggestedSide)}</span> : null}
         </div>
         <div className="hero-micro-meta today-brief-meta" aria-label="Feed timing summary">
-          <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
           {cue.state === 'first' || cue.state === 'rest' ? null : <span className="today-brief-cue" data-state={cue.state}>Next {cue.text}</span>}
+          <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>
           {avgGapShortText ? <span>{avgGapShortText}</span> : null}
         </div>
       </div>
