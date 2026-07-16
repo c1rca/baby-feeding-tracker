@@ -42,6 +42,8 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   logMedicine,
   logTummyTimeMinutes,
   startTummyTime,
+  pauseTummyTime,
+  resumeTummyTime,
   stopTummyTime,
   startSleep,
   stopSleep,
@@ -49,6 +51,8 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   pumpActiveSeconds,
   startPumping,
   startManualPumping,
+  pausePumping,
+  resumePumping,
   stopPumping,
   clearPumping,
   savePumping,
@@ -72,7 +76,7 @@ export const HeroPanel = forwardRef<HTMLElement, HeroPanelProps>(function HeroPa
   return (
     <section className="card hero" ref={ref}>
       <HeroCue session={session} nextFeedWindowText={nextFeedWindowText} nextFeedSideText={nextFeedSideText} hasLastFeed={hasLastFeed} />
-      <TimerCluster session={session} activeSeconds={activeSeconds} activeSide={activeSide} suggestedSide={suggestedSide} tummySession={tummySession} tummyActiveSeconds={tummyActiveSeconds} pumpSession={pumpSession} pumpActiveSeconds={pumpActiveSeconds} pause={pause} resume={resume} />
+      <TimerCluster session={session} activeSeconds={activeSeconds} activeSide={activeSide} suggestedSide={suggestedSide} tummySession={tummySession} tummyActiveSeconds={tummyActiveSeconds} pumpSession={pumpSession} pumpActiveSeconds={pumpActiveSeconds} pause={pause} resume={resume} pauseTummyTime={pauseTummyTime} resumeTummyTime={resumeTummyTime} pausePumping={pausePumping} resumePumping={resumePumping} />
       {tummySession || pumpSession ? <div className="row hero-actions care-active-actions"><button type="button" className="success end-feed" onClick={tummySession ? stopTummyTime : stopPumping}>{tummySession ? `Stop & Save ${tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}` : 'Finish & Add Output'}</button><button type="button" className={`active-clear-link ${careClearConfirming ? 'confirming' : ''}`} aria-label={careClearConfirming ? 'Confirm clear active timer' : 'Clear active timer'} onClick={() => careClearConfirming ? clearCare() : setCareClearConfirming(true)}><XCircle size={14} /> {careClearConfirming ? 'Confirm clear' : 'Clear active'}</button></div> : null}
       {!tummySession && !pumpSession ? <div className="hero-micro-meta" aria-label="Feed timing summary">
         <span>{hasLastFeed ? `Last ${lastFeedMetaText}` : lastFeedMetaText}</span>

@@ -45,6 +45,8 @@ export type HeroPanelProps = {
   logMedicine: (kind: MedicineKind) => void
   logTummyTimeMinutes: (minutes: number) => void
   startTummyTime: () => void
+  pauseTummyTime: () => void
+  resumeTummyTime: () => void
   stopTummyTime: () => void
   startSleep: () => void
   stopSleep: () => void
@@ -52,6 +54,8 @@ export type HeroPanelProps = {
   pumpActiveSeconds: number
   startPumping: (side: 'left' | 'both' | 'right') => void
   startManualPumping: () => void
+  pausePumping: () => void
+  resumePumping: () => void
   stopPumping: () => void
   clearPumping: () => void
   savePumping: (left: string, right: string, note: string) => void
