@@ -49,7 +49,7 @@ describe('App interactions', () => {
     expect(screen.getByText(/Longest stretch/i)).toBeTruthy()
     expect(screen.getByText(/Longest nursing/i)).toBeTruthy()
     expect(screen.getByText(/Next side cue/i)).toBeTruthy()
-    expect(screen.getByText(/Smart read/i)).toBeTruthy()
+    expect(screen.queryByText(/Smart read/i)).toBeNull()
     expect(screen.getByText(/Diaper signal/i)).toBeTruthy()
     expect(screen.getAllByText('2').length).toBeGreaterThan(0)
     expect(screen.getAllByText('1').length).toBeGreaterThan(0)

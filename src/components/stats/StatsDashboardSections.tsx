@@ -26,11 +26,6 @@ export function InsightGrid({ stats }: { stats: Stats }) {
 export function StatsStoryGrid({ stats }: { stats: Stats }) {
   return (
     <section className="stats-story-grid">
-      <article className="card story-card">
-        <span className="stats-kicker">Smart read</span>
-        <h2>{stats.recentEntries.length ? `${stats.avgFeedsPerDay} feeds/day cadence` : 'Cadence will appear here'}</h2>
-        <p>{stats.recentEntries.length ? `The last 24 hours logged ${stats.last24Entries.length} feeds, with the longest calm stretch at ${stats.longestGapLabel}.` : 'Once feeds are logged, this card summarizes pace, recovery windows, and the shape of the week.'}</p>
-      </article>
       <article className="card diaper-signal-card">
         <div><span className="stats-kicker">Diaper signal</span><div className="diaper-signal-values"><strong>{stats.wetCount}<small>wet</small></strong><strong>{stats.stoolCount}<small>stool</small></strong></div></div>
         <div className="diaper-average-grid" aria-label="Diaper daily averages">

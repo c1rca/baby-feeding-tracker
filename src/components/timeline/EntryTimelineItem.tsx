@@ -6,7 +6,7 @@ import { EntryEditPanel, FeedMetricChips } from './EntryEditPanel'
 import type { TimelineActions } from './timelineTypes'
 import { formatTimelineAge, openMenu } from './timelineUtils'
 
-export function EntryTimelineItem({ entry, index, actions }: { entry: Entry; index: number; actions: TimelineActions }) {
+export function EntryTimelineItem({ entry, showInlineResume, actions }: { entry: Entry; showInlineResume: boolean; actions: TimelineActions }) {
   const isEditing = actions.editing?.id === entry.id
   const menuOpen = actions.openEntryMenuId === entry.id
   const confirmingDelete = actions.confirmingDeleteEntryId === entry.id
@@ -28,7 +28,7 @@ export function EntryTimelineItem({ entry, index, actions }: { entry: Entry; ind
         </div>
         {!isEditing ? (
           <div className="entry-action-wrap">
-            {index < 2 ? <button type="button" className="inline-resume" aria-label="Resume recent entry" onClick={() => actions.resumeEntry(entry)}>Resume</button> : null}
+            {showInlineResume ? <button type="button" className="inline-resume" aria-label="Resume recent entry" onClick={() => actions.resumeEntry(entry)}>Resume</button> : null}
             <button type="button" className="entry-action-trigger" aria-label="Entry actions" aria-expanded={menuOpen} onClick={() => openMenu(entry.id, menuOpen, actions)}><MoreHorizontal size={17} /></button>
             {menuOpen ? (
               <div className="entry-menu" role="menu">

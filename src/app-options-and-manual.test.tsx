@@ -135,7 +135,7 @@ describe('App interactions', () => {
     expect(screen.getByText(/^Next feed$/i)).toBeTruthy()
     expect(briefText).toMatch(/in 50m/i)
     expect(briefText).toMatch(/12:20.*1:20.*PM/i)
-    expect(document.querySelector('.next-feed-side')?.textContent?.trim()).toBe('Left')
+    expect(document.querySelector('.next-feed-side')?.textContent?.trim()).toBe('L')
     expect(screen.getByText(/Last /i)).toBeTruthy()
     expect(briefText).not.toMatch(/Suggested:/i)
     // The scan order mirrors the caregiver's mental model: next window, last feed, then the usual gap.
