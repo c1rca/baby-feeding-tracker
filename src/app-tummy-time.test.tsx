@@ -44,7 +44,7 @@ describe('care launcher timers', () => {
     await user.click(screen.getByRole('button', { name: /Start live timer/i }))
 
     expect(document.querySelector('.timer-value')).toBeTruthy()
-    expect(document.querySelector('.timer-display-row')).toBeTruthy()
+    expect(document.querySelector('.timer-display-row--balanced')).toBeTruthy()
     expect(document.querySelector('.timer-display-row .timer-mode-pill')).toBeTruthy()
   })
 

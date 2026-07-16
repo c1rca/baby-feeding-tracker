@@ -28,7 +28,7 @@ export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide
 
   return (
     <div className="timer-cluster">
-      <div className="timer-display-row">
+      <div className="timer-display-row timer-display-row--balanced">
         {pumpSession || tummySession ? <span className="timer-mode-pill">{pumpSession ? 'Pumping' : tummySession?.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</span> : <span aria-hidden="true" />}
         <div className={`timer-shell ${timerState}`}>
           <div className="timer-halo" aria-hidden="true" />
