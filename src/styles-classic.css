@@ -165,6 +165,50 @@ body { margin: 0; }
 .hero-actions .active-clear-link { min-height: auto; padding: 0; border: 0; background: transparent; box-shadow: none; color: #94a3b8; font-size: .86rem; font-weight: 700; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .hero-actions .active-clear-link:hover { transform: none; box-shadow: none; color: #be123c; background: transparent; }
 .hero-actions .active-clear-link:active { box-shadow: none; }
+
+/* Caregiver today brief (idle overview) */
+.today-brief { position:relative; overflow:hidden; background:linear-gradient(140deg,#eff6ff,#f0fdf4 55%,#f8fafc); }
+.today-brief-head { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; }
+.today-brief-kicker { display:block; color:#64748b; font-size:.72rem; font-weight:900; text-transform:uppercase; letter-spacing:.12em; }
+.today-brief-date { margin:2px 0 0; font-size:1.25rem; letter-spacing:-.01em; }
+.today-brief-baby { display:inline-flex; align-items:center; flex:0 0 auto; border:1px solid #bfdbfe; border-radius:999px; padding:4px 12px; background:#eff6ff; color:#1d4ed8; font-size:.8rem; font-weight:850; }
+.today-brief-focal { margin:14px 0 4px; }
+.today-brief-focal-label { display:block; color:#64748b; font-size:.72rem; font-weight:900; text-transform:uppercase; letter-spacing:.12em; }
+.today-brief-window { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin-top:2px; }
+.today-brief-window strong { font-size:clamp(1.7rem,6vw,2.4rem); font-weight:900; letter-spacing:-.02em; color:#0f172a; font-variant-numeric:tabular-nums; }
+.today-brief-window .next-feed-side { display:inline-flex; align-items:center; align-self:center; padding:2px 9px; border:1px solid #0e7490; border-radius:999px; background:rgba(14,116,144,.08); color:#0e7490; font-size:.78rem; font-weight:950; }
+.today-brief-meta { margin:6px 0 12px; }
+.today-brief-actions { margin-bottom:8px; }
+.care-needs { margin:14px 0 6px; }
+.care-needs-heading { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:8px; }
+.care-needs-heading h3 { margin:0; font-size:.95rem; }
+.care-needs-heading span { color:#64748b; font-size:.76rem; font-weight:800; }
+.care-needs-list { display:grid; gap:8px; }
+.care-need { display:flex; align-items:center; gap:11px; padding:10px 12px; border:1px solid #e2e8f0; border-radius:14px; background:rgba(255,255,255,.9); }
+.care-need-icon { display:grid; place-items:center; width:34px; height:34px; flex:0 0 auto; border-radius:10px; color:#b45309; background:#fffbeb; }
+.care-need--tummy .care-need-icon { color:#6d28d9; background:#f5f3ff; }
+.care-need--tylenol .care-need-icon, .care-need--motrin .care-need-icon { color:#c2410c; background:#fff7ed; }
+.care-need-copy { min-width:0; flex:1 1 auto; }
+.care-need-copy strong { display:block; font-size:.9rem; }
+.care-need-copy small { display:block; margin-top:1px; color:#64748b; font-size:.76rem; font-weight:700; }
+.care-need-action { flex:0 0 auto; margin-left:auto; min-height:34px; padding:0 13px; border-radius:999px; font-size:.78rem; font-weight:800; }
+.care-need.is-done { border-color:#bbf7d0; background:#f0fdf4; }
+.care-need.is-done .care-need-icon { color:#166534; background:#dcfce7; }
+.care-need-progress { height:6px; margin-top:7px; border-radius:999px; background:#e2e8f0; overflow:hidden; }
+.care-need-progress > div { height:100%; min-width:6px; border-radius:inherit; background:linear-gradient(90deg,#2563eb,#0e7490); }
+.pump-stat { background:linear-gradient(180deg,rgba(240,253,250,.92),rgba(255,255,255,.9)); }
+[data-theme='dark'] .today-brief { background:linear-gradient(140deg,rgba(30,58,138,.35),rgba(17,24,39,.92)); }
+[data-theme='dark'] .today-brief-window strong { color:#e2e8f0; }
+[data-theme='dark'] .today-brief-baby { border-color:rgba(96,165,250,.4); background:rgba(30,58,138,.3); color:#93c5fd; }
+[data-theme='dark'] .today-brief-kicker, [data-theme='dark'] .today-brief-focal-label, [data-theme='dark'] .care-needs-heading span, [data-theme='dark'] .care-need-copy small { color:#94a3b8; }
+[data-theme='dark'] .care-need { border-color:#334155; background:rgba(15,23,42,.6); }
+[data-theme='dark'] .care-need-icon { background:rgba(180,83,9,.16); }
+[data-theme='dark'] .care-need--tummy .care-need-icon { background:rgba(109,40,217,.2); color:#c4b5fd; }
+[data-theme='dark'] .care-need.is-done { border-color:rgba(34,197,94,.4); background:rgba(20,83,45,.25); }
+[data-theme='dark'] .care-need.is-done .care-need-icon { color:#86efac; background:rgba(22,101,52,.35); }
+[data-theme='dark'] .care-need-progress { background:#1e293b; }
+[data-theme='dark'] .pump-stat { background:linear-gradient(180deg,rgba(19,78,74,.35),rgba(17,24,39,.92)); }
+
 .live-split { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px; margin: 0 0 14px; }
 .live-split > div:not(.split-title) { display:grid; gap:4px; border:1px solid #dbeafe; background:rgba(255,255,255,.75); border-radius:14px; padding:10px; }
 .split-title { grid-column:1/-1; font-size:.78rem; text-transform:uppercase; letter-spacing:.08em; color:#64748b; font-weight:800; }
