@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it } from 'vitest'
 import App from './App'
@@ -63,7 +63,24 @@ describe('care launcher timers', () => {
     expect(screen.getByRole('button', { name: /Pause Sleep timer/i })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Pause Sleep timer/i }))
     expect(screen.getByRole('button', { name: /Resume Sleep timer/i })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Resume Sleep timer/i }))
+    expect(screen.getByRole('button', { name: /Pause Sleep timer/i })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /^Stop & save Sleep$/i }))
     expect(screen.getByText(/Sleep saved/i)).toBeTruthy()
+  })
+
+  it('resumes a recent saved Sleep session from the timeline', async () => {
+    const endedAt = Date.now()
+    localStorage.setItem(TUMMY_STORAGE_KEY, JSON.stringify([{ id: 'sleep-resume', startedAt: endedAt - 20 * 60_000, endedAt, note: 'night nap', kind: 'sleep' }]))
+    const user = userEvent.setup()
+    render(<App />)
+
+    const sleepItem = screen.getAllByRole('listitem')[0]
+    await user.click(within(sleepItem).getByRole('button', { name: /Tummy Time actions/i }))
+    await user.click(within(sleepItem).getByRole('menuitem', { name: /Resume Sleep session/i }))
+
+    expect(screen.getByText(/Sleep resumed/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Pause Sleep timer/i })).toBeTruthy()
+    expect(screen.queryByText('night nap')).toBeNull()
   })
 })

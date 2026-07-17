@@ -34,6 +34,7 @@ export function TummyTimeTimelineItem({ tummyTime, actions }: { tummyTime: Tummy
             {menuOpen ? (
               <div className="entry-menu" role="menu">
                 <button type="button" role="menuitem" aria-label="Edit Tummy Time" onClick={() => actions.startTummyTimeEdit(tummyTime)}><Pencil size={15} /> Edit</button>
+                <button type="button" role="menuitem" aria-label={`Resume ${label} session`} onClick={() => actions.resumeTummyTime(tummyTime)}>Resume</button>
                 <button type="button" role="menuitem" aria-label="Delete Tummy Time" className="danger-menu" onClick={() => actions.setConfirmingDeleteEntryId(tummyTime.id)}><Trash2 size={15} /> Delete</button>
                 {confirmingDelete ? <DeleteConfirmation label="Confirm delete Tummy Time" onConfirm={() => actions.deleteTummyTime(tummyTime)} /> : null}
               </div>

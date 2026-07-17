@@ -32,6 +32,14 @@ export function usePumpActions({ pumpSession, setPumpSession, setPumpEvents, set
   const startManualPumping = () => { const now = Date.now(); setPumpSession({ id: makeId(), startedAt: now, side: 'both', runningStartedAt: now, elapsedSeconds: 0 }); setPumpCompletionOpen(true) }
   const pausePumping = () => setPumpSession((current) => current?.runningStartedAt ? { ...current, elapsedSeconds: activeElapsedSeconds(current, Date.now()), runningStartedAt: null } : current)
   const resumePumping = () => setPumpSession((current) => current && !current.runningStartedAt ? { ...current, runningStartedAt: Date.now() } : current)
+  const resumePumpEvent = (pumpEvent: PumpEvent) => {
+    if (pumpSession) return showToast('Finish or clear the active timer before resuming another session')
+    const now = Date.now()
+    setPumpEvents((current) => current.filter((event) => event.id !== pumpEvent.id))
+    setPumpSession({ id: makeId(), startedAt: now, side: 'both', runningStartedAt: now, elapsedSeconds: Math.max(0, Math.round((pumpEvent.endedAt - pumpEvent.startedAt) / 1000)) })
+    setOpenEntryMenuId(null)
+    showToast('Pumping resumed')
+  }
   const stopPumping = () => { if (pumpSession) setPumpCompletionOpen(true) }
   const clearPumping = () => { setPumpSession(null); setPumpCompletionOpen(false) }
   const savePumping = (leftText: string, rightText: string, note: string) => {
@@ -67,5 +75,5 @@ export function usePumpActions({ pumpSession, setPumpSession, setPumpEvents, set
     setUndoState({ pumpEvent, timeoutId, kind: 'pump-delete' })
     showToast('Pumping deleted')
   }
-  return { startPumping, startManualPumping, pausePumping, resumePumping, stopPumping, clearPumping, savePumping, startPumpEdit, savePumpEdit, deletePump }
+  return { startPumping, startManualPumping, pausePumping, resumePumping, resumePumpEvent, stopPumping, clearPumping, savePumping, startPumpEdit, savePumpEdit, deletePump }
 }

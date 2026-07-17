@@ -25,6 +25,8 @@ export type TimelineProps = {
   setOpenEntryMenuId: Dispatch<SetStateAction<string | null>>
   setConfirmingDeleteEntryId: Dispatch<SetStateAction<string | null>>
   resumeEntry: (entry: Entry) => void
+  resumeTummyTime: (tummyTime: TummyTimeEvent) => void
+  resumePumpEvent: (pumpEvent: PumpEvent) => void
   deleteEntry: (entry: Entry) => void
   deleteDiaper: (diaper: DiaperEvent) => void
   deleteMedicine: (medicine: MedicineEvent) => void
@@ -68,6 +70,8 @@ export type TimelineActions = Pick<
   | 'setOpenEntryMenuId'
   | 'setConfirmingDeleteEntryId'
   | 'resumeEntry'
+  | 'resumeTummyTime'
+  | 'resumePumpEvent'
   | 'deleteEntry'
   | 'deleteDiaper'
   | 'deleteMedicine'

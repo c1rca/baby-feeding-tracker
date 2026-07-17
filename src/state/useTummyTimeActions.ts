@@ -47,6 +47,17 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
   const pauseCareTimer = () => setTummySession((current) => current?.runningStartedAt ? { ...current, elapsedSeconds: activeElapsedSeconds(current, Date.now()), runningStartedAt: null } : current)
   const resumeCareTimer = () => setTummySession((current) => current && !current.runningStartedAt ? { ...current, runningStartedAt: Date.now() } : current)
 
+  const resumeTummyTime = (tummyTime: TummyTimeEvent) => {
+    if (feedSession || tummySession) return showToast('Finish or clear the active timer before resuming another session')
+    const now = Date.now()
+    const elapsedSeconds = Math.max(0, Math.round((tummyTime.endedAt - tummyTime.startedAt) / 1000))
+    setTummyTimes((current) => current.filter((item) => item.id !== tummyTime.id))
+    setTummySession({ id: makeId(), startedAt: now, runningStartedAt: now, elapsedSeconds, note: tummyTime.note ?? '', kind: tummyTime.kind ?? 'tummy' })
+    setOpenEntryMenuId(null)
+    setAdditionalOptionsOpen(false)
+    showToast(`${tummyTime.kind === 'sleep' ? 'Sleep' : 'Tummy Time'} resumed`)
+  }
+
   const stopCareTimer = () => {
     if (!tummySession) return
     const label = tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'
@@ -90,5 +101,5 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
     showToast('Tummy Time deleted')
   }
 
-  return { logTummyTimeMinutes, startTummyTime, pauseCareTimer, resumeCareTimer, stopTummyTime, startSleep, stopSleep, startTummyTimeEdit, saveTummyTimeEdit, deleteTummyTime }
+  return { logTummyTimeMinutes, startTummyTime, pauseCareTimer, resumeCareTimer, resumeTummyTime, stopTummyTime, startSleep, stopSleep, startTummyTimeEdit, saveTummyTimeEdit, deleteTummyTime }
 }

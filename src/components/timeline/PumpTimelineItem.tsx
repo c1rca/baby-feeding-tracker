@@ -28,6 +28,7 @@ export function PumpTimelineItem({ pumpEvent, actions }: { pumpEvent: PumpEvent;
         <button type="button" className="entry-action-trigger" aria-label="Pumping actions" aria-expanded={menuOpen} onClick={() => openMenu(pumpEvent.id, menuOpen, actions)}><MoreHorizontal size={17} /></button>
         {menuOpen ? <div className="entry-menu" role="menu">
           <button type="button" role="menuitem" aria-label="Edit pumping" onClick={() => actions.startPumpEdit(pumpEvent)}><Pencil size={15} /> Edit</button>
+          <button type="button" role="menuitem" aria-label="Resume Pumping session" onClick={() => actions.resumePumpEvent(pumpEvent)}>Resume</button>
           <button type="button" role="menuitem" className="danger-menu" aria-label="Delete pumping" onClick={() => actions.setConfirmingDeleteEntryId(pumpEvent.id)}><Trash2 size={15} /> Delete</button>
           {confirmingDelete ? <DeleteConfirmation label="Confirm delete pumping" onConfirm={() => actions.deletePump(pumpEvent)} /> : null}
         </div> : null}
