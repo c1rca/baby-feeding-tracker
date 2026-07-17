@@ -88,7 +88,8 @@ describe('caregiver today brief', () => {
     await user.click(screen.getByRole('button', { name: /Start Tummy Time timer/i }))
 
     expect(document.querySelector('.today-brief')).toBeNull()
-    expect(screen.getByText(/^Tummy Time$/i)).toBeTruthy()
+    expect(screen.getByRole('region', { name: /Today's needs/i })).toBeTruthy()
+    expect(document.querySelector('.timer-mode-pill')?.textContent).toMatch(/^Tummy Time$/i)
     expect(screen.getByRole('button', { name: /Stop & Save Tummy Time/i })).toBeTruthy()
   })
 
@@ -147,18 +148,20 @@ describe('caregiver today brief', () => {
     expect(document.querySelector('.day-ribbon-now')).toBeTruthy()
   })
 
-  it('stands the reminder banner down while the brief lists the same needs', async () => {
+  it('keeps Today’s needs visible and never restores the legacy reminder banner during an active timer', async () => {
     const user = userEvent.setup()
     localStorage.setItem(STORAGE_MEDICINES_KEY, JSON.stringify([{ id: 'med-banner', kind: 'tylenol', at: Date.now() - 7 * 3_600_000 }]))
     render(<App />)
 
-    // the needs list owns the reminder on the idle page; no duplicate floating banner
     expect(await screen.findByText(/Tylenol due/i)).toBeTruthy()
     expect(document.querySelector('#care-brief-slot .care-brief')).toBeNull()
 
-    // once a timer takes over the panel, the banner earns its slot back
     await user.click(screen.getByRole('button', { name: /Start suggested side/i }))
-    expect(document.querySelector('#care-brief-slot .care-brief')).toBeTruthy()
+
+    expect(document.querySelector('.timer-shell.is-live')).toBeTruthy()
+    expect(screen.getByRole('region', { name: /Today's needs/i })).toBeTruthy()
+    expect(screen.getByText(/Tylenol due/i)).toBeTruthy()
+    expect(document.querySelector('#care-brief-slot .care-brief')).toBeNull()
   })
 
   it('hides bottle and pump stat cards after 72 quiet hours', () => {

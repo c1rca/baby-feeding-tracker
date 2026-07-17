@@ -20,7 +20,7 @@ export function TrackView({ heroRef, hero, brief, babyName, profileName, overvie
     <>
       <div className="tracker-view">
         {timing ? <HeroPanel ref={heroRef} {...hero} /> : <CareBrief {...hero} {...brief} babyName={babyName} profileName={profileName} />}
-        <div className="track-dashboard-side">{timing ? null : <CareNeedsCard {...hero} {...brief} />}<TrackOverview {...overview} /></div>
+        <div className="track-dashboard-side"><CareNeedsCard {...hero} {...brief} /><TrackOverview {...overview} /></div>
       </div>
       <Timeline {...timeline} onLogPastEvent={() => hero.setPastEventOpen(true)} />
     </>
