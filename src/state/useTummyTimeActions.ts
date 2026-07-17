@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { formatClockInput, makeId, parseClockTimeToday } from '../domain/trackerDomain'
+import { formatClockInput, formatDateInput, makeId, parseClockTimeToday } from '../domain/trackerDomain'
 import { activeElapsedSeconds } from '../domain/careTimer'
 import type { EditingTummyTimeState, Session, TummyTimeEvent, TummyTimeSession, UndoState } from '../types'
 
@@ -76,14 +76,14 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
   const stopSleep = stopCareTimer
 
   const startTummyTimeEdit = (tummyTime: TummyTimeEvent) => {
-    setEditingTummyTime({ id: tummyTime.id, startTime: formatClockInput(tummyTime.startedAt), endTime: formatClockInput(tummyTime.endedAt), note: tummyTime.note ?? '', originalStartedAt: tummyTime.startedAt, originalEndedAt: tummyTime.endedAt })
+    setEditingTummyTime({ id: tummyTime.id, startDate: formatDateInput(tummyTime.startedAt), startTime: formatClockInput(tummyTime.startedAt), endTime: formatClockInput(tummyTime.endedAt), note: tummyTime.note ?? '', originalStartedAt: tummyTime.startedAt, originalEndedAt: tummyTime.endedAt })
     setOpenEntryMenuId(null)
   }
 
   const saveTummyTimeEdit = (tummyTime: TummyTimeEvent) => {
     if (!editingTummyTime) return
-    const startedAt = parseClockTimeToday(editingTummyTime.startTime, editingTummyTime.originalStartedAt)
-    const endedAt = parseClockTimeToday(editingTummyTime.endTime, editingTummyTime.originalEndedAt)
+    const startedAt = new Date(`${editingTummyTime.startDate}T${editingTummyTime.startTime}`).getTime()
+    const endedAt = parseClockTimeToday(editingTummyTime.endTime, startedAt)
     if (startedAt === null || endedAt === null) return showToast('Enter valid Tummy Time times')
     if (endedAt <= startedAt) return showToast('End time must be after start time')
     if (endedAt > Date.now()) return showToast('End time cannot be in the future')

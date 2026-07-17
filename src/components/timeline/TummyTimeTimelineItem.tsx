@@ -44,6 +44,7 @@ export function TummyTimeTimelineItem({ tummyTime, actions }: { tummyTime: Tummy
       </div>
       {isEditing && actions.editingTummyTime ? (
         <div className="edit-panel">
+          {isSleep ? <label className="sleep-date-edit"><span>Sleep date <Pencil size={13} aria-hidden="true" /></span><input type="date" aria-label="Sleep date" value={actions.editingTummyTime.startDate} onChange={(event) => actions.setEditingTummyTime({ ...actions.editingTummyTime!, startDate: event.target.value })} /></label> : null}
           <label>Start time<input aria-label="Tummy Time start time" value={actions.editingTummyTime.startTime} onChange={(event) => actions.setEditingTummyTime({ ...actions.editingTummyTime!, startTime: event.target.value })} placeholder="9:15 AM" /></label>
           <label>End time<input aria-label="Tummy Time end time" value={actions.editingTummyTime.endTime} onChange={(event) => actions.setEditingTummyTime({ ...actions.editingTummyTime!, endTime: event.target.value })} placeholder="9:25 AM" /></label>
           <label>Note<input aria-label="Tummy Time note" value={actions.editingTummyTime.note} onChange={(event) => actions.setEditingTummyTime({ ...actions.editingTummyTime!, note: event.target.value })} placeholder="optional note" /></label>

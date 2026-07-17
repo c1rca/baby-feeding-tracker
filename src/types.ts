@@ -91,4 +91,4 @@ export type EditingState = {
 
 export type EditingDiaperState = { id: string; kinds: DiaperKind[] } | null
 export type EditingMedicineState = { id: string; kind: MedicineKind; time: string; originalAt: number } | null
-export type EditingTummyTimeState = { id: string; startTime: string; endTime: string; note: string; originalStartedAt: number; originalEndedAt: number } | null
+export type EditingTummyTimeState = { id: string; startDate: string; startTime: string; endTime: string; note: string; originalStartedAt: number; originalEndedAt: number } | null
