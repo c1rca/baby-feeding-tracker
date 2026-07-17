@@ -35,6 +35,17 @@ describe('buildDayRhythm', () => {
     expect(rhythm.nowMs).toBe(now)
   })
 
+  it('uses active nursing duration instead of a paused wall-clock gap for feed spans', () => {
+    const pausedFeed: Entry = { ...feed('paused-feed', 15), endedAt: at(17, 42), leftSeconds: 18 * 60, rightSeconds: 0 }
+    const rhythm = buildDayRhythm([pausedFeed], [], [], now)
+    expect(rhythm.feeds[0]).toMatchObject({ atMs: at(15), endMs: at(15, 18) })
+  })
+
+  it('does not draw a sleep span past the current time', () => {
+    const rhythm = buildDayRhythm([], [], [{ id: 'future-sleep', startedAt: at(13), endedAt: at(20), kind: 'sleep' }], now)
+    expect(rhythm.spans[0].endMs).toBe(now)
+  })
+
   it('clamps spans that cross midnight to the visible day', () => {
     const tummyTimes: TummyTimeEvent[] = [{ id: 'overnight', startedAt: at(-1), endedAt: at(1), kind: 'sleep' }]
     const rhythm = buildDayRhythm([], [], tummyTimes, now)

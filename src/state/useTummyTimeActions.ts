@@ -86,6 +86,7 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
     const endedAt = parseClockTimeToday(editingTummyTime.endTime, editingTummyTime.originalEndedAt)
     if (startedAt === null || endedAt === null) return showToast('Enter valid Tummy Time times')
     if (endedAt <= startedAt) return showToast('End time must be after start time')
+    if (endedAt > Date.now()) return showToast('End time cannot be in the future')
     setTummyTimes((prev) => prev.map((item) => item.id === tummyTime.id ? { ...item, startedAt, endedAt, note: editingTummyTime.note } : item).sort((a, b) => b.startedAt - a.startedAt))
     setEditingTummyTime(null)
     showToast('Tummy Time updated')

@@ -24,6 +24,7 @@ const diaperKindsOf = (diaper: DiaperEvent): ('wet' | 'stool')[] => {
 }
 
 const plural = (count: number, noun: string) => `${count} ${noun}${count === 1 ? '' : 's'}`
+const activeFeedEnd = (entry: Entry) => entry.startedAt + Math.max(0, entry.leftSeconds + entry.rightSeconds) * 1000
 
 export function buildDayRhythm(entries: Entry[], diapers: DiaperEvent[], tummyTimes: TummyTimeEvent[], now: number): DayRhythm {
   const dayStartMs = startOfLocalDayMs(now)
@@ -35,7 +36,7 @@ export function buildDayRhythm(entries: Entry[], diapers: DiaperEvent[], tummyTi
     .map((entry) => ({
       id: entry.id,
       atMs: entry.startedAt,
-      endMs: Math.min(Math.max(entry.endedAt, entry.startedAt), dayEndMs),
+      endMs: Math.min(Math.max(activeFeedEnd(entry), entry.startedAt), dayEndMs),
       type: entry.type,
     }))
     .sort((a, b) => a.atMs - b.atMs)
@@ -63,7 +64,7 @@ export function buildDayRhythm(entries: Entry[], diapers: DiaperEvent[], tummyTi
     .map((event) => ({
       id: event.id,
       startMs: Math.max(event.startedAt, dayStartMs),
-      endMs: Math.min(event.endedAt, dayEndMs),
+      endMs: Math.min(event.endedAt, dayEndMs, now),
       kind: (event.kind === 'sleep' ? 'sleep' : 'tummy') as RhythmSpan['kind'],
     }))
     .sort((a, b) => a.startMs - b.startMs)
