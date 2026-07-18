@@ -137,7 +137,11 @@ const recordDeletedItems = createDeletedItemRecorder(upsertDeletedItem)
 const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt) => {
   upsertStateForBaby.run(statePayload)
   // The legacy single row keeps mirroring the default baby so pre-scoping
-  // builds (and a prod rollback) still read current data.
+  // builds (and a prod rollback) still read current data. RETIREMENT: safe to
+  // drop this dual-write — plus the selectState fallback reads in
+  // notifications.js/startup.js/stateEvents.js/apiRoutes.js — only once a
+  // pre-scoping build is no longer a rollback target for the live deployment.
+  // Until then it is the rollback safety net and must stay.
   if (statePayload.household_id === DEFAULT_HOUSEHOLD_ID && statePayload.baby_id === DEFAULT_BABY_ID) upsertState.run(statePayload)
   recordDeletedItems(audit, updatedAt, { householdId: statePayload.household_id, babyId: statePayload.baby_id })
 })
