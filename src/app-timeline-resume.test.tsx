@@ -81,10 +81,9 @@ describe('App interactions', () => {
     expect(within(liveSplit).getByText(/^Left$/i).nextElementSibling?.textContent).toMatch(/7m 00s/)
     expect(within(liveSplit).getByText(/^Right$/i).nextElementSibling?.textContent).toMatch(/5m 00s/)
     expect(within(liveSplit).getByText(/^Bottle$/i).nextElementSibling?.textContent).toBe('2.5 oz')
-    expect(screen.queryByDisplayValue(/resume me/i)).toBeNull()
     await waitFor(() => expect(scrollSpy).toHaveBeenCalled())
     expect(document.activeElement?.textContent).toMatch(/Switch to Left/i)
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    // The resumed feed's note rides the always-visible care note field.
     expect(screen.getByDisplayValue(/resume me/i)).toBeTruthy()
     expect(screen.queryByText(/mixed/i)).toBeNull()
 

@@ -65,7 +65,7 @@ describe('App interactions', () => {
     expect(screen.getByText(/Browser reminders disabled/i)).toBeTruthy()
   })
 
-  it('schedules 2h and 3h feeding notifications from the feed start with a Feedr link', () => {
+  it('schedules a feeding reminder from the feed start with a Feedr link', () => {
     const base = Date.now()
     const scheduled: Array<{ callback: () => void; delay?: number }> = []
     vi.spyOn(window, 'setTimeout').mockImplementation(((callback: TimerHandler, delay?: number) => {
@@ -102,12 +102,11 @@ describe('App interactions', () => {
 
     render(<App />)
 
-    expect(scheduled.map((timer) => Math.round((timer.delay ?? 0) / (60 * 60 * 1000)))).toEqual([2, 3])
+    // A single feeding reminder fires at the configured interval (default 2h)
+    // from the feed start, and requires interaction so it isn't missed.
+    expect(scheduled.map((timer) => Math.round((timer.delay ?? 0) / (60 * 60 * 1000)))).toEqual([2])
     scheduled[0].callback()
-    expect(NotificationMock).toHaveBeenCalledWith('Feeding window reminder', expect.objectContaining({ tag: 'next-feeding-entry-reminder-2h' }))
-
-    scheduled[1].callback()
-    expect(NotificationMock).toHaveBeenCalledWith('Feeding window reminder', expect.objectContaining({ tag: 'next-feeding-entry-reminder-3h', requireInteraction: true }))
+    expect(NotificationMock).toHaveBeenCalledWith('Feeding reminder', expect.objectContaining({ tag: 'next-feeding-entry-reminder-2h', requireInteraction: true }))
     notifications[0].onclick?.()
     expect(openSpy).toHaveBeenCalledWith(window.location.origin, '_blank', 'noopener,noreferrer')
   })

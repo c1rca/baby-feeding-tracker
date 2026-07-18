@@ -47,16 +47,16 @@ describe('App interactions', () => {
     expect(savedEntries[0].diaperKinds).toEqual(['wet', 'stool'])
   })
 
-  it('moves instant diaper logs into More actions', async () => {
+  it('logs a diaper from the care launcher quick sheet', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.queryByRole('group', { name: /^Diapers$/i })).toBeNull()
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    const diapers = screen.getByRole('group', { name: /^Diapers$/i })
-    expect(within(diapers).getByRole('button', { name: /^Log wet diaper$/i })).toBeTruthy()
-    expect(within(diapers).getByRole('button', { name: /^Log stool diaper$/i })).toBeTruthy()
-    await user.click(within(diapers).getByRole('button', { name: /^Log mixed diaper$/i }))
+    // Diapers live in the always-visible care launcher, opened as a quick sheet.
+    await user.click(screen.getByRole('button', { name: /^Diapers$/i }))
+    const sheet = screen.getByRole('dialog', { name: /Log diaper/i })
+    expect(within(sheet).getByRole('button', { name: /^Wet$/i })).toBeTruthy()
+    expect(within(sheet).getByRole('button', { name: /^Stool$/i })).toBeTruthy()
+    await user.click(within(sheet).getByRole('button', { name: /^Mixed$/i }))
 
     expect(screen.getByText(/Wet \+ Stool diaper logged/i)).toBeTruthy()
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
@@ -66,8 +66,8 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    await user.click(within(screen.getByRole('group', { name: /^Diapers$/i })).getByRole('button', { name: /^Log wet diaper$/i }))
+    await user.click(screen.getByRole('button', { name: /^Diapers$/i }))
+    await user.click(within(screen.getByRole('dialog', { name: /Log diaper/i })).getByRole('button', { name: /^Wet$/i }))
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
 
     await user.click(screen.getByRole('button', { name: /Undo diaper log/i }))
@@ -80,8 +80,8 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    await user.click(within(screen.getByRole('group', { name: /^Diapers$/i })).getByRole('button', { name: /^Log wet diaper$/i }))
+    await user.click(screen.getByRole('button', { name: /^Diapers$/i }))
+    await user.click(within(screen.getByRole('dialog', { name: /Log diaper/i })).getByRole('button', { name: /^Wet$/i }))
     const diaperItem = screen.getAllByRole('listitem')[0]
 
     await user.click(within(diaperItem).getByRole('button', { name: /Diaper actions/i }))
@@ -104,11 +104,10 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
-    expect(screen.getByRole('dialog', { name: /Add missed feed/i })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /Log a past event/i }))
+    expect(screen.getByRole('dialog', { name: /Log a past event/i })).toBeTruthy()
 
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('dialog', { name: /Add missed feed/i })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: /Log a past event/i })).toBeNull()
   })
 })

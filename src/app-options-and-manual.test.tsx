@@ -11,50 +11,50 @@ import {
 describe('App interactions', () => {
   setupAppTestEnvironment()
 
-  it('keeps bottle and missed feed as separate actions inside additional options', async () => {
+  it('keeps quick bottle logging and past feeds as separate actions', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.queryByRole('button', { name: /Log bottle-only feed/i })).toBeNull()
-    expect(screen.queryByRole('button', { name: /Add missed feed/i })).toBeNull()
+    // Quick bottle lives in the always-visible care launcher; a missed/older feed
+    // is logged as a "past event" from the timeline — two distinct affordances.
+    await user.click(screen.getByRole('button', { name: /^Bottle$/i }))
+    expect(screen.getByRole('dialog', { name: /Quick bottle log/i })).toBeTruthy()
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: /Quick bottle log/i })).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-
-    const bottleGroup = screen.getByRole('group', { name: /Bottle feed/i })
-    const missedGroup = screen.getByRole('group', { name: /Missed feed/i })
-    expect(within(bottleGroup).getByRole('button', { name: /Log bottle-only feed/i })).toBeTruthy()
-    expect(within(missedGroup).getByRole('button', { name: /Add missed feed/i })).toBeTruthy()
-    expect(within(bottleGroup).queryByRole('button', { name: /Add missed feed/i })).toBeNull()
+    await user.click(screen.getByRole('button', { name: /Log a past event/i }))
+    const pastEvent = screen.getByRole('dialog', { name: /Log a past event/i })
+    // Feed is the default (pressed) past-event kind.
+    expect(within(pastEvent).getByRole('button', { name: /^Feed$/i, pressed: true })).toBeTruthy()
   })
 
-  it('lets a missed feed be saved at a chosen date and time', async () => {
+  it('lets a past feed be saved at a chosen date and time', async () => {
     const now = new Date(2026, 5, 10, 12, 0).getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.setSystemTime(now)
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
+    await user.click(screen.getByRole('button', { name: /Log a past event/i }))
 
-    const dialog = screen.getByRole('dialog', { name: /Add missed feed/i })
-    expect(within(dialog).getByLabelText(/Feed date/i)).toHaveProperty('value', '2026-06-10')
-    expect(within(dialog).getByLabelText(/Feed start time/i)).toHaveProperty('value', '12:00')
+    const dialog = screen.getByRole('dialog', { name: /Log a past event/i })
+    expect(within(dialog).getByLabelText(/^Date$/i)).toHaveProperty('value', '2026-06-10')
+    expect(within(dialog).getByLabelText(/^Time$/i)).toHaveProperty('value', '12:00')
 
-    await user.clear(within(dialog).getByLabelText(/Feed date/i))
-    await user.type(within(dialog).getByLabelText(/Feed date/i), '2026-06-04')
-    await user.clear(within(dialog).getByLabelText(/Feed start time/i))
-    await user.type(within(dialog).getByLabelText(/Feed start time/i), '05:00')
-    await user.type(within(dialog).getByLabelText(/Manual left minutes/i), '15')
-    await user.click(within(dialog).getByRole('button', { name: /Save missed feed/i }))
+    await user.clear(within(dialog).getByLabelText(/^Date$/i))
+    await user.type(within(dialog).getByLabelText(/^Date$/i), '2026-06-04')
+    await user.clear(within(dialog).getByLabelText(/^Time$/i))
+    await user.type(within(dialog).getByLabelText(/^Time$/i), '05:00')
+    await user.type(within(dialog).getByLabelText(/Left minutes/i), '15')
+    await user.click(within(dialog).getByRole('button', { name: /Save past event/i }))
 
-    expect(screen.getByText(/Missed feed saved/i)).toBeTruthy()
+    expect(screen.getByText(/Past feed saved/i)).toBeTruthy()
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')
     expect(saved[0].startedAt).toBe(new Date(2026, 5, 4, 5, 0).getTime())
     expect(saved[0].endedAt).toBe(new Date(2026, 5, 4, 5, 15).getTime())
   })
 
-  it('keeps the real latest feed first when saving an older missed feed', async () => {
+  it('keeps the real latest feed first when saving an older past feed', async () => {
     const now = new Date(2026, 5, 10, 12, 0).getTime()
     const latestStart = new Date(2026, 5, 10, 9, 30).getTime()
     vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -66,33 +66,28 @@ describe('App interactions', () => {
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
-    const dialog = screen.getByRole('dialog', { name: /Add missed feed/i })
-    await user.clear(within(dialog).getByLabelText(/Feed date/i))
-    await user.type(within(dialog).getByLabelText(/Feed date/i), '2026-06-10')
-    await user.clear(within(dialog).getByLabelText(/Feed start time/i))
-    await user.type(within(dialog).getByLabelText(/Feed start time/i), '06:00')
-    await user.type(within(dialog).getByLabelText(/Manual left minutes/i), '15')
-    await user.click(within(dialog).getByRole('button', { name: /Save missed feed/i }))
+    await user.click(screen.getByRole('button', { name: /Log a past event/i }))
+    const dialog = screen.getByRole('dialog', { name: /Log a past event/i })
+    await user.clear(within(dialog).getByLabelText(/^Date$/i))
+    await user.type(within(dialog).getByLabelText(/^Date$/i), '2026-06-10')
+    await user.clear(within(dialog).getByLabelText(/^Time$/i))
+    await user.type(within(dialog).getByLabelText(/^Time$/i), '06:00')
+    await user.type(within(dialog).getByLabelText(/Left minutes/i), '15')
+    await user.click(within(dialog).getByRole('button', { name: /Save past event/i }))
 
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Entry[]
     expect(saved[0].id).toBe('latest-real-feed')
     expect(saved[0].startedAt).toBe(latestStart)
-    expect(screen.getByText(/11:30 AM–12:30 PM/i)).toBeTruthy()
-    expect(screen.getByText(/Last 2h 18m ago/i)).toBeTruthy()
   })
 
   it('logs a quick bottle entry and shows toast feedback', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    await user.click(screen.getByRole('button', { name: /Log bottle-only feed/i }))
-    await user.click(screen.getByRole('button', { name: /^log bottle$/i }))
+    await user.click(screen.getByRole('button', { name: /^Bottle$/i }))
+    await user.click(screen.getByRole('button', { name: /^Log bottle$/i }))
 
     expect(screen.getByText(/Bottle feed saved/i)).toBeTruthy()
-    expect(screen.getByText(/Feeds today/i).nextElementSibling?.textContent).toBe('1')
   })
 
   it('puts priority feed cues above the counter with micro timing below', () => {

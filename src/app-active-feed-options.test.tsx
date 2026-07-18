@@ -11,16 +11,15 @@ import {
 describe('App interactions', () => {
   setupAppTestEnvironment()
 
-  it('keeps missed feed available inside additional options during an active feed', async () => {
+  it('keeps past-event logging available during an active feed', async () => {
     const user = userEvent.setup()
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /Start suggested side/i }))
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
+    await user.click(screen.getByRole('button', { name: /Log a past event/i }))
+    expect(screen.getByRole('dialog', { name: /Log a past event/i })).toBeTruthy()
 
-    const missedGroup = screen.getByRole('group', { name: /Missed feed/i })
-    await user.click(within(missedGroup).getByRole('button', { name: /Add missed feed/i }))
-    expect(screen.getByRole('dialog', { name: /Add missed feed/i })).toBeTruthy()
+    await user.keyboard('{Escape}')
     expect(screen.getByRole('button', { name: /End feed/i })).toBeTruthy()
   })
 
@@ -50,34 +49,35 @@ describe('App interactions', () => {
     expect(screen.getByText(/^Next feed$/i)).toBeTruthy()
     const briefText = document.querySelector('.today-brief')?.textContent || ''
     // 09:30 now, feed started 08:00: the range stays focal with the clock cue right below it
-    expect(briefText).toMatch(/Next feed\s*10:00.*11:00.*AM\s*Left\s*in 30m/i)
+    expect(briefText).toMatch(/Next feed\s*10:00.*11:00\s*AM/i)
+    expect(briefText).toMatch(/Next in 30m/i)
     const nextSide = document.querySelector('.next-feed-side') as HTMLElement
-    expect(nextSide?.textContent?.trim()).toBe('Left')
+    expect(nextSide?.textContent?.trim()).toBe('L')
     expect(nextSide?.className).toBe('next-feed-side')
   })
 
-  it('adds a missed manual feed with bottle and nursing details from the entered start time', async () => {
+  it('adds a past feed with bottle and nursing details from the entered start time', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    await user.click(screen.getByRole('button', { name: /Add missed feed/i }))
-    await user.clear(screen.getByLabelText(/Feed date/i))
-    await user.type(screen.getByLabelText(/Feed date/i), '2026-06-10')
-    await user.clear(screen.getByLabelText(/Feed start time/i))
-    await user.type(screen.getByLabelText(/Feed start time/i), '08:00')
-    await user.clear(screen.getByLabelText(/Manual bottle ounces/i))
-    await user.type(screen.getByLabelText(/Manual bottle ounces/i), '2.5')
-    await user.clear(screen.getByLabelText(/Manual left minutes/i))
-    await user.type(screen.getByLabelText(/Manual left minutes/i), '7')
-    await user.clear(screen.getByLabelText(/Manual right minutes/i))
-    await user.type(screen.getByLabelText(/Manual right minutes/i), '5')
-    await user.type(screen.getByLabelText(/Manual note/i), 'late log')
-    await user.click(screen.getByRole('button', { name: /Save missed feed/i }))
+    await user.click(screen.getByRole('button', { name: /Log a past event/i }))
+    const dialog = screen.getByRole('dialog', { name: /Log a past event/i })
+    await user.clear(within(dialog).getByLabelText(/^Date$/i))
+    await user.type(within(dialog).getByLabelText(/^Date$/i), '2026-06-10')
+    await user.clear(within(dialog).getByLabelText(/^Time$/i))
+    await user.type(within(dialog).getByLabelText(/^Time$/i), '08:00')
+    await user.clear(within(dialog).getByLabelText(/Bottle ounces/i))
+    await user.type(within(dialog).getByLabelText(/Bottle ounces/i), '2.5')
+    await user.clear(within(dialog).getByLabelText(/Left minutes/i))
+    await user.type(within(dialog).getByLabelText(/Left minutes/i), '7')
+    await user.clear(within(dialog).getByLabelText(/Right minutes/i))
+    await user.type(within(dialog).getByLabelText(/Right minutes/i), '5')
+    await user.type(within(dialog).getByLabelText(/^Note$/i), 'late log')
+    await user.click(within(dialog).getByRole('button', { name: /Save past event/i }))
 
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]') as Entry[]
     expect(saved[0].startedAt).toBe(new Date('2026-06-10T08:00:00').getTime())
     expect(saved[0].endedAt).toBe(new Date('2026-06-10T08:12:00').getTime())
-    expect(screen.getByText(/Missed feed saved/i)).toBeTruthy()
+    expect(screen.getByText(/Past feed saved/i)).toBeTruthy()
   })
 })

@@ -64,9 +64,8 @@ describe('App interactions', () => {
 
     expect(screen.queryByLabelText(/Live split/i)).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    await user.click(screen.getByRole('button', { name: /Add bottle to this feed/i }))
-    await user.click(screen.getByRole('button', { name: /2\.0 oz/i }))
+    await user.click(screen.getByRole('button', { name: /^Bottle$/i }))
+    await user.click(screen.getByRole('button', { name: /2\.0\s*ounces/i }))
 
     const liveSplit = screen.getByLabelText(/Live split/i)
     expect(liveSplit).toBeTruthy()
@@ -189,7 +188,7 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(screen.getByRole('button', { name: /Open settings/i }))
     await user.click(screen.getByRole('tab', { name: /Data/i }))
     await user.click(screen.getByRole('button', { name: /Clear all data/i }))
 
@@ -202,10 +201,14 @@ describe('App interactions', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    expect(screen.queryByRole('button', { name: /Log bottle-only feed/i })).toBeNull()
+    // With no active feed the bottle launcher logs a standalone quick bottle.
+    await user.click(screen.getByRole('button', { name: /^Bottle$/i }))
+    expect(screen.getByRole('dialog', { name: /Quick bottle log/i })).toBeTruthy()
+    await user.keyboard('{Escape}')
+
     await user.click(screen.getByRole('button', { name: /Start suggested side: Left/i }))
-    expect(screen.queryByRole('button', { name: /Add bottle to this feed/i })).toBeNull()
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    expect(screen.getByRole('button', { name: /Add bottle to this feed/i })).toBeTruthy()
+    // During an active feed the same launcher explicitly adds to the active feed.
+    await user.click(screen.getByRole('button', { name: /^Bottle$/i }))
+    expect(screen.getByRole('dialog', { name: /Add bottle to active feed/i })).toBeTruthy()
   })
 })
