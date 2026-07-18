@@ -2,7 +2,7 @@ import { normalizeGrowthMeasurements } from '../domain/growth'
 import { normalizeSession } from '../domain/trackerDomain'
 import { normalizeTummyTimeGoalMinutes, TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES } from '../domain/tummyTime'
 import type { GrowthMeasurement } from '../domain/growthTypes'
-import type { DiaperEvent, Entry, LegacySession, MedicineEvent, PumpEvent, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
+import type { DiaperEvent, Entry, LegacySession, MedicineEvent, PumpEvent, PumpSession, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
 
 export const TRACKER_STORAGE_KEYS = {
   entries: 'baby-feeding-tracker:v1:entries',
@@ -15,6 +15,7 @@ export const TRACKER_STORAGE_KEYS = {
   medicines: 'baby-feeding-tracker:v1:medicines',
   tummyTimes: 'baby-feeding-tracker:v1:tummy-times',
   pumpEvents: 'baby-feeding-tracker:v1:pump-events',
+  pumpSession: 'baby-feeding-tracker:v1:pump-session',
   tummySession: 'baby-feeding-tracker:v1:tummy-session',
   tummyGoalMinutes: 'baby-feeding-tracker:v1:tummy-goal-minutes',
   growthMeasurements: 'baby-feeding-tracker:v1:growth-measurements',
@@ -43,6 +44,7 @@ export const getTrackerStorageKeys = (babyId?: string | null): TrackerStorageKey
   medicines: scopedKey(TRACKER_STORAGE_KEYS.medicines, babyId),
   tummyTimes: scopedKey(TRACKER_STORAGE_KEYS.tummyTimes, babyId),
   pumpEvents: scopedKey(TRACKER_STORAGE_KEYS.pumpEvents, babyId),
+  pumpSession: scopedKey(TRACKER_STORAGE_KEYS.pumpSession, babyId),
   tummySession: scopedKey(TRACKER_STORAGE_KEYS.tummySession, babyId),
   tummyGoalMinutes: scopedKey(TRACKER_STORAGE_KEYS.tummyGoalMinutes, babyId),
   growthMeasurements: scopedKey(TRACKER_STORAGE_KEYS.growthMeasurements, babyId),
@@ -88,6 +90,8 @@ export const readSortedTummyTimes = (keys: TrackerStorageKeys = TRACKER_STORAGE_
 export const readSortedPumpEvents = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
   return safeJsonArray<PumpEvent>(localStorage.getItem(keys.pumpEvents)).sort((a, b) => b.startedAt - a.startedAt)
 }
+
+export const readPumpSession = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => safeJsonParse<PumpSession>(localStorage.getItem(keys.pumpSession))
 
 export const readTummySession = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => safeJsonParse<TummyTimeSession>(localStorage.getItem(keys.tummySession))
 

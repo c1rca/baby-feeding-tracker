@@ -89,13 +89,14 @@ describe('App interactions', () => {
     expect(within(firstItem).getByRole('menuitem', { name: /Edit entry/i })).toBeTruthy()
     expect(firstItem.closest('.timeline-day')?.classList.contains('menu-open')).toBe(true)
 
-    await user.click(screen.getByText(/Baby Feeding Tracker/i))
+    await user.click(screen.getByRole('heading', { name: /Baby Tracker/i }))
 
     expect(within(firstItem).queryByRole('menuitem', { name: /Edit entry/i })).toBeNull()
   })
 
-  it('edits left and right nursing minutes in a timeline item', async () => {
+  it('edits left and right nursing minutes in a timeline item without changing the wall-clock end time', async () => {
     const baseStartedAt = Date.now() - 720000
+    const originalEndedAt = Date.now()
     localStorage.setItem(
       STORAGE_KEY,
       JSON.stringify([
@@ -103,7 +104,7 @@ describe('App interactions', () => {
           id: 'entry-nursing-edit',
           type: 'breast',
           startedAt: baseStartedAt,
-          endedAt: Date.now(),
+          endedAt: originalEndedAt,
           leftSeconds: 420,
           rightSeconds: 300,
           bottleOunces: null,
@@ -131,6 +132,6 @@ describe('App interactions', () => {
     const savedEntries = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Array<{ startedAt: number; endedAt: number; leftSeconds: number; rightSeconds: number }>
     expect(savedEntries[0].leftSeconds).toBe(540)
     expect(savedEntries[0].rightSeconds).toBe(240)
-    expect(savedEntries[0].endedAt).toBe(baseStartedAt + 13 * 60 * 1000)
+    expect(savedEntries[0].endedAt).toBe(originalEndedAt)
   })
 })

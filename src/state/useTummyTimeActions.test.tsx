@@ -14,6 +14,7 @@ function setup(editingTummyTime: EditingTummyTimeState, existing: TummyTimeEvent
     useTummyTimeActions({
       tummySession: null,
       feedSession: null,
+      pumpSession: null,
       setTummySession: noop,
       setTummyTimes,
       editingTummyTime,

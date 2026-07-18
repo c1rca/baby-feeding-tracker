@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { DiaperEvent, Entry, MedicineEvent, Session, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
+import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, Session, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
 import type { GrowthMeasurement } from '../domain/growthTypes'
 import { useServerSync } from './useServerSync'
 import { CLIENT_ID } from './clientId'
@@ -28,13 +28,15 @@ function Harness({ initialEntries = [] as Entry[], initialSession = null as Sess
   const [diapers, setDiapers] = useState<DiaperEvent[]>([])
   const [medicines, setMedicines] = useState<MedicineEvent[]>([])
   const [tummyTimes, setTummyTimes] = useState<TummyTimeEvent[]>([])
+  const [pumpEvents, setPumpEvents] = useState<PumpEvent[]>([])
+  const [pumpSession, setPumpSession] = useState<import('../types').PumpSession | null>(null)
   const [tummySession, setTummySession] = useState<TummyTimeSession | null>(null)
   const [tummyGoalMinutes, setTummyGoalMinutes] = useState(20)
   const [growthMeasurements, setGrowthMeasurements] = useState<GrowthMeasurement[]>([])
   const [babyDob, setBabyDob] = useState('2026-06-03')
   const [sessionState, setSession] = useState<Session | null>(initialSession)
   const [theme, setTheme] = useState<Theme>('light')
-  const { syncStatus, liveConflict, resolveLiveConflict } = useServerSync({ entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session: sessionState, theme, liveSyncEnabled: true, setEntries, setDiapers, setMedicines, setTummyTimes, setTummySession, setTummyGoalMinutes, setGrowthMeasurements, setBabyDob, setSession, setTheme })
+  const { syncStatus, liveConflict, resolveLiveConflict } = useServerSync({ entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session: sessionState, theme, liveSyncEnabled: true, setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setPumpSession, setTummySession, setTummyGoalMinutes, setGrowthMeasurements, setBabyDob, setSession, setTheme })
 
   return (
     <div>

@@ -24,6 +24,7 @@ describe('Pumping tracker', () => {
     expect(screen.getByRole('button', { name: /Resume Pumping timer/i })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Resume Pumping timer/i }))
     await user.click(screen.getByRole('button', { name: /^Finish & add output$/i }))
+    await user.click(screen.getByRole('button', { name: /^Confirm save Pumping$/i }))
     const sheet = screen.getByRole('dialog', { name: /Complete pumping session/i })
     await user.type(within(sheet).getByRole('spinbutton', { name: /Left output ounces/i }), '3.5')
     expect(within(sheet).getByText(/Total output.*3\.5 oz/i)).toBeTruthy()

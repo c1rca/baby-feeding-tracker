@@ -44,7 +44,7 @@ test('notification scheduler sends Gotify and text-email medication reminders on
   assert.match(textEmails[0].message, /Take Motrin/i)
   assert.match(textEmails[0].message, /Last dose was Motrin/i)
   assert.match(textEmails[0].message, /Log Motrin now: https:\/\/feedr\.kjw\.lol\/\?quickMed=motrin$/)
-  assert.ok(notificationRows.get('medicine:motrin:dose-1').sent_at)
+  assert.ok(notificationRows.get('default-household:default-baby:medicine:motrin:dose-1').sent_at)
   assert.equal(timers.length, 1)
 
   now += 7 * 60 * 60 * 1000
@@ -60,7 +60,7 @@ test('notification scheduler sends Gotify and text-email medication reminders on
   assert.match(sent[1].message, /Take Tylenol/i)
   assert.match(sent[1].message, /Log Tylenol now: https:\/\/feedr\.kjw\.lol\/\?quickMed=tylenol$/)
   assert.equal(textEmails.length, 2)
-  assert.ok(notificationRows.get('medicine:tylenol:dose-2').sent_at)
+  assert.ok(notificationRows.get('default-household:default-baby:medicine:tylenol:dose-2').sent_at)
 })
 
 test('notification scheduler sends one Vitamin D reminder after the 18 hour window', async () => {
@@ -97,7 +97,7 @@ test('notification scheduler sends one Vitamin D reminder after the 18 hour wind
   assert.equal(sent[0].extras?.['client::notification']?.click?.url, 'https://feedr.kjw.lol/?quickMed=vitamin_d')
   assert.equal(textEmails.length, 1)
   assert.equal(textEmails[0].subject, 'Vitamin D reminder')
-  assert.ok(notificationRows.get('medicine:vitamin_d:vitamin-dose-1').sent_at)
+  assert.ok(notificationRows.get('default-household:default-baby:medicine:vitamin_d:vitamin-dose-1').sent_at)
 
   now += 30 * 60 * 1000
   scheduler.evaluate()
@@ -134,6 +134,6 @@ test('notification scheduler does not re-trigger a medicine reminder after one c
   scheduler.evaluate()
 
   assert.equal(sent.length, 1)
-  assert.ok(notificationRows.get('medicine:tylenol:dose-partial').sent_at)
+  assert.ok(notificationRows.get('default-household:default-baby:medicine:tylenol:dose-partial').sent_at)
   assert.equal(timers.length, 1)
 })

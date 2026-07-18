@@ -104,6 +104,7 @@ export function resolveIncomingState(existingRow, incoming, options = {}) {
     medicines: mergeByIdPreservingExisting(parseJsonArray(existingRow.medicines_json), incoming.medicines, options.deletedMedicineIds),
     tummyTimes: mergeByIdPreservingExisting(parseJsonArray(existingRow.tummy_times_json), incoming.tummyTimes, options.deletedTummyTimeIds),
     pumpEvents: mergeByIdPreservingExisting(parseJsonArray(existingRow.pump_events_json), incoming.pumpEvents, options.deletedPumpEventIds),
+    pumpSession: parseJsonValue(existingRow.pump_session_json, null),
     tummySession: parseJsonValue(existingRow.tummy_session_json, null),
     tummyGoalMinutes: Number.isFinite(Number(existingRow.tummy_goal_minutes)) ? Math.min(240, Math.max(1, Math.round(Number(existingRow.tummy_goal_minutes)))) : incoming.tummyGoalMinutes,
     growthMeasurements: mergeByIdPreservingExisting(parseJsonArray(existingRow.growth_measurements_json), incoming.growthMeasurements, options.deletedGrowthMeasurementIds),

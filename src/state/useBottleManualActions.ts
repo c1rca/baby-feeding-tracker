@@ -36,7 +36,7 @@ export function useBottleManualActions({ now, session, setSession, setEntries, b
     // A "missed feed" is by definition already happened. A future start time
     // would sort to the top as the "last feed" and break next-feed windows,
     // gap averages, and "time since last feed". Mirror the past-event guard.
-    if (result.entry.startedAt > now) {
+    if (result.entry.endedAt > now) {
       return showToast('Feed time cannot be in the future')
     }
 

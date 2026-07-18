@@ -61,7 +61,7 @@ test('notification scheduler marks due reminder handled when feed starts before 
   await timers[0].fn()
 
   assert.equal(sent.length, 0)
-  assert.equal(notificationRows.get('feed-in-progress').sent_at, new Date(now).toISOString())
+  assert.equal(notificationRows.get('default-household:default-baby:feed-in-progress').sent_at, new Date(now).toISOString())
   assert.equal(scheduler.getScheduled(), null)
 })
 

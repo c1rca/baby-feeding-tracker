@@ -37,7 +37,7 @@ test('notification scheduler sends independent six-hour reminders for Tylenol an
 
   assert.equal(sent.length, 1)
   assert.match(sent[0].message, /Take Tylenol/i)
-  assert.ok(notificationRows.get('medicine:tylenol:tylenol-1').sent_at)
+  assert.ok(notificationRows.get('default-household:default-baby:medicine:tylenol:tylenol-1').sent_at)
   now = new Date('2026-06-05T16:00:00Z').getTime()
   scheduler.evaluate()
   assert.equal(timers[1].delay, 2 * 60 * 60 * 1000)
@@ -45,7 +45,7 @@ test('notification scheduler sends independent six-hour reminders for Tylenol an
 
   assert.equal(sent.length, 2)
   assert.match(sent[1].message, /Take Motrin/i)
-  assert.ok(notificationRows.get('medicine:motrin:motrin-1').sent_at)
+  assert.ok(notificationRows.get('default-household:default-baby:medicine:motrin:motrin-1').sent_at)
   assert.equal(textEmails.length, 2)
 
   now += 7 * 60 * 60 * 1000

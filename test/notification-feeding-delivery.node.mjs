@@ -95,7 +95,7 @@ test('notification scheduler scans tenant baby states and sends the earliest uns
   await timers[0].fn()
 
   assert.equal(sent.length, 1)
-  assert.deepEqual([...handled.keys()], ['feed-b'])
+  assert.deepEqual([...handled.keys()], ['household-b:baby-b:feed-b'])
 })
 
 function formatTestTime(timestamp) {

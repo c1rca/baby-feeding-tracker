@@ -18,7 +18,7 @@ export type LiveSyncConflictChoice = 'theirs' | 'mine'
 export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?: boolean }) => {
   // Default OFF: the live subscription is an explicit opt-in (the app passes the
   // per-device setting). Callers that don't opt in keep pure pull/push sync.
-  const { entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, selectedBabyId, liveSyncEnabled = false } = options
+  const { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, selectedBabyId, liveSyncEnabled = false } = options
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => (hasPendingSyncForBaby(selectedBabyId) ? 'offline' : 'synced'))
   const [hasHydrated, setHasHydrated] = useState(false)
   const [liveConflict, setLiveConflict] = useState<ServerState | null>(null)
@@ -32,6 +32,7 @@ export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?
   // reads the latest payload — so the newest state still lands.
   const inFlightRef = useRef(false)
   const rerunRef = useRef(false)
+  const rerunOverridesRef = useRef<SyncToApiOverrides | null>(null)
   const pullingRef = useRef(false)
   const lastPullAtRef = useRef(0)
   const syncToApiRef = useRef<(overrides?: SyncToApiOverrides) => Promise<void>>(async () => {})
@@ -41,6 +42,7 @@ export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?
       // An override sync (the initial merge) must not be dropped; run it as a
       // trailing rerun with its overrides once the in-flight sync settles.
       rerunRef.current = true
+      if (Object.keys(overrides).length > 0) rerunOverridesRef.current = { ...(rerunOverridesRef.current ?? {}), ...overrides }
       return
     }
     inFlightRef.current = true
@@ -62,7 +64,9 @@ export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?
       inFlightRef.current = false
       if (rerunRef.current) {
         rerunRef.current = false
-        void syncToApiRef.current()
+        const rerunOverrides = rerunOverridesRef.current ?? undefined
+        rerunOverridesRef.current = null
+        void syncToApiRef.current(rerunOverrides)
       }
     }
   }, [applyServerState, latestPayloadRef, selectedBabyId, serverUpdatedAtRef])
@@ -157,7 +161,7 @@ export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?
   })
 
   useInitialServerSync({ latestPayloadRef, serverUpdatedAtRef, applyServerState, syncToApi, selectedBabyId, setHasHydrated, setSyncStatus })
-  usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme })
+  usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme })
   usePendingSyncRetry(syncToApi, selectedBabyId)
 
   return { syncStatus, hasHydrated, liveConflict, resolveLiveConflict, liveConnected }

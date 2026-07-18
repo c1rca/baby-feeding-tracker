@@ -1,11 +1,12 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { formatClockInput, formatDateInput, makeId, parseClockTimeAfter, parseClockTimeOnDate, parseDateAndTime } from '../domain/trackerDomain'
 import { activeElapsedSeconds } from '../domain/careTimer'
-import type { EditingTummyTimeState, Session, TummyTimeEvent, TummyTimeSession, UndoState } from '../types'
+import type { EditingTummyTimeState, PumpSession, Session, TummyTimeEvent, TummyTimeSession, UndoState } from '../types'
 
 type Options = {
   tummySession: TummyTimeSession | null
   feedSession: Session | null
+  pumpSession: PumpSession | null
   setTummySession: Dispatch<SetStateAction<TummyTimeSession | null>>
   setTummyTimes: Dispatch<SetStateAction<TummyTimeEvent[]>>
   editingTummyTime: EditingTummyTimeState
@@ -17,7 +18,7 @@ type Options = {
   showToast: (message: string) => void
 }
 
-export function useTummyTimeActions({ tummySession, feedSession, setTummySession, setTummyTimes, editingTummyTime, setEditingTummyTime, setAdditionalOptionsOpen, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
+export function useTummyTimeActions({ tummySession, feedSession, pumpSession, setTummySession, setTummyTimes, editingTummyTime, setEditingTummyTime, setAdditionalOptionsOpen, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
   const logTummyTimeMinutes = (minutes: number) => {
     const endedAt = new Date().getTime()
     const tummyTime = { id: makeId(), startedAt: endedAt - minutes * 60_000, endedAt, note: '' }
@@ -31,8 +32,8 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
 
   const startCareTimer = (kind: 'tummy' | 'sleep') => {
     const label = kind === 'sleep' ? 'Sleep' : 'Tummy Time'
-    if (feedSession) {
-      showToast(`Save or clear the active feed before starting ${label}`)
+    if (feedSession || pumpSession) {
+      showToast(`Finish or clear the active timer before starting ${label}`)
       return
     }
     if (tummySession) return
@@ -48,7 +49,7 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
   const resumeCareTimer = () => setTummySession((current) => current && !current.runningStartedAt ? { ...current, runningStartedAt: Date.now() } : current)
 
   const resumeTummyTime = (tummyTime: TummyTimeEvent) => {
-    if (feedSession || tummySession) return showToast('Finish or clear the active timer before resuming another session')
+    if (feedSession || tummySession || pumpSession) return showToast('Finish or clear the active timer before resuming another session')
     const now = Date.now()
     const elapsedSeconds = Math.max(0, Math.round((tummyTime.endedAt - tummyTime.startedAt) / 1000))
     setTummyTimes((current) => current.filter((item) => item.id !== tummyTime.id))

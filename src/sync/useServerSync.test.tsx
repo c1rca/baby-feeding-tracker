@@ -2,7 +2,7 @@ import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GrowthMeasurement } from '../domain/growthTypes'
-import type { DiaperEvent, Entry, MedicineEvent, Session, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
+import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, Session, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
 import { useServerSync } from './useServerSync'
 import { hasPendingSyncForBaby } from './serverSyncTypes'
 import { SYNC_DEBOUNCE_MS } from './useServerSyncEffects'
@@ -43,18 +43,20 @@ class MockEventSource {
   close() {}
 }
 
-function Harness({ initialEntries = [] as Entry[], initialSession = null as Session | null, initialTummyTimes = [] as TummyTimeEvent[], initialGrowthMeasurements = [] as GrowthMeasurement[], selectedBabyId = undefined as string | undefined }) {
+function Harness({ initialEntries = [] as Entry[], initialSession = null as Session | null, initialTummyTimes = [] as TummyTimeEvent[], initialPumpEvents = [] as PumpEvent[], initialGrowthMeasurements = [] as GrowthMeasurement[], selectedBabyId = undefined as string | undefined }) {
   const [entries, setEntries] = useState<Entry[]>(initialEntries)
   const [diapers, setDiapers] = useState<DiaperEvent[]>([])
   const [medicines, setMedicines] = useState<MedicineEvent[]>([])
   const [tummyTimes, setTummyTimes] = useState<TummyTimeEvent[]>(initialTummyTimes)
+  const [pumpEvents, setPumpEvents] = useState<PumpEvent[]>(initialPumpEvents)
+  const [pumpSession, setPumpSession] = useState<import('../types').PumpSession | null>(null)
   const [tummySession, setTummySession] = useState<TummyTimeSession | null>(null)
   const [tummyGoalMinutes, setTummyGoalMinutes] = useState(20)
   const [growthMeasurements, setGrowthMeasurements] = useState<GrowthMeasurement[]>(initialGrowthMeasurements)
   const [babyDob, setBabyDob] = useState('2026-06-03')
   const [sessionState, setSession] = useState<Session | null>(initialSession)
   const [theme, setTheme] = useState<Theme>('light')
-  const { syncStatus } = useServerSync({ entries, diapers, medicines, tummyTimes, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session: sessionState, theme, selectedBabyId, setEntries, setDiapers, setMedicines, setTummyTimes, setTummySession, setTummyGoalMinutes, setGrowthMeasurements, setBabyDob, setSession, setTheme })
+  const { syncStatus } = useServerSync({ entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session: sessionState, theme, selectedBabyId, setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setPumpSession, setTummySession, setTummyGoalMinutes, setGrowthMeasurements, setBabyDob, setSession, setTheme })
 
   return (
     <div>
@@ -63,6 +65,7 @@ function Harness({ initialEntries = [] as Entry[], initialSession = null as Sess
       <span data-testid="session-note">{sessionState?.note ?? ''}</span>
       <span data-testid="theme">{theme}</span>
       <span data-testid="tummy-session">{tummySession?.id ?? ''}</span>
+      <span data-testid="pump-events">{pumpEvents.map((item) => item.id).join(',')}</span>
       <button type="button" onClick={() => setEntries((prev) => [entry('local', 3000), ...prev])}>add local</button>
       <button type="button" onClick={() => setTummySession({ id: 'sleep-1', startedAt: 1000, runningStartedAt: 1000, elapsedSeconds: 0, note: '', kind: 'sleep' })}>start sleep</button>
     </div>
@@ -93,6 +96,24 @@ describe('useServerSync', () => {
     expect(screen.getByTestId('status').textContent).toBe('synced')
     expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' }))
     expect(MockEventSource.instances).toHaveLength(0)
+  })
+
+  it('hydrates pumping history and preserves it in an unrelated current-state sync', async () => {
+    const serverPump: PumpEvent = { id: 'server-pump', startedAt: 1000, endedAt: 2000, leftOunces: 2, rightOunces: 1, note: 'remote' }
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (!init || init.method !== 'PUT') return { ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], tummyTimes: [], pumpEvents: [serverPump], session: null, theme: 'light', updatedAt: 'v1' }) }
+      const body = JSON.parse(String(init.body))
+      return { ok: true, json: async () => ({ updatedAt: 'v2', state: { ...body, updatedAt: 'v2' } }) }
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness />)
+    await waitFor(() => expect(screen.getByTestId('pump-events').textContent).toBe('server-pump'))
+    screen.getByRole('button', { name: 'add local' }).click()
+    await waitFor(() => expect(putCalls(fetchMock)).toHaveLength(1))
+
+    const body = JSON.parse(String(putCalls(fetchMock)[0][1]?.body))
+    expect(body.pumpEvents).toEqual([serverPump])
   })
 
   it('preserves a local edit made during the initial load window (start-during-hydration data loss)', async () => {

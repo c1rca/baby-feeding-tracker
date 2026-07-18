@@ -1,14 +1,17 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { makeId } from '../domain/trackerDomain'
 import { activeElapsedSeconds } from '../domain/careTimer'
-import type { PumpEvent, UndoState } from '../types'
+import type { PumpEvent, PumpSession, Session, TummyTimeSession, UndoState } from '../types'
+export type { PumpSession } from '../types'
 
 type PumpSide = 'left' | 'both' | 'right'
-export type PumpSession = { id: string; startedAt: number; side: PumpSide; runningStartedAt?: number | null; elapsedSeconds?: number }
+
 export type EditingPumpState = { id: string; leftOunces: string; rightOunces: string; note: string } | null
 
 type Options = {
   pumpSession: PumpSession | null
+  feedSession: Session | null
+  tummySession: TummyTimeSession | null
   setPumpSession: Dispatch<SetStateAction<PumpSession | null>>
   setPumpEvents: Dispatch<SetStateAction<PumpEvent[]>>
   setPumpCompletionOpen: Dispatch<SetStateAction<boolean>>
@@ -27,13 +30,14 @@ const parseOutput = (value: string) => {
   return Number.isFinite(output) && output >= 0 ? output : null
 }
 
-export function usePumpActions({ pumpSession, setPumpSession, setPumpEvents, setPumpCompletionOpen, editingPump, setEditingPump, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
-  const startPumping = (side: PumpSide) => { const now = Date.now(); setPumpSession({ id: makeId(), startedAt: now, side, runningStartedAt: now, elapsedSeconds: 0 }) }
-  const startManualPumping = () => { const now = Date.now(); setPumpSession({ id: makeId(), startedAt: now, side: 'both', runningStartedAt: now, elapsedSeconds: 0 }); setPumpCompletionOpen(true) }
+export function usePumpActions({ pumpSession, feedSession, tummySession, setPumpSession, setPumpEvents, setPumpCompletionOpen, editingPump, setEditingPump, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
+  const blocked = () => { if (feedSession || tummySession || pumpSession) { showToast('Finish or clear the active timer before starting another session'); return true } return false }
+  const startPumping = (side: PumpSide) => { if (blocked()) return; const now = Date.now(); setPumpSession({ id: makeId(), startedAt: now, side, runningStartedAt: now, elapsedSeconds: 0 }) }
+  const startManualPumping = () => { if (blocked()) return; const now = Date.now(); setPumpSession({ id: makeId(), startedAt: now, side: 'both', runningStartedAt: now, elapsedSeconds: 0 }); setPumpCompletionOpen(true) }
   const pausePumping = () => setPumpSession((current) => current?.runningStartedAt ? { ...current, elapsedSeconds: activeElapsedSeconds(current, Date.now()), runningStartedAt: null } : current)
   const resumePumping = () => setPumpSession((current) => current && !current.runningStartedAt ? { ...current, runningStartedAt: Date.now() } : current)
   const resumePumpEvent = (pumpEvent: PumpEvent) => {
-    if (pumpSession) return showToast('Finish or clear the active timer before resuming another session')
+    if (pumpSession || feedSession || tummySession) return showToast('Finish or clear the active timer before resuming another session')
     const now = Date.now()
     setPumpEvents((current) => current.filter((event) => event.id !== pumpEvent.id))
     setPumpSession({ id: makeId(), startedAt: now, side: 'both', runningStartedAt: now, elapsedSeconds: Math.max(0, Math.round((pumpEvent.endedAt - pumpEvent.startedAt) / 1000)) })

@@ -12,7 +12,7 @@ export function parsePastEventDraft(draft: PastEventDraft, now: number) {
   const at = parseDateAndTime(draft.date, draft.time)
   if (at === null) return { ok: false as const, reason: 'invalid-date' as const }
   if (at > now) return { ok: false as const, reason: 'future-date' as const }
-  if (draft.kind === 'feed') { const feed = parseManualFeedDraft(draft); return feed.ok ? { ok: true as const, event: { kind: 'feed' as const, event: feed.entry } } : feed }
+  if (draft.kind === 'feed') { const feed = parseManualFeedDraft(draft); return feed.ok && feed.entry.endedAt <= now ? { ok: true as const, event: { kind: 'feed' as const, event: feed.entry } } : feed.ok ? { ok: false as const, reason: 'future-date' as const } : feed }
   if (draft.kind === 'diaper') return draft.diaperKinds.length ? { ok: true as const, event: { kind: 'diaper' as const, event: createStandaloneDiaper(draft.diaperKinds, at) } } : { ok: false as const, reason: 'empty' as const }
   if (draft.kind === 'medicine') return { ok: true as const, event: { kind: 'medicine' as const, event: createMedicineDose(draft.medicineKind, at) } }
   const duration = minutes(draft.durationMinutes)

@@ -31,6 +31,11 @@ describe('parsePastEventDraft', () => {
     expect(result).toEqual({ ok: false, reason: 'future-date' })
   })
 
+  it('rejects a past feed whose nursing duration pushes the end into the future', () => {
+    const draft = draftAt('2026-07-18', '11:45', { kind: 'feed', leftMinutes: '30' })
+    expect(parsePastEventDraft(draft, now)).toEqual({ ok: false, reason: 'future-date' })
+  })
+
   it('still rejects a start time in the future before checking duration', () => {
     const draft = draftAt('2026-07-18', '13:00', { kind: 'tummy', durationMinutes: '10' })
     const result = parsePastEventDraft(draft, now)

@@ -2,7 +2,7 @@ import { normalizeSession } from '../domain/trackerDomain'
 import { normalizeTummyTimeGoalMinutes } from '../domain/tummyTime'
 import { normalizeGrowthMeasurements } from '../domain/growth'
 import type { GrowthMeasurement } from '../domain/growthTypes'
-import type { DiaperEvent, Entry, MedicineEvent, ServerState, TummyTimeEvent } from '../types'
+import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, ServerState, TummyTimeEvent } from '../types'
 import type { ServerSyncPayload } from './serverSyncTypes'
 
 export function sortEntries(entries: Entry[]) {
@@ -19,6 +19,10 @@ export function sortMedicines(medicines: MedicineEvent[]) {
 
 export function sortTummyTimes(tummyTimes: TummyTimeEvent[]) {
   return [...tummyTimes].sort((a, b) => b.startedAt - a.startedAt)
+}
+
+export function sortPumpEvents(pumpEvents: PumpEvent[]) {
+  return [...pumpEvents].sort((a, b) => b.startedAt - a.startedAt)
 }
 
 export function sortGrowthMeasurements(growthMeasurements: GrowthMeasurement[]) {
@@ -40,6 +44,8 @@ export function buildPendingSyncPayload(serverState: ServerState, localPayload: 
     diapers: sortDiapers(mergeById(serverState.diapers, localPayload.diapers)),
     medicines: sortMedicines(mergeById(serverState.medicines, localPayload.medicines)),
     tummyTimes: sortTummyTimes(mergeById(serverState.tummyTimes, localPayload.tummyTimes)),
+    pumpEvents: sortPumpEvents(mergeById(serverState.pumpEvents, localPayload.pumpEvents)),
+    pumpSession: serverState.pumpSession ?? localPayload.pumpSession,
     tummySession: serverState.tummySession ?? localPayload.tummySession,
     tummyGoalMinutes: normalizeTummyTimeGoalMinutes(serverState.tummyGoalMinutes ?? localPayload.tummyGoalMinutes),
     growthMeasurements: sortGrowthMeasurements(mergeById(serverState.growthMeasurements, localPayload.growthMeasurements)),
@@ -59,6 +65,8 @@ export function buildApiStatePayload(
     diapers: overrides.diapers ?? currentPayload.diapers,
     medicines: overrides.medicines ?? currentPayload.medicines,
     tummyTimes: overrides.tummyTimes ?? currentPayload.tummyTimes,
+    pumpEvents: overrides.pumpEvents ?? currentPayload.pumpEvents,
+    pumpSession: overrides.pumpSession ?? currentPayload.pumpSession,
     tummySession: overrides.tummySession ?? currentPayload.tummySession,
     tummyGoalMinutes: normalizeTummyTimeGoalMinutes(overrides.tummyGoalMinutes ?? currentPayload.tummyGoalMinutes),
     growthMeasurements: overrides.growthMeasurements ?? currentPayload.growthMeasurements,

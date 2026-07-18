@@ -199,8 +199,8 @@ export const createMemberRouter = ({ selectMembersByHousehold = null, updateMemb
   }
   const router = (app) => {
     app.get('/api/household-members', (req, res) => {
-      if (!req.auth?.householdId) {
-        res.status(403).json({ ok: false, error: 'Household required' })
+      if (req.auth?.role !== 'owner' || !req.auth?.householdId) {
+        rejectForbidden(res)
         return
       }
       const members = selectMembersByHousehold?.all(req.auth.householdId).map(memberPayload) || []
@@ -430,6 +430,7 @@ export const createStateRouter = ({
         medicines: Array.isArray(req.body?.medicines) ? req.body.medicines : [],
         tummyTimes: Array.isArray(req.body?.tummyTimes) ? req.body.tummyTimes : [],
         pumpEvents: Array.isArray(req.body?.pumpEvents) ? req.body.pumpEvents : [],
+        pumpSession: req.body?.pumpSession ?? null,
         tummySession: req.body?.tummySession ?? null,
         tummyGoalMinutes: normalizeTummyGoalMinutes(req.body?.tummyGoalMinutes),
         growthMeasurements: Array.isArray(req.body?.growthMeasurements) ? req.body.growthMeasurements : [],
@@ -438,7 +439,7 @@ export const createStateRouter = ({
         theme: req.body?.theme === 'dark' ? 'dark' : 'light',
         updatedAt: req.body?.updatedAt,
       }, deletedItemOptions(scope))
-      const { entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme } = incoming
+      const { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme } = incoming
       if (selectBabyForHousehold && !selectBabyForHousehold.get(scope.babyId, scope.householdId)) {
         res.status(404).json({ ok: false, error: 'Baby not found' })
         return
@@ -453,6 +454,7 @@ export const createStateRouter = ({
         medicines_json: JSON.stringify(medicines),
         tummy_times_json: JSON.stringify(tummyTimes),
         pump_events_json: JSON.stringify(pumpEvents),
+        pump_session_json: pumpSession ? JSON.stringify(pumpSession) : null,
         tummy_session_json: tummySession ? JSON.stringify(tummySession) : null,
         tummy_goal_minutes: tummyGoalMinutes,
         growth_measurements_json: JSON.stringify(growthMeasurements),
@@ -475,7 +477,7 @@ export const createStateRouter = ({
       appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines, growthMeasurements, babyDob, tummyTimes, tummySession, pumpEvents), staleWriteMerged: incoming.stale })
       notificationScheduler?.evaluate()
 
-      const responseState = { entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, updatedAt }
+      const responseState = { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, updatedAt }
       broadcastStateChange(responseState, scope, req.headers?.['x-client-id'] || null)
       res.json({ ok: true, updatedAt, staleWriteMerged: incoming.stale, state: responseState })
     })

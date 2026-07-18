@@ -16,6 +16,7 @@ type PersistLocalChangesOptions = {
   medicines: ServerSyncPayload['medicines']
   tummyTimes: ServerSyncPayload['tummyTimes']
   pumpEvents: ServerSyncPayload['pumpEvents']
+  pumpSession: ServerSyncPayload['pumpSession']
   tummySession: ServerSyncPayload['tummySession']
   tummyGoalMinutes: ServerSyncPayload['tummyGoalMinutes']
   growthMeasurements: ServerSyncPayload['growthMeasurements']
@@ -35,6 +36,7 @@ export function usePersistLocalChanges({
   medicines,
   tummyTimes,
   pumpEvents,
+  pumpSession,
   tummySession,
   tummyGoalMinutes,
   growthMeasurements,
@@ -62,7 +64,7 @@ export function usePersistLocalChanges({
     return () => {
       if (debounceRef.current !== undefined) window.clearTimeout(debounceRef.current)
     }
-  }, [hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme])
+  }, [hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme])
 }
 
 export function usePendingSyncRetry(syncToApi: (overrides?: SyncToApiOverrides) => Promise<void>, selectedBabyId?: string | null) {

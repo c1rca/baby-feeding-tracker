@@ -22,7 +22,7 @@ const safeParseObject = (value) => {
 }
 
 export const serializeState = (row) => {
-  if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], pumpEvents: [], growthMeasurements: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'dark', updatedAt: null }
+  if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], pumpEvents: [], pumpSession: null, growthMeasurements: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'dark', updatedAt: null }
   return {
     householdId: row.household_id || DEFAULT_HOUSEHOLD_ID,
     babyId: row.baby_id || DEFAULT_BABY_ID,
@@ -31,6 +31,7 @@ export const serializeState = (row) => {
     medicines: safeParseArray(row.medicines_json),
     tummyTimes: safeParseArray(row.tummy_times_json),
     pumpEvents: safeParseArray(row.pump_events_json),
+    pumpSession: safeParseObject(row.pump_session_json),
     growthMeasurements: safeParseArray(row.growth_measurements_json),
     babyDob: row.baby_dob || DEFAULT_BABY_DOB,
     tummyGoalMinutes: Number.isFinite(Number(row.tummy_goal_minutes)) ? Math.min(240, Math.max(1, Math.round(Number(row.tummy_goal_minutes)))) : 20,

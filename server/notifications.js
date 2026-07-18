@@ -7,6 +7,8 @@ import { isQuietHour, millisecondsUntilWindowChange } from './notificationWindow
 export { FEEDR_URL }
 export { buildMedicineQuickLogUrl, buildMedicineReminder, buildReminder, formatTime, getLatestEndedFeed, getLatestMedicineDose, getLatestMedicineDosesByKind, hasActiveSession, normalizeMedicineReminderSettings, normalizeTextEmailRecipients }
 
+const scopedNotificationId = (reminder) => `${reminder.householdId || 'default-household'}:${reminder.babyId || 'default-baby'}:${reminder.notificationId}`
+
 export function createNotificationScheduler({
   selectState,
   selectAllStates = null,
@@ -35,7 +37,7 @@ export function createNotificationScheduler({
 
   const markHandled = (reminder) => {
     upsertNotificationState.run({
-      entry_id: reminder.notificationId,
+      entry_id: scopedNotificationId(reminder),
       due_at: new Date(reminder.dueAt).toISOString(),
       sent_at: new Date(now()).toISOString(),
       updated_at: new Date(now()).toISOString(),
@@ -84,7 +86,7 @@ export function createNotificationScheduler({
     }
 
     return reminders
-      .filter((reminder) => !getNotificationState.get(reminder.notificationId)?.sent_at)
+      .filter((reminder) => !getNotificationState.get(scopedNotificationId(reminder))?.sent_at)
       .sort((a, b) => a.dueAt - b.dueAt)[0] ?? null
   }
 
