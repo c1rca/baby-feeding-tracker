@@ -83,7 +83,7 @@ test('the real household transaction writes household, owner membership, baby, a
     insertHousehold.run({ id: householdId, name: householdName, created_at: createdAt })
     insertHouseholdMember.run({ user_id: userId, household_id: householdId, role: 'owner', created_at: createdAt })
     insertBaby.run({ id: babyId, household_id: householdId, name: babyName, dob: babyDob, archived_at: null, created_at: createdAt })
-    insertEmptyBabyState.run({ household_id: householdId, baby_id: babyId, updated_at: createdAt })
+    insertEmptyBabyState.run({ household_id: householdId, baby_id: babyId, baby_dob: babyDob || null, updated_at: createdAt })
   })
   createHousehold({ userId: 'user-2', householdId: 'hh-2', householdName: 'Twos', babyId: 'baby-2', babyName: 'Sam', babyDob: '2026-05-01', createdAt: '2026-07-09T00:00:00.000Z' })
 
@@ -95,4 +95,6 @@ test('the real household transaction writes household, owner membership, baby, a
   assert.deepEqual(memberships, [{ household_id: 'hh-2', role: 'owner' }])
   assert.equal(baby.name, 'Sam')
   assert.equal(state.entries_json, '[]')
+  // The seeded state row must carry the baby's real DOB, not the column default.
+  assert.equal(state.baby_dob, '2026-05-01')
 })

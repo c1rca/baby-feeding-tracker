@@ -1,4 +1,4 @@
-import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './database.js'
+import { DEFAULT_BABY_ID, DEFAULT_BABY_DOB, DEFAULT_HOUSEHOLD_ID } from './database.js'
 import { hashSessionToken } from './authCrypto.js'
 import { normalizeMedicineReminderSettings, normalizeNotificationPreferences } from './notificationModels.js'
 import { validateStatePayload } from './stateValidation.js'
@@ -101,7 +101,7 @@ export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEna
   return router
 }
 
-export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = null, renameBaby = null, archiveBaby = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), now = () => new Date() } = {}) => {
+export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = null, insertEmptyBabyState = null, renameBaby = null, archiveBaby = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), now = () => new Date() } = {}) => {
   const toBabyPayload = (row) => ({
     id: row.id,
     householdId: row.household_id,
@@ -144,6 +144,9 @@ export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = 
         created_at: now().toISOString(),
       }
       insertBaby?.run(row)
+      // Seed an empty state row carrying the baby's real DOB so age/growth math is
+      // correct from the first render, rather than defaulting until the first PUT.
+      insertEmptyBabyState?.run({ household_id: householdId, baby_id: row.id, baby_dob: dob, updated_at: row.created_at })
       appendEventLog('baby_create', { babyId: row.id, householdId, userId: req.auth?.userId ?? null })
       res.status(201).json({ ok: true, baby: toBabyPayload(row) })
     })
@@ -437,6 +440,9 @@ export const createStateRouter = ({
       }
       const existingRow = selectScopedState(requestScope(req))
       const scope = requestScope(req, existingRow)
+      // When the client omits babyDob on a first write, fall back to this baby's
+      // real DOB from the babies row (its source of truth) — not a global constant.
+      const fallbackBabyDob = existingRow?.baby_dob || selectBabyForHousehold?.get(scope.babyId, scope.householdId)?.dob || DEFAULT_BABY_DOB
       const incoming = resolveIncomingState(existingRow, {
         entries: Array.isArray(req.body?.entries) ? req.body.entries : [],
         diapers: Array.isArray(req.body?.diapers) ? req.body.diapers : [],
@@ -447,7 +453,7 @@ export const createStateRouter = ({
         tummySession: req.body?.tummySession ?? null,
         tummyGoalMinutes: normalizeTummyGoalMinutes(req.body?.tummyGoalMinutes),
         growthMeasurements: Array.isArray(req.body?.growthMeasurements) ? req.body.growthMeasurements : [],
-        babyDob: typeof req.body?.babyDob === 'string' ? req.body.babyDob : '2026-06-03',
+        babyDob: typeof req.body?.babyDob === 'string' ? req.body.babyDob : fallbackBabyDob,
         session: req.body?.session ?? null,
         theme: req.body?.theme === 'dark' ? 'dark' : 'light',
         updatedAt: req.body?.updatedAt,

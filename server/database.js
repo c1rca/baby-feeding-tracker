@@ -441,7 +441,10 @@ export function prepareTrackerStatements(db) {
     removeMember: db.prepare("DELETE FROM household_members WHERE household_id = @household_id AND user_id = @user_id AND role != 'owner'"),
     insertHousehold: db.prepare('INSERT INTO households (id, name, created_at) VALUES (@id, @name, @created_at)'),
     insertHouseholdMember: db.prepare('INSERT INTO household_members (user_id, household_id, role, created_at) VALUES (@user_id, @household_id, @role, @created_at)'),
-    insertEmptyBabyState: db.prepare("INSERT INTO baby_state (household_id, baby_id, entries_json, updated_at) VALUES (@household_id, @baby_id, '[]', @updated_at)"),
+    // Seed the new state row's baby_dob from the babies row so a freshly created
+    // baby shows its real birth date immediately, instead of inheriting the column
+    // default (the original default baby's DOB) until the client overwrites it.
+    insertEmptyBabyState: db.prepare("INSERT INTO baby_state (household_id, baby_id, entries_json, baby_dob, updated_at) VALUES (@household_id, @baby_id, '[]', COALESCE(@baby_dob, '" + DEFAULT_BABY_DOB + "'), @updated_at)"),
     upsertDeletedItem: db.prepare(`
       INSERT INTO deleted_items (item_id, collection, household_id, baby_id, deleted_at)
       VALUES (@item_id, @collection, @household_id, @baby_id, @deleted_at)

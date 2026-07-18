@@ -128,3 +128,35 @@ test('state route rejects viewer writes before resolving or persisting state', (
   assert.deepEqual(res.body, { ok: false, error: 'Insufficient permissions' })
   assert.deepEqual(calls, { resolved: 0, upserts: 0, events: 0, evaluations: 0, broadcasts: 0 })
 })
+
+test('state route falls back to the babies-row DOB when the client omits babyDob on a first write', () => {
+  const app = createFakeApp()
+  let seenIncomingDob = null
+  createStateRouter({
+    selectState: { get: () => null },
+    selectStateForBaby: { get: () => null }, // no existing state row yet
+    upsertStateForBaby: { run: () => {} },
+    upsertState: { run: () => {} },
+    serializeState: () => ({ entries: [] }),
+    resolveIncomingState: (_row, incoming) => { seenIncomingDob = incoming.babyDob; return { ...incoming, entries: [], stale: false } },
+    deletedItemOptions: () => ({}),
+    buildStateAudit: () => ({}),
+    recordDeletedItems: () => {},
+    appendEventLog: () => {},
+    summarizeState: () => ({}),
+    notificationScheduler: { evaluate: () => {} },
+    broadcastStateChange: () => {},
+    handleStateEvents: () => {},
+    selectBabyForHousehold: { get: (babyId, householdId) => ({ id: babyId, household_id: householdId, dob: '2027-09-30' }) },
+  })(app)
+
+  const res = createJsonResponse()
+  app.route('PUT', '/api/state')({
+    auth: { householdId: 'household-1', babyId: 'baby-2' },
+    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'client-new' }, // no babyDob
+  }, res)
+
+  assert.equal(res.body.ok, true)
+  // Falls back to the baby's real DOB, not the hardcoded default.
+  assert.equal(seenIncomingDob, '2027-09-30')
+})

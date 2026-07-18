@@ -28,10 +28,11 @@ test('baby list route returns only babies in the authenticated household', () =>
   })
 })
 
-test('baby create route inserts a baby scoped to the authenticated household', () => {
-  const calls = { inserts: [], events: [] }
+test('baby create route inserts a baby scoped to the authenticated household and seeds its state with the real DOB', () => {
+  const calls = { inserts: [], states: [], events: [] }
   const app = mountRouter({
     insertBaby: { run: (payload) => calls.inserts.push(payload) },
+    insertEmptyBabyState: { run: (payload) => calls.states.push(payload) },
     appendEventLog: (event, payload) => calls.events.push({ event, payload }),
     idFactory: () => 'baby-new',
     now: () => new Date('2026-03-01T00:00:00.000Z'),
@@ -53,6 +54,8 @@ test('baby create route inserts a baby scoped to the authenticated household', (
     archived_at: null,
     created_at: '2026-03-01T00:00:00.000Z',
   }])
+  // The seeded state row carries the baby's real DOB so age math is correct immediately.
+  assert.deepEqual(calls.states, [{ household_id: 'household-1', baby_id: 'baby-new', baby_dob: '2026-02-14', updated_at: '2026-03-01T00:00:00.000Z' }])
   assert.deepEqual(calls.events, [{ event: 'baby_create', payload: { babyId: 'baby-new', householdId: 'household-1', userId: 'user-1' } }])
 })
 
