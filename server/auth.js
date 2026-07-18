@@ -1,9 +1,9 @@
 import crypto from 'node:crypto'
 import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID, DEFAULT_USER_ID } from './database.js'
-import { hashPassword, hashSessionToken, verifyPassword } from './authCrypto.js'
+import { hashLoginCode, hashPassword, hashSessionToken, verifyPassword } from './authCrypto.js'
 import { clientIp, createRateLimiter } from './rateLimiter.js'
 
-export { hashPassword, hashSessionToken, verifyPassword }
+export { hashLoginCode, hashPassword, hashSessionToken, verifyPassword }
 
 const localAuthContext = (mode = 'local') => ({
   userId: DEFAULT_USER_ID,
@@ -78,7 +78,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, selectSessionContext = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, sendEmailLogin = null, baseUrl = '', textLoginAvailable = false, emailLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, selectSessionContext = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, sendEmailLogin = null, baseUrl = '', textLoginAvailable = false, emailLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, loginCodePepper = '', textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
   const limiterNow = () => now().getTime()
   const loginLimiter = createRateLimiter({ max: maxLoginAttempts, windowMs: loginWindowMs, now: limiterNow })
   const textRequestLimiter = createRateLimiter({ max: textRequestMax, windowMs: textRequestWindowMs, now: limiterNow })
@@ -195,7 +195,7 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
       const linkBaseUrl = String(baseUrl || `${req.protocol || 'http'}://${req.get?.('host') || 'localhost'}`).replace(/\/$/, '')
       const link = `${linkBaseUrl}/#text_code=${encodeURIComponent(code)}`
       insertLoginCode?.run({
-        code_hash: hashSessionToken(code),
+        code_hash: hashLoginCode(code, loginCodePepper),
         user_id: user.id,
         created_at: createdAt.toISOString(),
         expires_at: new Date(createdAt.getTime() + textLoginCodeTtlMs).toISOString(),
@@ -242,7 +242,7 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
       const code = String(textCodeFactory()).replace(/\D/g, '').slice(0, 6).padStart(6, '0')
       const linkBaseUrl = String(baseUrl || `${req.protocol || 'http'}://${req.get?.('host') || 'localhost'}`).replace(/\/$/, '')
       const link = `${linkBaseUrl}/#text_code=${encodeURIComponent(code)}`
-      insertLoginCode?.run({ code_hash: hashSessionToken(code), user_id: user.id, created_at: createdAt.toISOString(), expires_at: new Date(createdAt.getTime() + textLoginCodeTtlMs).toISOString() })
+      insertLoginCode?.run({ code_hash: hashLoginCode(code, loginCodePepper), user_id: user.id, created_at: createdAt.toISOString(), expires_at: new Date(createdAt.getTime() + textLoginCodeTtlMs).toISOString() })
       const message = `Feedr sign-in: tap ${link} or enter code ${code}. This code expires in 10 minutes.`
       await sendEmailLogin({ to: email, code, link, message, subject: 'Your Feedr sign-in link', title: 'Your Feedr sign-in link' })
       appendEventLog('auth_email_login_requested', { userId: user.id })
@@ -265,7 +265,7 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
         res.status(429).json({ ok: false, error: 'Too many attempts. Try again later.' })
         return
       }
-      const codeHash = hashSessionToken(code)
+      const codeHash = hashLoginCode(code, loginCodePepper)
       const row = selectLoginCode?.get(codeHash)
       if (!row || row.consumed_at || new Date(row.expires_at).getTime() < now().getTime()) {
         textConfirmLimiter.record(confirmKey)

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { createAuthRouter, hashPassword, verifyPassword, hashSessionToken } from '../server/auth.js'
+import { createAuthRouter, hashPassword, verifyPassword, hashSessionToken, hashLoginCode } from '../server/auth.js'
 import { createFakeApp, createJsonResponse } from './server-test-helpers.mjs'
 
 function mountRouter(deps) {
@@ -425,6 +425,47 @@ test('text login confirm consumes the code and creates a long-lived session', ()
   assert.deepEqual(res.body.user, { id: 'phone-user-1', email: 'phone:+15551234567', displayName: 'Caregiver 4567' })
   assert.equal(calls.sessions[0].expires_at, '2027-01-01T00:02:00.000Z')
   assert.deepEqual(calls.events, [{ event: 'auth_text_login_confirmed', payload: { userId: 'phone-user-1' } }])
+})
+
+test('login-code pepper changes the stored hash and the confirm lookup matches it', () => {
+  const pepper = 'server-side-pepper'
+  // A peppered code hash is distinct from the plain SHA-256, so a DB leak can't
+  // reverse the 6-digit code without also having the pepper.
+  assert.notEqual(hashLoginCode('123456', pepper), hashSessionToken('123456'))
+  assert.equal(hashLoginCode('123456', ''), hashSessionToken('123456')) // no pepper = backward compatible
+
+  const calls = { codes: [] }
+  const request = mountRouter({
+    authRequired: true, emailLoginAvailable: true, sendEmailLogin: async () => {},
+    selectUserByEmail: { get: () => ({ id: 'user-1', email: 'parent@example.com', password_hash: null }) },
+    selectMembershipsByUser: { all: () => [{ household_id: 'hh-1', role: 'owner' }] },
+    expireLoginCodesForUser: { run: () => {} },
+    insertLoginCode: { run: (code) => calls.codes.push(code) },
+    textCodeFactory: () => '246810',
+    loginCodePepper: pepper,
+    now: () => new Date('2026-01-01T00:00:00.000Z'),
+  })
+
+  const requestRes = createJsonResponse()
+  return request.route('POST', '/api/auth/email/request')({ ip: '203.0.113.9', body: { email: 'parent@example.com' } }, requestRes).then(() => {
+    assert.equal(calls.codes[0].code_hash, hashLoginCode('246810', pepper))
+
+    // The confirm handler must hash the submitted code with the same pepper to match.
+    const confirm = mountRouter({
+      authRequired: true,
+      selectLoginCode: { get: (hash) => hash === calls.codes[0].code_hash ? { ...calls.codes[0], consumed_at: null, expires_at: '2026-01-01T00:10:00.000Z' } : null },
+      consumeLoginCode: { run: () => ({ changes: 1 }) },
+      selectUserById: { get: () => ({ id: 'user-1', email: 'parent@example.com', display_name: 'Parent' }) },
+      insertSession: { run: () => {} },
+      tokenFactory: () => 'session-token',
+      loginCodePepper: pepper,
+      now: () => new Date('2026-01-01T00:02:00.000Z'),
+    })
+    const confirmRes = createJsonResponse()
+    confirm.route('POST', '/api/auth/text/confirm')({ body: { code: '246810' } }, confirmRes)
+    assert.equal(confirmRes.statusCode, 200)
+    assert.equal(confirmRes.body.token, 'session-token')
+  })
 })
 
 test('password reset request creates a short-lived reset code without leaking unknown emails', () => {

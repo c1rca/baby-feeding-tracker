@@ -71,6 +71,9 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   // 1..365 range so a typo can't create effectively-immortal sessions.
   const rawSessionTtlDays = Number(env.AUTH_SESSION_TTL_DAYS)
   const sessionTtlDays = Number.isFinite(rawSessionTtlDays) ? Math.min(365, Math.max(1, Math.round(rawSessionTtlDays))) : 30
+  // Server-side pepper for hashing 6-digit login codes so a DB leak can't reverse
+  // them offline. Optional (empty = plain hash, backward compatible); set in prod.
+  const loginCodePepper = String(env.AUTH_LOGIN_CODE_PEPPER || '').trim()
   const isProduction = env.NODE_ENV === 'production'
   // Number of proxy hops to trust for req.ip (so rate-limit keys use the real
   // client IP, not the reverse proxy's). Empty = don't trust any proxy.
@@ -104,6 +107,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     allowedEmails,
     allowedPhones,
     bootstrapPassword,
+    loginCodePepper,
     sessionTtlDays,
     isProduction,
     trustProxy,
