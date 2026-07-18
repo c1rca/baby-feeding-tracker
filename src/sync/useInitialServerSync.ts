@@ -29,18 +29,26 @@ export function useInitialServerSync({
       // Only replay a pending change if it belongs to the baby we are loading;
       // a change queued for another baby must not be pushed into this scope.
       const pendingForThisBaby = hasPendingSyncForBaby(selectedBabyId)
-      const localPayload = latestPayloadRef.current
+      const localPayloadAtStart = latestPayloadRef.current
       try {
         const serverState = await loadServerState({ babyId: selectedBabyId })
-        if (pendingForThisBaby) {
-          const mergedPayload = buildPendingSyncPayload(serverState, localPayload)
+        // A local edit made while the initial GET was outstanding (e.g. starting
+        // a sleep timer the instant the app opens) is not yet marked pending —
+        // the persist effect is gated on hydration. Blindly applying the server
+        // snapshot here would silently discard that in-flight work. Detect the
+        // divergence (the payload ref is replaced whenever tracked state changes)
+        // and route through the same merge-and-push path as a pending replay so
+        // the local edit survives instead of vanishing a few seconds after load.
+        const localChangedDuringLoad = latestPayloadRef.current !== localPayloadAtStart
+        if (pendingForThisBaby || localChangedDuringLoad) {
+          const mergedPayload = buildPendingSyncPayload(serverState, latestPayloadRef.current)
           if (serverState.updatedAt) serverUpdatedAtRef.current = serverState.updatedAt
           setHasHydrated(true)
           await syncToApi(mergedPayload)
           return
         }
         applyServerState(serverState)
-        setSyncStatus(pendingForThisBaby ? 'offline' : 'synced')
+        setSyncStatus('synced')
       } catch {
         if (pendingForThisBaby) {
           setHasHydrated(true)

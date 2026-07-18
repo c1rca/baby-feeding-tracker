@@ -34,6 +34,8 @@ export {
   formatTime,
   formatTimeInput,
   formatTimelineTimestamp,
+  parseClockTimeAfter,
+  parseClockTimeOnDate,
   parseClockTimeToday,
   parseDateAndTime,
 } from './time'

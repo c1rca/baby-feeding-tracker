@@ -18,7 +18,10 @@ export function isWithinWindow(now, window, timeZone = 'America/New_York') {
   const startMinute = Number(window.startHour) * 60 + Number(window.startMinute ?? 0)
   const endMinute = Number(window.endHour) * 60 + Number(window.endMinute ?? 0)
 
-  if (startMinute === endMinute) return true
+  // Half-open interval [start, end): a zero-width window (start === end) is
+  // empty, so nothing is ever within it. Keep in sync with the client copy in
+  // src/domain/notificationWindows.ts.
+  if (startMinute === endMinute) return false
   if (startMinute < endMinute) return currentMinute >= startMinute && currentMinute < endMinute
   return currentMinute >= startMinute || currentMinute < endMinute
 }

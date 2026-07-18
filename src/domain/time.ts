@@ -60,7 +60,9 @@ export const parseDateAndTime = (dateValue: string, timeValue: string) => {
 // date, so each row only needs the time — no repeated "Sat, Jul 11" prefix.
 export const formatTimelineTimestamp = (timestamp: number) => ({ primary: formatTime(timestamp) })
 
-export const parseClockTimeToday = (value: string, referenceTime: number) => {
+// Parse a loose clock string ("6", "6:30", "6:30 am", "18:05") into 24h
+// hours/minutes, or null when it isn't a valid time.
+const parseClockParts = (value: string) => {
   const trimmed = value.trim().toLowerCase().replace(/\s+/g, '')
   const match = trimmed.match(/^(\d{1,2})(?::(\d{2}))?(am|pm)?$/)
   if (!match) return null
@@ -75,10 +77,41 @@ export const parseClockTimeToday = (value: string, referenceTime: number) => {
   } else if (hours > 23) {
     return null
   }
+  return { hours, minutes }
+}
 
+// Interpret a clock time as the most recent occurrence at or before the
+// reference instant (used for "started N ago" style inputs).
+export const parseClockTimeToday = (value: string, referenceTime: number) => {
+  const parts = parseClockParts(value)
+  if (!parts) return null
   const parsed = new Date(referenceTime)
-  parsed.setHours(hours, minutes, 0, 0)
+  parsed.setHours(parts.hours, parts.minutes, 0, 0)
   if (parsed.getTime() > referenceTime) parsed.setDate(parsed.getDate() - 1)
+  return parsed.getTime()
+}
+
+// Interpret a clock time as a time on the same calendar day as the reference
+// instant — never rolling to an adjacent day. Used when editing the time of an
+// event that already belongs to a known day (e.g. a logged medicine dose): a
+// forward nudge like 8:00 → 8:15 must stay on that day, not jump to yesterday.
+export const parseClockTimeOnDate = (value: string, referenceTime: number) => {
+  const parts = parseClockParts(value)
+  if (!parts) return null
+  const parsed = new Date(referenceTime)
+  parsed.setHours(parts.hours, parts.minutes, 0, 0)
+  return parsed.getTime()
+}
+
+// Interpret a clock time as the first occurrence strictly after `startTime`,
+// rolling into the next day when the clock time is at or before the start (so an
+// overnight sleep from 11pm to 6am resolves the end to the following morning).
+export const parseClockTimeAfter = (value: string, startTime: number) => {
+  const parts = parseClockParts(value)
+  if (!parts) return null
+  const parsed = new Date(startTime)
+  parsed.setHours(parts.hours, parts.minutes, 0, 0)
+  if (parsed.getTime() <= startTime) parsed.setDate(parsed.getDate() + 1)
   return parsed.getTime()
 }
 

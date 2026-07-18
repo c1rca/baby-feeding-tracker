@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { formatClockInput, medicineLabel, parseClockTimeToday } from '../domain/trackerDomain'
+import { formatClockInput, medicineLabel, parseClockTimeOnDate } from '../domain/trackerDomain'
 import type { EditingMedicineState, MedicineEvent, MedicineKind, UndoState } from '../types'
 import { createMedicineDose } from './auxiliaryEventModels'
 
@@ -29,7 +29,7 @@ export function useMedicineActions({ editingMedicine, setEditingMedicine, setMed
 
   const saveMedicineEdit = (medicine: MedicineEvent) => {
     if (!editingMedicine) return
-    const nextAt = parseClockTimeToday(editingMedicine.time, editingMedicine.originalAt)
+    const nextAt = parseClockTimeOnDate(editingMedicine.time, editingMedicine.originalAt)
     if (nextAt === null) return showToast('Enter a valid medicine time')
     setMedicines((prev) => prev.map((item) => item.id === medicine.id ? { ...item, kind: editingMedicine.kind, at: nextAt } : item).sort((a, b) => b.at - a.at))
     setDismissedMedicineReminderIds([])

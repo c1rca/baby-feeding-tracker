@@ -6,7 +6,10 @@ export function isWithinWindow(now: number, window: HourWindow): boolean {
   const startMinute = window.startHour * 60 + (window.startMinute ?? 0)
   const endMinute = window.endHour * 60 + (window.endMinute ?? 0)
 
-  if (startMinute === endMinute) return true
+  // Half-open interval [start, end): a zero-width window (start === end) is
+  // empty, so nothing is ever within it. This is the least-surprising reading
+  // of a range whose endpoints coincide.
+  if (startMinute === endMinute) return false
   if (startMinute < endMinute) return currentMinute >= startMinute && currentMinute < endMinute
   return currentMinute >= startMinute || currentMinute < endMinute
 }

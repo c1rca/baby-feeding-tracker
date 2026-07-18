@@ -10,6 +10,8 @@ import {
   entryToResumedSession,
   formatTimelineTimestamp,
   normalizeSession,
+  parseClockTimeAfter,
+  parseClockTimeOnDate,
   parseClockTimeToday,
 } from './trackerDomain'
 
@@ -50,6 +52,26 @@ describe('trackerDomain', () => {
     expect(parseClockTimeToday('8:15am', todayAt(12))).toBe(todayAt(8, 15))
     expect(parseClockTimeToday('11:00pm', todayAt(12))).toBe(todayAt(23) - 24 * 60 * 60 * 1000)
     expect(parseClockTimeToday('25:99', todayAt(12))).toBeNull()
+  })
+
+  it('resolves an end clock time as the first occurrence after the start', () => {
+    // Same-day nap: end later in the day stays on the same day.
+    expect(parseClockTimeAfter('2:30pm', todayAt(14))).toBe(todayAt(14, 30))
+    // Overnight sleep: an end at or before the start rolls into the next day.
+    expect(parseClockTimeAfter('6:00am', todayAt(23))).toBe(todayAt(6) + 24 * 60 * 60 * 1000)
+    expect(parseClockTimeAfter('11:00pm', todayAt(23))).toBe(todayAt(23) + 24 * 60 * 60 * 1000)
+    // The result is always strictly after the start, never equal to it.
+    expect(parseClockTimeAfter('2:00pm', todayAt(14))).toBe(todayAt(14) + 24 * 60 * 60 * 1000)
+    expect(parseClockTimeAfter('nonsense', todayAt(14))).toBeNull()
+  })
+
+  it('resolves a same-day clock edit without rolling to an adjacent day', () => {
+    // A forward nudge stays on the reference day (regression: used to jump back a day).
+    expect(parseClockTimeOnDate('10:00am', todayAt(8))).toBe(todayAt(10))
+    expect(parseClockTimeOnDate('8:15am', todayAt(8))).toBe(todayAt(8, 15))
+    // An earlier time also stays on the same day.
+    expect(parseClockTimeOnDate('6:00am', todayAt(8))).toBe(todayAt(6))
+    expect(parseClockTimeOnDate('nope', todayAt(8))).toBeNull()
   })
 
   it('shows only the time for timeline events; the day header carries the date', () => {

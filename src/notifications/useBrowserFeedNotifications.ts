@@ -50,24 +50,23 @@ export function useBrowserFeedNotifications({ browserRemindersEnabled, notificat
       ))
     }
 
-    // Medicine reminders (Tylenol and Motrin)
-    if (!isQuietNow && medicineReminders.length > 0) {
+    // Medicine + Vitamin D reminders arrive already due (getMedicineReminders
+    // only returns overdue doses), so alert promptly on the browser channel —
+    // mirroring the in-app path's kind→preference mapping (Vitamin D lives under
+    // the `vitaminD` key). A stable tag means the per-second effect re-run
+    // replaces the notification rather than stacking duplicates.
+    if (!isQuietNow) {
       medicineReminders.forEach((reminder) => {
-        const kind = reminder.type as 'tylenol' | 'motrin'
-        if (preferences[kind]?.browser) {
-          const delayMs = reminder.at + (preferences.medicineIntervals[kind] * 60 * 60 * 1000) - now
-          if (delayMs > 0) {
-            const hours = preferences.medicineIntervals[kind]
-            timers.push(scheduleNotification(
-              `${reminder.recommendedLabel} reminder`,
-              `Last dose was ${hours} hours ago. Open Feedr to log the next dose.`,
-              `medicine-${reminder.id}-${kind}`,
-              delayMs,
-              false,
-              canNotifyNow
-            ))
-          }
-        }
+        const channel = reminder.recommendedKind === 'vitamin_d' ? preferences.vitaminD : preferences[reminder.recommendedKind]
+        if (!channel?.browser) return
+        timers.push(scheduleNotification(
+          `${reminder.recommendedLabel} reminder`,
+          `Last dose was ${reminder.elapsedHours} hours ago. Open Feedr to log the next dose.`,
+          `medicine-${reminder.id}-${reminder.recommendedKind}`,
+          0,
+          false,
+          canNotifyNow,
+        ))
       })
     }
 

@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { useState } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GrowthMeasurement } from '../domain/growthTypes'
@@ -62,7 +62,9 @@ function Harness({ initialEntries = [] as Entry[], initialSession = null as Sess
       <span data-testid="entries">{entries.map((item) => item.id).join(',')}</span>
       <span data-testid="session-note">{sessionState?.note ?? ''}</span>
       <span data-testid="theme">{theme}</span>
+      <span data-testid="tummy-session">{tummySession?.id ?? ''}</span>
       <button type="button" onClick={() => setEntries((prev) => [entry('local', 3000), ...prev])}>add local</button>
+      <button type="button" onClick={() => setTummySession({ id: 'sleep-1', startedAt: 1000, runningStartedAt: 1000, elapsedSeconds: 0, note: '', kind: 'sleep' })}>start sleep</button>
     </div>
   )
 }
@@ -91,6 +93,75 @@ describe('useServerSync', () => {
     expect(screen.getByTestId('status').textContent).toBe('synced')
     expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' }))
     expect(MockEventSource.instances).toHaveLength(0)
+  })
+
+  it('preserves a local edit made during the initial load window (start-during-hydration data loss)', async () => {
+    // Reproduces the "started sleep / added an entry and it vanished a few
+    // seconds later" report: a mutation made while the initial GET is still in
+    // flight must not be discarded when the server snapshot lands.
+    let resolveGet: () => void = () => {}
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PUT') {
+        const body = JSON.parse(String(init.body))
+        return { ok: true, json: async () => ({ updatedAt: 'server-merged', state: { ...body, updatedAt: 'server-merged' } }) }
+      }
+      return await new Promise((resolve) => {
+        resolveGet = () => resolve({ ok: true, json: async () => ({ entries: [entry('server', 2000)], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-v1' }) })
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness />)
+    // The initial GET is outstanding; the user adds an entry before hydration.
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' })))
+    screen.getByRole('button', { name: 'add local' }).click()
+    await waitFor(() => expect(screen.getByTestId('entries').textContent).toContain('local'))
+
+    // Hydration completes.
+    await act(async () => {
+      resolveGet()
+      await Promise.resolve()
+    })
+
+    // The in-flight local edit must survive, merged with the server snapshot.
+    await waitFor(() => {
+      const ids = screen.getByTestId('entries').textContent ?? ''
+      expect(ids).toContain('local')
+      expect(ids).toContain('server')
+    })
+  })
+
+  it('keeps a sleep timer started during the initial load window from vanishing', async () => {
+    // The exact reported bug: a sleep timer started right after opening the app
+    // "suddenly stopped" a few seconds later when the server snapshot (which had
+    // no active care session) landed and overwrote it.
+    let resolveGet: () => void = () => {}
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL, init?: RequestInit) => {
+      if (init?.method === 'PUT') {
+        const body = JSON.parse(String(init.body))
+        return { ok: true, json: async () => ({ updatedAt: 'server-merged', state: { ...body, updatedAt: 'server-merged' } }) }
+      }
+      return await new Promise((resolve) => {
+        resolveGet = () => resolve({ ok: true, json: async () => ({ entries: [], diapers: [], medicines: [], tummyTimes: [], tummySession: null, session: null, theme: 'light', updatedAt: 'server-v1' }) })
+      })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<Harness />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' })))
+    screen.getByRole('button', { name: 'start sleep' }).click()
+    await waitFor(() => expect(screen.getByTestId('tummy-session').textContent).toBe('sleep-1'))
+
+    await act(async () => {
+      resolveGet()
+      await Promise.resolve()
+    })
+
+    // The running sleep session must still be active after hydration, and the
+    // merge PUT must carry it up to the server.
+    await waitFor(() => expect(screen.getByTestId('tummy-session').textContent).toBe('sleep-1'))
+    const putCall = fetchMock.mock.calls.find((call) => call[1]?.method === 'PUT')
+    expect(JSON.parse(String(putCall?.[1]?.body)).tummySession?.id).toBe('sleep-1')
   })
 
   it('refreshes from the server before replaying pending local changes', async () => {

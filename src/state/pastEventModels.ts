@@ -17,9 +17,14 @@ export function parsePastEventDraft(draft: PastEventDraft, now: number) {
   if (draft.kind === 'medicine') return { ok: true as const, event: { kind: 'medicine' as const, event: createMedicineDose(draft.medicineKind, at) } }
   const duration = minutes(draft.durationMinutes)
   if (!duration) return { ok: false as const, reason: 'empty' as const }
-  if (draft.kind === 'tummy' || draft.kind === 'sleep') { const event: TummyTimeEvent = { id: makeId(), startedAt: at, endedAt: at + duration * 60_000, note: draft.note.trim(), kind: draft.kind }; return { ok: true as const, event: { kind: draft.kind, event } } }
+  const endedAt = at + duration * 60_000
+  // A completed past event must finish at or before now; a duration that pushes
+  // the end into the future would create a nap/pump span that extends past the
+  // present, corrupting the day rhythm and stats.
+  if (endedAt > now) return { ok: false as const, reason: 'future-date' as const }
+  if (draft.kind === 'tummy' || draft.kind === 'sleep') { const event: TummyTimeEvent = { id: makeId(), startedAt: at, endedAt, note: draft.note.trim(), kind: draft.kind }; return { ok: true as const, event: { kind: draft.kind, event } } }
   const leftOunces = output(draft.pumpLeftOunces), rightOunces = output(draft.pumpRightOunces)
   if (leftOunces === null && draft.pumpLeftOunces.trim() || rightOunces === null && draft.pumpRightOunces.trim()) return { ok: false as const, reason: 'invalid-output' as const }
-  const event: PumpEvent = { id: makeId(), startedAt: at, endedAt: at + duration * 60_000, leftOunces, rightOunces, note: draft.note.trim() || undefined }
+  const event: PumpEvent = { id: makeId(), startedAt: at, endedAt, leftOunces, rightOunces, note: draft.note.trim() || undefined }
   return { ok: true as const, event: { kind: 'pump' as const, event } }
 }

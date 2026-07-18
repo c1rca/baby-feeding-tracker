@@ -60,29 +60,33 @@ const safeJsonParse = <T,>(raw: string | null): T | null => {
   }
 }
 
+// Collections are always persisted as arrays. A corrupt or wrong-type value
+// (e.g. a stray object or string) must degrade to an empty list rather than
+// throw inside `.sort()` during initial state hydration, which would crash the
+// whole app for that baby with no recovery path. The server copy re-hydrates.
+const safeJsonArray = <T,>(raw: string | null): T[] => {
+  const parsed = safeJsonParse<unknown>(raw)
+  return Array.isArray(parsed) ? (parsed as T[]) : []
+}
+
 export const readSortedEntries = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
-  const parsed = safeJsonParse<Entry[]>(localStorage.getItem(keys.entries)) ?? []
-  return parsed.sort((a, b) => b.endedAt - a.endedAt)
+  return safeJsonArray<Entry>(localStorage.getItem(keys.entries)).sort((a, b) => b.endedAt - a.endedAt)
 }
 
 export const readSortedDiapers = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
-  const parsed = safeJsonParse<DiaperEvent[]>(localStorage.getItem(keys.diapers)) ?? []
-  return parsed.sort((a, b) => b.at - a.at)
+  return safeJsonArray<DiaperEvent>(localStorage.getItem(keys.diapers)).sort((a, b) => b.at - a.at)
 }
 
 export const readSortedMedicines = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
-  const parsed = safeJsonParse<MedicineEvent[]>(localStorage.getItem(keys.medicines)) ?? []
-  return parsed.sort((a, b) => b.at - a.at)
+  return safeJsonArray<MedicineEvent>(localStorage.getItem(keys.medicines)).sort((a, b) => b.at - a.at)
 }
 
 export const readSortedTummyTimes = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
-  const parsed = safeJsonParse<TummyTimeEvent[]>(localStorage.getItem(keys.tummyTimes)) ?? []
-  return parsed.sort((a, b) => b.startedAt - a.startedAt)
+  return safeJsonArray<TummyTimeEvent>(localStorage.getItem(keys.tummyTimes)).sort((a, b) => b.startedAt - a.startedAt)
 }
 
 export const readSortedPumpEvents = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
-  const parsed = safeJsonParse<PumpEvent[]>(localStorage.getItem(keys.pumpEvents)) ?? []
-  return parsed.sort((a, b) => b.startedAt - a.startedAt)
+  return safeJsonArray<PumpEvent>(localStorage.getItem(keys.pumpEvents)).sort((a, b) => b.startedAt - a.startedAt)
 }
 
 export const readTummySession = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => safeJsonParse<TummyTimeSession>(localStorage.getItem(keys.tummySession))
