@@ -33,8 +33,9 @@ describe('care launcher timers', () => {
     expect(screen.getByRole('button', { name: /Resume Tummy Time timer/i })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Resume Tummy Time timer/i }))
     await user.click(screen.getByRole('button', { name: /^Stop & save Tummy Time$/i }))
-    await user.click(screen.getByRole('button', { name: /^Confirm save Tummy Time$/i }))
     await waitFor(() => expect(JSON.parse(localStorage.getItem(TUMMY_STORAGE_KEY) ?? '[]')).toHaveLength(1))
+    expect(screen.queryByRole('button', { name: /^Confirm save Tummy Time$/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /Undo Tummy Time log/i })).toBeTruthy()
     expect(JSON.parse(localStorage.getItem(TUMMY_SESSION_STORAGE_KEY) ?? 'null')).toBeNull()
   })
 
@@ -67,10 +68,9 @@ describe('care launcher timers', () => {
     await user.click(screen.getByRole('button', { name: /Resume Sleep timer/i }))
     expect(screen.getByRole('button', { name: /Pause Sleep timer/i })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /^Stop & save Sleep$/i }))
-    expect(screen.getByRole('button', { name: /^Confirm save Sleep$/i })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /Pause Sleep timer/i })).toBeTruthy()
-    await user.click(screen.getByRole('button', { name: /^Confirm save Sleep$/i }))
+    expect(screen.queryByRole('button', { name: /^Confirm save Sleep$/i })).toBeNull()
     expect(screen.getByText(/Sleep saved/i)).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Undo Tummy Time log/i })).toBeTruthy()
   })
 
   it('edits a saved Sleep entry from the timeline without it vanishing (regression: 12h start-time prefill parsed to NaN)', async () => {
