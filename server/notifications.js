@@ -19,6 +19,7 @@ export function createNotificationScheduler({
   enabled = true,
   getMedicineReminderSettings = () => ({ tylenol: 6, motrin: 6 }),
   getNotificationPreferences = () => normalizeNotificationPreferences(),
+  getHouseholdNotificationSettings = null,
   now = () => Date.now(),
   setTimer = setTimeout,
   clearTimer = clearTimeout,
@@ -51,7 +52,9 @@ export function createNotificationScheduler({
     if (!medicines) return null
     const tummyTimes = parseJsonArray(row.tummy_times_json || '[]')
 
-    const preferences = getNotificationPreferences()
+    const householdSettings = getHouseholdNotificationSettings?.(row.household_id)
+    if (householdSettings && !householdSettings.gotifyRemindersEnabled) return null
+    const preferences = householdSettings?.notificationPreferences ?? getNotificationPreferences()
     const isQuiet = preferences ? isQuietHour(now(), preferences.quietHours, timeZone) : false
     const reminders = []
 
@@ -63,7 +66,7 @@ export function createNotificationScheduler({
 
     // Medicine reminders (Tylenol, Motrin, Vitamin D)
     if (!isQuiet && sendGotify) {
-      const medicineReminderSettings = preferences?.medicineIntervals ?? getMedicineReminderSettings()
+      const medicineReminderSettings = preferences?.medicineIntervals ?? householdSettings?.medicineReminderSettings ?? getMedicineReminderSettings()
       for (const latestDose of getLatestMedicineDosesByKind(medicines)) {
         const kind = latestDose.kind
         const shouldRemind = kind === 'vitamin_d' ? preferences?.vitaminD.gotify : kind === 'tylenol' ? preferences?.tylenol.gotify : kind === 'motrin' ? preferences?.motrin.gotify : false

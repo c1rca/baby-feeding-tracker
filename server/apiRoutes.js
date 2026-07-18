@@ -41,48 +41,61 @@ export const createDiagnosticsRouter = ({ config, getGotifyRemindersEnabled }) =
   return router
 }
 
-export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEnabled, setGotifyRemindersEnabled, getMedicineReminderSettings, setMedicineReminderSettings, getNotificationPreferences = () => normalizeNotificationPreferences(), setNotificationPreferences = () => {}, writeBooleanSetting, writeJsonSetting, appendEventLog, notificationScheduler }) => {
-  const settingsPayload = () => ({
-    available: config.notificationChannelsAvailable,
+export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEnabled, setGotifyRemindersEnabled, getMedicineReminderSettings, setMedicineReminderSettings, getNotificationPreferences = () => normalizeNotificationPreferences(), setNotificationPreferences = () => {}, getHouseholdNotificationSettings = null, setHouseholdNotificationSettings = null, writeBooleanSetting, writeJsonSetting, appendEventLog, notificationScheduler }) => {
+  const legacySettings = () => ({
     gotifyRemindersEnabled: getGotifyRemindersEnabled(),
     medicineReminderSettings: getMedicineReminderSettings(),
     notificationPreferences: getNotificationPreferences(),
   })
+  const settingsFor = (req) => getHouseholdNotificationSettings?.(req.auth?.householdId || DEFAULT_HOUSEHOLD_ID) ?? legacySettings()
+  const settingsPayload = (req) => ({ available: config.notificationChannelsAvailable, ...settingsFor(req) })
   const router = (app) => {
-    app.get('/api/notification-settings', (_req, res) => {
-      res.json(settingsPayload())
+    app.get('/api/notification-settings', (req, res) => {
+      res.json(settingsPayload(req))
     })
 
     app.put('/api/notification-settings', (req, res) => {
-      // Reminder settings and the delivery channel are effectively shared admin
-      // config (today a single global channel), so only an owner may change
-      // them. Local/bypass mode resolves to role 'owner', so it is unaffected.
       if (req.auth?.role !== 'owner') {
         rejectForbidden(res)
         return
       }
+      const householdId = req.auth?.householdId || DEFAULT_HOUSEHOLD_ID
+      const current = settingsFor(req)
+      const eventScope = setHouseholdNotificationSettings ? { householdId } : {}
+      const next = { ...current }
       if (Object.prototype.hasOwnProperty.call(req.body ?? {}, 'gotifyRemindersEnabled')) {
-        const enabled = Boolean(req.body?.gotifyRemindersEnabled) && config.notificationChannelsAvailable
-        setGotifyRemindersEnabled(enabled)
-        writeBooleanSetting('gotify_reminders_enabled', enabled)
-        appendEventLog('settings_update', { key: 'gotify_reminders_enabled', value: enabled ? '1' : '0' })
-        notificationScheduler?.setEnabled(enabled)
+        next.gotifyRemindersEnabled = Boolean(req.body?.gotifyRemindersEnabled) && config.notificationChannelsAvailable
+        appendEventLog('settings_update', { ...eventScope, key: 'gotify_reminders_enabled', value: next.gotifyRemindersEnabled ? '1' : '0' })
       }
       if (req.body?.medicineReminderSettings) {
-        const nextSettings = normalizeMedicineReminderSettings(req.body.medicineReminderSettings)
-        setMedicineReminderSettings(nextSettings)
-        writeJsonSetting('medicine_reminder_settings', nextSettings)
-        appendEventLog('settings_update', { key: 'medicine_reminder_settings', value: nextSettings })
-        notificationScheduler?.evaluate()
+        next.medicineReminderSettings = normalizeMedicineReminderSettings(req.body.medicineReminderSettings)
+        appendEventLog('settings_update', { ...eventScope, key: 'medicine_reminder_settings', value: next.medicineReminderSettings })
       }
       if (req.body?.notificationPreferences) {
-        const nextPrefs = normalizeNotificationPreferences(req.body.notificationPreferences)
-        setNotificationPreferences(nextPrefs)
-        writeJsonSetting('notification_preferences', nextPrefs)
-        appendEventLog('settings_update', { key: 'notification_preferences', value: nextPrefs })
-        notificationScheduler?.evaluate()
+        next.notificationPreferences = normalizeNotificationPreferences(req.body.notificationPreferences)
+        appendEventLog('settings_update', { ...eventScope, key: 'notification_preferences', value: next.notificationPreferences })
       }
-      res.json({ ok: true, ...settingsPayload() })
+      if (setHouseholdNotificationSettings) {
+        setHouseholdNotificationSettings(householdId, next)
+        notificationScheduler?.evaluate()
+      } else {
+        if (next.gotifyRemindersEnabled !== current.gotifyRemindersEnabled) {
+          setGotifyRemindersEnabled(next.gotifyRemindersEnabled)
+          writeBooleanSetting('gotify_reminders_enabled', next.gotifyRemindersEnabled)
+          notificationScheduler?.setEnabled(next.gotifyRemindersEnabled)
+        }
+        if (next.medicineReminderSettings !== current.medicineReminderSettings) {
+          setMedicineReminderSettings(next.medicineReminderSettings)
+          writeJsonSetting('medicine_reminder_settings', next.medicineReminderSettings)
+          notificationScheduler?.evaluate()
+        }
+        if (next.notificationPreferences !== current.notificationPreferences) {
+          setNotificationPreferences(next.notificationPreferences)
+          writeJsonSetting('notification_preferences', next.notificationPreferences)
+          notificationScheduler?.evaluate()
+        }
+      }
+      res.json({ ok: true, ...settingsPayload(req) })
     })
   }
   return router

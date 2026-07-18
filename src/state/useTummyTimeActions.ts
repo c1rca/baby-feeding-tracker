@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { formatClockInput, formatDateInput, makeId, parseClockTimeAfter, parseClockTimeOnDate, parseDateAndTime } from '../domain/trackerDomain'
-import { activeElapsedSeconds } from '../domain/careTimer'
+import { activeElapsedSeconds, activeTimerEventRange } from '../domain/careTimer'
 import type { EditingTummyTimeState, PumpSession, Session, TummyTimeEvent, TummyTimeSession, UndoState } from '../types'
 
 type Options = {
@@ -62,8 +62,8 @@ export function useTummyTimeActions({ tummySession, feedSession, pumpSession, se
   const stopCareTimer = () => {
     if (!tummySession) return
     const label = tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'
-    const elapsedSeconds = activeElapsedSeconds(tummySession, Date.now())
-    const tummyTime = { id: tummySession.id, startedAt: tummySession.startedAt, endedAt: tummySession.startedAt + elapsedSeconds * 1000, note: tummySession.note, kind: tummySession.kind }
+    const range = activeTimerEventRange(tummySession, Date.now())
+    const tummyTime = { id: tummySession.id, ...range, note: tummySession.note, kind: tummySession.kind }
     setTummyTimes((prev) => [tummyTime, ...prev].sort((a, b) => b.startedAt - a.startedAt))
     setTummySession(null)
     setAdditionalOptionsOpen(false)

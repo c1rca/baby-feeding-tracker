@@ -55,6 +55,14 @@ export function buildPendingSyncPayload(serverState: ServerState, localPayload: 
   }
 }
 
+export function mergeQueuedSyncOverrides(older: Partial<ServerSyncPayload>, current: ServerSyncPayload): Partial<ServerSyncPayload> {
+  const next: Partial<ServerSyncPayload> = {}
+  for (const key of Object.keys(older) as (keyof ServerSyncPayload)[]) {
+    Object.assign(next, { [key]: current[key] })
+  }
+  return next
+}
+
 export function buildApiStatePayload(
   currentPayload: ServerSyncPayload,
   serverUpdatedAt: string | null,

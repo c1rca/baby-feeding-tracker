@@ -14,3 +14,11 @@ export function activeElapsedSeconds(session: PausableSession, now: number): num
   const running = session.runningStartedAt ? Math.max(0, Math.floor((now - session.runningStartedAt) / 1000)) : 0
   return base + running
 }
+
+export function activeTimerEventRange(session: PausableSession, stoppedAt: number) {
+  if (session.runningStartedAt === undefined && session.elapsedSeconds === undefined) {
+    return { startedAt: session.startedAt, endedAt: stoppedAt }
+  }
+  const elapsedSeconds = activeElapsedSeconds(session, stoppedAt)
+  return { startedAt: stoppedAt - elapsedSeconds * 1000, endedAt: stoppedAt }
+}

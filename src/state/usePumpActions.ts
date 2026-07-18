@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { makeId } from '../domain/trackerDomain'
-import { activeElapsedSeconds } from '../domain/careTimer'
+import { activeElapsedSeconds, activeTimerEventRange } from '../domain/careTimer'
 import type { PumpEvent, PumpSession, Session, TummyTimeSession, UndoState } from '../types'
 export type { PumpSession } from '../types'
 
@@ -50,8 +50,8 @@ export function usePumpActions({ pumpSession, feedSession, tummySession, setPump
     if (!pumpSession) return
     // Record the active (unpaused) duration, mirroring how the tummy/sleep
     // timers persist elapsed time rather than wall-clock span.
-    const endedAt = pumpSession.startedAt + activeElapsedSeconds(pumpSession, Date.now()) * 1000
-    const pumpEvent: PumpEvent = { id: pumpSession.id, startedAt: pumpSession.startedAt, endedAt, leftOunces: parseOutput(leftText), rightOunces: parseOutput(rightText), note: note.trim() || undefined }
+    const range = activeTimerEventRange(pumpSession, Date.now())
+    const pumpEvent: PumpEvent = { id: pumpSession.id, ...range, leftOunces: parseOutput(leftText), rightOunces: parseOutput(rightText), note: note.trim() || undefined }
     setPumpEvents((prev) => sortPumpEvents([pumpEvent, ...prev]))
     setPumpSession(null)
     setPumpCompletionOpen(false)

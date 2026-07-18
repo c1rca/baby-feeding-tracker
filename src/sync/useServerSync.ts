@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ServerState } from '../types'
 import { loadServerState, saveServerState } from './serverSyncApi'
-import { buildApiStatePayload } from './serverSyncModels'
+import { buildApiStatePayload, mergeQueuedSyncOverrides } from './serverSyncModels'
 import { clearPendingSync, hasPendingSyncForBaby, markPendingSync, type SyncStatus, type SyncToApiOverrides, type UseServerSyncOptions } from './serverSyncTypes'
 import { useInitialServerSync } from './useInitialServerSync'
 import { useLatestServerPayload, useServerStateApplier } from './useServerStateApplier'
@@ -64,7 +64,7 @@ export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?
       inFlightRef.current = false
       if (rerunRef.current) {
         rerunRef.current = false
-        const rerunOverrides = rerunOverridesRef.current ?? undefined
+        const rerunOverrides = rerunOverridesRef.current ? mergeQueuedSyncOverrides(rerunOverridesRef.current, latestPayloadRef.current) : undefined
         rerunOverridesRef.current = null
         void syncToApiRef.current(rerunOverrides)
       }

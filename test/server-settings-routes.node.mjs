@@ -120,6 +120,30 @@ test('notification settings route persists per-kind medicine reminder intervals'
   assert.deepEqual(res.body, { ok: true, available: true, gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 4, motrin: 0 }, notificationPreferences: {} })
 })
 
+test('notification settings are isolated by household', () => {
+  const app = createFakeApp()
+  const settings = new Map([
+    ['house-a', { gotifyRemindersEnabled: true, medicineReminderSettings: { tylenol: 6, motrin: 6 }, notificationPreferences: { household: 'a' } }],
+    ['house-b', { gotifyRemindersEnabled: false, medicineReminderSettings: { tylenol: 4, motrin: 0 }, notificationPreferences: { household: 'b' } }],
+  ])
+  createNotificationSettingsRouter({
+    config: { notificationChannelsAvailable: true },
+    getHouseholdNotificationSettings: (householdId) => settings.get(householdId),
+    setHouseholdNotificationSettings: (householdId, next) => settings.set(householdId, next),
+    appendEventLog: () => {},
+    notificationScheduler: { evaluate: () => {} },
+  })(app)
+
+  const getA = createJsonResponse()
+  app.route('GET', '/api/notification-settings')({ auth: { role: 'owner', householdId: 'house-a' } }, getA)
+  assert.equal(getA.body.notificationPreferences.household, 'a')
+
+  const putB = createJsonResponse()
+  app.route('PUT', '/api/notification-settings')({ auth: { role: 'owner', householdId: 'house-b' }, body: { medicineReminderSettings: { tylenol: 6, motrin: 4 } } }, putB)
+  assert.deepEqual(settings.get('house-b').medicineReminderSettings, { tylenol: 6, motrin: 4 })
+  assert.deepEqual(settings.get('house-a').medicineReminderSettings, { tylenol: 6, motrin: 6 })
+})
+
 test('notification settings mutation is rejected for non-owner members and changes nothing', () => {
   const app = createFakeApp()
   let enabled = true

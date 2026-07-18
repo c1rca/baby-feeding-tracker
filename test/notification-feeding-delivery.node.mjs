@@ -98,6 +98,35 @@ test('notification scheduler scans tenant baby states and sends the earliest uns
   assert.deepEqual([...handled.keys()], ['household-b:baby-b:feed-b'])
 })
 
+test('notification scheduler applies enablement per household', async () => {
+  const now = new Date('2026-06-05T10:00:00Z').getTime()
+  const rows = [
+    { household_id: 'household-disabled', baby_id: 'baby-a', entries_json: JSON.stringify([{ id: 'disabled-feed', endedAt: now - 3 * 60 * 60 * 1000 }]) },
+    { household_id: 'household-enabled', baby_id: 'baby-b', entries_json: JSON.stringify([{ id: 'enabled-feed', endedAt: now - 2 * 60 * 60 * 1000 }]) },
+  ]
+  const handled = new Map()
+  const timers = []
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => null },
+    selectAllStates: { all: () => rows },
+    getNotificationState: { get: (id) => handled.get(id) },
+    upsertNotificationState: { run: (state) => handled.set(state.entry_id, state) },
+    sendGotify: async () => {},
+    getHouseholdNotificationSettings: (householdId) => ({
+      gotifyRemindersEnabled: householdId === 'household-enabled',
+      notificationPreferences: { feeding: { gotify: true }, reminderIntervals: { feeding: 2 }, quietHours: { enabled: false }, tummyTime: { gotify: false }, vitaminD: { gotify: false }, tylenol: { gotify: false }, motrin: { gotify: false } },
+      medicineReminderSettings: { tylenol: 6, motrin: 6 },
+    }),
+    now: () => now,
+    setTimer: (fn, delay) => { timers.push({ fn, delay }); return timers.length },
+    clearTimer: () => {},
+    logger: { warn: () => {} },
+  })
+  scheduler.evaluate()
+  await timers[0].fn()
+  assert.deepEqual([...handled.keys()], ['household-enabled:baby-b:enabled-feed'])
+})
+
 function formatTestTime(timestamp) {
   return formatTime(timestamp)
 }

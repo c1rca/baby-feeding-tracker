@@ -70,6 +70,18 @@ describe('useBrowserFeedNotifications medicine channel', () => {
     expect(MockNotification.instances[0].options.tag).toBe('medicine-dose-1-tylenol')
   })
 
+  it('does not notify again every second while the same overdue reminder remains due', () => {
+    const preferences = prefsWith({ tylenol: { inApp: true, browser: true, gotify: false } })
+    const { rerender } = renderHook(
+      ({ currentNow }) => useBrowserFeedNotifications({ browserRemindersEnabled: true, notificationPermission: 'granted', preferences, now: currentNow, medicineReminders: [reminder()] }),
+      { initialProps: { currentNow: now } },
+    )
+    vi.advanceTimersByTime(1)
+    rerender({ currentNow: now + 1000 })
+    vi.advanceTimersByTime(1)
+    expect(MockNotification.instances).toHaveLength(1)
+  })
+
   it('does not fire when the medicine browser channel is off (default)', () => {
     mount({ medicineReminders: [reminder()] })
     vi.advanceTimersByTime(1)

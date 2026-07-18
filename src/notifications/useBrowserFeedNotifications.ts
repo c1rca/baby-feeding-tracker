@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import type { Entry } from '../types'
 import type { MedicineReminder } from '../components/MedicineReminderBanner'
 import type { NotificationPreferences } from '../state/notificationPreferences'
@@ -16,10 +16,11 @@ type BrowserRemindersOptions = {
   tummyTimeReminder?: { copy: string } | null
 }
 
-function scheduleNotification(title: string, body: string, tag: string, delayMs: number, requireInteraction = false, shouldNotify: () => boolean = () => true): ReturnType<typeof setTimeout> {
+function scheduleNotification(title: string, body: string, tag: string, delayMs: number, requireInteraction = false, shouldNotify: () => boolean = () => true, onDelivered: () => void = () => {}): ReturnType<typeof setTimeout> {
   return window.setTimeout(() => {
     if (typeof Notification === 'undefined' || !shouldNotify()) return
     const notification = new Notification(title, { body, tag, requireInteraction })
+    onDelivered()
     notification.onclick = () => {
       window.open(NOTIFICATION_APP_URL, '_blank', 'noopener,noreferrer')
       notification.close()
@@ -28,6 +29,7 @@ function scheduleNotification(title: string, body: string, tag: string, delayMs:
 }
 
 export function useBrowserFeedNotifications({ browserRemindersEnabled, notificationPermission, preferences, now, lastFeed, medicineReminders = [], tummyTimeReminder }: BrowserRemindersOptions) {
+  const deliveredDueTagsRef = useRef(new Set<string>())
   useEffect(() => {
     if (!browserRemindersEnabled || notificationPermission !== 'granted' || !now || typeof Notification === 'undefined') return
     if (!preferences) return // No preferences loaded yet
@@ -59,26 +61,31 @@ export function useBrowserFeedNotifications({ browserRemindersEnabled, notificat
       medicineReminders.forEach((reminder) => {
         const channel = reminder.recommendedKind === 'vitamin_d' ? preferences.vitaminD : preferences[reminder.recommendedKind]
         if (!channel?.browser) return
+        const tag = `medicine-${reminder.id}-${reminder.recommendedKind}`
+        if (deliveredDueTagsRef.current.has(tag)) return
         timers.push(scheduleNotification(
           `${reminder.recommendedLabel} reminder`,
           `Last dose was ${reminder.elapsedHours} hours ago. Open Feedr to log the next dose.`,
-          `medicine-${reminder.id}-${reminder.recommendedKind}`,
+          tag,
           0,
           false,
           canNotifyNow,
+          () => deliveredDueTagsRef.current.add(tag),
         ))
       })
     }
 
     // Tummy Time reminders
     if (!isQuietNow && preferences.tummyTime.browser && tummyTimeReminder && isWithinWindow(now, preferences.tummyActiveHours)) {
-      timers.push(scheduleNotification(
+      const tag = `tummy-time-reminder:${tummyTimeReminder.copy}`
+      if (!deliveredDueTagsRef.current.has(tag)) timers.push(scheduleNotification(
         'Tummy Time reminder',
         tummyTimeReminder.copy,
-        'tummy-time-reminder',
+        tag,
         0,
         false,
-        canNotifyNow
+        canNotifyNow,
+        () => deliveredDueTagsRef.current.add(tag),
       ))
     }
 

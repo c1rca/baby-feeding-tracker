@@ -159,6 +159,15 @@ export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstra
       updated_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS household_settings (
+      household_id TEXT NOT NULL,
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (household_id, key),
+      FOREIGN KEY (household_id) REFERENCES households(id) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS deleted_items (
       item_id TEXT PRIMARY KEY,
       collection TEXT NOT NULL,
@@ -300,6 +309,12 @@ export function prepareTrackerStatements(db) {
         updated_at = excluded.updated_at
     `),
     selectSetting: db.prepare('SELECT value FROM app_settings WHERE key = ?'),
+    selectHouseholdSetting: db.prepare('SELECT value FROM household_settings WHERE household_id = ? AND key = ?'),
+    upsertHouseholdSetting: db.prepare(`
+      INSERT INTO household_settings (household_id, key, value, updated_at)
+      VALUES (@household_id, @key, @value, @updated_at)
+      ON CONFLICT(household_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+    `),
     selectUserByEmail: db.prepare('SELECT id, email, display_name, password_hash, google_sub, phone FROM users WHERE email = ?'),
     selectUserByPhone: db.prepare('SELECT id, email, display_name, password_hash, google_sub, phone FROM users WHERE phone = ?'),
     selectUserByGoogleSub: db.prepare('SELECT id, email, display_name, password_hash, google_sub, phone FROM users WHERE google_sub = ?'),

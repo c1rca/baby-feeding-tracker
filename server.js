@@ -23,7 +23,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, renameBaby, archiveBaby, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions, revokeUserSessions } = statements
+const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectHouseholdSetting, upsertHouseholdSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, renameBaby, archiveBaby, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions, revokeUserSessions } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
 const textEmailSender = createTextEmailSender(config)
 const phoneToTextEmail = (phone) => {
@@ -92,21 +92,32 @@ const readJsonSetting = (key, fallback) => {
 }
 const writeJsonSetting = (key, value) => upsertSetting.run({ key, value: JSON.stringify(value), updated_at: new Date().toISOString() })
 
-let gotifyRemindersEnabled = config.notificationChannelsAvailable && readBooleanSetting('gotify_reminders_enabled', config.notificationsDefaultEnabled)
-let medicineReminderSettings = normalizeMedicineReminderSettings(readJsonSetting('medicine_reminder_settings', { tylenol: 6, motrin: 6 }))
-let notificationPreferences = normalizeNotificationPreferences(readJsonSetting('notification_preferences'))
-const getGotifyRemindersEnabled = () => gotifyRemindersEnabled
-const setGotifyRemindersEnabled = (enabled) => {
-  gotifyRemindersEnabled = enabled
+const legacyNotificationSettings = {
+  gotifyRemindersEnabled: config.notificationChannelsAvailable && readBooleanSetting('gotify_reminders_enabled', config.notificationsDefaultEnabled),
+  medicineReminderSettings: normalizeMedicineReminderSettings(readJsonSetting('medicine_reminder_settings', { tylenol: 6, motrin: 6 })),
+  notificationPreferences: normalizeNotificationPreferences(readJsonSetting('notification_preferences')),
 }
-const getMedicineReminderSettings = () => medicineReminderSettings
-const setMedicineReminderSettings = (settings) => {
-  medicineReminderSettings = normalizeMedicineReminderSettings(settings)
+const readHouseholdJson = (householdId, key, fallback) => {
+  const row = selectHouseholdSetting.get(householdId, key)
+  if (!row) return fallback
+  try { return JSON.parse(row.value) } catch { return fallback }
 }
-const getNotificationPreferences = () => notificationPreferences
-const setNotificationPreferences = (prefs) => {
-  notificationPreferences = normalizeNotificationPreferences(prefs)
+const getHouseholdNotificationSettings = (householdId = DEFAULT_HOUSEHOLD_ID) => ({
+  gotifyRemindersEnabled: Boolean(readHouseholdJson(householdId, 'gotify_reminders_enabled', legacyNotificationSettings.gotifyRemindersEnabled)),
+  medicineReminderSettings: normalizeMedicineReminderSettings(readHouseholdJson(householdId, 'medicine_reminder_settings', legacyNotificationSettings.medicineReminderSettings)),
+  notificationPreferences: normalizeNotificationPreferences(readHouseholdJson(householdId, 'notification_preferences', legacyNotificationSettings.notificationPreferences)),
+})
+const setHouseholdNotificationSettings = (householdId, settings) => {
+  const updated_at = new Date().toISOString()
+  for (const [key, value] of Object.entries({
+    gotify_reminders_enabled: Boolean(settings.gotifyRemindersEnabled),
+    medicine_reminder_settings: normalizeMedicineReminderSettings(settings.medicineReminderSettings),
+    notification_preferences: normalizeNotificationPreferences(settings.notificationPreferences),
+  })) upsertHouseholdSetting.run({ household_id: householdId, key, value: JSON.stringify(value), updated_at })
 }
+const getGotifyRemindersEnabled = () => legacyNotificationSettings.gotifyRemindersEnabled
+const getMedicineReminderSettings = () => legacyNotificationSettings.medicineReminderSettings
+const getNotificationPreferences = () => legacyNotificationSettings.notificationPreferences
 
 const notificationScheduler = createTrackerNotificationScheduler({
   config,
@@ -114,7 +125,8 @@ const notificationScheduler = createTrackerNotificationScheduler({
   selectAllStates: selectAllBabyStates,
   getNotificationState,
   upsertNotificationState,
-  gotifyRemindersEnabled,
+  gotifyRemindersEnabled: true,
+  getHouseholdNotificationSettings,
   getMedicineReminderSettings,
   getNotificationPreferences,
   appendEventLog,
@@ -169,11 +181,10 @@ createDiagnosticsRouter({ config, getGotifyRemindersEnabled })(app)
 createNotificationSettingsRouter({
   config,
   getGotifyRemindersEnabled,
-  setGotifyRemindersEnabled,
   getMedicineReminderSettings,
-  setMedicineReminderSettings,
   getNotificationPreferences,
-  setNotificationPreferences,
+  getHouseholdNotificationSettings,
+  setHouseholdNotificationSettings,
   writeBooleanSetting,
   writeJsonSetting,
   appendEventLog,
@@ -212,7 +223,7 @@ const server = app.listen(config.port, () => {
   appendStartupStateSnapshot({ selectState, selectAllStates: selectAllBabyStates, appendEventLog, summarizeState, redactError })
   if (config.notificationChannelsAvailable) {
     notificationScheduler.evaluate()
-    console.log(`reminders ${gotifyRemindersEnabled ? 'enabled' : 'disabled'}: gotify=${config.gotifyAvailable ? config.gotifyUrl : 'off'}, textEmail=${config.textEmailAvailable ? 'on' : 'off'}`)
+    console.log(`reminders ${legacyNotificationSettings.gotifyRemindersEnabled ? 'enabled' : 'disabled'}: gotify=${config.gotifyAvailable ? config.gotifyUrl : 'off'}, textEmail=${config.textEmailAvailable ? 'on' : 'off'}`)
   }
 })
 
