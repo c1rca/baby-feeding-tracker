@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ComponentProps } from 'react'
 import type { DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, EditingTummyTimeState, View } from '../types'
-import { formatClockInput, formatDateInput, formatTimeInput, medicineLabel } from '../domain/trackerDomain'
+import { formatClockInput, formatDateInput, formatTimeInput } from '../domain/trackerDomain'
 import { useServerSync } from '../sync/useServerSync'
 import { persistLiveSyncEnabled, readLiveSyncEnabled } from '../sync/liveSyncSettings'
 import { usePersistentTrackerState } from './usePersistentTrackerState'
@@ -18,7 +18,8 @@ import { useTummyTimeActions } from './useTummyTimeActions'
 import { usePumpActions, type EditingPumpState } from './usePumpActions'
 import { createDefaultPastEventDraft } from './pastEventModels'
 import { usePastEventActions } from './usePastEventActions'
-import { shouldShowTummyTimeReminder, startOfLocalDayMs, tummyTimeReminderCopy } from '../domain/tummyTime'
+import { buildBriefMedicineData, selectStatVisibility, summarizePumpingToday } from './trackViewData'
+import { shouldShowTummyTimeReminder, tummyTimeReminderCopy } from '../domain/tummyTime'
 import { activeElapsedSeconds } from '../domain/careTimer'
 import { buildDayRhythm } from '../domain/dayRhythm'
 import type { AppHeader } from '../components/AppHeader'
@@ -125,12 +126,9 @@ export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyI
   useBrowserFeedNotifications({ browserRemindersEnabled, notificationPermission, preferences: notificationPreferences, now, lastFeed, medicineReminders, tummyTimeReminder })
   const tummyTimeReminderProps: TummyTimeReminderBannerProps = { reminder: tummyTimeReminder, startTummyTime }
   const statsProps: StatsDashboardProps = { stats, trend, growthMeasurements, setGrowthMeasurements, babyDob }
-  const pumpsToday = pumpEvents.filter((event) => event.startedAt >= startOfLocalDayMs(now))
-  // Bottle and pump cards earn their spot only with activity in the last 72h,
-  // so an exclusively-nursing stretch keeps the overview to what's in use.
-  const statActivityCutoff = now - 72 * 60 * 60 * 1000
-  const showBottleStat = entries.some((entry) => (entry.bottleOunces ?? 0) > 0 && entry.endedAt >= statActivityCutoff)
-  const showPumpStat = Boolean(pumpSession) || pumpEvents.some((event) => event.endedAt >= statActivityCutoff)
+  const { pumpCountToday, pumpedOzToday } = summarizePumpingToday({ pumpEvents, now })
+  const { showBottleStat, showPumpStat } = selectStatVisibility({ entries, pumpEvents, pumpSession, now })
+  const briefMedicineData = buildBriefMedicineData({ medicineReminders, medicines, now })
   const tummyActiveSeconds = tummySession ? activeElapsedSeconds(tummySession, now) : 0
   const pumpActiveSeconds = pumpSession ? activeElapsedSeconds(pumpSession, now) : 0
   const trackViewProps: TrackViewProps = {
@@ -142,17 +140,12 @@ export function useTrackerAppController({ selectedBabyId = '' }: { selectedBabyI
       nextFeedWindow,
       vitaminDTakenToday: stats.vitaminDTakenToday,
       latestVitaminDAt: stats.latestVitaminD?.at ?? null,
-      dueMedicines: medicineReminders.filter((reminder) => reminder.type === 'medicine').map((reminder) => ({ id: reminder.id, kind: reminder.recommendedKind, label: reminder.recommendedLabel, at: reminder.at })),
-      givenMedicines: (['tylenol', 'motrin'] as const)
-        .filter((kind) => !medicineReminders.some((reminder) => reminder.type === 'medicine' && reminder.recommendedKind === kind))
-        .flatMap((kind) => {
-          const latestToday = medicines.filter((medicine) => medicine.kind === kind && medicine.at >= startOfLocalDayMs(now)).sort((a, b) => b.at - a.at)[0]
-          return latestToday ? [{ kind, label: medicineLabel(kind), at: latestToday.at }] : []
-        }),
+      dueMedicines: briefMedicineData.dueMedicines,
+      givenMedicines: briefMedicineData.givenMedicines,
       tummyMinutesToday: stats.tummyMinutesToday,
       tummyGoalMinutes: stats.tummyDailyGoalMinutes,
     },
-    overview: { today, pumpedOzToday: pumpsToday.reduce((sum, event) => sum + (event.leftOunces ?? 0) + (event.rightOunces ?? 0), 0), pumpCountToday: pumpsToday.length, showBottleStat, showPumpStat, rhythm: buildDayRhythm(entries, diapers, tummyTimes, now) },
+    overview: { today, pumpedOzToday, pumpCountToday, showBottleStat, showPumpStat, rhythm: buildDayRhythm(entries, diapers, tummyTimes, now) },
     timeline: { now, entries, diapers, medicines, tummyTimes, pumpEvents, editing, editingDiaper, editingMedicine, editingTummyTime, editingPump, openEntryMenuId, confirmingDeleteEntryId, setEntries, setEditing, setEditingDiaper, setEditingMedicine, setEditingTummyTime, setEditingPump, setOpenEntryMenuId, setConfirmingDeleteEntryId, resumeEntry, resumeTummyTime, resumePumpEvent: pumpActions.resumePumpEvent, deleteEntry, deleteDiaper, deleteMedicine, deleteTummyTime, deletePump: pumpActions.deletePump, startMedicineEdit, startTummyTimeEdit, startPumpEdit: pumpActions.startPumpEdit, toggleEditingDiaperKind, toggleEditingEntryDiaperKind, saveDiaperEdit, saveMedicineEdit, saveTummyTimeEdit, savePumpEdit: pumpActions.savePumpEdit, showToast },
   }
   const modalsProps: TrackerModalsProps = { bottleOpen, manualOpen, pastEventOpen, settingsOpen, session, bottleQuickOz, manualDraft, pastEventDraft, entries, diapers, babyDob, tummyGoalMinutes, feedingNotificationsEnabled, browserRemindersEnabled, liveSyncEnabled, notificationPermission, notificationPreferences, gotifyAvailable, gotifyRemindersEnabled, medicineReminderSettings, theme, fileInputRef, setBottleOpen, setManualOpen, setPastEventOpen, setSettingsOpen, setBottleQuickOz, setManualDraft, setPastEventDraft, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setFeedingNotificationsEnabled, setBrowserRemindersEnabled, setLiveSyncEnabled, setNotificationPreferences, setTheme, logBottle, saveManualFeed, savePastEvent, enableBrowserReminders, setGotifyReminders, setMedicineReminderSettings, showToast }
