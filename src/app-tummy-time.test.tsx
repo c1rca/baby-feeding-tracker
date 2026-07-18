@@ -33,6 +33,7 @@ describe('care launcher timers', () => {
     expect(screen.getByRole('button', { name: /Resume Tummy Time timer/i })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /Resume Tummy Time timer/i }))
     await user.click(screen.getByRole('button', { name: /^Stop & save Tummy Time$/i }))
+    await user.click(screen.getByRole('button', { name: /^Confirm save Tummy Time$/i }))
     await waitFor(() => expect(JSON.parse(localStorage.getItem(TUMMY_STORAGE_KEY) ?? '[]')).toHaveLength(1))
     expect(JSON.parse(localStorage.getItem(TUMMY_SESSION_STORAGE_KEY) ?? 'null')).toBeNull()
   })
@@ -66,6 +67,9 @@ describe('care launcher timers', () => {
     await user.click(screen.getByRole('button', { name: /Resume Sleep timer/i }))
     expect(screen.getByRole('button', { name: /Pause Sleep timer/i })).toBeTruthy()
     await user.click(screen.getByRole('button', { name: /^Stop & save Sleep$/i }))
+    expect(screen.getByRole('button', { name: /^Confirm save Sleep$/i })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Pause Sleep timer/i })).toBeTruthy()
+    await user.click(screen.getByRole('button', { name: /^Confirm save Sleep$/i }))
     expect(screen.getByText(/Sleep saved/i)).toBeTruthy()
   })
 
