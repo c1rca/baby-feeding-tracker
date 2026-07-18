@@ -71,13 +71,46 @@ export function mergeEntriesPreservingExisting(existingEntries, incomingEntries,
   return [...merged.values()]
 }
 
+// Bucket key that partitions feed entries so two entries can only be a duplicate
+// pair if they share a key. It encodes the *necessary* conditions for a match in
+// sameFeedSave: a sourceSessionId match needs equal ids; a legacy match needs
+// equal startedAt+type+side. Non-feed entries return null (never deduped). This
+// lets dedupe compare within tiny buckets instead of scanning every prior entry.
+function feedDedupeKey(entry) {
+  if (!isFeedEntry(entry)) return null
+  if (entry.sourceSessionId) return `sid:${entry.sourceSessionId}`
+  return `leg:${Number(entry.startedAt)}|${entry.type}|${feedSideSignature(entry)}`
+}
+
+// O(1)-amortized duplicate lookup keyed by feedDedupeKey. sameFeedSave is still
+// the authority — the bucket only pre-filters candidates — so behaviour is
+// identical to a full O(n) scan, just without the O(n^2) cost over long history.
+function createFeedDuplicateIndex() {
+  const buckets = new Map()
+  return {
+    findDuplicate(entry) {
+      const key = feedDedupeKey(entry)
+      if (key === null) return undefined
+      return buckets.get(key)?.find((kept) => kept.id !== entry.id && sameFeedSave(kept, entry))
+    },
+    add(entry) {
+      const key = feedDedupeKey(entry)
+      if (key === null) return
+      const bucket = buckets.get(key)
+      if (bucket) bucket.push(entry)
+      else buckets.set(key, [entry])
+    },
+  }
+}
+
 export function dedupeFeedEntries(entries) {
   const deduped = []
+  const index = createFeedDuplicateIndex()
   for (const entry of Array.isArray(entries) ? entries : []) {
     if (!entry?.id) continue
-    const duplicateIndex = deduped.findIndex((existing) => existing.id !== entry.id && sameFeedSave(existing, entry))
-    if (duplicateIndex >= 0) continue
+    if (index.findDuplicate(entry)) continue
     deduped.push(entry)
+    index.add(entry)
   }
   return deduped
 }
