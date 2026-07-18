@@ -73,6 +73,37 @@ describe('care launcher timers', () => {
     expect(screen.getByText(/Sleep saved/i)).toBeTruthy()
   })
 
+  it('edits a saved Sleep entry from the timeline without it vanishing (regression: 12h start-time prefill parsed to NaN)', async () => {
+    // Seed a recent completed sleep entry with minute-aligned times so the
+    // clock-input round-trip is exact. Opening its editor pre-fills the
+    // start-time field with a 12h clock string ("2:05 PM" in this locale);
+    // saving that used to parse to NaN, wiping the entry from the timeline and
+    // persisting a null-timestamp row. Saving the untouched prefill must keep
+    // the entry intact and visible.
+    const nowMinute = Math.floor(Date.now() / 60_000) * 60_000
+    const startedAt = nowMinute - 60 * 60_000
+    const endedAt = nowMinute - 30 * 60_000
+    localStorage.setItem(TUMMY_STORAGE_KEY, JSON.stringify([{ id: 'sleep-edit', startedAt, endedAt, note: 'afternoon nap', kind: 'sleep' }]))
+    const user = userEvent.setup()
+    render(<App />)
+
+    const sleepItem = screen.getAllByRole('listitem')[0]
+    await user.click(within(sleepItem).getByRole('button', { name: /Tummy Time actions/i }))
+    await user.click(within(sleepItem).getByRole('menuitem', { name: /Edit Tummy Time/i }))
+
+    // Save with the prefilled 12h times untouched — the exact break the user hit.
+    await user.click(screen.getByRole('button', { name: /Save Tummy Time/i }))
+
+    expect(screen.getByText(/Sleep updated/i)).toBeTruthy()
+    await waitFor(() => {
+      const saved = JSON.parse(localStorage.getItem(TUMMY_STORAGE_KEY) ?? '[]') as TummyTimeEvent[]
+      expect(saved).toHaveLength(1)
+      expect(saved[0].startedAt).toBe(startedAt)
+      expect(saved[0].endedAt).toBe(endedAt)
+    })
+    expect(screen.getAllByRole('listitem').length).toBeGreaterThan(0)
+  })
+
   it('resumes a recent saved Sleep session from the timeline', async () => {
     const endedAt = Date.now()
     localStorage.setItem(TUMMY_STORAGE_KEY, JSON.stringify([{ id: 'sleep-resume', startedAt: endedAt - 20 * 60_000, endedAt, note: 'night nap', kind: 'sleep' }]))

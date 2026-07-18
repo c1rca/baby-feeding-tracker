@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { formatClockInput, formatDateInput, makeId, parseClockTimeAfter } from '../domain/trackerDomain'
+import { formatClockInput, formatDateInput, makeId, parseClockTimeAfter, parseClockTimeOnDate, parseDateAndTime } from '../domain/trackerDomain'
 import { activeElapsedSeconds } from '../domain/careTimer'
 import type { EditingTummyTimeState, Session, TummyTimeEvent, TummyTimeSession, UndoState } from '../types'
 
@@ -82,14 +82,21 @@ export function useTummyTimeActions({ tummySession, feedSession, setTummySession
 
   const saveTummyTimeEdit = (tummyTime: TummyTimeEvent) => {
     if (!editingTummyTime) return
-    const startedAt = new Date(`${editingTummyTime.startDate}T${editingTummyTime.startTime}`).getTime()
-    const endedAt = parseClockTimeAfter(editingTummyTime.endTime, startedAt)
-    if (!Number.isFinite(startedAt) || endedAt === null) return showToast('Enter valid Tummy Time times')
+    const label = tummyTime.kind === 'sleep' ? 'Sleep' : 'Tummy Time'
+    // Anchor the start time to midnight of the chosen day, then interpret the
+    // clock string the same loose way as the end time. The start field is
+    // pre-filled by formatClockInput ("9:05 AM" in a 12h locale), which a raw
+    // `new Date(`${date}T${time}`)` cannot parse — that produced a spurious
+    // "invalid time" error whenever a user in a 12h locale saved an edit.
+    const dayStart = parseDateAndTime(editingTummyTime.startDate, '00:00')
+    const startedAt = dayStart === null ? null : parseClockTimeOnDate(editingTummyTime.startTime, dayStart)
+    const endedAt = startedAt === null ? null : parseClockTimeAfter(editingTummyTime.endTime, startedAt)
+    if (startedAt === null || endedAt === null) return showToast(`Enter valid ${label} times`)
     if (endedAt <= startedAt) return showToast('End time must be after start time')
     if (endedAt > Date.now()) return showToast('End time cannot be in the future')
     setTummyTimes((prev) => prev.map((item) => item.id === tummyTime.id ? { ...item, startedAt, endedAt, note: editingTummyTime.note } : item).sort((a, b) => b.startedAt - a.startedAt))
     setEditingTummyTime(null)
-    showToast('Tummy Time updated')
+    showToast(`${label} updated`)
   }
 
   const deleteTummyTime = (tummyTime: TummyTimeEvent) => {
