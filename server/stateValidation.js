@@ -4,7 +4,7 @@
 const MAX_ITEMS_PER_COLLECTION = 20000
 const MAX_STRING_LENGTH = 10000
 const COLLECTIONS = ['entries', 'diapers', 'medicines', 'tummyTimes', 'pumpEvents', 'growthMeasurements']
-const OBJECT_FIELDS = ['session', 'tummySession']
+const OBJECT_FIELDS = ['session', 'tummySession', 'pumpSession']
 
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
 const isValidDob = (value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))

@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createInviteRouter } from '../server/apiRoutes.js'
-import { createAuthRouter, hashSessionToken, verifyPassword } from '../server/auth.js'
+import { createAuthRouter, hashPassword, hashSessionToken, verifyPassword } from '../server/auth.js'
 import { createFakeApp, createJsonResponse } from './server-test-helpers.mjs'
 
 const ownerAuth = (overrides = {}) => ({ userId: 'owner-1', householdId: 'household-1', babyId: 'baby-1', role: 'owner', mode: 'session', ...overrides })
@@ -186,4 +186,74 @@ test('invite accept rejects expired, email-mismatched, duplicate-racing, and wea
   const raced = createJsonResponse()
   app.route('POST', '/api/auth/invites/accept')({ body: { token: 't', email: 'new@example.com', password: 'strong-password' } }, raced)
   assert.equal(raced.statusCode, 409)
+})
+
+// P0: the invite token alone must never mint a session for an account that
+// already exists — otherwise an owner (who is handed the raw token) could POST
+// it with a victim's email and take over that account.
+const existingUserAcceptDeps = (overrides = {}) => {
+  const calls = { members: [], sessions: [], accepted: [], events: [] }
+  const existingUser = { id: 'victim-1', email: 'victim@example.com', display_name: 'Victim', password_hash: hashPassword('victims-real-password') }
+  const app = mountAuthRouter({
+    authRequired: true,
+    selectInviteByToken: { get: (hash) => hash === hashSessionToken('invite-token') ? { id: 'invite-1', household_id: 'household-1', email: 'victim@example.com', role: 'caregiver', expires_at: '2026-07-16T00:00:00.000Z', accepted_at: null, revoked_at: null } : null },
+    selectUserByEmail: { get: () => existingUser },
+    insertHouseholdMember: { run: (member) => calls.members.push(member) },
+    acceptInvite: { run: (payload) => { calls.accepted.push(payload); return { changes: 1 } } },
+    insertSession: { run: (session) => calls.sessions.push(session) },
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+    tokenFactory: () => 'session-token',
+    idFactory: () => 'session-1',
+    now: () => new Date('2026-07-10T00:00:00.000Z'),
+    ...overrides,
+  })
+  return { app, calls }
+}
+
+test('invite accept refuses to mint a session for an existing account on the token alone', () => {
+  const { app, calls } = existingUserAcceptDeps({ selectSessionContext: { get: () => null } })
+  const res = createJsonResponse()
+
+  // Attacker has the raw invite token + the victim's email, but no password/session.
+  app.route('POST', '/api/auth/invites/accept')({ headers: {}, body: { token: 'invite-token', email: 'victim@example.com' } }, res)
+
+  assert.equal(res.statusCode, 401)
+  assert.equal(calls.sessions.length, 0)
+  assert.equal(calls.members.length, 0)
+  assert.equal(calls.accepted.length, 0)
+})
+
+test('invite accept lets an existing account join by verifying its password', () => {
+  const { app, calls } = existingUserAcceptDeps({ selectSessionContext: { get: () => null } })
+  const res = createJsonResponse()
+
+  app.route('POST', '/api/auth/invites/accept')({ headers: {}, body: { token: 'invite-token', email: 'victim@example.com', password: 'victims-real-password' } }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.equal(res.body.token, 'session-token')
+  assert.equal(calls.sessions[0].user_id, 'victim-1')
+  assert.deepEqual(calls.members[0], { user_id: 'victim-1', household_id: 'household-1', role: 'caregiver', created_at: '2026-07-10T00:00:00.000Z' })
+})
+
+test('invite accept attaches an already-authenticated user without minting a fresh session', () => {
+  const { app, calls } = existingUserAcceptDeps({ selectSessionContext: { get: (hash) => hash === hashSessionToken('live-session') ? { user_id: 'victim-1' } : null } })
+  const res = createJsonResponse()
+
+  app.route('POST', '/api/auth/invites/accept')({ headers: { authorization: 'Bearer live-session' }, body: { token: 'invite-token', email: 'victim@example.com' } }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.equal(res.body.token, null)
+  assert.equal(calls.sessions.length, 0)
+  assert.deepEqual(calls.members[0], { user_id: 'victim-1', household_id: 'household-1', role: 'caregiver', created_at: '2026-07-10T00:00:00.000Z' })
+})
+
+test('invite accept rejects a session that belongs to a different user', () => {
+  const { app, calls } = existingUserAcceptDeps({ selectSessionContext: { get: () => ({ user_id: 'attacker-9' }) } })
+  const res = createJsonResponse()
+
+  app.route('POST', '/api/auth/invites/accept')({ headers: { authorization: 'Bearer attacker-session' }, body: { token: 'invite-token', email: 'victim@example.com' } }, res)
+
+  assert.equal(res.statusCode, 401)
+  assert.equal(calls.sessions.length, 0)
+  assert.equal(calls.members.length, 0)
 })

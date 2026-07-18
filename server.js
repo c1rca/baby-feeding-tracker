@@ -92,20 +92,22 @@ const readJsonSetting = (key, fallback) => {
 }
 const writeJsonSetting = (key, value) => upsertSetting.run({ key, value: JSON.stringify(value), updated_at: new Date().toISOString() })
 
-const legacyNotificationSettings = {
-  gotifyRemindersEnabled: config.notificationChannelsAvailable && readBooleanSetting('gotify_reminders_enabled', config.notificationsDefaultEnabled),
-  medicineReminderSettings: normalizeMedicineReminderSettings(readJsonSetting('medicine_reminder_settings', { tylenol: 6, motrin: 6 })),
-  notificationPreferences: normalizeNotificationPreferences(readJsonSetting('notification_preferences')),
-}
+// Live reads of the pre-household ("legacy") global settings. These must NOT be
+// snapshotted at boot: they back /api/diagnostics and the scheduler's window
+// boundary/gating fallbacks, so a settings change after startup has to be
+// visible immediately rather than frozen until the next process restart.
+const getGotifyRemindersEnabled = () => config.notificationChannelsAvailable && readBooleanSetting('gotify_reminders_enabled', config.notificationsDefaultEnabled)
+const getMedicineReminderSettings = () => normalizeMedicineReminderSettings(readJsonSetting('medicine_reminder_settings', { tylenol: 6, motrin: 6 }))
+const getNotificationPreferences = () => normalizeNotificationPreferences(readJsonSetting('notification_preferences'))
 const readHouseholdJson = (householdId, key, fallback) => {
   const row = selectHouseholdSetting.get(householdId, key)
   if (!row) return fallback
   try { return JSON.parse(row.value) } catch { return fallback }
 }
 const getHouseholdNotificationSettings = (householdId = DEFAULT_HOUSEHOLD_ID) => ({
-  gotifyRemindersEnabled: Boolean(readHouseholdJson(householdId, 'gotify_reminders_enabled', legacyNotificationSettings.gotifyRemindersEnabled)),
-  medicineReminderSettings: normalizeMedicineReminderSettings(readHouseholdJson(householdId, 'medicine_reminder_settings', legacyNotificationSettings.medicineReminderSettings)),
-  notificationPreferences: normalizeNotificationPreferences(readHouseholdJson(householdId, 'notification_preferences', legacyNotificationSettings.notificationPreferences)),
+  gotifyRemindersEnabled: Boolean(readHouseholdJson(householdId, 'gotify_reminders_enabled', getGotifyRemindersEnabled())),
+  medicineReminderSettings: normalizeMedicineReminderSettings(readHouseholdJson(householdId, 'medicine_reminder_settings', getMedicineReminderSettings())),
+  notificationPreferences: normalizeNotificationPreferences(readHouseholdJson(householdId, 'notification_preferences', getNotificationPreferences())),
 })
 const setHouseholdNotificationSettings = (householdId, settings) => {
   const updated_at = new Date().toISOString()
@@ -115,9 +117,6 @@ const setHouseholdNotificationSettings = (householdId, settings) => {
     notification_preferences: normalizeNotificationPreferences(settings.notificationPreferences),
   })) upsertHouseholdSetting.run({ household_id: householdId, key, value: JSON.stringify(value), updated_at })
 }
-const getGotifyRemindersEnabled = () => legacyNotificationSettings.gotifyRemindersEnabled
-const getMedicineReminderSettings = () => legacyNotificationSettings.medicineReminderSettings
-const getNotificationPreferences = () => legacyNotificationSettings.notificationPreferences
 
 const notificationScheduler = createTrackerNotificationScheduler({
   config,
@@ -142,7 +141,7 @@ const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt
   if (statePayload.household_id === DEFAULT_HOUSEHOLD_ID && statePayload.baby_id === DEFAULT_BABY_ID) upsertState.run(statePayload)
   recordDeletedItems(audit, updatedAt, { householdId: statePayload.household_id, babyId: statePayload.baby_id })
 })
-const { broadcastStateChange, handleStateEvents } = createStateEventHub({ selectState, selectStateForBaby, serializeState })
+const { broadcastStateChange, handleStateEvents } = createStateEventHub({ selectState, selectStateForBaby, serializeState, selectBabyForHousehold })
 const createBackupOnStart = createStartupBackup({ db, backupDir: config.backupDir, appendEventLog, redactError })
 
 const checkDatabaseReady = () => {
@@ -169,7 +168,7 @@ const createHousehold = db.transaction(({ userId, householdId, householdName, ba
   insertEmptyBabyState.run({ household_id: householdId, baby_id: babyId, updated_at: createdAt })
 })
 createHealthRouter({ checkDatabaseReady })(app)
-createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, allowedPhones: config.allowedPhones, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectMembershipsByUser, selectInviteByToken, insertHouseholdMember, acceptInvite, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, sendEmailLogin, textLoginAvailable: config.textLoginAvailable, emailLoginAvailable: config.textEmailAvailable, baseUrl: config.publicBaseUrl, sessionTtlDays: config.sessionTtlDays })(app)
+createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, allowedPhones: config.allowedPhones, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectMembershipsByUser, selectInviteByToken, insertHouseholdMember, acceptInvite, selectSessionContext, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, sendEmailLogin, textLoginAvailable: config.textLoginAvailable, emailLoginAvailable: config.textEmailAvailable, baseUrl: config.publicBaseUrl, sessionTtlDays: config.sessionTtlDays })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, authBypass: config.authBypass, selectSessionContext, selectBabyForHousehold }))
 createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, selectMembershipsByUser, updateUserPassword, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, renameBaby, archiveBaby, appendEventLog })(app)
@@ -223,7 +222,7 @@ const server = app.listen(config.port, () => {
   appendStartupStateSnapshot({ selectState, selectAllStates: selectAllBabyStates, appendEventLog, summarizeState, redactError })
   if (config.notificationChannelsAvailable) {
     notificationScheduler.evaluate()
-    console.log(`reminders ${legacyNotificationSettings.gotifyRemindersEnabled ? 'enabled' : 'disabled'}: gotify=${config.gotifyAvailable ? config.gotifyUrl : 'off'}, textEmail=${config.textEmailAvailable ? 'on' : 'off'}`)
+    console.log(`reminders ${getGotifyRemindersEnabled() ? 'enabled' : 'disabled'}: gotify=${config.gotifyAvailable ? config.gotifyUrl : 'off'}, textEmail=${config.textEmailAvailable ? 'on' : 'off'}`)
   }
 })
 

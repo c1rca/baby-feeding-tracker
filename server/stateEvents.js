@@ -19,8 +19,21 @@ const scopeFromRequest = (req) => {
 
 const scopeKey = (scope) => `${scope.householdId}:${scope.babyId}`
 
-export const createStateEventHub = ({ selectState, selectStateForBaby = null, serializeState }) => {
+export const createStateEventHub = ({ selectState, selectStateForBaby = null, serializeState, selectBabyForHousehold = null, maxClientsPerUser = 12 }) => {
   const clients = new Map()
+
+  // A single user opening tab after tab (or a malicious client looping EventSource
+  // opens) would otherwise hold unbounded server-side connections. Cap per user and
+  // evict their oldest stream when a new one would exceed the cap.
+  const userKey = (req) => req.auth?.userId || `anon:${req.auth?.householdId || DEFAULT_HOUSEHOLD_ID}`
+  const enforceUserCap = (key) => {
+    const owned = [...clients.entries()].filter(([, client]) => client.userKey === key)
+    if (owned.length < maxClientsPerUser) return
+    for (const [id, client] of owned.slice(0, owned.length - maxClientsPerUser + 1)) {
+      try { client.res.end() } catch { /* already closed */ }
+      clients.delete(id)
+    }
+  }
 
   const selectInitialState = (scope) => {
     if (selectStateForBaby) return selectStateForBaby.get(scope.householdId, scope.babyId)
@@ -39,7 +52,15 @@ export const createStateEventHub = ({ selectState, selectStateForBaby = null, se
 
   const handleStateEvents = (req, res) => {
     const scope = scopeFromRequest(req)
+    // The auth middleware validates the X-Baby-Id header, but EventSource sends the
+    // scope as ?babyId= which it never sees — so validate it here exactly like the
+    // /api/state routes, before it can select or subscribe to a foreign scope.
+    if (selectBabyForHousehold && !selectBabyForHousehold.get(scope.babyId, scope.householdId)) {
+      res.status(404).json({ ok: false, error: 'Baby not found' })
+      return
+    }
     const clientId = Symbol('state-event-client')
+    enforceUserCap(userKey(req))
     res.set({
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -52,7 +73,7 @@ export const createStateEventHub = ({ selectState, selectStateForBaby = null, se
       'X-Accel-Buffering': 'no',
     })
     res.flushHeaders?.()
-    clients.set(clientId, { res, scope, scopeKey: scopeKey(scope) })
+    clients.set(clientId, { res, scope, scopeKey: scopeKey(scope), userKey: userKey(req) })
     sendStateEvent(res, 'state', serializeState(selectInitialState(scope)))
     const heartbeat = setInterval(() => sendStateEvent(res, 'ping', { at: new Date().toISOString() }), 25000)
     req.on('close', () => {

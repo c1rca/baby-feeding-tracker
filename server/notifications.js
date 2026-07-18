@@ -84,7 +84,8 @@ export function createNotificationScheduler({
 
     // Tummy Time reminder (if gotify enabled + within active window)
     if (!isQuiet && sendGotify && preferences?.tummyTime.gotify && tummyTimes) {
-      const tummy = buildTummyTimeReminder(entries, now(), preferences.tummyActiveHours, timeZone, preferences.reminderIntervals?.tummyTime ?? 2)
+      const tummyGoalMinutes = Number.isFinite(row.tummy_goal_minutes) ? row.tummy_goal_minutes : 0
+      const tummy = buildTummyTimeReminder(tummyTimes, now(), preferences.tummyActiveHours, timeZone, preferences.reminderIntervals?.tummyTime ?? 2, tummyGoalMinutes)
       if (tummy) reminders.push({ ...tummy, householdId: row.household_id, babyId: row.baby_id, notificationId: `tummy:${tummy.sessionId}` })
     }
 
@@ -141,16 +142,27 @@ export function createNotificationScheduler({
   }
 
   const getWindowBoundaryDelay = () => {
-    const preferences = getNotificationPreferences()
-    if (!preferences) return null
+    // Compute the next window boundary from each household's *live* settings so a
+    // household that toggles quiet hours / tummy window after boot gets its wakeup
+    // rescheduled — rather than from a single boot-time snapshot.
+    const rows = getStateRows()
     const delays = []
-    if (preferences.quietHours?.enabled) {
-      const delay = millisecondsUntilWindowChange(now(), preferences.quietHours, timeZone)
-      if (delay !== null) delays.push(delay)
-    }
-    if (preferences.tummyTime?.gotify) {
-      const delay = millisecondsUntilWindowChange(now(), preferences.tummyActiveHours, timeZone)
-      if (delay !== null) delays.push(delay)
+    const seenHouseholds = new Set()
+    for (const row of rows) {
+      const householdId = row.household_id || 'default-household'
+      if (seenHouseholds.has(householdId)) continue
+      seenHouseholds.add(householdId)
+      const householdSettings = getHouseholdNotificationSettings?.(row.household_id)
+      const preferences = householdSettings?.notificationPreferences ?? getNotificationPreferences()
+      if (!preferences) continue
+      if (preferences.quietHours?.enabled) {
+        const delay = millisecondsUntilWindowChange(now(), preferences.quietHours, timeZone)
+        if (delay !== null) delays.push(delay)
+      }
+      if (preferences.tummyTime?.gotify) {
+        const delay = millisecondsUntilWindowChange(now(), preferences.tummyActiveHours, timeZone)
+        if (delay !== null) delays.push(delay)
+      }
     }
     return delays.length > 0 ? Math.min(...delays) : null
   }

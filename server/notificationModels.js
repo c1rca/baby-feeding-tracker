@@ -163,8 +163,21 @@ const zonedMinuteOfDay = (timestamp, timeZone) => {
   return value('hour') * 60 + value('minute')
 }
 
-export function buildTummyTimeReminder(tummyTimes, now = Date.now(), activeHours = { startHour: 8, endHour: 20 }, timeZone = 'America/New_York', intervalHours = 2) {
+// Naps are stored alongside tummy time (kind: 'sleep') and must never count
+// toward the tummy-time goal — mirror the client's isTummyTimeEvent filter.
+export function tummyMinutesOnDay(tummyTimes, now, timeZone) {
+  if (!Array.isArray(tummyTimes)) return 0
+  const dayKey = zonedDateKey(now, timeZone)
+  return tummyTimes
+    .filter((event) => event?.kind !== 'sleep' && Number.isFinite(event?.startedAt) && zonedDateKey(event.startedAt, timeZone) === dayKey)
+    .reduce((total, event) => total + Math.max(0, Math.round(((Number.isFinite(event?.endedAt) ? event.endedAt : event.startedAt) - event.startedAt) / 60000)), 0)
+}
+
+export function buildTummyTimeReminder(tummyTimes, now = Date.now(), activeHours = { startHour: 8, endHour: 20 }, timeZone = 'America/New_York', intervalHours = 2, goalMinutes = 0) {
   if (!Array.isArray(tummyTimes) || !Number.isFinite(intervalHours) || intervalHours <= 0) return null
+  // Once the day's logged tummy time meets the goal, stop nagging (matches the
+  // client banner). goalMinutes <= 0 means "no goal configured" — don't suppress.
+  if (Number.isFinite(goalMinutes) && goalMinutes > 0 && tummyMinutesOnDay(tummyTimes, now, timeZone) >= goalMinutes) return null
   const currentMinute = zonedMinuteOfDay(now, timeZone)
   const startMinute = activeHours.startHour * 60 + (activeHours.startMinute ?? 0)
   const endMinute = activeHours.endHour * 60 + (activeHours.endMinute ?? 0)

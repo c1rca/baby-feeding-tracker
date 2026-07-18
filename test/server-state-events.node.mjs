@@ -105,3 +105,45 @@ test('state event hub scopes by the babyId query param when auth carries no baby
   assert.equal(babyBWrites.some((chunk) => chunk.includes('A only')), false)
   closeHandlers.forEach((handler) => handler())
 })
+
+test('state event hub rejects a babyId query param that does not belong to the household', () => {
+  const hub = createStateEventHub({
+    selectState: { get: () => ({}) },
+    selectStateForBaby: { get: () => ({ theme: 'scoped' }) },
+    serializeState: (row) => ({ theme: row.theme }),
+    selectBabyForHousehold: { get: (babyId, householdId) => babyId === 'baby-mine' && householdId === 'household-1' },
+  })
+  let status = null
+  let body = null
+  const res = { status(code) { status = code; return this }, json(payload) { body = payload }, set() {}, flushHeaders() {}, write() {}, end() {} }
+  const req = { auth: { householdId: 'household-1', userId: 'user-1' }, query: { babyId: 'baby-foreign' }, on() {} }
+
+  hub.handleStateEvents(req, res)
+
+  assert.equal(status, 404)
+  assert.deepEqual(body, { ok: false, error: 'Baby not found' })
+})
+
+test('state event hub caps concurrent streams per user, evicting the oldest', () => {
+  const ended = []
+  const closeHandlers = []
+  const makeReq = (userId) => ({ auth: { householdId: 'household-1', userId }, query: {}, on: (event, handler) => { if (event === 'close') closeHandlers.push(handler) } })
+  const makeRes = (id) => ({ set() {}, flushHeaders() {}, write() {}, end() { ended.push(id) } })
+  const hub = createStateEventHub({
+    selectState: { get: () => ({}) },
+    selectStateForBaby: { get: () => ({}) },
+    serializeState: () => ({}),
+    maxClientsPerUser: 2,
+  })
+
+  hub.handleStateEvents(makeReq('user-1'), makeRes('first'))
+  hub.handleStateEvents(makeReq('user-1'), makeRes('second'))
+  assert.deepEqual(ended, [])
+  // The third connection for the same user evicts the oldest (first).
+  hub.handleStateEvents(makeReq('user-1'), makeRes('third'))
+  assert.deepEqual(ended, ['first'])
+  // A different user is unaffected by user-1's cap.
+  hub.handleStateEvents(makeReq('user-2'), makeRes('other'))
+  assert.deepEqual(ended, ['first'])
+  closeHandlers.forEach((handler) => handler())
+})

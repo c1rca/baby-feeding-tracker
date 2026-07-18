@@ -78,7 +78,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, sendEmailLogin = null, baseUrl = '', textLoginAvailable = false, emailLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, selectSessionContext = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, sendEmailLogin = null, baseUrl = '', textLoginAvailable = false, emailLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
   const limiterNow = () => now().getTime()
   const loginLimiter = createRateLimiter({ max: maxLoginAttempts, windowMs: loginWindowMs, now: limiterNow })
   const textRequestLimiter = createRateLimiter({ max: textRequestMax, windowMs: textRequestWindowMs, now: limiterNow })
@@ -419,7 +419,24 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
         return
       }
       let user = selectUserByEmail?.get(email)
-      if (!user) {
+      // Existing accounts: the invite token alone must never mint a session, or a
+      // household owner (who is handed the raw token) could POST it with the
+      // victim's email and take over the account. Require proof of ownership —
+      // either a live session already belonging to that user, or their password.
+      let issueSession = true
+      if (user) {
+        const sessionToken = bearerToken(req)
+        const sessionRow = sessionToken ? selectSessionContext?.get(hashSessionToken(sessionToken)) : null
+        const sessionOwnsAccount = sessionRow?.user_id === user.id
+        if (sessionOwnsAccount) {
+          // The accepter is already authenticated as the invited user; attach the
+          // membership to their current session and don't mint a fresh one.
+          issueSession = false
+        } else if (!user.password_hash || !verifyPassword(password, user.password_hash)) {
+          res.status(401).json({ ok: false, error: 'Sign in to accept this invite' })
+          return
+        }
+      } else {
         if (password.length < 12) {
           res.status(400).json({ ok: false, error: 'Password must be at least 12 characters' })
           return
@@ -434,7 +451,7 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
         return
       }
       insertHouseholdMember?.run({ user_id: user.id, household_id: invite.household_id, role: invite.role, created_at: acceptedAt })
-      const token = createSession({ id: user.id })
+      const token = issueSession ? createSession({ id: user.id }) : null
       appendEventLog('invite_accept', { inviteId: invite.id, householdId: invite.household_id, userId: user.id })
       res.status(200).json({ ok: true, token, user: { id: user.id, email, displayName: user.display_name } })
     })

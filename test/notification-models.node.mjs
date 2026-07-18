@@ -106,3 +106,24 @@ test('tummy reminder uses the configured time zone for the local calendar day', 
   assert.ok(reminder)
   assert.equal(reminder.sessionId, 'tummy:2026-06-05:0')
 })
+
+test('tummy reminder stops once the day\'s logged minutes reach the goal', () => {
+  const now = new Date('2026-06-05T14:00:00Z').getTime() // 10:00 local New York, inside window
+  const activeHours = { startHour: 8, endHour: 20 }
+  // 25 logged minutes today (10:00–10:25 UTC → still 2026-06-05 local), goal 20.
+  const loggedToday = [{ id: 't1', kind: 'tummy', startedAt: new Date('2026-06-05T13:00:00Z').getTime(), endedAt: new Date('2026-06-05T13:25:00Z').getTime() }]
+
+  assert.equal(buildTummyTimeReminder(loggedToday, now, activeHours, 'America/New_York', 2, 20), null)
+  // Below the goal, or no goal configured (0), it still reminds.
+  assert.ok(buildTummyTimeReminder(loggedToday, now, activeHours, 'America/New_York', 2, 60))
+  assert.ok(buildTummyTimeReminder(loggedToday, now, activeHours, 'America/New_York', 2, 0))
+})
+
+test('tummy reminder ignores sleep sessions when tallying logged minutes toward the goal', () => {
+  const now = new Date('2026-06-05T14:00:00Z').getTime()
+  const activeHours = { startHour: 8, endHour: 20 }
+  // A 90-minute nap must not count as tummy time — the goal is still unmet.
+  const napOnly = [{ id: 'nap', kind: 'sleep', startedAt: new Date('2026-06-05T12:00:00Z').getTime(), endedAt: new Date('2026-06-05T13:30:00Z').getTime() }]
+
+  assert.ok(buildTummyTimeReminder(napOnly, now, activeHours, 'America/New_York', 2, 20))
+})
