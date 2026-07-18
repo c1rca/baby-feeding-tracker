@@ -246,8 +246,8 @@ export const createMemberRouter = ({ selectMembersByHousehold = null, updateMemb
 export const createInviteRouter = ({ selectActiveInvitesByHousehold = null, selectInviteByEmail = null, insertInvite = null, revokeInvite = null, appendEventLog = () => {}, sendInvite = null, baseUrl = '', idFactory = () => globalThis.crypto.randomUUID(), tokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', ''), now = () => new Date() } = {}) => {
   const router = (app) => {
     app.get('/api/household-invites', (req, res) => {
-      if (!req.auth?.householdId) {
-        res.status(403).json({ ok: false, error: 'Household required' })
+      if (req.auth?.role !== 'owner' || !req.auth?.householdId) {
+        rejectForbidden(res)
         return
       }
       const invites = selectActiveInvitesByHousehold?.all(req.auth.householdId).map(invitePayload) || []
@@ -255,7 +255,7 @@ export const createInviteRouter = ({ selectActiveInvitesByHousehold = null, sele
     })
 
     app.post('/api/household-invites', async (req, res) => {
-      if (!canMutate(req.auth) || !req.auth?.householdId) {
+      if (req.auth?.role !== 'owner' || !req.auth?.householdId) {
         rejectForbidden(res)
         return
       }
@@ -304,7 +304,7 @@ export const createInviteRouter = ({ selectActiveInvitesByHousehold = null, sele
     })
 
     app.delete('/api/household-invites/:id', (req, res) => {
-      if (!canMutate(req.auth) || !req.auth?.householdId) {
+      if (req.auth?.role !== 'owner' || !req.auth?.householdId) {
         rejectForbidden(res)
         return
       }
@@ -472,7 +472,7 @@ export const createStateRouter = ({
       // Log only the summary (counts + latest IDs) and the audit's add/update/
       // remove IDs — never the full private baby records. DB backups are the
       // recovery path; event-log replay granularity is reduced accordingly.
-      appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines, growthMeasurements, babyDob, tummyTimes, tummySession, pumpEvents), pumpEvents, staleWriteMerged: incoming.stale })
+      appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines, growthMeasurements, babyDob, tummyTimes, tummySession, pumpEvents), staleWriteMerged: incoming.stale })
       notificationScheduler?.evaluate()
 
       const responseState = { entries, diapers, medicines, tummyTimes, pumpEvents, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, updatedAt }

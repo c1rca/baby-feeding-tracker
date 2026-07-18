@@ -3,7 +3,7 @@
 // legitimate (including legacy single-family) payload.
 const MAX_ITEMS_PER_COLLECTION = 20000
 const MAX_STRING_LENGTH = 10000
-const COLLECTIONS = ['entries', 'diapers', 'medicines', 'tummyTimes', 'growthMeasurements']
+const COLLECTIONS = ['entries', 'diapers', 'medicines', 'tummyTimes', 'pumpEvents', 'growthMeasurements']
 const OBJECT_FIELDS = ['session', 'tummySession']
 
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)

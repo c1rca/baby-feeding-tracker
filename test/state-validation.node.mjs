@@ -48,6 +48,8 @@ test('non-object entries within a collection are rejected', () => {
 test('an oversized collection is rejected', () => {
   const entries = Array.from({ length: 20001 }, (_, i) => ({ id: `e${i}` }))
   assert.equal(validateStatePayload({ entries }).ok, false)
+  const pumpEvents = Array.from({ length: 20001 }, (_, i) => ({ id: `p${i}` }))
+  assert.equal(validateStatePayload({ pumpEvents }).ok, false)
 })
 
 test('an overlong string field is rejected', () => {

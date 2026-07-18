@@ -58,6 +58,14 @@ test('invite creation rejects viewers, invalid roles, duplicates, and missing ho
   app.route('POST', '/api/household-invites')({ auth: ownerAuth({ role: 'viewer' }), body: { email: 'a@example.com' } }, viewer)
   assert.equal(viewer.statusCode, 403)
 
+  const caregiver = createJsonResponse()
+  app.route('POST', '/api/household-invites')({ auth: ownerAuth({ role: 'caregiver' }), body: { email: 'b@example.com' } }, caregiver)
+  assert.equal(caregiver.statusCode, 403)
+
+  const caregiverList = createJsonResponse()
+  app.route('GET', '/api/household-invites')({ auth: ownerAuth({ role: 'caregiver' }) }, caregiverList)
+  assert.equal(caregiverList.statusCode, 403)
+
   const badRole = createJsonResponse()
   app.route('POST', '/api/household-invites')({ auth: ownerAuth(), body: { email: 'a@example.com', role: 'owner' } }, badRole)
   assert.equal(badRole.statusCode, 400)
@@ -113,6 +121,10 @@ test('owner revokes only invites scoped to the current household', () => {
   const missing = createJsonResponse()
   app.route('DELETE', '/api/household-invites/:id')({ auth: ownerAuth(), params: { id: 'other' } }, missing)
   assert.equal(missing.statusCode, 404)
+
+  const caregiver = createJsonResponse()
+  app.route('DELETE', '/api/household-invites/:id')({ auth: ownerAuth({ role: 'caregiver' }), params: { id: 'invite-1' } }, caregiver)
+  assert.equal(caregiver.statusCode, 403)
 })
 
 test('invite accept creates a password account, household membership, session, and consumes the invite', () => {

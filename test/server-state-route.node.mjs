@@ -61,6 +61,7 @@ test('state route writes resolved canonical state, audit/event logs it, evaluate
   assert.equal(calls.events[1].payload.entries, undefined)
   assert.equal(calls.events[1].payload.diapers, undefined)
   assert.equal(calls.events[1].payload.medicines, undefined)
+  assert.equal(calls.events[1].payload.pumpEvents, undefined)
   assert.equal(calls.events[1].payload.session, undefined)
   assert.equal(calls.evaluations, 1)
   assert.deepEqual(calls.broadcasts, [{ payload: res.body.state, scope: { householdId: 'household-2', babyId: 'baby-2' } }])
