@@ -94,9 +94,8 @@ describe('App interactions', () => {
     render(<App />)
     expect(screen.queryByText(/Offline changes saved/i)).toBeNull()
 
-    await user.click(screen.getByRole('button', { name: /Additional options/i }))
-    await user.click(screen.getByRole('button', { name: /Log bottle-only feed/i }))
-    await user.click(screen.getByRole('button', { name: /^log bottle$/i }))
+    await user.click(screen.getByRole('button', { name: /^Bottle$/i }))
+    await user.click(screen.getByRole('button', { name: /^Log bottle$/i }))
     expect(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '[]')).toHaveLength(1)
 
     // The write is debounced; once it lands the pending marker clears and the
@@ -180,7 +179,7 @@ describe('App interactions', () => {
     render(<App />)
 
     await screen.findByLabelText(/Active baby/i)
-    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(screen.getByRole('button', { name: /Open settings/i }))
     await user.click(await screen.findByRole('tab', { name: /Baby/i }))
     await user.click(screen.getByRole('button', { name: /Edit Avery name/i }))
     await user.clear(screen.getByLabelText(/Baby name for Avery/i))
@@ -200,7 +199,7 @@ describe('App interactions', () => {
 
     // Creating a baby switches to it and remounts the tracker (per-baby isolation),
     // which closes the settings panel; reopen it to manage the roster.
-    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(screen.getByRole('button', { name: /Open settings/i }))
     await user.click(await screen.findByRole('tab', { name: /Baby/i }))
     await user.click(await screen.findByRole('button', { name: /Archive Riley/i }))
     await waitFor(() => expect(screen.queryByRole('button', { name: /Archive Riley/i })).toBeNull())
@@ -222,7 +221,7 @@ describe('App interactions', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' })))
 
     expect(document.documentElement.getAttribute('data-theme')).toBe('light')
-    await user.click(screen.getByRole('button', { name: /Show settings/i }))
+    await user.click(screen.getByRole('button', { name: /Open settings/i }))
     await user.click(await screen.findByRole('tab', { name: /Appearance/i }))
     expect(await screen.findByRole('switch', { name: /Dark mode/i })).toBeTruthy()
   })

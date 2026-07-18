@@ -28,7 +28,7 @@ describe('App auth shell', () => {
 
     render(<App />)
 
-    expect(screen.getByText(/Baby Feeding Tracker/i)).toBeTruthy()
+    expect(screen.getByText(/Baby Tracker/i)).toBeTruthy()
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' })))
     expect(screen.queryByLabelText(/Email/i)).toBeNull()
     expect(screen.queryByRole('button', { name: /Sign out/i })).toBeNull()
@@ -69,7 +69,7 @@ describe('App auth shell', () => {
     await user.type(screen.getByLabelText(/Password/i), 'hunter22')
     await user.click(screen.getByRole('button', { name: /Sign in/i }))
 
-    await waitFor(() => expect(screen.getByText(/Baby Feeding Tracker/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Baby Tracker/i)).toBeTruthy())
     expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe(issuedToken)
 
     await waitFor(() => {
@@ -150,7 +150,7 @@ describe('App auth shell', () => {
     await user.click(screen.getByRole('button', { name: /Open tracker/i }))
 
     await waitFor(() => expect(localStorage.getItem(AUTH_TOKEN_KEY)).toBe(issuedToken))
-    await waitFor(() => expect(screen.getByText(/Baby Feeding Tracker/i)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(/Baby Tracker/i)).toBeTruthy())
   })
 
   it('exchanges a text magic-link code from the URL fragment with polished return copy', async () => {
@@ -331,7 +331,7 @@ describe('App auth shell', () => {
 
     render(<App />)
 
-    await user.click(await screen.findByLabelText(/Show settings/i))
+    await user.click(await screen.findByLabelText(/Open settings/i))
     await user.click(screen.getByRole('tab', { name: /Household/i }))
     expect(await screen.findByText(/Household access/i)).toBeTruthy()
     expect(screen.getByText(/old@example.com/i)).toBeTruthy()
@@ -369,7 +369,7 @@ describe('App auth shell', () => {
 
     render(<App />)
 
-    await user.click(await screen.findByLabelText(/Show settings/i))
+    await user.click(await screen.findByLabelText(/Open settings/i))
     await user.click(screen.getByRole('tab', { name: /Account/i }))
     expect(screen.getByText(/Account security/i)).toBeTruthy()
     expect(screen.getByText(/Signed in as mom/i)).toBeTruthy()
@@ -403,7 +403,7 @@ describe('App auth shell', () => {
 
     render(<App />)
 
-    await user.click(await screen.findByLabelText(/Show settings/i))
+    await user.click(await screen.findByLabelText(/Open settings/i))
     await user.click(await screen.findByRole('tab', { name: /Account/i }))
     const signOutButton = await screen.findByRole('button', { name: /Sign out/i })
     await user.click(signOutButton)
