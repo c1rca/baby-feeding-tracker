@@ -216,9 +216,9 @@ body { margin: 0; }
 .day-ribbon-feed { position:absolute; top:8px; width:10px; height:10px; border-radius:50%; transform:translateX(-50%); background:#2563eb; box-shadow:0 0 0 2px rgba(255,255,255,.9); }
 .day-ribbon-feed--bottle { background:#0d9488; }
 .day-ribbon-feed--mixed { background:linear-gradient(135deg,#2563eb 40%,#0d9488 80%); }
-.day-ribbon-tick { position:absolute; bottom:6px; width:5px; height:12px; border-radius:3px; transform:translateX(-50%); background:#0ea5e9; }
-.day-ribbon-tick--stool { background:#d97706; }
-.day-ribbon-tick--mixed { background:linear-gradient(180deg,#0ea5e9,#d97706); }
+.day-ribbon-tick { position:absolute; bottom:6px; width:5px; height:12px; border-radius:3px; transform:translateX(-50%); background:#ca8a04; }
+.day-ribbon-tick--stool { background:#2563eb; }
+.day-ribbon-tick--mixed { background:linear-gradient(180deg,#ca8a04,#2563eb); }
 .day-ribbon-now { position:absolute; top:-2px; bottom:-2px; width:2px; transform:translateX(-50%); border-radius:2px; background:#0f172a; }
 .day-ribbon-hours { display:flex; justify-content:space-between; margin-top:6px; color:#94a3b8; font-size:.66rem; font-weight:800; }
 .day-ribbon-legend { display:flex; flex-wrap:wrap; gap:5px 13px; margin-top:8px; color:#64748b; font-size:.72rem; font-weight:750; }
@@ -226,7 +226,7 @@ body { margin: 0; }
 .day-ribbon-legend-item::before { content:''; width:9px; height:9px; border-radius:50%; flex:0 0 auto; }
 .legend-breast::before { background:#2563eb; }
 .legend-bottle::before { background:#0d9488; }
-.legend-diaper::before { background:#0ea5e9; border-radius:3px; }
+.legend-diaper::before { background:#ca8a04; border-radius:3px; }
 .legend-sleep::before { background:rgba(37,99,235,.32); border-radius:3px; }
 .legend-tummy::before { background:rgba(109,40,217,.3); border-radius:3px; }
 [data-theme='dark'] .day-ribbon-track { border-color:#334155; background:repeating-linear-gradient(90deg,transparent 0,transparent calc(25% - 1px),#334155 calc(25% - 1px),#334155 25%),rgba(15,23,42,.6); }
@@ -275,16 +275,16 @@ button.end-feed { font-weight: 800; border-width: 2px; }
 .badge-breast { background: #eff6ff; color: #1d4ed8; }
 .badge-bottle { background: #f0fdf4; color: #166534; }
 .badge-mixed { background: #f5f3ff; color: #6d28d9; }
-.badge-diaper { background:#ecfeff; color:#0e7490; border-color:#a5f3fc; }
-.badge-diaper-stool { background:#fef3c7; color:#92400e; border-color:#fde68a; }
+.badge-diaper { background:#fefce8; color:#854d0e; border-color:#fde68a; }
+.badge-diaper-stool { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
 .badge-medicine { background:#fff7ed; color:#9a3412; border-color:#fed7aa; }
 .badge-medicine-motrin { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
 .badge-tummy { background:#f5f3ff; color:#3730a3; border-color:#c4b5fd; }
 .badge-sleep { background:#eef2ff; color:#3730a3; border-color:#a5b4fc; }
-.diaper-action { background:linear-gradient(180deg,#ecfeff,#f0f9ff); border-color:#bae6fd; color:#0369a1; }
-.diaper-action:hover { border-color:#7dd3fc; }
-.diaper-stat { background:linear-gradient(180deg,rgba(236,254,255,.92),rgba(255,255,255,.9)); }
-.diaper-metric { background:#ecfeff; border-color:#a5f3fc; color:#0e7490; }
+.diaper-action { background:linear-gradient(180deg,#fefce8,#fef9c3); border-color:#fde68a; color:#854d0e; }
+.diaper-action:hover { border-color:#facc15; }
+.diaper-stat { background:linear-gradient(180deg,rgba(254,252,232,.92),rgba(255,255,255,.9)); }
+.diaper-metric { background:#fefce8; border-color:#fde68a; color:#854d0e; }
 .section-heading { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-bottom:10px; }
 .section-heading h2 { margin:0; }
 .timeline { list-style: none; margin: 0; padding: 0; display: grid; gap: 9px; isolation:isolate; }
@@ -295,8 +295,8 @@ button.end-feed { font-weight: 800; border-width: 2px; }
 .timeline-item::before { content:''; position:absolute; left:0; top:13px; bottom:13px; width:3px; border-radius:999px; background:#93c5fd; }
 .timeline-bottle::before { background:#86efac; }
 .timeline-mixed::before { background:#c4b5fd; }
-.timeline-diaper::before { background:#38bdf8; }
-.timeline-diaper-stool::before { background:#a16207; }
+.timeline-diaper::before { background:#eab308; }
+.timeline-diaper-stool::before { background:#2563eb; }
 .timeline-medicine::before { background:#f97316; }
 .timeline-medicine-motrin::before { background:#ef4444; }
 .timeline-tummy::before { background:#6366f1; }
