@@ -1,4 +1,3 @@
-import { Baby, Settings2 } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
 import { LoginScreen } from './auth/LoginScreen'
 import { useAuthGate } from './auth/useAuthGate'
@@ -6,7 +5,7 @@ import { createHouseholdForOnboarding, type AuthUser } from './auth/authApi'
 import { archiveBaby, createBaby, fetchBabies, renameBaby, type BabySummary } from './babies/babyApi'
 import { PremiumSidebar } from './components/PremiumSidebar'
 import { AppToast } from './components/AppToast'
-import { CareNotificationCenter } from './components/notifications/CareNotificationCenter'
+import { WorkspaceTopbar } from './components/WorkspaceTopbar'
 import { LiveSyncConflictBanner } from './components/LiveSyncConflictBanner'
 import { buildCareNotifications } from './components/notifications/notificationModel'
 import { StatsDashboard } from './components/StatsDashboard'
@@ -32,8 +31,6 @@ type TrackerAppProps = {
   onArchiveBaby: (babyId: string) => Promise<boolean>
 }
 
-const syncLabel = { syncing: 'Syncing', synced: 'Online', offline: 'Offline changes saved', issue: 'Sync issue' } as const
-
 function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBabyIdChange, onCreateBaby, onRenameBaby, onArchiveBaby }: TrackerAppProps) {
   const { view, headerProps, medicineReminderProps, tummyTimeReminderProps, trackViewProps, statsProps, modalsProps, toastProps, liveSyncProps } = useTrackerAppController({ selectedBabyId })
   const careNotifications = buildCareNotifications({ ...medicineReminderProps, tummyTimeReminder: tummyTimeReminderProps.reminder, startTummyTime: tummyTimeReminderProps.startTummyTime, preferences: modalsProps.notificationPreferences, now: trackViewProps.timeline.now })
@@ -55,7 +52,7 @@ function TrackerApp({ authUser, onLogout, babies, selectedBabyId, onSelectedBaby
       </div>
       <PremiumSidebar view={activeWorkspace} setView={navigateWorkspace} settingsOpen={headerProps.settingsOpen} setSettingsOpen={headerProps.setSettingsOpen} />
       <div className="app-shell-content">
-        <header className="workspace-topbar"><div className="workspace-brand"><span className="workspace-brand-mark"><Baby size={18} /></span><h1>Baby Tracker</h1></div><nav className="desktop-workspace-nav" aria-label="Workspace"><button type="button" className={activeWorkspace === 'track' ? 'is-active' : ''} aria-current={activeWorkspace === 'track' ? 'page' : undefined} onClick={() => navigateWorkspace('track')}>Track</button><button type="button" className={activeWorkspace === 'stats' ? 'is-active' : ''} aria-current={activeWorkspace === 'stats' ? 'page' : undefined} onClick={() => navigateWorkspace('stats')}>Insights</button></nav><div className="workspace-topbar-actions">{headerProps.syncStatus !== 'synced' ? <span className={`sync-pill sync-${headerProps.syncStatus}`} aria-label={`Sync status: ${syncLabel[headerProps.syncStatus]}`}>{syncLabel[headerProps.syncStatus]}</span> : null}<button type="button" className="desktop-settings" aria-label="Open settings" onClick={() => headerProps.setSettingsOpen(true)}><Settings2 size={18} /><span>Settings</span></button><CareNotificationCenter notifications={careNotifications} />{babies.length > 1 ? <select aria-label="Active baby" value={selectedBabyId} onChange={(event) => onSelectedBabyIdChange(event.target.value)}>{babies.map((baby) => <option key={baby.id} value={baby.id}>{baby.name}</option>)}</select> : null}</div></header>
+        <WorkspaceTopbar activeWorkspace={activeWorkspace} navigateWorkspace={navigateWorkspace} syncStatus={headerProps.syncStatus} setSettingsOpen={headerProps.setSettingsOpen} careNotifications={careNotifications} babies={babies} selectedBabyId={selectedBabyId} onSelectedBabyIdChange={onSelectedBabyIdChange} />
         <div id="care-brief-slot" />
         <LiveSyncConflictBanner conflict={liveSyncProps.conflict} onResolve={liveSyncProps.onResolve} />
         {activeWorkspace === 'track' ? <TrackView {...trackViewProps} babyName={babies.find((baby) => baby.id === selectedBabyId)?.name} profileName={profileName} /> : <StatsDashboard {...statsProps} />}
