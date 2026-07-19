@@ -9,7 +9,7 @@ import { startOfLocalDayMs } from '../domain/tummyTime'
 
 const STAT_ACTIVITY_WINDOW_MS = 72 * 60 * 60 * 1000
 
-export type BriefMedicine = { id?: string; kind: MedicineKind; label: string; at: number }
+export type BriefMedicine = { id: string; kind: MedicineKind; label: string; at: number }
 
 // The care brief shows medicines still *due* (from the reminder model) and the
 // ones already *given* today (kinds with no outstanding reminder). Kept as one
@@ -24,7 +24,7 @@ export function buildBriefMedicineData({ medicineReminders, medicines, now }: { 
     .filter((kind) => !medicineReminders.some((reminder) => reminder.type === 'medicine' && reminder.recommendedKind === kind))
     .flatMap((kind) => {
       const latestToday = medicines.filter((medicine) => medicine.kind === kind && medicine.at >= startOfToday).sort((a, b) => b.at - a.at)[0]
-      return latestToday ? [{ kind, label: medicineLabel(kind), at: latestToday.at }] : []
+      return latestToday ? [{ id: latestToday.id, kind, label: medicineLabel(kind), at: latestToday.at }] : []
     })
 
   return { dueMedicines, givenMedicines }

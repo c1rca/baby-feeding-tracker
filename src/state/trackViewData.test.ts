@@ -7,7 +7,7 @@ const NOON = new Date('2026-07-18T12:00:00').getTime()
 const HOUR = 60 * 60 * 1000
 
 const reminder = (over: Partial<MedicineReminderModel>): MedicineReminderModel => ({
-  id: 'r1', recommendedKind: 'tylenol', recommendedLabel: 'Tylenol', at: NOON - HOUR, type: 'medicine', ...over,
+  id: 'r1', label: 'Tylenol', recommendedKind: 'tylenol', recommendedLabel: 'Tylenol', at: NOON - HOUR, type: 'medicine', elapsedHours: 6, ...over,
 })
 
 describe('buildBriefMedicineData', () => {
@@ -36,7 +36,7 @@ describe('buildBriefMedicineData', () => {
       { id: 'm3', kind: 'motrin', at: NOON - 30 * HOUR }, // yesterday, ignored
     ]
     const { givenMedicines } = buildBriefMedicineData({ medicineReminders: [], medicines, now: NOON })
-    expect(givenMedicines).toEqual([{ kind: 'tylenol', label: 'Tylenol', at: NOON - 2 * HOUR }])
+    expect(givenMedicines).toEqual([{ id: 'm2', kind: 'tylenol', label: 'Tylenol', at: NOON - 2 * HOUR }])
   })
 
   it('does not mark a kind as given while it still has a due reminder', () => {
@@ -50,7 +50,7 @@ describe('buildBriefMedicineData', () => {
 })
 
 describe('selectStatVisibility', () => {
-  const entry = (over: Partial<Entry>): Entry => ({ id: 'e', type: 'nursing', startedAt: NOON, endedAt: NOON, leftSeconds: 0, rightSeconds: 0, bottleOunces: null, ...over })
+  const entry = (over: Partial<Entry>): Entry => ({ id: 'e', type: 'breast', startedAt: NOON, endedAt: NOON, leftSeconds: 0, rightSeconds: 0, bottleOunces: null, ...over })
   const pump = (over: Partial<PumpEvent>): PumpEvent => ({ id: 'p', startedAt: NOON, endedAt: NOON, leftOunces: null, rightOunces: null, ...over })
 
   it('shows the bottle stat only for a bottle feed within the last 72h', () => {
