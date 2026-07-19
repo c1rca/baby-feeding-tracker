@@ -1,9 +1,10 @@
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { DayRibbon } from './DayRibbon'
 
 const hour = 60 * 60 * 1000
+afterEach(() => cleanup())
 const rhythm = {
   dayStartMs: 0,
   dayEndMs: 24 * hour,
@@ -39,5 +40,37 @@ describe('DayRibbon details', () => {
     await user.click(screen.getByRole('button', { name: /Sleep from/i }))
     expect(screen.getByRole('tooltip').textContent).toMatch(/1 hr 30 min/i)
     expect(screen.queryAllByRole('tooltip')).toHaveLength(1)
+  })
+
+  it('opens an immersive rhythm dialog from the timeline and closes it with Escape', async () => {
+    const user = userEvent.setup()
+    render(<DayRibbon rhythm={rhythm} />)
+
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
+    expect(within(dialog).getByRole('heading', { name: 'Your day, in motion' })).toBeTruthy()
+    expect(within(dialog).getByText('1 feed')).toBeTruthy()
+    expect(within(dialog).getByText('1 diaper')).toBeTruthy()
+    expect(within(dialog).getByText('1 hr 30 min')).toBeTruthy()
+    expect(document.body.style.overflow).toBe('hidden')
+
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('dialog', { name: "Today's rhythm" })).toBeNull()
+    expect(document.body.style.overflow).toBe('')
+  })
+
+  it('keeps event inspection inside the expanded rhythm and restores focus after closing', async () => {
+    const user = userEvent.setup()
+    render(<DayRibbon rhythm={rhythm} />)
+
+    const launch = screen.getByRole('button', { name: "Enlarge today's rhythm" })
+    await user.click(launch)
+    const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
+    await user.click(within(dialog).getByRole('button', { name: /Nursing at/i }))
+    expect(within(dialog).getByRole('status').textContent).toMatch(/Nursing/)
+    expect(within(dialog).getByRole('status').textContent).toMatch(/25 min/)
+
+    await user.click(within(dialog).getByRole('button', { name: 'Close expanded rhythm' }))
+    expect(document.activeElement).toBe(launch)
   })
 })
