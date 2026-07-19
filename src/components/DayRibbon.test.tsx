@@ -63,14 +63,15 @@ describe('DayRibbon details', () => {
     const user = userEvent.setup()
     render(<DayRibbon rhythm={rhythm} />)
 
-    const launch = screen.getByRole('button', { name: "Enlarge today's rhythm" })
-    await user.click(launch)
+    expect(screen.queryByRole('button', { name: "Enlarge today's rhythm" })).toBeNull()
+    const timeline = screen.getByRole('group', { name: /Today's rhythm:/i })
+    await user.click(timeline)
     const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
     await user.click(within(dialog).getByRole('button', { name: /Nursing at/i }))
     expect(within(dialog).getByRole('status').textContent).toMatch(/Nursing/)
     expect(within(dialog).getByRole('status').textContent).toMatch(/25 min/)
 
     await user.click(within(dialog).getByRole('button', { name: 'Close expanded rhythm' }))
-    expect(document.activeElement).toBe(launch)
+    expect(document.activeElement).toBe(timeline)
   })
 })

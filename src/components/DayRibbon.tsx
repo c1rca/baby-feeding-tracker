@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
-import { Maximize2, MoonStar, Sparkles, Sun, X } from 'lucide-react'
+import { MoonStar, Sparkles, Sun, X } from 'lucide-react'
 import type { DayRhythm } from '../domain/dayRhythm'
 
 const clockTime = (at: number) => new Date(at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
@@ -116,7 +116,7 @@ export function DayRibbon({ rhythm }: { rhythm: DayRhythm }) {
   const [pinned, setPinned] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const cardRef = useRef<HTMLElement>(null)
-  const launchRef = useRef<HTMLButtonElement>(null)
+  const timelineRef = useRef<HTMLDivElement>(null)
   const details = useMemo(() => rhythmDetails(rhythm), [rhythm])
   useEffect(() => {
     const dismissOutside = (event: PointerEvent) => {
@@ -134,13 +134,18 @@ export function DayRibbon({ rhythm }: { rhythm: DayRhythm }) {
   const toggle = (detail: Detail) => { const closing = pinned && active?.id === detail.id; setActive(closing ? null : detail); setPinned(!closing) }
   const leave = () => { if (!pinned) setActive(null) }
   const openExpanded = () => { setActive(null); setPinned(false); setExpanded(true) }
-  const closeExpanded = () => { launchRef.current?.focus(); setExpanded(false) }
+  const closeExpanded = () => { timelineRef.current?.focus(); setExpanded(false) }
+  const openFromKeyboard = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || (event.key !== 'Enter' && event.key !== ' ')) return
+    event.preventDefault()
+    openExpanded()
+  }
   const inspect = (event: MouseEvent, detail: Detail) => { event.stopPropagation(); toggle(detail) }
 
   return (
     <section ref={cardRef} className="card day-ribbon-card">
-      <div className="section-heading day-ribbon-heading"><div><h2>Today's rhythm</h2><span className="muted">{isEmpty ? 'a fresh day' : summary}</span></div><button ref={launchRef} type="button" className="day-ribbon-expand" aria-label="Enlarge today's rhythm" onClick={openExpanded}><Maximize2 size={15} /><span>Expand</span></button></div>
-      <div className="day-ribbon" role="group" aria-label={isEmpty ? "Today's rhythm: nothing logged yet" : `Today's rhythm: ${summary}`} onMouseLeave={leave} onClick={openExpanded}>
+      <div className="section-heading"><h2>Today's rhythm</h2><span className="muted">{isEmpty ? 'a fresh day' : summary}</span></div>
+      <div ref={timelineRef} className="day-ribbon" role="group" tabIndex={0} aria-label={isEmpty ? "Today's rhythm: nothing logged yet" : `Today's rhythm: ${summary}`} onMouseLeave={leave} onClick={openExpanded} onKeyDown={openFromKeyboard}>
         <div className="day-ribbon-track">
           {spans.map((span) => {
             const detail = details.find((item) => item.id === span.id)!
