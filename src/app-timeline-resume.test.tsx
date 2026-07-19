@@ -124,6 +124,25 @@ describe('App interactions', () => {
     expect(within(firstItem).getByText(/bottle/i)).toBeTruthy()
   })
 
+  it('shows inline resume for Tummy Time and Sleep only when they are among the latest two timeline entries', () => {
+    const base = Date.now()
+    localStorage.setItem(
+      'baby-feeding-tracker:v1:tummy-times',
+      JSON.stringify([
+        { id: 'tummy-latest', startedAt: base - 5 * 60_000, endedAt: base - 4 * 60_000, note: '', kind: 'tummy' },
+        { id: 'sleep-second', startedAt: base - 15 * 60_000, endedAt: base - 10 * 60_000, note: '', kind: 'sleep' },
+        { id: 'tummy-third', startedAt: base - 25 * 60_000, endedAt: base - 20 * 60_000, note: '', kind: 'tummy' },
+      ]),
+    )
+
+    render(<App />)
+
+    const items = screen.getAllByRole('listitem')
+    expect(within(items[0]).getByRole('button', { name: /Resume recent Tummy Time/i })).toBeTruthy()
+    expect(within(items[1]).getByRole('button', { name: /Resume recent Sleep/i })).toBeTruthy()
+    expect(within(items[2]).queryByRole('button', { name: /Resume recent Tummy Time/i })).toBeNull()
+  })
+
   it('shows inline resume only on the latest two timeline entries', () => {
     const base = Date.now()
     localStorage.setItem(

@@ -7,7 +7,7 @@ import { DeleteConfirmation } from './DeleteConfirmation'
 import type { TimelineActions } from './timelineTypes'
 import { formatTimelineAge, openMenu } from './timelineUtils'
 
-export function TummyTimeTimelineItem({ tummyTime, actions }: { tummyTime: TummyTimeEvent; actions: TimelineActions }) {
+export function TummyTimeTimelineItem({ tummyTime, showInlineResume, actions }: { tummyTime: TummyTimeEvent; showInlineResume: boolean; actions: TimelineActions }) {
   const isEditing = actions.editingTummyTime?.id === tummyTime.id
   const menuOpen = actions.openEntryMenuId === tummyTime.id
   const confirmingDelete = actions.confirmingDeleteEntryId === tummyTime.id
@@ -30,6 +30,7 @@ export function TummyTimeTimelineItem({ tummyTime, actions }: { tummyTime: Tummy
         </div>
         {!isEditing ? (
           <div className="entry-action-wrap">
+            {showInlineResume ? <button type="button" className="inline-resume" aria-label={`Resume recent ${label}`} onClick={() => actions.resumeTummyTime(tummyTime)}>Resume</button> : null}
             <button type="button" className="entry-action-trigger" aria-label="Tummy Time actions" aria-expanded={menuOpen} onClick={() => openMenu(tummyTime.id, menuOpen, actions)}><MoreHorizontal size={17} /></button>
             {menuOpen ? (
               <div className="entry-menu" role="menu">
