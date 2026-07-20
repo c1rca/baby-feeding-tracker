@@ -50,13 +50,34 @@ describe('DayRibbon details', () => {
     const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
     expect(within(dialog).getByRole('heading', { name: 'Your day, in motion' })).toBeTruthy()
     expect(within(dialog).getByText('1 feed')).toBeTruthy()
-    expect(within(dialog).getByText('1 diaper')).toBeTruthy()
+    expect(within(dialog).getByLabelText('Changes: 1 diaper, 1 wet, 0 stool, 0 mixed')).toBeTruthy()
     expect(within(dialog).getByText('1 hr 30 min')).toBeTruthy()
     expect(document.body.style.overflow).toBe('hidden')
 
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog', { name: "Today's rhythm" })).toBeNull()
     expect(document.body.style.overflow).toBe('')
+  })
+
+  it('breaks today’s changes into wet, stool, and mixed counts', async () => {
+    const user = userEvent.setup()
+    const diaperBreakdownRhythm = {
+      ...rhythm,
+      diapers: [
+        { id: 'diaper-wet', atMs: 8 * hour, kind: 'wet' as const },
+        { id: 'diaper-stool', atMs: 9 * hour, kind: 'stool' as const },
+        { id: 'diaper-mixed', atMs: 10 * hour, kind: 'mixed' as const },
+      ],
+      summary: '1 feed, 3 diapers, 1 sleep',
+    }
+    render(<DayRibbon rhythm={diaperBreakdownRhythm} />)
+
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    const changes = within(screen.getByRole('dialog', { name: "Today's rhythm" })).getByLabelText('Changes: 3 diapers, 1 wet, 1 stool, 1 mixed')
+    expect(within(changes).getByText('3')).toBeTruthy()
+    expect(changes.querySelector('.rhythm-diaper-count--wet')?.textContent).toBe('Wet 1')
+    expect(changes.querySelector('.rhythm-diaper-count--stool')?.textContent).toBe('Stool 1')
+    expect(changes.querySelector('.rhythm-diaper-count--mixed')?.textContent).toBe('Mixed 1')
   })
 
   it('keeps event inspection inside the expanded rhythm and restores focus after closing', async () => {

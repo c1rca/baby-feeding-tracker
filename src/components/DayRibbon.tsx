@@ -48,6 +48,8 @@ function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () =>
   const widthPct = (start: number, end: number) => `${(Math.max(end - start, 0) / dayMs * 100).toFixed(2)}%`
   const sleepMinutes = spans.filter((span) => span.kind === 'sleep').reduce((sum, span) => sum + Math.max(0, span.endMs - span.startMs), 0)
   const sleepText = sleepMinutes ? durationText(0, sleepMinutes) : 'No sleep yet'
+  const diaperCounts = diapers.reduce((counts, diaper) => ({ ...counts, [diaper.kind]: counts[diaper.kind] + 1 }), { wet: 0, stool: 0, mixed: 0 })
+  const diaperSummary = `${diapers.length} ${diapers.length === 1 ? 'diaper' : 'diapers'}, ${diaperCounts.wet} wet, ${diaperCounts.stool} stool, ${diaperCounts.mixed} mixed`
   const date = new Date(dayStartMs).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 
   useEffect(() => {
@@ -85,7 +87,14 @@ function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () =>
 
         <div className="rhythm-vitals" aria-label="Today's rhythm highlights">
           <div><span>Feeds</span><strong>{feeds.length}</strong><small>{feeds.length === 1 ? '1 feed' : `${feeds.length} feeds`}</small></div>
-          <div><span>Changes</span><strong>{diapers.length}</strong><small>{diapers.length === 1 ? '1 diaper' : `${diapers.length} diapers`}</small></div>
+          <div className="rhythm-vital rhythm-vital--changes" aria-label={`Changes: ${diaperSummary}`}>
+            <span>Changes</span><strong>{diapers.length}</strong>
+            <div className="rhythm-diaper-breakdown" aria-hidden="true">
+              <span className="rhythm-diaper-count rhythm-diaper-count--wet">Wet <b>{diaperCounts.wet}</b></span>
+              <span className="rhythm-diaper-count rhythm-diaper-count--stool">Stool <b>{diaperCounts.stool}</b></span>
+              <span className="rhythm-diaper-count rhythm-diaper-count--mixed">Mixed <b>{diaperCounts.mixed}</b></span>
+            </div>
+          </div>
           <div><span>Rest</span><strong><MoonStar size={22} /></strong><small>{sleepText}</small></div>
           <div><span>Moments</span><strong>{details.length}</strong><small>logged today</small></div>
         </div>
