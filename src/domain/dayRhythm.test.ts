@@ -28,6 +28,7 @@ describe('buildDayRhythm', () => {
     const rhythm = buildDayRhythm(entries, diapers, tummyTimes, now)
 
     expect(rhythm.feeds.map((f) => f.id)).toEqual(['f-today', 'f-bottle'])
+    expect(rhythm.feeds[0]).toMatchObject({ leftSeconds: 600, rightSeconds: 600 })
     expect(rhythm.diapers.map((d) => d.kind)).toEqual(['wet', 'wet', 'mixed'])
     expect(rhythm.diapers.map((d) => d.id)).toContain('feed-diaper:f-today')
     expect(rhythm.spans.map((s) => s.kind)).toEqual(['tummy', 'sleep'])

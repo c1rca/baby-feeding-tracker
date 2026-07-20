@@ -9,7 +9,7 @@ const rhythm = {
   dayStartMs: 0,
   dayEndMs: 24 * hour,
   nowMs: 12 * hour,
-  feeds: [{ id: 'feed-1', atMs: 8 * hour, endMs: 8 * hour + 25 * 60_000, type: 'breast' as const }],
+  feeds: [{ id: 'feed-1', atMs: 8 * hour, endMs: 8 * hour + 25 * 60_000, type: 'breast' as const, leftSeconds: 15 * 60, rightSeconds: 10 * 60 }],
   diapers: [{ id: 'diaper-1', atMs: 9 * hour, kind: 'wet' as const }],
   spans: [{ id: 'sleep-1', startMs: 10 * hour, endMs: 11.5 * hour, kind: 'sleep' as const }],
   summary: '1 feed, 1 diaper, 1 sleep',
@@ -49,7 +49,7 @@ describe('DayRibbon details', () => {
     await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
     const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
     expect(within(dialog).getByRole('heading', { name: 'Your day, in motion' })).toBeTruthy()
-    expect(within(dialog).getByText('1 feed')).toBeTruthy()
+    expect(within(dialog).getByLabelText('Feeds: 1 feed, 15 minutes left, 10 minutes right')).toBeTruthy()
     expect(within(dialog).getByLabelText('Changes: 1 diaper, 1 wet, 0 stool, 0 mixed')).toBeTruthy()
     expect(within(dialog).getByText('1 hr 30 min')).toBeTruthy()
     expect(document.body.style.overflow).toBe('hidden')
@@ -57,6 +57,21 @@ describe('DayRibbon details', () => {
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog', { name: "Today's rhythm" })).toBeNull()
     expect(document.body.style.overflow).toBe('')
+  })
+
+  it('shows today’s nursing split under the feed total', async () => {
+    const user = userEvent.setup()
+    const splitRhythm = {
+      ...rhythm,
+      feeds: [{ ...rhythm.feeds[0], leftSeconds: 15 * 60, rightSeconds: 10 * 60 }],
+    }
+    render(<DayRibbon rhythm={splitRhythm} />)
+
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    const feeds = within(screen.getByRole('dialog', { name: "Today's rhythm" })).getByLabelText('Feeds: 1 feed, 15 minutes left, 10 minutes right')
+    expect(within(feeds).getByText('1')).toBeTruthy()
+    expect(feeds.querySelector('.rhythm-feed-count--left')?.textContent).toBe('Left 15m')
+    expect(feeds.querySelector('.rhythm-feed-count--right')?.textContent).toBe('Right 10m')
   })
 
   it('breaks today’s changes into wet, stool, and mixed counts', async () => {

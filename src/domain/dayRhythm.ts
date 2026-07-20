@@ -4,7 +4,7 @@ import { startOfLocalDayMs } from './tummyTime'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 
-export type RhythmFeed = { id: string; atMs: number; endMs: number; type: 'breast' | 'bottle' | 'mixed' }
+export type RhythmFeed = { id: string; atMs: number; endMs: number; type: 'breast' | 'bottle' | 'mixed'; leftSeconds?: number; rightSeconds?: number }
 export type RhythmDiaper = { id: string; atMs: number; kind: 'wet' | 'stool' | 'mixed' }
 export type RhythmSpan = { id: string; startMs: number; endMs: number; kind: 'sleep' | 'tummy' }
 
@@ -38,6 +38,8 @@ export function buildDayRhythm(entries: Entry[], diapers: DiaperEvent[], tummyTi
       atMs: entry.startedAt,
       endMs: Math.min(Math.max(activeFeedEnd(entry), entry.startedAt), dayEndMs),
       type: entry.type,
+      leftSeconds: entry.leftSeconds,
+      rightSeconds: entry.rightSeconds,
     }))
     .sort((a, b) => a.atMs - b.atMs)
 
