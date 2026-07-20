@@ -27,10 +27,21 @@ function rhythmDetails(rhythm: DayRhythm): Detail[] {
   ].sort((a, b) => a.atMs - b.atMs)
 }
 
+function pointEventRows(events: { id: string; atMs: number }[]) {
+  const lastAtByRow = [-Infinity, -Infinity, -Infinity]
+  return new Map(events.slice().sort((a, b) => a.atMs - b.atMs).map((event) => {
+    const row = lastAtByRow.findIndex((lastAt) => event.atMs - lastAt >= 45 * 60_000)
+    const assignedRow = row === -1 ? lastAtByRow.indexOf(Math.min(...lastAtByRow)) : row
+    lastAtByRow[assignedRow] = event.atMs
+    return [event.id, assignedRow] as const
+  }))
+}
+
 function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () => void }) {
   const [selected, setSelected] = useState<Detail | null>(null)
   const closeRef = useRef<HTMLButtonElement>(null)
   const details = useMemo(() => rhythmDetails(rhythm), [rhythm])
+  const pointRows = useMemo(() => pointEventRows([...rhythm.feeds, ...rhythm.diapers]), [rhythm.diapers, rhythm.feeds])
   const { dayStartMs, dayEndMs, nowMs, feeds, diapers, spans } = rhythm
   const dayMs = dayEndMs - dayStartMs
   const pct = (at: number) => `${(((at - dayStartMs) / dayMs) * 100).toFixed(2)}%`
@@ -90,11 +101,11 @@ function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () =>
             })}
             {feeds.map((feed) => {
               const detail = details.find((item) => item.id === feed.id)!
-              return <button type="button" key={feed.id} className={`rhythm-stage-event rhythm-stage-event--${feed.type}`} style={{ left: pct(feed.atMs) }} aria-label={`${detail.title} at ${clockTime(feed.atMs)}, ${detail.duration}`} aria-pressed={selected?.id === detail.id} onClick={() => setSelected(detail)}><i /></button>
+              return <button type="button" key={feed.id} className={`rhythm-stage-event rhythm-stage-event--${feed.type}`} style={{ left: pct(feed.atMs), '--rhythm-event-row': pointRows.get(feed.id) ?? 0 } as CSSProperties} aria-label={`${detail.title} at ${clockTime(feed.atMs)}, ${detail.duration}`} aria-pressed={selected?.id === detail.id} onClick={() => setSelected(detail)}><i /></button>
             })}
             {diapers.map((diaper) => {
               const detail = details.find((item) => item.id === diaper.id)!
-              return <button type="button" key={diaper.id} className={`rhythm-stage-diaper rhythm-stage-diaper--${diaper.kind}`} style={{ left: pct(diaper.atMs) }} aria-label={`${detail.title} at ${detail.time}`} aria-pressed={selected?.id === detail.id} onClick={() => setSelected(detail)}><i /></button>
+              return <button type="button" key={diaper.id} className={`rhythm-stage-diaper rhythm-stage-diaper--${diaper.kind}`} style={{ left: pct(diaper.atMs), '--rhythm-event-row': pointRows.get(diaper.id) ?? 0 } as CSSProperties} aria-label={`${detail.title} at ${detail.time}`} aria-pressed={selected?.id === detail.id} onClick={() => setSelected(detail)}><i /></button>
             })}
             <span className="rhythm-stage-now" style={{ left: pct(nowMs) }} aria-hidden="true"><i>Now</i></span>
           </div>

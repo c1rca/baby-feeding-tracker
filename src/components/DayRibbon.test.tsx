@@ -86,4 +86,27 @@ describe('DayRibbon details', () => {
     expect(within(dialog).getByRole('status').textContent).toMatch(/Wet diaper/)
     expect(within(dialog).getByRole('status').textContent).toMatch(/4:00 AM/)
   })
+
+  it('stacks nearby point events into touch-safe rows so mobile does not need a wide timeline', async () => {
+    const denseRhythm = {
+      ...rhythm,
+      feeds: [
+        { id: 'feed-1', atMs: 8 * hour, endMs: 8 * hour + 25 * 60_000, type: 'breast' as const },
+        { id: 'feed-2', atMs: 8 * hour + 20 * 60_000, endMs: 8 * hour + 45 * 60_000, type: 'bottle' as const },
+      ],
+      diapers: [{ id: 'diaper-1', atMs: 8 * hour + 35 * 60_000, kind: 'wet' as const }],
+      summary: '2 feeds, 1 diaper, 1 sleep',
+    }
+    const user = userEvent.setup()
+    render(<DayRibbon rhythm={denseRhythm} />)
+
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
+    const rows = [
+      within(dialog).getByRole('button', { name: /Nursing at 3:00 AM/i }),
+      within(dialog).getByRole('button', { name: /Bottle at 3:20 AM/i }),
+      within(dialog).getByRole('button', { name: /Wet diaper at 3:35 AM/i }),
+    ].map((event) => event.style.getPropertyValue('--rhythm-event-row'))
+    expect(new Set(rows).size).toBe(3)
+  })
 })
