@@ -90,11 +90,11 @@ function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () =>
             })}
             {feeds.map((feed) => {
               const detail = details.find((item) => item.id === feed.id)!
-              return <button type="button" key={feed.id} className={`rhythm-stage-event rhythm-stage-event--${feed.type}`} style={{ left: pct(feed.atMs) }} aria-label={`${detail.title} at ${clockTime(feed.atMs)}, ${detail.duration}`} aria-pressed={selected?.id === detail.id} onClick={() => setSelected(detail)}><i /><span>{clockTime(feed.atMs)}</span></button>
+              return <button type="button" key={feed.id} className={`rhythm-stage-event rhythm-stage-event--${feed.type}`} style={{ left: pct(feed.atMs) }} aria-label={`${detail.title} at ${clockTime(feed.atMs)}, ${detail.duration}`} aria-pressed={selected?.id === detail.id} onClick={() => setSelected(detail)}><i /></button>
             })}
             {diapers.map((diaper) => {
               const detail = details.find((item) => item.id === diaper.id)!
-              return <button type="button" key={diaper.id} className={`rhythm-stage-diaper rhythm-stage-diaper--${diaper.kind}`} style={{ left: pct(diaper.atMs) }} aria-label={`${detail.title} at ${detail.time}`} aria-pressed={selected?.id === detail.id} onClick={() => setSelected(detail)}><i /><span>{clockTime(diaper.atMs)}</span></button>
+              return <button type="button" key={diaper.id} className={`rhythm-stage-diaper rhythm-stage-diaper--${diaper.kind}`} style={{ left: pct(diaper.atMs) }} aria-label={`${detail.title} at ${detail.time}`} aria-pressed={selected?.id === detail.id} onClick={() => setSelected(detail)}><i /></button>
             })}
             <span className="rhythm-stage-now" style={{ left: pct(nowMs) }} aria-hidden="true"><i>Now</i></span>
           </div>

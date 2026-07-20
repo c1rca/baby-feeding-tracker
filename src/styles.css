@@ -1242,7 +1242,6 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .rhythm-stage-event--mixed i { background:linear-gradient(135deg,#ff7891 45%,#2dd4bf 55%); }
 .rhythm-stage-diaper i { top:12px; width:13px; height:19px; border-width:2px; border-radius:5px; background:#f6c75d; box-shadow:0 0 0 4px rgba(246,199,93,.13),0 5px 18px rgba(246,199,93,.3); }
 .rhythm-stage-diaper--stool i { background:#a78bfa; }.rhythm-stage-diaper--mixed i { background:linear-gradient(#f6c75d 50%,#a78bfa 50%); }
-.rhythm-stage-event span,.rhythm-stage-diaper span { position:absolute; left:50%; bottom:0; transform:translateX(-50%); color:rgba(255,255,255,.72); font-family:var(--font-numeric); font-size:.58rem; font-weight:800; white-space:nowrap; }
 .rhythm-stage-now { position:absolute; top:0; bottom:0; z-index:6; width:2px; transform:translateX(-50%); background:linear-gradient(transparent,#fff 16%,#fff 84%,transparent); box-shadow:0 0 18px rgba(255,255,255,.5); }
 .rhythm-stage-now::before { content:''; position:absolute; top:0; left:50%; width:8px; height:8px; transform:translate(-50%,-1px); border-radius:50%; background:#fff; box-shadow:0 0 14px #fff; }
 .rhythm-stage-now i { position:absolute; top:10px; left:8px; padding:3px 6px; border-radius:6px; background:rgba(255,255,255,.12); color:#fff; font-size:.55rem; font-style:normal; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }

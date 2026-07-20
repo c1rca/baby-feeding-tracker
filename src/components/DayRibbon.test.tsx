@@ -74,4 +74,16 @@ describe('DayRibbon details', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Close expanded rhythm' }))
     expect(document.activeElement).toBe(timeline)
   })
+
+  it('keeps dense event timestamps in the selected detail instead of overlapping the stage', async () => {
+    const user = userEvent.setup()
+    render(<DayRibbon rhythm={rhythm} />)
+
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
+    expect(dialog.querySelectorAll('.rhythm-stage-event > span, .rhythm-stage-diaper > span')).toHaveLength(0)
+    await user.click(within(dialog).getByRole('button', { name: /Wet diaper at/i }))
+    expect(within(dialog).getByRole('status').textContent).toMatch(/Wet diaper/)
+    expect(within(dialog).getByRole('status').textContent).toMatch(/4:00 AM/)
+  })
 })
