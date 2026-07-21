@@ -1282,11 +1282,11 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 @keyframes rhythm-modal-in { from { opacity:0; transform:translateY(28px) scale(.965); } to { opacity:1; transform:none; } }
 @media (max-width:760px) {
   .rhythm-modal-backdrop { align-items:end; padding:0; }
-  .rhythm-modal { width:100%; min-height:calc(100dvh - 12px); max-height:calc(100dvh - 12px); padding:20px 14px 26px; gap:18px; border-radius:26px 26px 0 0; }
+  .rhythm-modal { width:100%; min-height:calc(100dvh - 12px); max-height:calc(100dvh - 12px); padding:18px 14px 20px; gap:14px; border-radius:26px 26px 0 0; }
   .rhythm-modal-header h2 { font-size:clamp(2.2rem,12vw,3.5rem); }
   .rhythm-modal-header p { max-width:34ch; }
   .rhythm-vitals { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .rhythm-insight { grid-column:1 / -1; }
+  .rhythm-insight { grid-column:1 / -1; min-height:154px; gap:8px; }
   .rhythm-support-stat { grid-column:span 1; min-height:0; }
   .rhythm-insight--feeding { grid-template-columns:minmax(0,1.25fr) minmax(112px,.75fr); grid-template-rows:auto minmax(56px,1fr) 7px; padding-inline:15px; }
   .rhythm-insight--changes { grid-template-columns:minmax(80px,.6fr) minmax(0,1.4fr); grid-template-rows:auto minmax(62px,1fr); padding-inline:15px; }
