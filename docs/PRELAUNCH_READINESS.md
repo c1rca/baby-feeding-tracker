@@ -15,7 +15,7 @@
 |---|---|---|---|
 | 0 | Complete | Establish branch, tracker, and validated baseline | `feat/prelaunch-readiness`; full lint/build/tests green |
 | 1 | Complete | Auth recovery and public notification privacy boundaries | `ad7493c harden auth recovery and notification scope`; final review approved; full gate passed (251 UI + 205 Node); Dev healthy |
-| 2 | Pending | Authenticated live sync, proxy trust, and canonical public URLs | |
+| 2 | In progress | Authenticated live sync, proxy trust, and canonical public URLs | Discovery complete; implementation next |
 | 3 | Pending | Recovery safety, encrypted/off-host retention design, migration/restore hardening | |
 | 4 | Pending | Complete data export/import/clear contract and strict persisted-state validation | |
 | 5 | Pending | Browser/mobile regression gate; rhythm modal structural mobile redesign | |
@@ -61,7 +61,28 @@
 - [ ] Household timezone, unit preferences, medicine dose data, caregiver attribution, pediatrician reports.
 - [ ] PWA install/update/offline UX.
 
-## Current implementation batch: Phase 1
+## Phase 2 — current implementation batch
+
+### Confirmed discovery
+
+- Native browser `EventSource` cannot attach the bearer token, so authenticated deployments receive `401` from `/api/state/events` and live sync stops after six failures.
+- Text/email login and invite links fall back to request `Host` when `PUBLIC_BASE_URL` is empty.
+- Production Compose exposes Node directly on `8080` while defaulting `TRUST_PROXY=1`, allowing direct clients to influence `req.ip` through forwarded headers.
+
+### Planned vertical slices
+
+1. Require a canonical HTTPS `PUBLIC_BASE_URL` for authentication-link and invite delivery; remove the request-host fallback.
+2. Change Compose/security defaults so direct Node exposure does not trust forwarded client headers.
+3. Replace native authenticated EventSource with an authorization-capable stream mechanism and test two scoped authenticated clients.
+
+### Preconditions
+
+- [x] Read this tracker and branch state before starting Phase 2.
+- [x] Production remains untouched.
+- [ ] Write focused failing tests for canonical URL and proxy configuration before implementation.
+- [ ] Select and implement the authenticated stream transport.
+
+## Phase 1 implementation record
 
 ### Goals
 
