@@ -1282,26 +1282,24 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 @keyframes rhythm-modal-in { from { opacity:0; transform:translateY(28px) scale(.965); } to { opacity:1; transform:none; } }
 @media (max-width:760px) {
   .rhythm-modal-backdrop { align-items:end; padding:0; }
-  .rhythm-modal { width:100%; min-height:calc(100dvh - 12px); max-height:calc(100dvh - 12px); padding:18px 14px 20px; gap:14px; border-radius:26px 26px 0 0; }
-  .rhythm-modal-header h2 { font-size:clamp(2.2rem,12vw,3.5rem); }
-  .rhythm-modal-header p { max-width:34ch; }
+  .rhythm-modal { width:100%; min-height:calc(100dvh - 6px); max-height:calc(100dvh - 6px); padding:12px 14px 14px; gap:10px; border-radius:26px 26px 0 0; }
+  .rhythm-modal-header h2 { font-size:clamp(2rem,10vw,2.6rem); }
+  .rhythm-modal-header p { max-width:34ch; margin-top:7px; font-size:.84rem; }
+  .rhythm-modal-date { margin-bottom:5px; }
   .rhythm-vitals { grid-template-columns:repeat(2,minmax(0,1fr)); }
-  .rhythm-insight { grid-column:1 / -1; min-height:154px; gap:8px; }
-  .rhythm-support-stat { grid-column:span 1; min-height:0; }
+  .rhythm-insight { grid-column:1 / -1; min-height:142px; gap:7px; padding-block:12px; }
+  .rhythm-support-stat { grid-column:span 1; min-height:0; padding:12px; }
   .rhythm-insight--feeding { grid-template-columns:minmax(0,1.25fr) minmax(112px,.75fr); grid-template-rows:auto minmax(56px,1fr) 7px; padding-inline:15px; }
   .rhythm-insight--changes { grid-template-columns:minmax(80px,.6fr) minmax(0,1.4fr); grid-template-rows:auto minmax(62px,1fr); padding-inline:15px; }
   .rhythm-change-stats { grid-template-columns:repeat(3,minmax(0,1fr)); gap:7px; }
   .rhythm-change-stat { min-height:60px; padding-inline:10px; }
   .rhythm-feeding-total strong { font-size:clamp(1.55rem,8vw,2rem); }
-  .rhythm-stage { margin-inline:-4px; padding:14px 10px 12px; border-radius:20px; overflow:hidden; }
-  .rhythm-stage-sky,.rhythm-stage-track,.rhythm-stage-hours { width:100%; }
-  .rhythm-stage-track { height:220px; }
-  .rhythm-stage-event,.rhythm-stage-diaper { top:calc(112px + var(--rhythm-event-row, 0) * 32px); width:42px; height:34px; }
-  .rhythm-stage-event i { top:7px; }
-  .rhythm-stage-diaper i { top:8px; }
-  .rhythm-focus { align-items:center; flex-wrap:nowrap; min-height:74px; padding:14px 17px; }.rhythm-focus b { margin-left:auto; }
-  .rhythm-focus--idle { justify-content:center; }.rhythm-focus--idle strong,.rhythm-focus--idle span { white-space:nowrap; }
-  .rhythm-focus--idle span { overflow:hidden; text-overflow:ellipsis; }
+  .rhythm-stage { margin-inline:-4px; padding:10px 10px 9px; border-radius:20px; overflow:hidden; }
+  .rhythm-stage-sky { margin-bottom:8px; }
+  .rhythm-stage-track { height:200px; }
+  .rhythm-stage-event,.rhythm-stage-diaper { top:calc(104px + var(--rhythm-event-row, 0) * 30px); width:42px; height:34px; }
+  .rhythm-focus { align-items:center; flex-wrap:nowrap; min-height:58px; padding:10px 14px; }.rhythm-focus b { margin-left:auto; }
+  .rhythm-modal-legend { gap:7px 14px; font-size:.66rem; }
 }
 @media (prefers-reduced-motion:reduce) { .rhythm-modal-backdrop,.rhythm-modal { animation:none; }.rhythm-aurora i { display:none; }.rhythm-stage-track button,.rhythm-modal-close { transition:none; } }
 @media (prefers-reduced-transparency:reduce) { .rhythm-modal-backdrop { backdrop-filter:none; background:rgba(20,12,38,.94); }.rhythm-modal { background:#18122e; }.rhythm-insight,.rhythm-support-stat,.rhythm-focus { background:#2c1c48; } }
