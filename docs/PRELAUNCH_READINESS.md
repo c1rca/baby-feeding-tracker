@@ -14,7 +14,7 @@
 | Phase | Status | Scope | Evidence / commit |
 |---|---|---|---|
 | 0 | Complete | Establish branch, tracker, and validated baseline | `feat/prelaunch-readiness`; full lint/build/tests green |
-| 1 | Complete | Auth recovery and public notification privacy boundaries | Final security/spec review approved; full gate passed (251 UI + 205 Node); Dev healthy; commit pending below |
+| 1 | Complete | Auth recovery and public notification privacy boundaries | `ad7493c harden auth recovery and notification scope`; final review approved; full gate passed (251 UI + 205 Node); Dev healthy |
 | 2 | Pending | Authenticated live sync, proxy trust, and canonical public URLs | |
 | 3 | Pending | Recovery safety, encrypted/off-host retention design, migration/restore hardening | |
 | 4 | Pending | Complete data export/import/clear contract and strict persisted-state validation | |
@@ -86,11 +86,11 @@
 - [x] Production container start time verified unchanged: `2026-07-21T17:25:35.541931768Z`.
 - [ ] Live SMTP delivery intentionally not triggered against a real recipient during Dev verification; adapter behavior is covered through injected route tests.
 - [x] Final independent security/spec re-review approved.
-- [ ] Commit Phase 1.
+- [x] Phase 1 committed as `ad7493c`.
 
 ## Completed commits
 
-_None yet._
+- `ad7493c harden auth recovery and notification scope` — Phase 1 implementation and regression tests.
 
 ## Decisions / open concerns
 
