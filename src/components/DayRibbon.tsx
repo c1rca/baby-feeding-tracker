@@ -107,9 +107,9 @@ function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () =>
             <header className="rhythm-insight-head"><span>Changes</span></header>
             <div className="rhythm-change-total"><strong>{diapers.length}</strong><small>Total changes</small></div>
             <div className="rhythm-change-stats">
-              <div className="rhythm-change-stat rhythm-change-stat--wet"><strong>{diaperCounts.wet}</strong><span>Wet</span></div>
-              <div className="rhythm-change-stat rhythm-change-stat--stool"><strong>{diaperCounts.stool}</strong><span>Stool</span></div>
-              <div className="rhythm-change-stat rhythm-change-stat--mixed"><strong>{diaperCounts.mixed}</strong><span>Mixed</span></div>
+              <div className="rhythm-change-stat rhythm-change-stat--wet"><span>Wet</span><strong>{diaperCounts.wet}</strong></div>
+              <div className="rhythm-change-stat rhythm-change-stat--stool"><span>Stool</span><strong>{diaperCounts.stool}</strong></div>
+              <div className="rhythm-change-stat rhythm-change-stat--mixed"><span>Mixed</span><strong>{diaperCounts.mixed}</strong></div>
             </div>
           </section>
 

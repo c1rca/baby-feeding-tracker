@@ -107,9 +107,9 @@ describe('DayRibbon details', () => {
     expect(within(changes).getByText('Total changes')).toBeTruthy()
     expect(changes.querySelector('.rhythm-change-total')?.textContent).toContain('3')
     expect(changes.querySelector('.rhythm-change-stats')).toBeTruthy()
-    expect(changes.querySelector('.rhythm-change-stat--wet')?.textContent).toBe('1Wet')
-    expect(changes.querySelector('.rhythm-change-stat--stool')?.textContent).toBe('1Stool')
-    expect(changes.querySelector('.rhythm-change-stat--mixed')?.textContent).toBe('1Mixed')
+    expect(changes.querySelector('.rhythm-change-stat--wet')?.textContent).toBe('Wet1')
+    expect(changes.querySelector('.rhythm-change-stat--stool')?.textContent).toBe('Stool1')
+    expect(changes.querySelector('.rhythm-change-stat--mixed')?.textContent).toBe('Mixed1')
   })
 
   it('keeps event inspection inside the expanded rhythm and restores focus after closing', async () => {
