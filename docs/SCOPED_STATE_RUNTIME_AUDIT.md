@@ -10,7 +10,7 @@ This branch stores tracker state per `(household_id, baby_id)` while preserving 
 | `PUT /api/state` | Writes scoped `baby_state`; mirrors only default household/baby to legacy `app_state`. | Scoped + rollback compatible |
 | `/api/state/events` | Subscribes each SSE client to authenticated household/baby and only broadcasts matching scope updates. | Scoped in this slice |
 | Reminder scheduler | Still reads legacy/default `app_state`; reminders remain default-baby only until a multi-baby notification model is designed. | Explicit limitation |
-| Startup snapshot | Still snapshots legacy/default `app_state` for reconstructable rollback/event logs. | Explicit limitation |
+
 
 ## Why scheduler remains default-only for now
 

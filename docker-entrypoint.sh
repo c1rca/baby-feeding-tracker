@@ -7,7 +7,7 @@ set -e
 # to non-root never breaks writes on redeploy. Volumes for a baby tracker are
 # small (KB–MB), so the recursive chown at boot is negligible.
 if [ "$(id -u)" = "0" ]; then
-  for dir in /data /backups /logs; do
+  for dir in /data /backups; do
     mkdir -p "$dir"
     chown -R node:node "$dir" 2>/dev/null || true
   done

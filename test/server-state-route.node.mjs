@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { createStateRouter } from '../server/apiRoutes.js'
 import { createFakeApp, createJsonResponse } from './server-test-helpers.mjs'
 
-test('state route writes resolved canonical state, audit/event logs it, evaluates reminders, and broadcasts response state', () => {
+test('state route writes resolved canonical state without sending health state to an event sink, evaluates reminders, and broadcasts response state', () => {
   const app = createFakeApp()
   const calls = { upserts: [], audits: [], events: [], broadcasts: [], evaluations: 0 }
   const existingRow = { updated_at: 'server-old' }
@@ -54,15 +54,7 @@ test('state route writes resolved canonical state, audit/event logs it, evaluate
   assert.equal(calls.upserts[0].session_json, null)
   assert.equal(calls.upserts[0].theme, 'dark')
   assert.equal(calls.audits.length, 1)
-  assert.equal(calls.events[0].event, 'state_write_audit')
-  assert.equal(calls.events[1].event, 'state_replace')
-  assert.equal(calls.events[1].payload.staleWriteMerged, true)
-  // Privacy: the event carries only the summary, never the full record arrays.
-  assert.equal(calls.events[1].payload.entries, undefined)
-  assert.equal(calls.events[1].payload.diapers, undefined)
-  assert.equal(calls.events[1].payload.medicines, undefined)
-  assert.equal(calls.events[1].payload.pumpEvents, undefined)
-  assert.equal(calls.events[1].payload.session, undefined)
+  assert.deepEqual(calls.events, [])
   assert.equal(calls.evaluations, 1)
   assert.deepEqual(calls.broadcasts, [{ payload: res.body.state, scope: { householdId: 'household-2', babyId: 'baby-2' } }])
   assert.equal(res.body.ok, true)

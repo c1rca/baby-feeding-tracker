@@ -10,13 +10,15 @@ coverage/
 *.tsbuildinfo
 
 # Logs
-logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
+# Historical protected health-log artifacts (runtime logging is retired; do not stage)
+logs/
+*.jsonl
 
 # Local environment / secrets
 .env
@@ -25,7 +27,7 @@ lerna-debug.log*
 !.env.*.example
 *.local
 
-# Runtime data: private baby records, SQLite files, backups, rollback artifacts, event logs
+# Runtime data: private baby records, SQLite files, backups, rollback artifacts
 data/
 data-dev/
 backups/
@@ -34,7 +36,7 @@ rollback/
 *.db-*
 *.sqlite
 *.sqlite3
-*.jsonl
+
 
 # Claude Code session transcripts exported to the repo root
 /20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.txt

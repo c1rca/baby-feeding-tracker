@@ -45,7 +45,6 @@ const db = openTrackerDatabase({
   dbPath,
   dbDir: path.dirname(dbPath),
   backupDir: path.join(path.dirname(dbPath), 'backups'),
-  logDir: path.join(path.dirname(dbPath), 'logs'),
 })
 try {
   db.transaction(() => {

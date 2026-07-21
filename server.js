@@ -6,15 +6,15 @@ import { createAuthMiddleware, createAuthRouter, createAuthSessionRouter } from 
 import { buildStateAudit } from './server/auditLog.js'
 import { createDiagnosticsRouter, createHealthRouter, createHouseholdRouter, createInviteRouter, createMemberRouter, createNotificationSettingsRouter, createStateRouter, createBabyRouter } from './server/apiRoutes.js'
 import { openTrackerDatabase, prepareTrackerStatements, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './server/database.js'
-import { createEventLogger, redactError } from './server/eventLog.js'
+
 import { createSmtpSender, createTextEmailSender, createTrackerNotificationScheduler } from './server/notificationRuntime.js'
 import { normalizeMedicineReminderSettings, normalizeNotificationPreferences } from './server/notificationModels.js'
 import { createRuntimeConfig } from './server/runtimeConfig.js'
 import { createSecurityHeaders } from './server/securityHeaders.js'
-import { createDeletedItemOptionsReader, createDeletedItemRecorder, serializeState, summarizeState } from './server/stateStore.js'
+import { createDeletedItemOptionsReader, createDeletedItemRecorder, serializeState } from './server/stateStore.js'
 import { createStateEventHub } from './server/stateEvents.js'
 import { resolveIncomingState } from './server/stateMerge.js'
-import { appendStartupStateSnapshot, createStartupBackup } from './server/startup.js'
+import { createStartupBackup } from './server/startup.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -24,7 +24,10 @@ const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
 const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectHouseholdSetting, upsertHouseholdSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, renameBaby, archiveBaby, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions, revokeUserSessions } = statements
-const appendEventLog = createEventLogger(config.eventLogPath)
+// Compatibility bridge while route modules still accept an event sink. Routine
+// health and account events must not be written to a reconstructable disk log.
+const appendEventLog = () => {}
+const redactError = (error) => ({ name: error?.name ?? 'Error', message: error?.message ?? String(error) })
 const smtpSender = createSmtpSender(config)
 const textEmailSender = createTextEmailSender(config)
 const phoneToTextEmail = (phone) => {
@@ -155,7 +158,7 @@ const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt
   recordDeletedItems(audit, updatedAt, { householdId: statePayload.household_id, babyId: statePayload.baby_id })
 })
 const { broadcastStateChange, handleStateEvents } = createStateEventHub({ selectState, selectStateForBaby, serializeState, selectBabyForHousehold })
-const createBackupOnStart = createStartupBackup({ db, backupDir: config.backupDir, appendEventLog, redactError })
+const createBackupOnStart = createStartupBackup({ db, backupDir: config.backupDir })
 
 const checkDatabaseReady = () => {
   try {
@@ -212,8 +215,6 @@ createStateRouter({
   deletedItemOptions,
   buildStateAudit,
   writeStateAndDeletedItems,
-  appendEventLog,
-  summarizeState,
   notificationScheduler,
   broadcastStateChange,
   handleStateEvents,
@@ -232,7 +233,7 @@ const server = app.listen(config.port, () => {
   console.log(`feeding-tracker server listening on :${config.port}`)
   console.log(`sqlite db: ${config.dbPath}`)
   void createBackupOnStart()
-  appendStartupStateSnapshot({ selectState, selectAllStates: selectAllBabyStates, appendEventLog, summarizeState, redactError })
+
   if (config.notificationChannelsAvailable) {
     notificationScheduler.evaluate()
     console.log(`reminders ${getGotifyRemindersEnabled() ? 'enabled' : 'disabled'}: gotify=${config.gotifyAvailable ? config.gotifyUrl : 'off'}, textEmail=${config.textEmailAvailable ? 'on' : 'off'}`)

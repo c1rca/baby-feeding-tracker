@@ -13,7 +13,6 @@
     "backup:db": "node scripts/backup-db.mjs",
     "restore:db": "node scripts/restore-db.mjs",
     "migrate:dev-prod-data": "node scripts/migrate-dev-prod-data.mjs",
-    "replay:event-log": "node scripts/replay-event-log.mjs",
     "test:ui": "vitest run",
     "test:node": "node --test test/*.node.mjs"
   },

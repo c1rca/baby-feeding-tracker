@@ -20,8 +20,8 @@ COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 # entrypoint drops root to that user at boot (defence in depth — the server
 # never runs as root).
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh \
-  && mkdir -p /data /backups /logs \
-  && chown -R node:node /data /backups /logs
+  && mkdir -p /data /backups \
+  && chown -R node:node /data /backups
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 CMD ["node", "server.js"]

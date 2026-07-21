@@ -6,8 +6,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   const dbDir = env.DB_DIR || path.join(rootDir, 'data')
   const dbPath = env.DB_PATH || path.join(dbDir, 'feeding-tracker.db')
   const backupDir = env.BACKUP_DIR || path.join(dbDir, 'backups')
-  const logDir = env.LOG_DIR || path.join(dbDir, 'logs')
-  const eventLogPath = path.join(logDir, 'feeding-tracker-events.jsonl')
+
   const gotifyUrl = env.GOTIFY_URL || ''
   const gotifyToken = env.GOTIFY_TOKEN || ''
   const smtpHost = env.SMTP_HOST || 'smtp.gmail.com'
@@ -103,8 +102,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     dbDir,
     dbPath,
     backupDir,
-    logDir,
-    eventLogPath,
+
     gotifyUrl,
     gotifyToken,
     smtpHost,

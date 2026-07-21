@@ -390,8 +390,6 @@ export const createStateRouter = ({
   buildStateAudit,
   recordDeletedItems,
   writeStateAndDeletedItems,
-  appendEventLog,
-  summarizeState,
   notificationScheduler,
   broadcastStateChange,
   handleStateEvents,
@@ -489,11 +487,6 @@ export const createStateRouter = ({
         nextUpdatedAt: updatedAt,
       })
       persistStateAndDeletedItems(statePayload, audit, updatedAt)
-      appendEventLog('state_write_audit', audit)
-      // Log only the summary (counts + latest IDs) and the audit's add/update/
-      // remove IDs — never the full private baby records. DB backups are the
-      // recovery path; event-log replay granularity is reduced accordingly.
-      appendEventLog('state_replace', { ...summarizeState(entries, session, theme, diapers, medicines, growthMeasurements, babyDob, tummyTimes, tummySession, pumpEvents), staleWriteMerged: incoming.stale })
       notificationScheduler?.evaluate()
 
       const responseState = { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, updatedAt }

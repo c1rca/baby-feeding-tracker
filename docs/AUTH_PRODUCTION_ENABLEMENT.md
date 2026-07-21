@@ -55,7 +55,7 @@ DB_DIR=/data
 DB_PATH=/data/feeding-tracker.db
 BACKUP_ON_START=1
 BACKUP_DIR=/backups
-LOG_DIR=/logs
+
 NOTIFICATIONS_ENABLED=1
 FEEDING_TIME_ZONE=America/New_York
 TZ=America/New_York

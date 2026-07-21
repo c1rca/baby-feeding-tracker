@@ -11,10 +11,10 @@ export const DEFAULT_HOUSEHOLD_NAME = 'My household'
 export const DEFAULT_BABY_NAME = 'Baby'
 export const DEFAULT_BABY_DOB = '2026-06-03'
 
-export function openTrackerDatabase({ dbDir, backupDir, logDir, dbPath, bootstrapPassword = '' }) {
+export function openTrackerDatabase({ dbDir, backupDir, dbPath, bootstrapPassword = '' }) {
   fs.mkdirSync(dbDir, { recursive: true })
   fs.mkdirSync(backupDir, { recursive: true })
-  fs.mkdirSync(logDir, { recursive: true })
+
 
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')

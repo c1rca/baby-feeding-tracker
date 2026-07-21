@@ -18,7 +18,7 @@ Baby care tracking should be fast at 3 AM, reliable when Wi-Fi is flaky, and sim
 | **Mixed care timeline** | Nursing, bottle, diaper, missed feeds, and medicine events in one scan-friendly feed. |
 | **Smart reminders** | Feeding windows plus independent Tylenol/Motrin six-hour reminder schedules. |
 | **Offline-first UX** | Browser storage keeps tracking usable when the server is unavailable, then syncs back. |
-| **SQLite durability** | Simple single-file persistence with backup, restore, and event replay tooling. |
+| **SQLite durability** | Simple single-file persistence with portable backup and restore tooling. |
 | **Docker deploy** | Runs cleanly as a small private LAN service with health checks and mounted data. |
 
 ## Quick start
@@ -40,7 +40,7 @@ npm run dev
 Production Docker:
 
 ```bash
-mkdir -p data backups logs
+mkdir -p data backups
 docker compose up -d --build
 curl http://localhost:8080/api/health
 ```
@@ -56,15 +56,14 @@ cp .env.gotify.example .env.gotify
 cp .env.smtp.example .env.smtp
 ```
 
-The real `.env.*`, SQLite data, logs, backups, `node_modules`, and build output are ignored by git.
+The real `.env.*`, SQLite data, backups, `node_modules`, and build output are ignored by git.
 
 ## Data & backups
 
 | Path | Purpose |
 |---|---|
 | `data/feeding-tracker.db` | Runtime SQLite database. |
-| `backups/*.db` | Portable backup files. |
-| `logs/feeding-tracker-events.jsonl` | Reconstructable state event log. |
+| `backups/*.db` | Portable SQLite backup files; the only supported recovery artifact pending RECOVERY-02. |
 
 Create a portable backup:
 
@@ -92,7 +91,7 @@ npm run build
 npm test
 ```
 
-Coverage includes UI flows, sync behavior, stale-write merging, notification scheduling, backup/restore, event replay, and server route modules.
+Coverage includes UI flows, sync behavior, stale-write merging, notification scheduling, SQLite backup/restore, and server route modules.
 
 ## Security note
 
