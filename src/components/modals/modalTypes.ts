@@ -1,5 +1,6 @@
 import type { RefObject } from 'react'
-import type { DiaperEvent, Entry, Session } from '../../types'
+import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, PumpSession, Session, TummyTimeEvent, TummyTimeSession } from '../../types'
+import type { GrowthMeasurement } from '../../domain/growthTypes'
 import type { PastEventDraft } from '../../state/pastEventModels'
 import type { AuthUser } from '../../auth/authApi'
 import type { BabySummary } from '../../babies/babyApi'
@@ -20,6 +21,12 @@ export type TrackerModalsProps = {
   pastEventDraft: PastEventDraft
   entries: Entry[]
   diapers: DiaperEvent[]
+  medicines: MedicineEvent[]
+  tummyTimes: TummyTimeEvent[]
+  pumpEvents: PumpEvent[]
+  pumpSession: PumpSession | null
+  tummySession: TummyTimeSession | null
+  growthMeasurements: GrowthMeasurement[]
   babyDob: string
   tummyGoalMinutes: number
   feedingNotificationsEnabled: boolean
@@ -47,6 +54,12 @@ export type TrackerModalsProps = {
   setPastEventDraft: (draft: PastEventDraft | ((current: PastEventDraft) => PastEventDraft)) => void
   setEntries: (updater: Entry[] | ((prev: Entry[]) => Entry[])) => void
   setDiapers: (updater: DiaperEvent[] | ((prev: DiaperEvent[]) => DiaperEvent[])) => void
+  setMedicines: (updater: MedicineEvent[] | ((prev: MedicineEvent[]) => MedicineEvent[])) => void
+  setTummyTimes: (updater: TummyTimeEvent[] | ((prev: TummyTimeEvent[]) => TummyTimeEvent[])) => void
+  setPumpEvents: (updater: PumpEvent[] | ((prev: PumpEvent[]) => PumpEvent[])) => void
+  setPumpSession: (session: PumpSession | null) => void
+  setTummySession: (session: TummyTimeSession | null) => void
+  setGrowthMeasurements: (measurements: GrowthMeasurement[]) => void
   setBabyDob: (dob: string) => void
   setTummyGoalMinutes: (minutes: number) => void
   setSession: (session: Session | null) => void

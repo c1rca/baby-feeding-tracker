@@ -14,6 +14,13 @@ type SettingsModalProps = Pick<
   TrackerModalsProps,
   | 'entries'
   | 'diapers'
+  | 'medicines'
+  | 'tummyTimes'
+  | 'pumpEvents'
+  | 'pumpSession'
+  | 'tummySession'
+  | 'growthMeasurements'
+  | 'session'
   | 'babyDob'
   | 'tummyGoalMinutes'
   | 'feedingNotificationsEnabled'
@@ -34,6 +41,12 @@ type SettingsModalProps = Pick<
   | 'setSettingsOpen'
   | 'setEntries'
   | 'setDiapers'
+  | 'setMedicines'
+  | 'setTummyTimes'
+  | 'setPumpEvents'
+  | 'setPumpSession'
+  | 'setTummySession'
+  | 'setGrowthMeasurements'
   | 'setBabyDob'
   | 'setTummyGoalMinutes'
   | 'setSession'
@@ -325,7 +338,7 @@ const TAB_ORDER: TabDef[] = [
   { id: 'data', label: 'Data', icon: Database, title: 'Data', blurb: 'Export, import, or clear the log on this device.' },
 ]
 
-export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, browserRemindersEnabled, liveSyncEnabled = true, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setLiveSyncEnabled, setNotificationPreferences, setTheme, enableBrowserReminders, onCreateBaby, onRenameBaby, onArchiveBaby, showToast }: SettingsModalProps) {
+export function SettingsModal({ entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, growthMeasurements, session, babyDob, tummyGoalMinutes, browserRemindersEnabled, liveSyncEnabled = true, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setPumpSession, setTummySession, setGrowthMeasurements, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setLiveSyncEnabled, setNotificationPreferences, setTheme, enableBrowserReminders, onCreateBaby, onRenameBaby, onArchiveBaby, showToast }: SettingsModalProps) {
   const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
   const [activeTab, setActiveTab] = useState<TabId>('reminders')
   const tablistRef = useRef<HTMLDivElement>(null)
@@ -470,9 +483,28 @@ export function SettingsModal({ entries, diapers, babyDob, tummyGoalMinutes, bro
               <SettingsDataControls
                 entries={entries}
                 diapers={diapers}
+                medicines={medicines}
+                tummyTimes={tummyTimes}
+                pumpEvents={pumpEvents}
+                pumpSession={pumpSession}
+                tummySession={tummySession}
+                growthMeasurements={growthMeasurements}
+                babyDob={babyDob}
+                tummyGoalMinutes={tummyGoalMinutes}
+                session={session}
+                theme={theme}
                 fileInputRef={fileInputRef}
                 setEntries={setEntries}
                 setDiapers={setDiapers}
+                setMedicines={setMedicines}
+                setTummyTimes={setTummyTimes}
+                setPumpEvents={setPumpEvents}
+                setPumpSession={setPumpSession}
+                setTummySession={setTummySession}
+                setGrowthMeasurements={setGrowthMeasurements}
+                setTummyGoalMinutes={setTummyGoalMinutes}
+                setBabyDob={setBabyDob}
+                setTheme={setTheme}
                 setSession={setSession}
                 setUndoState={setUndoState}
                 showToast={showToast}
