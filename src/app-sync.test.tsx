@@ -51,35 +51,24 @@ describe('App interactions', () => {
     })
   })
 
-  it('hydrates saved server state and opens the live event subscription by default', async () => {
-    class MockEventSource {
-      static instance: MockEventSource | null = null
-      url: string
-      addEventListener = vi.fn()
-      close = vi.fn()
-      constructor(url: string) {
-        this.url = url
-        MockEventSource.instance = this
-      }
-    }
+  it('hydrates saved server state and opens the live authenticated fetch stream by default', async () => {
+    const streamResponse = new Response(new ReadableStream<Uint8Array>({ start() {} }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
+      if (url === '/api/state/events') return streamResponse
       if (url === '/api/state' && !init?.method) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: { startedAt: 1, activeSide: 'right', segments: [], bottleOunces: 0, note: '', diaperKinds: [] }, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
       return new Response(JSON.stringify({ ok: true, updatedAt: 'server-write' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
-    vi.stubGlobal('EventSource', MockEventSource)
 
     render(<App />)
 
     await new Promise((resolve) => window.setTimeout(resolve, 10))
     expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' }))
     expect(screen.getByText(/On right/i)).toBeTruthy()
-    // Live sync is ON by default, so a read-only event subscription is opened.
-    expect(MockEventSource.instance).not.toBeNull()
-    expect(MockEventSource.instance?.url).toContain('/api/state/events')
+    expect(fetchMock).toHaveBeenCalledWith('/api/state/events', expect.objectContaining({ cache: 'no-store' }))
   })
 
   it('saves local changes back to the server without pending cross-browser sync banners', async () => {
