@@ -20,6 +20,7 @@ export function createNotificationScheduler({
   getMedicineReminderSettings = () => ({ tylenol: 6, motrin: 6 }),
   getNotificationPreferences = () => normalizeNotificationPreferences(),
   getHouseholdNotificationSettings = null,
+  canDeliverForHousehold = () => true,
   now = () => Date.now(),
   setTimer = setTimeout,
   clearTimer = clearTimeout,
@@ -46,6 +47,7 @@ export function createNotificationScheduler({
   }
 
   const buildNextReminder = (row) => {
+    if (!canDeliverForHousehold(row.household_id || 'default-household')) return null
     const entries = parseJsonArray(row.entries_json)
     if (!entries) return null
     const medicines = parseJsonArray(row.medicines_json || '[]')
@@ -193,9 +195,9 @@ export function createNotificationScheduler({
     }
     if (!reminder) return cancel()
 
-    if (scheduled?.notificationId === reminder.notificationId && scheduled?.dueAt === reminder.dueAt) return
+    if (scheduled?.notificationKey === scopedNotificationId(reminder) && scheduled?.dueAt === reminder.dueAt) return
     cancel()
-    scheduled = reminder
+    scheduled = { ...reminder, notificationKey: scopedNotificationId(reminder) }
 
     const delay = reminderDelay
     timer = setTimer(async () => {
@@ -204,14 +206,14 @@ export function createNotificationScheduler({
       if (freshRows.length === 0) return cancel()
 
       const freshReminder = freshRows.map((row) => buildNextReminder(row)).filter(Boolean).sort((a, b) => a.dueAt - b.dueAt)[0] ?? null
-      const freshRow = freshRows.find((row) => row.household_id === reminder.householdId && row.baby_id === reminder.babyId) || freshRows.find((row) => buildNextReminder(row)?.notificationId === reminder.notificationId)
+      const freshRow = freshRows.find((row) => row.household_id === reminder.householdId && row.baby_id === reminder.babyId)
       if (reminder.kind === 'feeding' && freshRow && hasActiveSession(freshRow)) {
         markHandled(reminder)
         scheduled = null
         return evaluate()
       }
 
-      if (!freshReminder || freshReminder.notificationId !== reminder.notificationId || now() > freshReminder.catchUpUntil) return evaluate()
+      if (!freshReminder || scopedNotificationId(freshReminder) !== scopedNotificationId(reminder) || now() > freshReminder.catchUpUntil) return evaluate()
 
       try {
         await sendDueReminder(freshReminder)

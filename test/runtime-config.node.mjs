@@ -35,6 +35,14 @@ test('AUTH_REQUIRED=1 with no bypass builds a locked-down config', () => {
   assert.equal(config.authBypass, false)
 })
 
+test('SMTP can support direct auth email without enabling a global reminder recipient', () => {
+  const config = createRuntimeConfig({ rootDir: '/app', env: { AUTH_REQUIRED: '1', SMTP_USER: 'mailer@example.com', SMTP_PASSWORD: 'smtp-secret' } })
+
+  assert.equal(config.smtpAvailable, true)
+  assert.equal(config.textEmailAvailable, false)
+  assert.equal(config.emailLoginAvailable, true)
+})
+
 test('ALLOW_INSECURE_LOCAL_MODE escapes the guard for local diagnostics', () => {
   const config = createRuntimeConfig({ rootDir: '/app', env: { ALLOW_INSECURE_LOCAL_MODE: '1', AUTH_BYPASS: '1' } })
   assert.equal(config.authRequired, false)

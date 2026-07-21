@@ -98,6 +98,59 @@ test('notification scheduler scans tenant baby states and sends the earliest uns
   assert.deepEqual([...handled.keys()], ['household-b:baby-b:feed-b'])
 })
 
+test('notification scheduler does not use global delivery adapters for non-default households', () => {
+  const now = new Date('2026-06-05T10:00:00Z').getTime()
+  const timers = []
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => null },
+    selectAllStates: { all: () => [{ household_id: 'household-other', baby_id: 'baby-1', entries_json: JSON.stringify([{ id: 'feed-1', endedAt: now - 2 * 60 * 60 * 1000 }]) }] },
+    getNotificationState: { get: () => null },
+    upsertNotificationState: { run: () => {} },
+    sendGotify: async () => {},
+    canDeliverForHousehold: (householdId) => householdId === 'default-household',
+    now: () => now,
+    setTimer: (fn, delay) => { timers.push({ fn, delay }); return timers.length },
+    clearTimer: () => {},
+    logger: { warn: () => {} },
+  })
+
+  scheduler.evaluate()
+
+  assert.deepEqual(timers, [])
+  assert.equal(scheduler.getScheduled(), null)
+})
+
+test('notification scheduler does not deliver a different household reminder when record IDs collide', async () => {
+  const now = new Date('2026-06-05T10:00:00Z').getTime()
+  const rows = [
+    { household_id: 'household-a', baby_id: 'baby-a', entries_json: JSON.stringify([{ id: 'shared-feed-id', endedAt: now - 2 * 60 * 60 * 1000 }]) },
+    { household_id: 'household-b', baby_id: 'baby-b', entries_json: JSON.stringify([{ id: 'shared-feed-id', endedAt: now - 3 * 60 * 60 * 1000 }]) },
+  ]
+  const sent = []
+  const timers = []
+  const scheduler = createNotificationScheduler({
+    selectState: { get: () => null },
+    selectAllStates: { all: () => rows },
+    getNotificationState: { get: () => null },
+    upsertNotificationState: { run: () => {} },
+    sendGotify: async (payload) => sent.push(payload),
+    now: () => now,
+    setTimer: (fn, delay) => { timers.push({ fn, delay }); return timers.length },
+    clearTimer: () => {},
+    logger: { warn: () => {} },
+  })
+
+  scheduler.evaluate()
+  assert.equal(scheduler.getScheduled().householdId, 'household-b')
+
+  rows[1].entries_json = JSON.stringify([])
+  await timers[0].fn()
+
+  assert.deepEqual(sent, [])
+  assert.equal(timers.length, 2)
+  assert.equal(scheduler.getScheduled().householdId, 'household-a')
+})
+
 test('notification scheduler applies enablement per household', async () => {
   const now = new Date('2026-06-05T10:00:00Z').getTime()
   const rows = [

@@ -16,7 +16,8 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   const smtpPassword = env.SMTP_PASSWORD || ''
   const textEmailTo = normalizeTextEmailRecipients(env.TEXT_EMAIL_TO)
   const textEmailFrom = env.TEXT_EMAIL_FROM || smtpUser
-  const textEmailAvailable = Boolean(smtpUser && smtpPassword && textEmailTo.length > 0 && textEmailFrom)
+  const smtpAvailable = Boolean(smtpUser && smtpPassword && textEmailFrom)
+  const textEmailAvailable = Boolean(smtpAvailable && textEmailTo.length > 0)
   const gotifyAvailable = Boolean(gotifyUrl && gotifyToken)
   const notificationChannelsAvailable = gotifyAvailable || textEmailAvailable
   const notificationsDefaultEnabled = env.NOTIFICATIONS_ENABLED === '1' && notificationChannelsAvailable
@@ -81,6 +82,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   const publicBaseUrl = String(env.PUBLIC_BASE_URL || env.APP_BASE_URL || '').replace(/\/$/, '')
   const textLoginSmsDomain = String(env.TEXT_LOGIN_SMS_DOMAIN || '').trim()
   const textLoginAvailable = textEmailAvailable
+  const emailLoginAvailable = smtpAvailable
 
   return {
     port,
@@ -97,6 +99,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     smtpPassword,
     textEmailTo,
     textEmailFrom,
+    smtpAvailable,
     textEmailAvailable,
     gotifyAvailable,
     notificationChannelsAvailable,
@@ -114,5 +117,6 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     publicBaseUrl,
     textLoginSmsDomain,
     textLoginAvailable,
+    emailLoginAvailable,
   }
 }

@@ -7,7 +7,7 @@ import { buildStateAudit } from './server/auditLog.js'
 import { createDiagnosticsRouter, createHealthRouter, createHouseholdRouter, createInviteRouter, createMemberRouter, createNotificationSettingsRouter, createStateRouter, createBabyRouter } from './server/apiRoutes.js'
 import { openTrackerDatabase, prepareTrackerStatements, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './server/database.js'
 import { createEventLogger, redactError } from './server/eventLog.js'
-import { createTextEmailSender, createTrackerNotificationScheduler } from './server/notificationRuntime.js'
+import { createSmtpSender, createTextEmailSender, createTrackerNotificationScheduler } from './server/notificationRuntime.js'
 import { normalizeMedicineReminderSettings, normalizeNotificationPreferences } from './server/notificationModels.js'
 import { createRuntimeConfig } from './server/runtimeConfig.js'
 import { createSecurityHeaders } from './server/securityHeaders.js'
@@ -25,6 +25,7 @@ const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
 const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectHouseholdSetting, upsertHouseholdSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, renameBaby, archiveBaby, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions, revokeUserSessions } = statements
 const appendEventLog = createEventLogger(config.eventLogPath)
+const smtpSender = createSmtpSender(config)
 const textEmailSender = createTextEmailSender(config)
 const phoneToTextEmail = (phone) => {
   let digits = String(phone || '').replace(/\D/g, '')
@@ -57,11 +58,18 @@ const sendTextLogin = textEmailSender
       appendEventLog('text_login_send_success', { to: maskRecipient(to) })
     }
   : null
-const sendEmailLogin = textEmailSender
+const sendEmailLogin = smtpSender
   ? async (payload) => {
       appendEventLog('email_login_send_attempt', { to: maskRecipient(payload.to) })
-      await textEmailSender(payload)
+      await smtpSender(payload)
       appendEventLog('email_login_send_success', { to: maskRecipient(payload.to) })
+    }
+  : null
+const sendPasswordReset = smtpSender
+  ? async (payload) => {
+      appendEventLog('password_reset_send_attempt', { to: maskRecipient(payload.to) })
+      await smtpSender(payload)
+      appendEventLog('password_reset_send_success', { to: maskRecipient(payload.to) })
     }
   : null
 
@@ -126,6 +134,7 @@ const notificationScheduler = createTrackerNotificationScheduler({
   upsertNotificationState,
   gotifyRemindersEnabled: true,
   getHouseholdNotificationSettings,
+  canDeliverForHousehold: (householdId) => householdId === DEFAULT_HOUSEHOLD_ID,
   getMedicineReminderSettings,
   getNotificationPreferences,
   appendEventLog,
@@ -172,7 +181,7 @@ const createHousehold = db.transaction(({ userId, householdId, householdName, ba
   insertEmptyBabyState.run({ household_id: householdId, baby_id: babyId, baby_dob: babyDob || null, updated_at: createdAt })
 })
 createHealthRouter({ checkDatabaseReady })(app)
-createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, allowedPhones: config.allowedPhones, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectMembershipsByUser, selectInviteByToken, insertHouseholdMember, acceptInvite, selectSessionContext, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, sendEmailLogin, textLoginAvailable: config.textLoginAvailable, emailLoginAvailable: config.textEmailAvailable, baseUrl: config.publicBaseUrl, sessionTtlDays: config.sessionTtlDays, loginCodePepper: config.loginCodePepper })(app)
+createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, allowedPhones: config.allowedPhones, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectMembershipsByUser, selectInviteByToken, insertHouseholdMember, acceptInvite, selectSessionContext, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, sendEmailLogin, sendPasswordReset, textLoginAvailable: config.textLoginAvailable, emailLoginAvailable: config.emailLoginAvailable, baseUrl: config.publicBaseUrl, sessionTtlDays: config.sessionTtlDays, loginCodePepper: config.loginCodePepper })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, authBypass: config.authBypass, selectSessionContext, selectBabyForHousehold }))
 createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, selectMembershipsByUser, updateUserPassword, appendEventLog })(app)
 createBabyRouter({ selectBabiesByHousehold, insertBaby, insertEmptyBabyState, renameBaby, archiveBaby, appendEventLog })(app)

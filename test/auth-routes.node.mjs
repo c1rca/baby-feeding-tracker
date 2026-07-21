@@ -468,24 +468,31 @@ test('login-code pepper changes the stored hash and the confirm lookup matches i
   })
 })
 
-test('password reset request creates a short-lived reset code without leaking unknown emails', () => {
-  const calls = { resetCodes: [], events: [] }
+test('password reset request delivers a short-lived code before persisting it without leaking unknown emails', async () => {
+  const calls = { resetCodes: [], events: [], deliveries: [] }
   const app = mountRouter({
     authRequired: true,
     exposePasswordResetToken: true,
     selectUserByEmail: { get: (email) => email === 'parent@example.com' ? { id: 'user-1', email, password_hash: 'hash' } : null },
     insertPasswordResetCode: { run: (row) => calls.resetCodes.push(row) },
+    sendPasswordReset: async (payload) => calls.deliveries.push(payload),
     appendEventLog: (event, payload) => calls.events.push({ event, payload }),
     tokenFactory: () => 'reset-code-plain',
     now: () => new Date('2026-01-01T00:00:00.000Z'),
   })
 
   const knownRes = createJsonResponse()
-  app.route('POST', '/api/auth/password-reset/request')({ body: { email: ' Parent@Example.com ' } }, knownRes)
+  await app.route('POST', '/api/auth/password-reset/request')({ body: { email: ' Parent@Example.com ' } }, knownRes)
 
   assert.equal(knownRes.statusCode, 200)
   assert.equal(knownRes.body.ok, true)
   assert.equal(knownRes.body.resetToken, 'reset-code-plain')
+  assert.deepEqual(calls.deliveries, [{
+    to: 'parent@example.com',
+    subject: 'Reset your Feedr password',
+    title: 'Reset your Feedr password',
+    message: 'Use this password reset code: reset-code-plain',
+  }])
   assert.equal(calls.resetCodes.length, 1)
   assert.equal(calls.resetCodes[0].code_hash, hashSessionToken('reset-code-plain'))
   assert.equal(calls.resetCodes[0].user_id, 'user-1')
@@ -493,10 +500,70 @@ test('password reset request creates a short-lived reset code without leaking un
   assert.deepEqual(calls.events, [{ event: 'auth_password_reset_requested', payload: { userId: 'user-1' } }])
 
   const unknownRes = createJsonResponse()
-  app.route('POST', '/api/auth/password-reset/request')({ body: { email: 'unknown@example.com' } }, unknownRes)
+  await app.route('POST', '/api/auth/password-reset/request')({ body: { email: 'unknown@example.com' } }, unknownRes)
   assert.equal(unknownRes.statusCode, 200)
   assert.deepEqual(unknownRes.body, { ok: true })
+  assert.equal(calls.deliveries.length, 1)
   assert.equal(calls.resetCodes.length, 1)
+})
+
+test('password reset request does not expose the code in its default API response', async () => {
+  const calls = { resetCodes: [], deliveries: [] }
+  const app = mountRouter({
+    authRequired: true,
+    selectUserByEmail: { get: () => ({ id: 'user-1', email: 'parent@example.com', password_hash: 'hash' }) },
+    insertPasswordResetCode: { run: (row) => calls.resetCodes.push(row) },
+    sendPasswordReset: async (payload) => calls.deliveries.push(payload),
+    tokenFactory: () => 'reset-code-plain',
+  })
+  const res = createJsonResponse()
+
+  await app.route('POST', '/api/auth/password-reset/request')({ body: { email: 'parent@example.com' } }, res)
+
+  assert.deepEqual(res.body, { ok: true })
+  assert.equal('resetToken' in res.body, false)
+  assert.equal(calls.resetCodes.length, 1)
+  assert.equal(calls.deliveries.length, 1)
+})
+
+test('password reset request stays unavailable without a delivery adapter and persists no token', async () => {
+  const calls = { resetCodes: [] }
+  const app = mountRouter({
+    authRequired: true,
+    selectUserByEmail: { get: () => ({ id: 'user-1', email: 'parent@example.com', password_hash: 'hash' }) },
+    insertPasswordResetCode: { run: (row) => calls.resetCodes.push(row) },
+  })
+  const res = createJsonResponse()
+
+  await app.route('POST', '/api/auth/password-reset/request')({ body: { email: 'parent@example.com' } }, res)
+
+  assert.equal(res.statusCode, 503)
+  assert.deepEqual(res.body, { ok: false, error: 'Password reset is temporarily unavailable' })
+  assert.deepEqual(calls.resetCodes, [])
+})
+
+test('password reset delivery failure remains indistinguishable from an unknown account and persists no token', async () => {
+  const calls = { resetCodes: [], events: [] }
+  const app = mountRouter({
+    authRequired: true,
+    selectUserByEmail: { get: (email) => email === 'parent@example.com' ? { id: 'user-1', email, password_hash: 'hash' } : null },
+    insertPasswordResetCode: { run: (row) => calls.resetCodes.push(row) },
+    sendPasswordReset: async () => { throw new Error('SMTP unavailable') },
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+    tokenFactory: () => 'reset-code-plain',
+  })
+
+  const knownRes = createJsonResponse()
+  await app.route('POST', '/api/auth/password-reset/request')({ body: { email: 'parent@example.com' } }, knownRes)
+  const unknownRes = createJsonResponse()
+  await app.route('POST', '/api/auth/password-reset/request')({ body: { email: 'unknown@example.com' } }, unknownRes)
+
+  assert.equal(knownRes.statusCode, 200)
+  assert.deepEqual(knownRes.body, { ok: true })
+  assert.equal(unknownRes.statusCode, 200)
+  assert.deepEqual(unknownRes.body, knownRes.body)
+  assert.deepEqual(calls.resetCodes, [])
+  assert.deepEqual(calls.events, [{ event: 'auth_password_reset_delivery_failed', payload: { userId: 'user-1' } }])
 })
 
 test('password reset confirm updates password, consumes code, and revokes sessions', () => {

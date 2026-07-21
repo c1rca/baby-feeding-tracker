@@ -1,8 +1,8 @@
 import nodemailer from 'nodemailer'
 import { createNotificationScheduler, sendGotifyMessage } from './notifications.js'
 
-export const createTextEmailSender = (config) => {
-  if (!config.textEmailAvailable) return null
+export const createSmtpSender = (config) => {
+  if (!config.smtpAvailable) return null
 
   const smtpTransporter = nodemailer.createTransport({
     host: config.smtpHost,
@@ -14,14 +14,20 @@ export const createTextEmailSender = (config) => {
   return async ({ subject, title, message, to }) => {
     await smtpTransporter.sendMail({
       from: config.textEmailFrom,
-      to: to || config.textEmailTo,
+      to,
       subject: subject || title || 'Feedr reminder',
       text: message,
     })
   }
 }
 
-export const createTrackerNotificationScheduler = ({ config, selectState, selectAllStates = null, getNotificationState, upsertNotificationState, gotifyRemindersEnabled, getMedicineReminderSettings, getNotificationPreferences, getHouseholdNotificationSettings, appendEventLog, redactError }) => {
+export const createTextEmailSender = (config) => {
+  if (!config.textEmailAvailable) return null
+  const sendSmtp = createSmtpSender(config)
+  return async (payload) => sendSmtp({ ...payload, to: payload.to || config.textEmailTo })
+}
+
+export const createTrackerNotificationScheduler = ({ config, selectState, selectAllStates = null, getNotificationState, upsertNotificationState, gotifyRemindersEnabled, getMedicineReminderSettings, getNotificationPreferences, getHouseholdNotificationSettings, canDeliverForHousehold = () => true, appendEventLog, redactError }) => {
   if (!config.notificationChannelsAvailable) return null
 
   const sendTextEmailMessage = createTextEmailSender(config)
@@ -59,5 +65,6 @@ export const createTrackerNotificationScheduler = ({ config, selectState, select
     getMedicineReminderSettings,
     getNotificationPreferences,
     getHouseholdNotificationSettings,
+    canDeliverForHousehold,
   })
 }

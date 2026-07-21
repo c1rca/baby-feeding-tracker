@@ -78,7 +78,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, selectSessionContext = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, sendEmailLogin = null, baseUrl = '', textLoginAvailable = false, emailLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, loginCodePepper = '', textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, selectSessionContext = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, sendEmailLogin = null, sendPasswordReset = null, baseUrl = '', textLoginAvailable = false, emailLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, loginCodePepper = '', textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
   const limiterNow = () => now().getTime()
   const loginLimiter = createRateLimiter({ max: maxLoginAttempts, windowMs: loginWindowMs, now: limiterNow })
   const textRequestLimiter = createRateLimiter({ max: textRequestMax, windowMs: textRequestWindowMs, now: limiterNow })
@@ -335,9 +335,13 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
       res.status(201).json({ ok: true, token, user: { id: userId, email, displayName } })
     })
 
-    app.post('/api/auth/password-reset/request', (req, res) => {
+    app.post('/api/auth/password-reset/request', async (req, res) => {
       if (!authRequired) {
         res.status(404).json({ ok: false, error: 'Authentication is not enabled' })
+        return
+      }
+      if (!sendPasswordReset) {
+        res.status(503).json({ ok: false, error: 'Password reset is temporarily unavailable' })
         return
       }
       const email = normalizeEmail(req.body?.email)
@@ -354,6 +358,18 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
       if (user?.password_hash) {
         const token = tokenFactory()
         const createdAt = now()
+        try {
+          await sendPasswordReset({
+            to: user.email,
+            subject: 'Reset your Feedr password',
+            title: 'Reset your Feedr password',
+            message: `Use this password reset code: ${token}`,
+          })
+        } catch {
+          appendEventLog('auth_password_reset_delivery_failed', { userId: user.id })
+          res.status(200).json({ ok: true })
+          return
+        }
         insertPasswordResetCode?.run({
           code_hash: hashSessionToken(token),
           user_id: user.id,
