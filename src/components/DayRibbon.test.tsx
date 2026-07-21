@@ -102,7 +102,8 @@ describe('DayRibbon details', () => {
 
     await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
     const changes = within(screen.getByRole('dialog', { name: "Today's rhythm" })).getByLabelText('Changes: 3 total, 1 wet, 1 stool, 1 mixed')
-    expect(within(changes).getByText('3 total')).toBeTruthy()
+    expect(within(changes).queryByText('3 total')).toBeNull()
+    expect(changes.querySelector('.rhythm-insight-head b')).toBeNull()
     expect(within(changes).getByText('Total changes')).toBeTruthy()
     expect(changes.querySelector('.rhythm-change-total')?.textContent).toContain('3')
     expect(changes.querySelector('.rhythm-change-stats')).toBeTruthy()

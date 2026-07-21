@@ -104,7 +104,7 @@ function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () =>
           </section>
 
           <section className="rhythm-insight rhythm-insight--changes" aria-label={`Changes: ${diaperSummary}`}>
-            <header className="rhythm-insight-head"><span>Changes</span><b>{diapers.length} total</b></header>
+            <header className="rhythm-insight-head"><span>Changes</span></header>
             <div className="rhythm-change-total"><strong>{diapers.length}</strong><small>Total changes</small></div>
             <div className="rhythm-change-stats">
               <div className="rhythm-change-stat rhythm-change-stat--wet"><strong>{diaperCounts.wet}</strong><span>Wet</span></div>
