@@ -79,7 +79,21 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   // Number of proxy hops to trust for req.ip (so rate-limit keys use the real
   // client IP, not the reverse proxy's). Empty = don't trust any proxy.
   const trustProxy = env.TRUST_PROXY || ''
-  const publicBaseUrl = String(env.PUBLIC_BASE_URL || env.APP_BASE_URL || '').replace(/\/$/, '')
+  const rawPublicBaseUrl = String(env.PUBLIC_BASE_URL || env.APP_BASE_URL || '').trim()
+  let publicBaseUrl = rawPublicBaseUrl.replace(/\/$/, '')
+  if (isProduction && authRequired) {
+    if (!rawPublicBaseUrl) throw new Error('PUBLIC_BASE_URL must be a canonical HTTPS origin when authentication is enabled in production')
+    let parsedPublicBaseUrl
+    try {
+      parsedPublicBaseUrl = new URL(rawPublicBaseUrl)
+    } catch {
+      throw new Error('PUBLIC_BASE_URL must be a canonical HTTPS origin when authentication is enabled in production')
+    }
+    if (parsedPublicBaseUrl.protocol !== 'https:' || parsedPublicBaseUrl.username || parsedPublicBaseUrl.password || parsedPublicBaseUrl.pathname !== '/' || parsedPublicBaseUrl.search || parsedPublicBaseUrl.hash) {
+      throw new Error('PUBLIC_BASE_URL must be a canonical HTTPS origin when authentication is enabled in production')
+    }
+    publicBaseUrl = parsedPublicBaseUrl.origin
+  }
   const textLoginSmsDomain = String(env.TEXT_LOGIN_SMS_DOMAIN || '').trim()
   const textLoginAvailable = textEmailAvailable
   const emailLoginAvailable = smtpAvailable

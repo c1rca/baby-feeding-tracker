@@ -79,7 +79,7 @@
 
 - [x] Read this tracker and branch state before starting Phase 2.
 - [x] Production remains untouched.
-- [ ] Write focused failing tests for canonical URL and proxy configuration before implementation.
+- [x] Write focused failing tests for canonical URL and proxy configuration before implementation.
 - [ ] Select and implement the authenticated stream transport.
 
 ## Phase 1 implementation record

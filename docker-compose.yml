@@ -24,7 +24,10 @@ services:
       - TEXT_LOGIN_SMS_DOMAIN=${TEXT_LOGIN_SMS_DOMAIN:-}
       # Bearer-token session lifetime in days (default 30, clamped 1..365).
       - AUTH_SESSION_TTL_DAYS=${AUTH_SESSION_TTL_DAYS:-30}
-      - TRUST_PROXY=${TRUST_PROXY:-1}
+      - TRUST_PROXY=${TRUST_PROXY:-0}
+      # Canonical public HTTPS origin used for auth and invite links. Required
+      # whenever production authentication is enabled; configure it in .env.
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GOOGLE_REDIRECT_URI=${GOOGLE_REDIRECT_URI:-}

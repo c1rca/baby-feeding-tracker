@@ -30,9 +30,24 @@ test('the guard rejects AUTH_BYPASS unless insecure local mode is acknowledged',
 })
 
 test('AUTH_REQUIRED=1 with no bypass builds a locked-down config', () => {
-  const config = createRuntimeConfig({ rootDir: '/app', env: { NODE_ENV: 'production', AUTH_REQUIRED: '1' } })
+  const config = createRuntimeConfig({ rootDir: '/app', env: { NODE_ENV: 'production', AUTH_REQUIRED: '1', PUBLIC_BASE_URL: 'https://app.example.com' } })
   assert.equal(config.authRequired, true)
   assert.equal(config.authBypass, false)
+})
+
+test('production auth requires a canonical HTTPS public URL', () => {
+  const base = { NODE_ENV: 'production', AUTH_REQUIRED: '1' }
+  assert.throws(() => createRuntimeConfig({ rootDir: '/app', env: base }), /PUBLIC_BASE_URL/)
+  assert.throws(() => createRuntimeConfig({ rootDir: '/app', env: { ...base, PUBLIC_BASE_URL: 'http://app.example.com' } }), /HTTPS/)
+  assert.throws(() => createRuntimeConfig({ rootDir: '/app', env: { ...base, PUBLIC_BASE_URL: 'https://app.example.com/reset?token=unsafe' } }), /origin/)
+
+  const config = createRuntimeConfig({ rootDir: '/app', env: { ...base, PUBLIC_BASE_URL: 'https://app.example.com/' } })
+  assert.equal(config.publicBaseUrl, 'https://app.example.com')
+})
+
+test('production config does not trust forwarded headers unless explicitly configured', () => {
+  const config = createRuntimeConfig({ rootDir: '/app', env: { NODE_ENV: 'production', AUTH_REQUIRED: '1', PUBLIC_BASE_URL: 'https://app.example.com' } })
+  assert.equal(config.trustProxy, '')
 })
 
 test('SMTP can support direct auth email without enabling a global reminder recipient', () => {
