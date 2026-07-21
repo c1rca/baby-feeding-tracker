@@ -49,8 +49,8 @@ describe('DayRibbon details', () => {
     await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
     const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
     expect(within(dialog).getByRole('heading', { name: 'Your day, in motion' })).toBeTruthy()
-    expect(within(dialog).getByLabelText('Feeds: 1 feed, 25 min feeding, 15 minutes left, 10 minutes right')).toBeTruthy()
-    expect(within(dialog).getByLabelText('Changes: 1 diaper, 1 wet, 0 stool, 0 mixed')).toBeTruthy()
+    expect(within(dialog).getByLabelText('Feeding: 1 feed, 25 min total, 15 minutes left, 10 minutes right')).toBeTruthy()
+    expect(within(dialog).getByLabelText('Changes: 1 total, 1 wet, 0 stool, 0 mixed')).toBeTruthy()
     expect(within(dialog).getByText('1 hr 30 min')).toBeTruthy()
     expect(document.body.style.overflow).toBe('hidden')
 
@@ -68,11 +68,23 @@ describe('DayRibbon details', () => {
     render(<DayRibbon rhythm={splitRhythm} />)
 
     await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
-    const feeds = within(screen.getByRole('dialog', { name: "Today's rhythm" })).getByLabelText('Feeds: 1 feed, 25 min feeding, 15 minutes left, 10 minutes right')
-    expect(within(feeds).getByText('1')).toBeTruthy()
-    expect(within(feeds).getByText('25 min feeding')).toBeTruthy()
-    expect(feeds.querySelector('.rhythm-feed-count--left')?.textContent).toBe('Left 15m')
-    expect(feeds.querySelector('.rhythm-feed-count--right')?.textContent).toBe('Right 10m')
+    const feeding = within(screen.getByRole('dialog', { name: "Today's rhythm" })).getByLabelText('Feeding: 1 feed, 25 min total, 15 minutes left, 10 minutes right')
+    expect(within(feeding).getByText('25 min')).toBeTruthy()
+    expect(within(feeding).getByText('Feeding time')).toBeTruthy()
+    expect(feeding.querySelector('.rhythm-side-stat--left')?.textContent).toBe('Left15m')
+    expect(feeding.querySelector('.rhythm-side-stat--right')?.textContent).toBe('Right10m')
+    expect(feeding.querySelector('.rhythm-side-balance')).toBeTruthy()
+    expect((feeding.querySelector('.rhythm-side-balance') as HTMLElement).style.getPropertyValue('--rhythm-left-share')).toBe('60%')
+  })
+
+  it('shows a truthful empty feeding state without inventing a side balance', async () => {
+    const user = userEvent.setup()
+    render(<DayRibbon rhythm={{ ...rhythm, feeds: [], summary: '0 feeds, 1 diaper, 1 sleep' }} />)
+
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    const feeding = within(screen.getByRole('dialog', { name: "Today's rhythm" })).getByLabelText('Feeding: 0 feeds, 0 min total, 0 minutes left, 0 minutes right')
+    expect(within(feeding).getByText('0 min')).toBeTruthy()
+    expect(feeding.querySelector('.rhythm-side-balance')?.classList.contains('is-empty')).toBe(true)
   })
 
   it('breaks today’s changes into wet, stool, and mixed counts', async () => {
@@ -89,11 +101,11 @@ describe('DayRibbon details', () => {
     render(<DayRibbon rhythm={diaperBreakdownRhythm} />)
 
     await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
-    const changes = within(screen.getByRole('dialog', { name: "Today's rhythm" })).getByLabelText('Changes: 3 diapers, 1 wet, 1 stool, 1 mixed')
-    expect(within(changes).getByText('3')).toBeTruthy()
-    expect(changes.querySelector('.rhythm-diaper-count--wet')?.textContent).toBe('Wet 1')
-    expect(changes.querySelector('.rhythm-diaper-count--stool')?.textContent).toBe('Stool 1')
-    expect(changes.querySelector('.rhythm-diaper-count--mixed')?.textContent).toBe('Mixed 1')
+    const changes = within(screen.getByRole('dialog', { name: "Today's rhythm" })).getByLabelText('Changes: 3 total, 1 wet, 1 stool, 1 mixed')
+    expect(within(changes).getByText('3 total')).toBeTruthy()
+    expect(changes.querySelector('.rhythm-change-stat--wet')?.textContent).toBe('1Wet')
+    expect(changes.querySelector('.rhythm-change-stat--stool')?.textContent).toBe('1Stool')
+    expect(changes.querySelector('.rhythm-change-stat--mixed')?.textContent).toBe('1Mixed')
   })
 
   it('keeps event inspection inside the expanded rhythm and restores focus after closing', async () => {

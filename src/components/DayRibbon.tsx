@@ -50,11 +50,13 @@ function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () =>
   const sleepText = sleepMinutes ? durationText(0, sleepMinutes) : 'No sleep yet'
   const feedSplit = feeds.reduce((split, feed) => ({ left: split.left + (feed.leftSeconds ?? 0), right: split.right + (feed.rightSeconds ?? 0) }), { left: 0, right: 0 })
   const feedDurationMs = feeds.reduce((total, feed) => total + Math.max(0, feed.endMs - feed.atMs), 0)
-  const feedingTime = durationText(0, feedDurationMs)
+  const feedingTime = feedDurationMs > 0 ? durationText(0, feedDurationMs) : '0 min'
   const feedMinutes = { left: Math.round(feedSplit.left / 60), right: Math.round(feedSplit.right / 60) }
-  const feedSummary = `${feeds.length} ${feeds.length === 1 ? 'feed' : 'feeds'}, ${feedingTime} feeding, ${feedMinutes.left} ${feedMinutes.left === 1 ? 'minute' : 'minutes'} left, ${feedMinutes.right} ${feedMinutes.right === 1 ? 'minute' : 'minutes'} right`
+  const nursingSeconds = feedSplit.left + feedSplit.right
+  const leftShare = nursingSeconds > 0 ? Math.round(feedSplit.left / nursingSeconds * 100) : 50
+  const feedSummary = `${feeds.length} ${feeds.length === 1 ? 'feed' : 'feeds'}, ${feedingTime} total, ${feedMinutes.left} ${feedMinutes.left === 1 ? 'minute' : 'minutes'} left, ${feedMinutes.right} ${feedMinutes.right === 1 ? 'minute' : 'minutes'} right`
   const diaperCounts = diapers.reduce((counts, diaper) => ({ ...counts, [diaper.kind]: counts[diaper.kind] + 1 }), { wet: 0, stool: 0, mixed: 0 })
-  const diaperSummary = `${diapers.length} ${diapers.length === 1 ? 'diaper' : 'diapers'}, ${diaperCounts.wet} wet, ${diaperCounts.stool} stool, ${diaperCounts.mixed} mixed`
+  const diaperSummary = `${diapers.length} total, ${diaperCounts.wet} wet, ${diaperCounts.stool} stool, ${diaperCounts.mixed} mixed`
   const date = new Date(dayStartMs).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
 
   useEffect(() => {
@@ -91,26 +93,27 @@ function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () =>
         </header>
 
         <div className="rhythm-vitals" aria-label="Today's rhythm highlights">
-          <div className="rhythm-vital rhythm-vital--feeds" aria-label={`Feeds: ${feedSummary}`}>
-            <span>Feeds</span><strong>{feeds.length}</strong>
-            <div className="rhythm-feed-breakdown" aria-hidden="true">
-              <small className="rhythm-feeding-time">{feedingTime} feeding</small>
-              <div className="rhythm-feed-chips">
-                <span className="rhythm-feed-count rhythm-feed-count--left">Left <b>{feedMinutes.left}m</b></span>
-                <span className="rhythm-feed-count rhythm-feed-count--right">Right <b>{feedMinutes.right}m</b></span>
-              </div>
+          <section className="rhythm-insight rhythm-insight--feeding" aria-label={`Feeding: ${feedSummary}`}>
+            <header className="rhythm-insight-head"><span>Feeding</span><b>{feeds.length} {feeds.length === 1 ? 'feed' : 'feeds'}</b></header>
+            <div className="rhythm-feeding-total"><strong>{feedingTime}</strong><small>Feeding time</small></div>
+            <div className="rhythm-side-stats">
+              <div className="rhythm-side-stat rhythm-side-stat--left"><span>Left</span><strong>{feedMinutes.left}m</strong></div>
+              <div className="rhythm-side-stat rhythm-side-stat--right"><span>Right</span><strong>{feedMinutes.right}m</strong></div>
             </div>
-          </div>
-          <div className="rhythm-vital rhythm-vital--changes" aria-label={`Changes: ${diaperSummary}`}>
-            <span>Changes</span><strong>{diapers.length}</strong>
-            <div className="rhythm-diaper-breakdown" aria-hidden="true">
-              <span className="rhythm-diaper-count rhythm-diaper-count--wet">Wet <b>{diaperCounts.wet}</b></span>
-              <span className="rhythm-diaper-count rhythm-diaper-count--stool">Stool <b>{diaperCounts.stool}</b></span>
-              <span className="rhythm-diaper-count rhythm-diaper-count--mixed">Mixed <b>{diaperCounts.mixed}</b></span>
+            <div className={`rhythm-side-balance${nursingSeconds === 0 ? ' is-empty' : ''}`} style={{ '--rhythm-left-share': `${leftShare}%` } as CSSProperties} aria-hidden="true"><i /><i /></div>
+          </section>
+
+          <section className="rhythm-insight rhythm-insight--changes" aria-label={`Changes: ${diaperSummary}`}>
+            <header className="rhythm-insight-head"><span>Changes</span><b>{diapers.length} total</b></header>
+            <div className="rhythm-change-stats">
+              <div className="rhythm-change-stat rhythm-change-stat--wet"><strong>{diaperCounts.wet}</strong><span>Wet</span></div>
+              <div className="rhythm-change-stat rhythm-change-stat--stool"><strong>{diaperCounts.stool}</strong><span>Stool</span></div>
+              <div className="rhythm-change-stat rhythm-change-stat--mixed"><strong>{diaperCounts.mixed}</strong><span>Mixed</span></div>
             </div>
-          </div>
-          <div><span>Rest</span><strong><MoonStar size={22} /></strong><small>{sleepText}</small></div>
-          <div><span>Moments</span><strong>{details.length}</strong><small>logged today</small></div>
+          </section>
+
+          <div className="rhythm-support-stat"><span>Rest</span><strong><MoonStar size={22} /></strong><small>{sleepText}</small></div>
+          <div className="rhythm-support-stat"><span>Moments</span><strong>{details.length}</strong><small>logged today</small></div>
         </div>
 
         <div className="rhythm-stage">
