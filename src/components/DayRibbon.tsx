@@ -49,8 +49,10 @@ function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () =>
   const sleepMinutes = spans.filter((span) => span.kind === 'sleep').reduce((sum, span) => sum + Math.max(0, span.endMs - span.startMs), 0)
   const sleepText = sleepMinutes ? durationText(0, sleepMinutes) : 'No sleep yet'
   const feedSplit = feeds.reduce((split, feed) => ({ left: split.left + (feed.leftSeconds ?? 0), right: split.right + (feed.rightSeconds ?? 0) }), { left: 0, right: 0 })
+  const feedDurationMs = feeds.reduce((total, feed) => total + Math.max(0, feed.endMs - feed.atMs), 0)
+  const feedingTime = durationText(0, feedDurationMs)
   const feedMinutes = { left: Math.round(feedSplit.left / 60), right: Math.round(feedSplit.right / 60) }
-  const feedSummary = `${feeds.length} ${feeds.length === 1 ? 'feed' : 'feeds'}, ${feedMinutes.left} ${feedMinutes.left === 1 ? 'minute' : 'minutes'} left, ${feedMinutes.right} ${feedMinutes.right === 1 ? 'minute' : 'minutes'} right`
+  const feedSummary = `${feeds.length} ${feeds.length === 1 ? 'feed' : 'feeds'}, ${feedingTime} feeding, ${feedMinutes.left} ${feedMinutes.left === 1 ? 'minute' : 'minutes'} left, ${feedMinutes.right} ${feedMinutes.right === 1 ? 'minute' : 'minutes'} right`
   const diaperCounts = diapers.reduce((counts, diaper) => ({ ...counts, [diaper.kind]: counts[diaper.kind] + 1 }), { wet: 0, stool: 0, mixed: 0 })
   const diaperSummary = `${diapers.length} ${diapers.length === 1 ? 'diaper' : 'diapers'}, ${diaperCounts.wet} wet, ${diaperCounts.stool} stool, ${diaperCounts.mixed} mixed`
   const date = new Date(dayStartMs).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })
@@ -92,8 +94,11 @@ function ExpandedRhythm({ rhythm, onClose }: { rhythm: DayRhythm; onClose: () =>
           <div className="rhythm-vital rhythm-vital--feeds" aria-label={`Feeds: ${feedSummary}`}>
             <span>Feeds</span><strong>{feeds.length}</strong>
             <div className="rhythm-feed-breakdown" aria-hidden="true">
-              <span className="rhythm-feed-count rhythm-feed-count--left">Left <b>{feedMinutes.left}m</b></span>
-              <span className="rhythm-feed-count rhythm-feed-count--right">Right <b>{feedMinutes.right}m</b></span>
+              <small className="rhythm-feeding-time">{feedingTime} feeding</small>
+              <div className="rhythm-feed-chips">
+                <span className="rhythm-feed-count rhythm-feed-count--left">Left <b>{feedMinutes.left}m</b></span>
+                <span className="rhythm-feed-count rhythm-feed-count--right">Right <b>{feedMinutes.right}m</b></span>
+              </div>
             </div>
           </div>
           <div className="rhythm-vital rhythm-vital--changes" aria-label={`Changes: ${diaperSummary}`}>
