@@ -38,7 +38,7 @@ npm run backup:db
 ls -lh backups/*.db
 ```
 
-Copy the newest `backups/feeding-tracker-*.db` file to the new server.
+Copy the newest verified `backups/feeding-tracker-*.db` file to the new server, then verify it before restoring.
 
 ### On the new server
 
@@ -47,7 +47,8 @@ cd /path/to/baby-feeding-tracker
 mkdir -p data backups
 cp /path/to/feeding-tracker-YYYYMMDD-HHMMSS.db backups/
 npm ci
-npm run restore:db -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
+npm run verify:backup -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
+npm run restore:db -- --replace backups/feeding-tracker-YYYYMMDD-HHMMSS.db
 docker compose up -d --build
 curl -fsS http://localhost:8080/api/health
 ```
@@ -70,27 +71,9 @@ Manual backup:
 npm run backup:db
 ```
 
-Backups are written to `./backups/` as one standalone `.db` file using SQLite's backup API, so they are safe while WAL mode is enabled.
+Backups are verified standalone SQLite files (`integrity_check`, foreign-key check, tracker state check) created with SQLite's backup API. Canonical artifacts are private (`0600`) and the directory is `0700`; retention is handled only by the backup command. See `docs/BACKUP_RECOVERY_POLICY.md` for retention and the deliberately disabled off-host hook.
 
-Current installed cron on this server:
-
-```cron
-15 3 * * * cd /home/alex/Documents/baby-feeding-tracker && npm run backup:db >/tmp/baby-feeding-tracker-backup.log 2>&1
-```
-
-Check it with:
-
-```bash
-crontab -l
-```
-
-Last backup log:
-
-```bash
-tail -50 /tmp/baby-feeding-tracker-backup.log
-```
-
-Recommended after migrating: install the same cron with the new server path.
+`BACKUP_ON_START=1` remains the current production baseline: every service start creates a verified local backup. A scheduled cadence and off-host replication are still incomplete operator decisions, so restart-driven backups must not be treated as a defined RPO. When scheduler ownership is approved, schedule only `npm run backup:db`; do not add a separate `find -mtime` cleanup command.
 
 ## Restore / rollback
 
@@ -98,12 +81,13 @@ Stop first, restore, start, verify:
 
 ```bash
 docker compose down
-npm run restore:db -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
+npm run verify:backup -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
+npm run restore:db -- --replace backups/feeding-tracker-YYYYMMDD-HHMMSS.db
 docker compose up -d
 curl -fsS http://localhost:8080/api/health
 ```
 
-The restore command validates that the backup contains the expected `app_state` schema and removes stale target WAL/SHM sidecars before copying.
+The restore command requires `--replace`, validates the source before modifying the target, creates a verified pre-restore artifact when a target exists, runs current migrations against staging, then atomically installs and re-verifies the target.
 
 ## Offline behavior
 

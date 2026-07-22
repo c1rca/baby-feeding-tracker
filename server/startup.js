@@ -1,14 +1,14 @@
-import path from 'node:path'
+import { createVerifiedBackup } from './recovery.js'
 
-export const createStartupBackup = ({ db, backupDir }) => async () => {
+// Restart-driven backups are intentionally opt-in. When enabled they use the
+// same verification, permissions, naming and retention path as scheduled ones.
+export const createStartupBackup = ({ dbPath, backupDir }) => async () => {
   if (process.env.BACKUP_ON_START !== '1') return null
-  const timestamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}Z$/, '').replace('T', '-')
-  const backupPath = path.join(backupDir, `feeding-tracker-startup-${timestamp}.db`)
   try {
-    await db.backup(backupPath)
-    console.log('startup backup created')
-    return backupPath
-  } catch (error) {
+    const result = await createVerifiedBackup({ dbPath, backupDir })
+    console.log('startup backup verified')
+    return result.path
+  } catch {
     console.warn('startup backup failed')
     return null
   }

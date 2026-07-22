@@ -55,6 +55,7 @@ DB_DIR=/data
 DB_PATH=/data/feeding-tracker.db
 BACKUP_ON_START=1
 BACKUP_DIR=/backups
+# Startup backups are the current verified-local baseline; a scheduler/off-host plan is still pending
 
 NOTIFICATIONS_ENABLED=1
 FEEDING_TIME_ZONE=America/New_York

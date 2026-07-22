@@ -47,8 +47,8 @@ test('backup creates a portable single SQLite file without WAL sidecars', () => 
   })
 
   assert.equal(result.status, 0, result.stderr)
-  const backupPath = path.join(backupDir, 'feeding-tracker-20260101-010203.db')
-  assert.equal(fs.existsSync(backupPath), true)
+  const backupPath = fs.readdirSync(backupDir).map((name) => path.join(backupDir, name)).find((file) => /^feeding-tracker-\d{8}T\d{6}Z-[a-f0-9]+\.db$/.test(path.basename(file)))
+  assert.ok(backupPath)
   assert.equal(fs.existsSync(`${backupPath}-wal`), false)
 
   const backup = new Database(backupPath, { readonly: true })
@@ -64,7 +64,7 @@ test('restore validates and installs a portable backup file', () => {
   const targetPath = path.join(tmp, 'data', 'feeding-tracker.db')
   makeDb(sourcePath)
 
-  const result = spawnSync(process.execPath, [path.join(rootDir, 'scripts', 'restore-db.mjs'), sourcePath], {
+  const result = spawnSync(process.execPath, [path.join(rootDir, 'scripts', 'restore-db.mjs'), '--replace', sourcePath], {
     cwd: rootDir,
     env: { ...process.env, DB_PATH: targetPath },
     encoding: 'utf8',
@@ -83,12 +83,12 @@ test('restore rejects invalid backup files', () => {
   const badPath = path.join(tmp, 'bad.db')
   fs.writeFileSync(badPath, 'not sqlite')
 
-  const result = spawnSync(process.execPath, [path.join(rootDir, 'scripts', 'restore-db.mjs'), badPath], {
+  const result = spawnSync(process.execPath, [path.join(rootDir, 'scripts', 'restore-db.mjs'), '--replace', badPath], {
     cwd: rootDir,
     env: { ...process.env, DB_PATH: path.join(tmp, 'data', 'feeding-tracker.db') },
     encoding: 'utf8',
   })
 
   assert.notEqual(result.status, 0)
-  assert.match(result.stderr, /Invalid feeding tracker backup/)
+  assert.match(result.stderr, /Restore failed: invalid backup/)
 })

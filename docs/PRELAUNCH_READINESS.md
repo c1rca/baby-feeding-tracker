@@ -16,10 +16,10 @@
 | 0 | Complete | Establish branch, tracker, and validated baseline | `feat/prelaunch-readiness`; full lint/build/tests green |
 | 1 | Complete | Auth recovery and public notification privacy boundaries | `ad7493c harden auth recovery and notification scope`; final review approved; full gate passed (251 UI + 205 Node); Dev healthy |
 | 2 | In progress | Authenticated live sync, proxy trust, and canonical public URLs | Discovery complete; implementation next |
-| 3 | Pending | Recovery safety, encrypted/off-host retention design, migration/restore hardening | |
+| 3 | In progress | Verified local backup/restore, provenance-safe retention, and credential-free off-host hook | `BACKUP_ON_START=1` remains the verified-local baseline; off-host provider, keys, scheduler, and operator drill remain decisions |
 | 4 | Pending | Complete data export/import/clear contract and strict persisted-state validation | |
-| 5 | Pending | Browser/mobile regression gate; rhythm modal structural mobile redesign | |
-| 6 | Pending | Growth-reference correctness, accessibility foundation, startup/error states | |
+| 5 | In progress | Browser/mobile regression gate; rhythm modal structural mobile redesign | Playwright/isolated loopback gate scaffolded but blocked at deterministic `PUT /api/state` fixture seeding; normal Dev restored healthy after each attempt. Resume by inspecting the isolated response body—do not target a non-loopback URL or production. |
+| 6 | In progress | Growth-reference correctness, accessibility foundation, startup/error states | Growth correction requires an authoritative WHO-vs-CDC source decision; starting accessible-dialog foundation independently. |
 | 7 | Pending | CI/release hardening, dependency advisories, PWA, refactors, docs | |
 
 ## P0 — public launch blockers
@@ -34,6 +34,12 @@
 - [x] **PRIVACY-01** Blocked process-global server channels for non-default households pending tenant-specific destinations/credentials.
 - [x] **AUTH-RECOVERY-01** Delivered password-reset codes through SMTP with non-enumerating public responses.
 - [ ] **PRIVACY-02** Remove health data/PII from routine logs; handle recovery data as a protected artifact.
+
+### RECOVERY-02 implementation record
+
+- [x] Local verified SQLite backup and restore staging/pre-restore safeguards are covered by focused tests; retention is provenance-safe for private runtime-created artifacts and leaves manual/historical files untouched.
+- [x] `BACKUP_ON_START=1` remains in production Compose as the current verified-local backup baseline; it is not a replacement for scheduled or off-host recovery.
+- [ ] RECOVERY-02 remains a launch blocker: no off-host provider/account, encryption key custodians, production scheduler, real encrypted upload, or isolated operator restore drill has been selected or exercised. No production access occurred.
 
 ## P1 — correctness and trust
 

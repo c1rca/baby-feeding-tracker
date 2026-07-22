@@ -34,6 +34,8 @@ services:
       - NOTIFICATIONS_ENABLED=1
       - FEEDING_TIME_ZONE=America/New_York
       - TZ=America/New_York
+      # Current production baseline: make a verified local backup on each service start.
+      # A separate scheduled/off-host recovery mechanism has not been selected yet.
       - BACKUP_ON_START=1
       - BACKUP_DIR=/backups
     env_file:

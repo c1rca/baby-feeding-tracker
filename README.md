@@ -63,7 +63,7 @@ The real `.env.*`, SQLite data, backups, `node_modules`, and build output are ig
 | Path | Purpose |
 |---|---|
 | `data/feeding-tracker.db` | Runtime SQLite database. |
-| `backups/*.db` | Portable SQLite backup files; the only supported recovery artifact pending RECOVERY-02. |
+| `backups/*.db` | Verified portable SQLite artifacts; the only supported recovery source. See [`docs/BACKUP_RECOVERY_POLICY.md`](docs/BACKUP_RECOVERY_POLICY.md). |
 
 Create a portable backup:
 
@@ -75,7 +75,8 @@ Restore while the app is stopped:
 
 ```bash
 docker compose down
-npm run restore:db -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
+npm run verify:backup -- backups/feeding-tracker-YYYYMMDD-HHMMSS.db
+npm run restore:db -- --replace backups/feeding-tracker-YYYYMMDD-HHMMSS.db
 docker compose up -d
 ```
 
