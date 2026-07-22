@@ -1,0 +1,28 @@
+# Dev-only, isolated browser acceptance target. Never use this file for production.
+services:
+  feeding-tracker-browser:
+    build: .
+    container_name: baby-feeding-tracker-browser
+    ports:
+      - "127.0.0.1:8081:8080"
+    environment:
+      PORT: "8080"
+      NODE_ENV: development
+      DB_DIR: /data
+      DB_PATH: /data/feeding-tracker-browser.db
+      # Intentionally unauthenticated only inside this loopback-only ephemeral gate.
+      AUTH_REQUIRED: "0"
+      AUTH_BYPASS: "0"
+      ALLOW_INSECURE_LOCAL_MODE: "1"
+      NOTIFICATIONS_ENABLED: "0"
+      PUBLIC_BASE_URL: http://127.0.0.1:8081
+    # Ephemeral browser-gate state: never reads or writes Dev/production records.
+    tmpfs:
+      - /data:mode=1777
+    restart: "no"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8080/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 10s

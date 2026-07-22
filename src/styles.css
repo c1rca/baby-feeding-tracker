@@ -1199,7 +1199,7 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 .day-ribbon:focus-visible { border-radius:16px; box-shadow:0 0 0 3px var(--card-solid),0 0 0 5px var(--berry); }
 
 .rhythm-modal-backdrop { position:fixed; inset:0; z-index:100; display:grid; place-items:center; padding:18px; overflow:auto; background:rgba(20,12,38,.72); backdrop-filter:blur(18px) saturate(1.15); animation:rhythm-backdrop-in .28s ease both; }
-.rhythm-modal { --night:#18122e; --night-soft:#2c1c48; position:relative; isolation:isolate; width:min(1120px,100%); min-height:min(700px,calc(100dvh - 36px)); max-height:calc(100dvh - 36px); overflow:auto; display:grid; align-content:start; gap:24px; padding:clamp(22px,3.5vw,42px); border:1px solid rgba(255,255,255,.2); border-radius:30px; color:#fffafc; background:linear-gradient(145deg,rgba(48,27,73,.98),rgba(23,17,46,.99) 56%,rgba(17,31,54,.98)); box-shadow:0 38px 120px rgba(8,4,22,.58),inset 0 1px 0 rgba(255,255,255,.18); animation:rhythm-modal-in .48s cubic-bezier(.16,1,.3,1) both; }
+.rhythm-modal { --night:#18122e; --night-soft:#2c1c48; position:relative; isolation:isolate; box-sizing:border-box; width:min(1120px,100%); min-height:min(700px,calc(100dvh - 36px)); max-height:calc(100dvh - 36px); overflow:auto; overscroll-behavior:contain; display:grid; align-content:start; gap:24px; padding:clamp(22px,3.5vw,42px); border:1px solid rgba(255,255,255,.2); border-radius:30px; color:#fffafc; background:linear-gradient(145deg,rgba(48,27,73,.98),rgba(23,17,46,.99) 56%,rgba(17,31,54,.98)); box-shadow:0 38px 120px rgba(8,4,22,.58),inset 0 1px 0 rgba(255,255,255,.18); animation:rhythm-modal-in .48s cubic-bezier(.16,1,.3,1) both; }
 .rhythm-modal::before { content:''; position:absolute; inset:0; z-index:-2; border-radius:inherit; opacity:.2; background-image:radial-gradient(circle at center,rgba(255,255,255,.7) 0 1px,transparent 1.5px); background-size:34px 34px; mask-image:linear-gradient(to bottom,black,transparent 72%); pointer-events:none; }
 .rhythm-aurora { position:absolute; inset:0; z-index:-1; overflow:hidden; border-radius:inherit; pointer-events:none; }
 .rhythm-aurora i { position:absolute; width:55%; aspect-ratio:1; border-radius:50%; filter:blur(70px); opacity:.22; }
@@ -1282,7 +1282,9 @@ input:focus-visible { border-color: var(--berry); box-shadow: 0 0 0 4px var(--ri
 @keyframes rhythm-modal-in { from { opacity:0; transform:translateY(28px) scale(.965); } to { opacity:1; transform:none; } }
 @media (max-width:760px) {
   .rhythm-modal-backdrop { align-items:end; padding:0; }
-  .rhythm-modal { width:100%; min-height:calc(100dvh - 6px); max-height:calc(100dvh - 6px); padding:12px 14px 14px; gap:10px; border-radius:26px 26px 0 0; }
+  /* A bottom-sheet transform pushes a full-height dialog below the visual viewport
+     while it animates. On mobile retain a fade, not a translating sheet. */
+  .rhythm-modal { width:100%; min-height:calc(100dvh - 6px); max-height:calc(100dvh - 6px); padding:12px 14px 14px; gap:10px; border-radius:26px 26px 0 0; animation:rhythm-backdrop-in .28s ease both; }
   .rhythm-modal-header h2 { font-size:clamp(2rem,10vw,2.6rem); }
   .rhythm-modal-header p { max-width:34ch; margin-top:7px; font-size:.84rem; }
   .rhythm-modal-date { margin-bottom:5px; }

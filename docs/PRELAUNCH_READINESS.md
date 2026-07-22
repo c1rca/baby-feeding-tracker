@@ -18,7 +18,7 @@
 | 2 | In progress | Authenticated live sync, proxy trust, and canonical public URLs | Discovery complete; implementation next |
 | 3 | In progress | Verified local backup/restore, provenance-safe retention, and credential-free off-host hook | `BACKUP_ON_START=1` remains the verified-local baseline; off-host provider, keys, scheduler, and operator drill remain decisions |
 | 4 | Pending | Complete data export/import/clear contract and strict persisted-state validation | |
-| 5 | In progress | Browser/mobile regression gate; rhythm modal structural mobile redesign | Playwright/isolated loopback gate scaffolded but blocked at deterministic `PUT /api/state` fixture seeding; normal Dev restored healthy after each attempt. Resume by inspecting the isolated response body—do not target a non-loopback URL or production. |
+| 5 | Complete | Browser/mobile regression gate; rhythm modal structural mobile redesign | Isolated ephemeral loopback-only browser target passed Playwright on mobile 375×812 and desktop 1440×900; strict fixture state and full local gate passed. |
 | 6 | In progress | Growth-reference correctness, accessibility foundation, startup/error states | Growth correction requires an authoritative WHO-vs-CDC source decision; starting accessible-dialog foundation independently. |
 | 7 | Pending | CI/release hardening, dependency advisories, PWA, refactors, docs | |
 
@@ -44,7 +44,7 @@ CI fails when `npm audit --omit=dev --package-lock-only --audit-level=high` dete
 ## P0 — public launch blockers
 
 - [ ] **LAUNCH-01** Push an exact release SHA and require green remote CI.
-- [ ] **LAUNCH-02** Add real-browser viewport/visual acceptance tests and structurally fix mobile rhythm modal fit.
+- [x] **LAUNCH-02** Add real-browser viewport/visual acceptance tests and structurally fix mobile rhythm modal fit.
 - [ ] **SEC-01** Make direct-port/proxy trust/rate limiting topology-safe and HTTPS-only.
 - [ ] **SEC-02** Require canonical `PUBLIC_BASE_URL` for auth/invite links.
 - [ ] **SYNC-01** Provide authenticated tenant-scoped live sync.
@@ -136,6 +136,7 @@ CI fails when `npm audit --omit=dev --package-lock-only --audit-level=high` dete
 
 ## Completed commits
 
+- `add isolated browser launch gate` — `LAUNCH-02` Dev-only isolated Playwright acceptance gate covers 375×812 and 1440×900 DayRibbon interaction, selection, focus return, and viewport bounds. Browser Compose binds only `127.0.0.1:8081`, stores data in `tmpfs`, disables auth-required runtime and notifications, and never touches Dev/production state. The strict-state fixture deliberately omits empty optional `diaperKinds`, which strict persistence correctly rejects. Mobile modal sizing is border-box and no longer translates a full-height sheet below the viewport during opening animation. Validation: Playwright **4 passed**; lint passed; UI **261 passed**; Node **218 passed**; production build passed (existing bundle-size warning); `git diff --check` passed. Dev was restored healthy after isolated validation.
 - `ad7493c harden auth recovery and notification scope` — Phase 1 implementation and regression tests.
 
 ## Decisions / open concerns

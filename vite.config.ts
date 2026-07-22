@@ -11,6 +11,6 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
-    exclude: ['node_modules/**', 'dist/**', 'test/**/*.node.mjs'],
+    exclude: ['node_modules/**', 'dist/**', 'test/**/*.node.mjs', 'test/browser/**'],
   },
 })
