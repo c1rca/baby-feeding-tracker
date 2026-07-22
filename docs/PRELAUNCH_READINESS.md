@@ -22,6 +22,25 @@
 | 6 | In progress | Growth-reference correctness, accessibility foundation, startup/error states | Growth correction requires an authoritative WHO-vs-CDC source decision; starting accessible-dialog foundation independently. |
 | 7 | Pending | CI/release hardening, dependency advisories, PWA, refactors, docs | |
 
+## CI / release provenance handoff (LAUNCH-01 / SUPPLY-01)
+
+This repository change adds local workflow definitions and evidence collection only. It does **not** push a branch or tag, enable GitHub settings, publish a release, deploy an image, or modify production.
+
+1. Finish the full local gate on the selected candidate commit and record its exact full SHA.
+2. Create a signed annotated release tag (for example `git tag -s -a vX.Y.Z <SHA>`); review the tag target and signature before pushing.
+3. After explicit publication approval, push the reviewed branch and tag separately.
+4. Require successful remote CI for the **exact release commit**, not merely the branch tip: `gh run list --commit <SHA>` and inspect the matching workflow results.
+5. Verify the remote tag resolves to the reviewed object: `git ls-remote origin refs/tags/vX.Y.Z`; download the CI release-provenance artifact and compare its commit and `package-lock.sha256` evidence to the reviewed candidate.
+6. Create or publish a GitHub Release only after independent approval and the above checks. The included release workflow intentionally creates evidence only; it has no release-publishing or deployment step.
+
+### Required GitHub administrator actions (not enabled by this repository change)
+
+A repository administrator must separately configure and verify branch protection or a ruleset for the release branch: require the CI checks, restrict direct pushes/force pushes, and require review as appropriate for the repository. The administrator must also decide whether to enable Dependabot alerts/updates, secret scanning and push protection, and any environment protections/secrets. These remote settings are **not enabled by this repository change** and must not be represented as complete until GitHub settings are read back and verified.
+
+### Dependency audit policy
+
+CI fails when `npm audit --omit=dev --package-lock-only --audit-level=high` detects a high or critical production-relevant advisory. CI also uploads the full audit JSON and dependency graph to report dev-only advisories intentionally without making those advisories a release-blocking production gate. SUPPLY-01 remains open until current advisories are reviewed and resolved or formally risk-accepted.
+
 ## P0 — public launch blockers
 
 - [ ] **LAUNCH-01** Push an exact release SHA and require green remote CI.

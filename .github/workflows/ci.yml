@@ -3,13 +3,21 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '22'
           cache: npm
@@ -20,3 +28,34 @@ jobs:
       - run: npm run test:node
       - run: npm run test:ui
       - run: npm run build
+      # This gate deliberately omits dev dependencies: production-relevant high
+      # and critical advisories fail the build, while the full report below is
+      # retained for triage of intentionally non-blocking dev-only advisories.
+      - name: Fail on high or critical production dependency advisories
+        run: npm audit --omit=dev --package-lock-only --audit-level=high
+      - name: Collect dependency and audit evidence
+        if: always()
+        run: |
+          mkdir -p audit-reports
+          npm audit --omit=dev --package-lock-only --json > audit-reports/production-audit.json || status=$?
+          if [ "${status:-0}" -gt 1 ]; then exit "$status"; fi
+          unset status
+          npm audit --package-lock-only --json > audit-reports/all-dependencies-audit.json || status=$?
+          if [ "${status:-0}" -gt 1 ]; then exit "$status"; fi
+          npm ls --all --json > audit-reports/dependency-graph.json || status=$?
+          if [ "${status:-0}" -gt 1 ]; then exit "$status"; fi
+          sha256sum package-lock.json > audit-reports/package-lock.sha256
+          {
+            echo "commit=${GITHUB_SHA}"
+            echo "ref=${GITHUB_REF}"
+            echo "node=$(node --version)"
+            echo "npm=$(npm --version)"
+            echo 'Full audit retained intentionally to report dev-only advisories; only --omit=dev high/critical advisories block validation.'
+          } > audit-reports/provenance.txt
+      - name: Upload dependency and audit evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: dependency-audit-${{ github.sha }}
+          path: audit-reports/
+          if-no-files-found: warn

@@ -1,0 +1,70 @@
+name: Release provenance
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-provenance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-release-input:
+    # A tag-triggered run has an immutable event SHA. This workflow creates
+    # evidence only; it neither publishes a release nor deploys an artifact.
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run test:node
+      - run: npm run test:ui
+      - run: npm run build
+      - name: Fail on high or critical production dependency advisories
+        run: npm audit --omit=dev --package-lock-only --audit-level=high
+      - name: Generate release provenance evidence
+        if: always()
+        run: |
+          mkdir -p release-provenance
+          {
+            echo "event_sha=${GITHUB_SHA}"
+            echo "ref=${GITHUB_REF}"
+            echo "tag=${GITHUB_REF_NAME}"
+            echo "commit=$(git rev-parse "${GITHUB_REF_NAME}^{commit}")"
+            echo "node=$(node --version)"
+            echo "npm=$(npm --version)"
+            echo
+            echo '--- tag and commit signature evidence ---'
+            git show --show-signature --no-patch "${GITHUB_REF_NAME}" || true
+            echo
+            echo '--- validated revision ---'
+            git status --short
+          } > release-provenance/provenance.txt
+          sha256sum package-lock.json > release-provenance/package-lock.sha256
+          npm ls --all --json > release-provenance/dependency-graph.json || status=$?
+          if [ "${status:-0}" -gt 1 ]; then exit "$status"; fi
+          unset status
+          npm audit --omit=dev --package-lock-only --json > release-provenance/production-audit.json || status=$?
+          if [ "${status:-0}" -gt 1 ]; then exit "$status"; fi
+          unset status
+          npm audit --package-lock-only --json > release-provenance/all-dependencies-audit.json || status=$?
+          if [ "${status:-0}" -gt 1 ]; then exit "$status"; fi
+      - name: Upload release provenance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-provenance-${{ github.sha }}
+          path: release-provenance/
+          if-no-files-found: warn
