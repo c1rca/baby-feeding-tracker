@@ -44,7 +44,7 @@ test('state route writes resolved canonical state without sending health state t
   const res = createJsonResponse()
   app.route('PUT', '/api/state')({
     auth: { householdId: 'household-2', babyId: 'baby-2' },
-    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'dark', updatedAt: 'client-old' },
+    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'dark', updatedAt: '2026-06-10T12:31:00.000Z' },
   }, res)
 
   assert.equal(calls.upserts.length, 1)
@@ -83,7 +83,7 @@ test('state route rejects writes for babies outside the authenticated household'
   const res = createJsonResponse()
   app.route('PUT', '/api/state')({
     auth: { householdId: 'household-1', babyId: 'other-baby' },
-    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-old' },
+    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: '2026-06-10T12:31:00.000Z' },
   }, res)
 
   assert.equal(res.statusCode, 404)
@@ -113,12 +113,38 @@ test('state route rejects viewer writes before resolving or persisting state', (
   const res = createJsonResponse()
   app.route('PUT', '/api/state')({
     auth: { householdId: 'household-1', babyId: 'baby-1', role: 'viewer' },
-    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'server-old' },
+    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: '2026-06-10T12:31:00.000Z' },
   }, res)
 
   assert.equal(res.statusCode, 403)
   assert.deepEqual(res.body, { ok: false, error: 'Insufficient permissions' })
   assert.deepEqual(calls, { resolved: 0, upserts: 0, events: 0, evaluations: 0, broadcasts: 0 })
+})
+
+test('state route rejects malformed domain writes before resolving, persistence, tombstones, audit, or broadcast', () => {
+  const app = createFakeApp()
+  const calls = { resolved: 0, persisted: 0, tombstones: 0, audit: 0, evaluations: 0, broadcasts: 0 }
+  createStateRouter({
+    selectState: { get: () => ({ updated_at: 'server-old' }) },
+    upsertState: { run: () => { calls.persisted += 1 } },
+    serializeState: () => ({ entries: [] }),
+    resolveIncomingState: () => { calls.resolved += 1; return {} },
+    deletedItemOptions: () => ({}),
+    buildStateAudit: () => { calls.audit += 1; return {} },
+    recordDeletedItems: () => { calls.tombstones += 1 },
+    appendEventLog: () => {},
+    summarizeState: () => ({}),
+    notificationScheduler: { evaluate: () => { calls.evaluations += 1 } },
+    broadcastStateChange: () => { calls.broadcasts += 1 },
+    handleStateEvents: () => {},
+  })(app)
+
+  const res = createJsonResponse()
+  app.route('PUT', '/api/state')({ body: { entries: [{ id: '', type: 'bottle', startedAt: 2, endedAt: 1, leftSeconds: 0, rightSeconds: 0, bottleOunces: 1 }], theme: 'light' } }, res)
+
+  assert.equal(res.statusCode, 400)
+  assert.equal(res.body.ok, false)
+  assert.deepEqual(calls, { resolved: 0, persisted: 0, tombstones: 0, audit: 0, evaluations: 0, broadcasts: 0 })
 })
 
 test('state route falls back to the babies-row DOB when the client omits babyDob on a first write', () => {
@@ -145,7 +171,7 @@ test('state route falls back to the babies-row DOB when the client omits babyDob
   const res = createJsonResponse()
   app.route('PUT', '/api/state')({
     auth: { householdId: 'household-1', babyId: 'baby-2' },
-    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: 'client-new' }, // no babyDob
+    body: { entries: [], diapers: [], medicines: [], session: null, theme: 'light', updatedAt: '2026-06-10T12:31:00.000Z' }, // no babyDob
   }, res)
 
   assert.equal(res.body.ok, true)
