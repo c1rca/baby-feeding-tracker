@@ -2,7 +2,7 @@
 
 > A tiny, production-ready care tracker built for one-handed, low-light newborn feeding workflows.
 
-![Feedr mobile Track view in Lullaby dark mode, using anonymized demo data and a B profile initial](docs/assets/feedr-mobile-lullaby.png)
+<img src="docs/assets/feedr-mobile-lullaby.png" width="380" alt="Feedr mobile Track view in Lullaby dark mode, using anonymized demo data and a B profile initial">
 
 ## Why it exists
 
