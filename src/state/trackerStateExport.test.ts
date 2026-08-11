@@ -10,7 +10,9 @@ const state: TrackerExportState = {
   pumpSession: { id: 'pump-active', startedAt: 50, side: 'both', runningStartedAt: 50, elapsedSeconds: 0 },
   tummySession: { id: 'tummy-active', startedAt: 50, note: '', kind: 'tummy', runningStartedAt: 50, elapsedSeconds: 0 },
   tummyGoalMinutes: 35,
-  growthMeasurements: [{ id: 'growth-1', measuredAt: 20, ageMonths: 2, weightLb: 10, lengthCm: null, headCm: null }],
+  pumpGoalOunces: 0,
+  pumpGoalSessions: 0,
+  healthRecords: [], growthMeasurements: [{ id: 'growth-1', measuredAt: 20, ageMonths: 2, weightLb: 10, lengthCm: null, headCm: null }],
   babyDob: '2026-01-02',
   session: { id: 'feed-active', startedAt: 50, activeSide: 'left', segmentStart: 50, segments: [], bottleOunces: 0, note: '', diaperKinds: [] },
   theme: 'dark',
@@ -31,7 +33,7 @@ describe('tracker state exports', () => {
 
   it('migrates documented unversioned v0 entries and diapers with safe defaults', () => {
     const decoded = decodeTrackerExport(JSON.stringify({ entries: state.entries, diapers: state.diapers }))
-    expect(decoded).toEqual({ ok: true, value: expect.objectContaining({ version: 1, state: expect.objectContaining({ entries: [state.entries[1], state.entries[0]], diapers: [state.diapers[1], state.diapers[0]], medicines: [], tummyTimes: [], pumpEvents: [], pumpSession: null, tummySession: null, tummyGoalMinutes: 20, growthMeasurements: [], babyDob: '', session: null, theme: 'light' }) }) })
+    expect(decoded).toEqual({ ok: true, value: expect.objectContaining({ version: 1, state: expect.objectContaining({ entries: [state.entries[1], state.entries[0]], diapers: [state.diapers[1], state.diapers[0]], medicines: [], tummyTimes: [], pumpEvents: [], pumpSession: null, tummySession: null, tummyGoalMinutes: 20, pumpGoalOunces: 0, pumpGoalSessions: 0, growthMeasurements: [], babyDob: '', session: null, theme: 'light' }) }) })
   })
 
   it('migrates the prior flat version-one export format', () => {

@@ -64,4 +64,95 @@ describe('tummy time vs sleep separation', () => {
     ]
     expect(tummyTimeMinutesToday(tummyTimes, now)).toBe(8)
   })
+
+  it('rounds after summing short tummy-time sessions', () => {
+    const shortSessions = Array.from({ length: 10 }, (_, index) => ({
+      id: `short-${index}`, kind: 'tummy' as const, startedAt: at(9, index), endedAt: at(9, index) + 40_000,
+    }))
+
+    expect(tummyTimeMinutesToday(shortSessions, now)).toBe(7)
+  })
+})
+
+describe('buildDayRhythm day recap', () => {
+  const tummy = (id: string, startH: number, minutes: number, kind: 'tummy' | 'sleep' = 'tummy'): TummyTimeEvent =>
+    ({ id, startedAt: at(startH), endedAt: at(startH) + minutes * 60_000, note: '', kind }) as TummyTimeEvent
+
+  it('totals the day\'s tummy time and reports it against the goal', () => {
+    const recap = buildDayRhythm([], [], [tummy('t1', 9, 8), tummy('t2', 11, 7), tummy('t3', -6, 30)], now, now, { tummyGoalMinutes: 20 }).recap
+    // Only today's sessions count; yesterday's 30m must not carry the goal.
+    expect(recap.tummyMinutes).toBe(15)
+    expect(recap.tummyGoalMet).toBe(false)
+    expect(recap.tummyGoalMinutes).toBe(20)
+  })
+
+  it('marks the tummy goal met once the day reaches it', () => {
+    const recap = buildDayRhythm([], [], [tummy('t1', 9, 25)], now, now, { tummyGoalMinutes: 20 }).recap
+    expect(recap.tummyGoalMet).toBe(true)
+  })
+
+  it('never claims a goal is met when none is set', () => {
+    const recap = buildDayRhythm([], [], [tummy('t1', 9, 25)], now, now, {}).recap
+    expect(recap.tummyGoalMinutes).toBe(0)
+    expect(recap.tummyGoalMet).toBe(false)
+  })
+
+  it('counts sleep separately from tummy time', () => {
+    const recap = buildDayRhythm([], [], [tummy('t1', 9, 12), tummy('s1', 13, 45, 'sleep')], now, now, { tummyGoalMinutes: 20 }).recap
+    expect(recap.tummyMinutes).toBe(12)
+    expect(recap.sleepMinutes).toBe(45)
+  })
+
+  it('reports the latest vitamin D dose of that day, ignoring other days and other medicines', () => {
+    const medicines = [
+      { id: 'm-early', kind: 'vitamin_d' as const, at: at(8) },
+      { id: 'm-late', kind: 'vitamin_d' as const, at: at(17) },
+      { id: 'm-yesterday', kind: 'vitamin_d' as const, at: at(-4) },
+      { id: 'm-other', kind: 'tylenol' as const, at: at(19) },
+    ]
+    const recap = buildDayRhythm([], [], [], now, now, { medicines }).recap
+    // The latest dose: a caregiver asking "has she had it" should not be shown
+    // an earlier time when a second dose was given.
+    expect(recap.vitaminDAtMs).toBe(at(17))
+  })
+
+  it('leaves vitamin D unset when none was given that day', () => {
+    const recap = buildDayRhythm([], [], [], now, now, { medicines: [{ id: 'm', kind: 'vitamin_d' as const, at: at(-4) }] }).recap
+    expect(recap.vitaminDAtMs).toBeNull()
+  })
+
+  it('counts a mixed change toward both wet and stool', () => {
+    const diapers: DiaperEvent[] = [
+      { id: 'd-wet', kinds: ['wet'], at: at(9), context: 'standalone' },
+      { id: 'd-both', kinds: ['wet', 'stool'], at: at(12), context: 'standalone' },
+      { id: 'd-stool', kinds: ['stool'], at: at(13), context: 'standalone' },
+    ]
+    const recap = buildDayRhythm([], diapers, [], now, now, {}).recap
+    expect(recap.wet).toBe(2)
+    expect(recap.stool).toBe(2)
+  })
+})
+
+describe('whether the recap shows rest at all', () => {
+  const at = (h: number) => { const d = new Date(2026, 6, 20); d.setHours(h, 0, 0, 0); return d.getTime() }
+
+  it('hides rest for a household that has never logged sleep', () => {
+    const rhythm = buildDayRhythm([], [], [{ id: 't1', startedAt: at(9), endedAt: at(9) + 600_000, kind: 'tummy' }], at(14))
+    expect(rhythm.recap.showSleep).toBe(false)
+  })
+
+  it('shows rest once any sleep exists, even on a day with none', () => {
+    // Sleep logged a week earlier: it is part of this household's routine, so a
+    // day without it is a gap worth seeing rather than an irrelevant row.
+    const lastWeek = at(9) - 7 * 86_400_000
+    const rhythm = buildDayRhythm([], [], [{ id: 's1', startedAt: lastWeek, endedAt: lastWeek + 3_600_000, kind: 'sleep' }], at(14))
+    expect(rhythm.recap.sleepMinutes).toBe(0)
+    expect(rhythm.recap.showSleep).toBe(true)
+  })
+
+  it('shows rest when the day itself has sleep', () => {
+    const rhythm = buildDayRhythm([], [], [{ id: 's1', startedAt: at(13), endedAt: at(14), kind: 'sleep' }], at(15))
+    expect(rhythm.recap.sleepMinutes).toBe(60)
+    expect(rhythm.recap.showSleep).toBe(true)
+  })
 })

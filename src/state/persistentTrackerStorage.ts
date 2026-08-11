@@ -2,7 +2,9 @@ import { normalizeGrowthMeasurements } from '../domain/growth'
 import { normalizeSession } from '../domain/trackerDomain'
 import { normalizeTummyTimeGoalMinutes, TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES } from '../domain/tummyTime'
 import type { GrowthMeasurement } from '../domain/growthTypes'
-import type { DiaperEvent, Entry, LegacySession, MedicineEvent, PumpEvent, PumpSession, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
+import type { DiaperEvent, Entry, HealthRecord, LegacySession, MedicineEvent, PumpEvent, PumpSession, Theme, TummyTimeEvent, TummyTimeSession, CustomTracker, CustomEvent } from '../types'
+import { normalizeHealthRecords } from '../domain/healthRecords'
+import { normalizeCustomEvents, normalizeCustomTrackers } from '../domain/customTrackers'
 
 export const TRACKER_STORAGE_KEYS = {
   entries: 'baby-feeding-tracker:v1:entries',
@@ -18,7 +20,12 @@ export const TRACKER_STORAGE_KEYS = {
   pumpSession: 'baby-feeding-tracker:v1:pump-session',
   tummySession: 'baby-feeding-tracker:v1:tummy-session',
   tummyGoalMinutes: 'baby-feeding-tracker:v1:tummy-goal-minutes',
+  pumpGoalOunces: 'baby-feeding-tracker:v1:pump-goal-ounces',
+  pumpGoalSessions: 'baby-feeding-tracker:v1:pump-goal-sessions',
   growthMeasurements: 'baby-feeding-tracker:v1:growth-measurements',
+  healthRecords: 'baby-feeding-tracker:v1:health-records',
+  customTrackers: 'baby-feeding-tracker:v1:custom-trackers',
+  customEvents: 'baby-feeding-tracker:v1:custom-events',
   babyDob: 'baby-feeding-tracker:v1:baby-dob',
 } as const
 
@@ -47,7 +54,12 @@ export const getTrackerStorageKeys = (babyId?: string | null): TrackerStorageKey
   pumpSession: scopedKey(TRACKER_STORAGE_KEYS.pumpSession, babyId),
   tummySession: scopedKey(TRACKER_STORAGE_KEYS.tummySession, babyId),
   tummyGoalMinutes: scopedKey(TRACKER_STORAGE_KEYS.tummyGoalMinutes, babyId),
+  pumpGoalOunces: scopedKey(TRACKER_STORAGE_KEYS.pumpGoalOunces, babyId),
+  pumpGoalSessions: scopedKey(TRACKER_STORAGE_KEYS.pumpGoalSessions, babyId),
   growthMeasurements: scopedKey(TRACKER_STORAGE_KEYS.growthMeasurements, babyId),
+  healthRecords: scopedKey(TRACKER_STORAGE_KEYS.healthRecords, babyId),
+  customTrackers: scopedKey(TRACKER_STORAGE_KEYS.customTrackers, babyId),
+  customEvents: scopedKey(TRACKER_STORAGE_KEYS.customEvents, babyId),
   babyDob: scopedKey(TRACKER_STORAGE_KEYS.babyDob, babyId),
 })
 
@@ -100,6 +112,16 @@ export const readSortedGrowthMeasurements = (keys: TrackerStorageKeys = TRACKER_
   return normalizeGrowthMeasurements(parsed)
 }
 
+export const readSortedHealthRecords = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
+  return normalizeHealthRecords(safeJsonParse<HealthRecord[]>(localStorage.getItem(keys.healthRecords)) ?? [])
+}
+
+export const readCustomTrackers = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) =>
+  normalizeCustomTrackers(safeJsonParse<CustomTracker[]>(localStorage.getItem(keys.customTrackers)) ?? [])
+
+export const readCustomEvents = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) =>
+  normalizeCustomEvents(safeJsonParse<CustomEvent[]>(localStorage.getItem(keys.customEvents)) ?? [])
+
 export const readSession = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => {
   const parsed = safeJsonParse<LegacySession>(localStorage.getItem(keys.session))
   return parsed ? normalizeSession(parsed) : null
@@ -116,6 +138,9 @@ export const readBrowserRemindersEnabled = (keys: TrackerStorageKeys = TRACKER_S
 
 export const readBabyDob = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => localStorage.getItem(keys.babyDob) || '2026-06-03'
 export const readTummyGoalMinutes = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => normalizeTummyTimeGoalMinutes(localStorage.getItem(keys.tummyGoalMinutes) ?? TUMMY_TIME_DEFAULT_DAILY_GOAL_MINUTES)
+const clampPumpGoal = (raw: string | null, max: number) => { const n = Math.round(Number(raw)); return Number.isFinite(n) && n >= 0 ? Math.min(max, n) : 0 }
+export const readPumpGoalOunces = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => clampPumpGoal(localStorage.getItem(keys.pumpGoalOunces), 500)
+export const readPumpGoalSessions = (keys: TrackerStorageKeys = TRACKER_STORAGE_KEYS) => clampPumpGoal(localStorage.getItem(keys.pumpGoalSessions), 50)
 
 const getCookieTheme = (): Theme | null => {
   const match = document.cookie.match(/(?:^|; )baby_feeding_theme=([^;]+)/)
@@ -134,8 +159,36 @@ export const hasPersistedThemePreference = () => {
   return getCookieTheme() !== null || stored === 'dark' || stored === 'light'
 }
 
+
+/**
+ * Write to the local cache, tolerating a browser that refuses.
+ *
+ * These values also live in React state and sync to the server, so the cache is
+ * a convenience — losing it must never take the app down with it. Unguarded,
+ * every one of these writes ran inside a React effect, so a QuotaExceededError
+ * (or Safari private mode, or a user blocking site data) propagated to the
+ * ErrorBoundary and white-screened the whole tracker. The sync modules already
+ * treat their own writes as best-effort; this layer was the exception.
+ *
+ * Reported once, not per key: a full quota fails every write on every change,
+ * and a console full of identical warnings buries the one that mattered.
+ */
+let cacheWriteFailureReported = false
+export const writeTrackerValue = (key: string, value: string): boolean => {
+  try {
+    localStorage.setItem(key, value)
+    return true
+  } catch (error) {
+    if (!cacheWriteFailureReported) {
+      cacheWriteFailureReported = true
+      console.warn('local cache write failed; continuing from memory and the server', error)
+    }
+    return false
+  }
+}
+
 export const persistTheme = (theme: Theme) => {
-  localStorage.setItem(TRACKER_STORAGE_KEYS.theme, theme)
+  writeTrackerValue(TRACKER_STORAGE_KEYS.theme, theme)
   document.cookie = `${THEME_COOKIE}=${encodeURIComponent(theme)}; path=/; max-age=31536000; samesite=lax`
   document.documentElement.setAttribute('data-theme', theme)
 }

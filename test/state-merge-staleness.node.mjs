@@ -41,7 +41,7 @@ test('resolveIncomingState preserves persisted medicines on stale full-state wri
   assert.deepEqual(resolved.entries.map((entry) => entry.id).sort(), ['feed-1', 'feed-2'])
 })
 
-test('resolveIncomingState allows current clients to intentionally delete medicines', () => {
+test('resolveIncomingState deletes medicines only with an explicit intent', () => {
   const existingRow = {
     entries_json: JSON.stringify([]),
     diapers_json: JSON.stringify([]),
@@ -56,7 +56,7 @@ test('resolveIncomingState allows current clients to intentionally delete medici
     session: null,
     theme: 'dark',
     updatedAt: '2026-01-01T00:00:00.000Z',
-  })
+  }, { deleteIntents: { medicines: ['tylenol-1'] } })
 
   assert.equal(resolved.stale, false)
   assert.deepEqual(resolved.medicines, [])

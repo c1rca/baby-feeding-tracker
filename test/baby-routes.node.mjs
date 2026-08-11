@@ -24,7 +24,7 @@ test('baby list route returns only babies in the authenticated household', () =>
   assert.equal(res.statusCode, 200)
   assert.deepEqual(res.body, {
     ok: true,
-    babies: [{ id: 'baby-1', householdId: 'household-1', name: 'Avery', dob: '2026-01-01', archivedAt: null }],
+    babies: [{ id: 'baby-1', householdId: 'household-1', name: 'Avery', dob: '2026-01-01', sex: null, birthWeightLb: null, birthLengthCm: null, pediatricianName: null, pediatricianPhone: null, photo: null, archivedAt: null }],
   })
 })
 
@@ -45,7 +45,7 @@ test('baby create route inserts a baby scoped to the authenticated household and
   }, res)
 
   assert.equal(res.statusCode, 201)
-  assert.deepEqual(res.body, { ok: true, baby: { id: 'baby-new', householdId: 'household-1', name: 'Riley', dob: '2026-02-14', archivedAt: null } })
+  assert.deepEqual(res.body, { ok: true, baby: { id: 'baby-new', householdId: 'household-1', name: 'Riley', dob: '2026-02-14', sex: null, birthWeightLb: null, birthLengthCm: null, pediatricianName: null, pediatricianPhone: null, photo: null, archivedAt: null } })
   assert.deepEqual(calls.inserts, [{
     id: 'baby-new',
     household_id: 'household-1',
@@ -161,4 +161,98 @@ test('baby archive route rejects viewer role without archiving', () => {
   assert.equal(res.statusCode, 403)
   assert.deepEqual(res.body, { ok: false, error: 'Insufficient permissions' })
   assert.deepEqual(calls, { archives: 0, events: 0 })
+})
+
+function mountProfileRouter(row = { id: 'baby-1', household_id: 'household-1', name: 'Avery', dob: '2026-01-01', archived_at: null }) {
+  const calls = { patches: [] }
+  const app = mountRouter({
+    updateBabyProfile: { run: (patch) => { calls.patches.push(patch); return { changes: 1 } } },
+    selectBabyForHousehold: { get: () => ({ ...row, ...calls.patches.at(-1) && {} }) },
+  })
+  return { app, calls }
+}
+
+test('baby patch route stores the profile fields alongside the name', () => {
+  const { app, calls } = mountProfileRouter()
+  const res = createJsonResponse()
+
+  app.route('PATCH', '/api/babies/:id')({
+    auth: { householdId: 'household-1', role: 'owner', userId: 'user-1' },
+    params: { id: 'baby-1' },
+    body: { name: 'Avery', sex: 'female', birthWeightLb: 7.5, birthLengthCm: 50.5, pediatricianName: 'Dr Chen', pediatricianPhone: '555-0100' },
+  }, res)
+
+  assert.equal(res.statusCode, 200)
+  assert.deepEqual(calls.patches, [{
+    id: 'baby-1',
+    household_id: 'household-1',
+    name: 'Avery',
+    dob: null,
+    sex: 'female',
+    birth_weight_lb: 7.5,
+    birth_length_cm: 50.5,
+    pediatrician_name: 'Dr Chen',
+    pediatrician_phone: '555-0100',
+    photo: null,
+  }])
+})
+
+test('an omitted profile field is left unchanged rather than blanked', () => {
+  const { app, calls } = mountProfileRouter()
+  const res = createJsonResponse()
+
+  app.route('PATCH', '/api/babies/:id')({
+    auth: { householdId: 'household-1', role: 'owner' },
+    params: { id: 'baby-1' },
+    body: { name: 'Avery' },
+  }, res)
+
+  assert.equal(res.statusCode, 200)
+  // Nulls tell the COALESCE update to keep the stored value.
+  const patch = calls.patches[0]
+  assert.equal(patch.sex, null)
+  assert.equal(patch.birth_weight_lb, null)
+  assert.equal(patch.pediatrician_name, null)
+})
+
+test('baby patch route rejects an unknown sex and negative birth measurements', () => {
+  const { app, calls } = mountProfileRouter()
+
+  const badSex = createJsonResponse()
+  app.route('PATCH', '/api/babies/:id')({ auth: { householdId: 'household-1', role: 'owner' }, params: { id: 'baby-1' }, body: { name: 'Avery', sex: 'unknown' } }, badSex)
+  assert.equal(badSex.statusCode, 400)
+  assert.deepEqual(badSex.body, { ok: false, error: 'Baby sex must be female or male' })
+
+  const badWeight = createJsonResponse()
+  app.route('PATCH', '/api/babies/:id')({ auth: { householdId: 'household-1', role: 'owner' }, params: { id: 'baby-1' }, body: { name: 'Avery', birthWeightLb: -2 } }, badWeight)
+  assert.equal(badWeight.statusCode, 400)
+
+  const badDob = createJsonResponse()
+  app.route('PATCH', '/api/babies/:id')({ auth: { householdId: 'household-1', role: 'owner' }, params: { id: 'baby-1' }, body: { name: 'Avery', dob: 'nope' } }, badDob)
+  assert.equal(badDob.statusCode, 400)
+
+  assert.equal(calls.patches.length, 0)
+})
+
+test('baby patch route accepts a small avatar and rejects anything else', () => {
+  const tinyJpeg = `data:image/jpeg;base64,${'A'.repeat(400)}`
+  const { app, calls } = mountProfileRouter()
+
+  const ok = createJsonResponse()
+  app.route('PATCH', '/api/babies/:id')({ auth: { householdId: 'household-1', role: 'owner' }, params: { id: 'baby-1' }, body: { name: 'Avery', photo: tinyJpeg } }, ok)
+  assert.equal(ok.statusCode, 200)
+  assert.equal(calls.patches[0].photo, tinyJpeg)
+
+  // An empty string is the explicit "remove the photo" signal.
+  const cleared = createJsonResponse()
+  app.route('PATCH', '/api/babies/:id')({ auth: { householdId: 'household-1', role: 'owner' }, params: { id: 'baby-1' }, body: { name: 'Avery', photo: '' } }, cleared)
+  assert.equal(cleared.statusCode, 200)
+  assert.equal(calls.patches[1].photo, '')
+
+  for (const bad of ['https://example.com/pic.jpg', 'data:text/html;base64,AAAA', `data:image/jpeg;base64,${'A'.repeat(200000)}`]) {
+    const res = createJsonResponse()
+    app.route('PATCH', '/api/babies/:id')({ auth: { householdId: 'household-1', role: 'owner' }, params: { id: 'baby-1' }, body: { name: 'Avery', photo: bad } }, res)
+    assert.equal(res.statusCode, 400, `expected rejection for ${bad.slice(0, 40)}`)
+  }
+  assert.equal(calls.patches.length, 2)
 })

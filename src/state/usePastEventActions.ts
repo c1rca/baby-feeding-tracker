@@ -2,11 +2,12 @@ import type { Dispatch, SetStateAction } from 'react'
 import { sortEntriesLatestFirst } from '../domain/trackerDomain'
 import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, TummyTimeEvent } from '../types'
 import { createDefaultPastEventDraft, parsePastEventDraft, type PastEventDraft } from './pastEventModels'
+import { type VolumeUnit } from '../domain/units'
 
-type Options = { now: number; draft: PastEventDraft; setDraft: Dispatch<SetStateAction<PastEventDraft>>; setOpen: Dispatch<SetStateAction<boolean>>; setEntries: Dispatch<SetStateAction<Entry[]>>; setDiapers: Dispatch<SetStateAction<DiaperEvent[]>>; setMedicines: Dispatch<SetStateAction<MedicineEvent[]>>; setTummyTimes: Dispatch<SetStateAction<TummyTimeEvent[]>>; setPumpEvents: Dispatch<SetStateAction<PumpEvent[]>>; showToast: (message: string) => void }
-export function usePastEventActions({ now, draft, setDraft, setOpen, setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, showToast }: Options) {
+type Options = { now: number; draft: PastEventDraft; setDraft: Dispatch<SetStateAction<PastEventDraft>>; setOpen: Dispatch<SetStateAction<boolean>>; setEntries: Dispatch<SetStateAction<Entry[]>>; setDiapers: Dispatch<SetStateAction<DiaperEvent[]>>; setMedicines: Dispatch<SetStateAction<MedicineEvent[]>>; setTummyTimes: Dispatch<SetStateAction<TummyTimeEvent[]>>; setPumpEvents: Dispatch<SetStateAction<PumpEvent[]>>; showToast: (message: string) => void; volumeUnit?: VolumeUnit }
+export function usePastEventActions({ now, draft, setDraft, setOpen, setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, showToast, volumeUnit = 'oz' }: Options) {
   const savePastEvent = () => {
-    const result = parsePastEventDraft(draft, now)
+    const result = parsePastEventDraft(draft, now, volumeUnit)
     if (!result.ok) return showToast(result.reason === 'future-date' ? 'Past events cannot be in the future' : result.reason === 'empty' ? 'Add the required event details' : 'Enter a valid date and time')
     const { kind, event } = result.event
     if (kind === 'feed') setEntries((items) => sortEntriesLatestFirst([event, ...items]))

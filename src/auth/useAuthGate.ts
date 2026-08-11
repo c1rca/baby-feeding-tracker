@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
-import { fetchAuthSession, loginWithPassword, logoutSession, signupWithPassword, confirmTextLogin, type AuthUser, type SignupInput } from './authApi'
-import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken, consumeAuthCodeFromUrl, consumeAuthErrorFromUrl, hasPendingAuth, storeAuthToken } from './authSession'
+import { fetchAuthSession, loginWithPassword, loginWithPasskey, logoutSession, signupWithPassword, confirmTextLogin, redeemHouseholdInvite, type AuthUser, type SignupInput } from './authApi'
+import { AUTH_UNAUTHORIZED_EVENT, clearAuthToken, consumeAuthCodeFromUrl, consumeAuthErrorFromUrl, consumeInviteTokenFromUrl, hasPendingAuth, storeAuthToken } from './authSession'
 
 type AuthGateStatus = 'checking' | 'ready' | 'login'
 
@@ -13,6 +13,9 @@ export function useAuthGate() {
   const [epoch, setEpoch] = useState(0)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sessionUnavailable, setSessionUnavailable] = useState(false)
+  const [retryTick, setRetryTick] = useState(0)
+  const [inviteToken, setInviteToken] = useState<string | null>(() => consumeInviteTokenFromUrl())
 
   const requireLogin = useCallback(() => {
     clearAuthToken()
@@ -23,6 +26,7 @@ export function useAuthGate() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
+      setSessionUnavailable(false)
       // A Google sign-in that bounced back with an error goes straight to the
       // login screen with a human-readable reason.
       const authError = consumeAuthErrorFromUrl()
@@ -39,13 +43,17 @@ export function useAuthGate() {
       if (result.kind === 'unauthorized') requireLogin()
       else {
         if (result.kind === 'ok') setAuthUser(result.user)
+        // The server being unreachable must not block entry — local data and
+        // the offline queue are the point of this app. It is surfaced instead
+        // so the state is visible rather than silently anonymous.
+        setSessionUnavailable(result.kind === 'unavailable')
         setStatus('ready')
       }
     })()
     return () => {
       cancelled = true
     }
-  }, [requireLogin])
+  }, [requireLogin, retryTick])
 
   useEffect(() => {
     window.addEventListener(AUTH_UNAUTHORIZED_EVENT, requireLogin)
@@ -78,6 +86,27 @@ export function useAuthGate() {
       return
     }
     await completeTokenLogin(result.token, 'Sign in failed')
+  }, [completeTokenLogin])
+
+  const acceptInvite = useCallback(async (email: string, password: string, displayName: string) => {
+    if (!inviteToken) return
+    setPending(true)
+    setError(null)
+    const result = await redeemHouseholdInvite({ token: inviteToken, email, password, displayName })
+    if (!result.ok) {
+      setError(result.error)
+      setPending(false)
+      return
+    }
+    setInviteToken(null)
+    await completeTokenLogin(result.token, 'Invite accepted, but sign in failed')
+  }, [completeTokenLogin, inviteToken])
+
+  const loginPasskey = useCallback(async (staySignedIn: boolean) => {
+    setPending(true); setError(null)
+    const result = await loginWithPasskey(staySignedIn)
+    if (!result.ok) { setError(result.error); setPending(false); return }
+    await completeTokenLogin(result.token, 'Passkey sign-in failed')
   }, [completeTokenLogin])
 
   const loginWithTextCode = useCallback(async (code: string) => {
@@ -116,5 +145,10 @@ export function useAuthGate() {
     requireLogin()
   }, [requireLogin])
 
-  return { status, authUser, epoch, pending, error, login, loginWithTextCode, signup, logout, refreshAuth }
+  const retrySession = useCallback(() => {
+    setStatus('checking')
+    setRetryTick((value) => value + 1)
+  }, [])
+
+  return { status, authUser, epoch, pending, error, sessionUnavailable, inviteToken, retrySession, login, acceptInvite, loginPasskey, loginWithTextCode, signup, logout, refreshAuth }
 }

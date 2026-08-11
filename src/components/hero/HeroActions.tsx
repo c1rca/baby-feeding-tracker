@@ -27,7 +27,10 @@ export function HeroActions({
   clearIcon,
 }: HeroActionsProps) {
   return (
-    <div className="row hero-actions">
+    // The modifier scopes the one-row sizing to an active feed. The idle Start
+    // pair keeps its natural widths, where the jumbo primary is meant to
+    // dominate rather than share the row evenly.
+    <div className={`row hero-actions${session && !tummySession && !pumpSession ? ' hero-actions--active' : ''}`}>
       {tummySession || pumpSession ? null : !session ? (
         <>
           <button className="primary jumbo" aria-label={`Start suggested side: ${sideLabel(suggestedSide)}`} onClick={() => startSession(suggestedSide)}>Start {sideLabel(suggestedSide)}</button>

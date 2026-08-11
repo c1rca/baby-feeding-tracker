@@ -684,3 +684,90 @@ test('login route stays unavailable until auth is enabled', () => {
   assert.equal(res.statusCode, 404)
   assert.deepEqual(res.body, { ok: false, error: 'Authentication is not enabled' })
 })
+
+
+test('passkey authentication consumes a short-lived challenge, verifies the credential, and can mint a revocable persistent session', async () => {
+  const calls = { challenges: [], consumed: [], sessions: [], events: [] }
+  const challenge = { id: 'challenge-1', user_id: 'user-1', challenge: 'challenge-value', expires_at: '2026-01-01T00:05:00.000Z', consumed_at: null }
+  const app = mountRouter({
+    authRequired: true,
+    rpID: 'app.test', rpName: 'Feedr', expectedOrigin: 'https://app.test',
+    generateAuthenticationOptions: async () => ({ challenge: 'challenge-value', rpId: 'app.test' }),
+    verifyAuthenticationResponse: async () => ({ verified: true, authenticationInfo: { newCounter: 8 } }),
+    selectPasskeyByCredentialId: { get: () => ({ id: 'passkey-1', user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1]), counter: 7, transports_json: '[]' }) },
+    insertWebAuthnChallenge: { run: (row) => calls.challenges.push(row) },
+    selectWebAuthnChallenge: { get: () => challenge },
+    consumeWebAuthnChallenge: { run: (row) => { calls.consumed.push(row); challenge.consumed_at = row.consumed_at; return { changes: 1 } } },
+    updatePasskeyCounter: { run: () => {} },
+    insertSession: { run: (row) => calls.sessions.push(row) },
+    selectUserById: { get: () => ({ id: 'user-1', email: 'parent@example.com', display_name: 'Parent' }) },
+    tokenFactory: () => 'persistent-token', idFactory: () => 'row-id', appendEventLog: (event, payload) => calls.events.push({ event, payload }),
+    now: () => new Date('2026-01-01T00:00:00.000Z'),
+  })
+  const options = createJsonResponse()
+  await app.route('POST', '/api/auth/passkeys/authentication/options')({ body: {} }, options)
+  assert.equal(options.statusCode, 200)
+  assert.equal(calls.challenges[0].purpose, 'authentication')
+  const verified = createJsonResponse()
+  await app.route('POST', '/api/auth/passkeys/authentication/verify')({ body: { response: { id: 'credential-1' }, staySignedIn: true } }, verified)
+  assert.equal(verified.statusCode, 200)
+  assert.equal(verified.body.token, 'persistent-token')
+  assert.equal(verified.body.persistent, true)
+  assert.equal(calls.sessions[0].expires_at, '9999-12-31T23:59:59.999Z')
+  assert.equal(calls.consumed.length, 1)
+  assert.deepEqual(calls.events, [{ event: 'auth_passkey_login', payload: { userId: 'user-1', persistent: true } }])
+})
+
+test('passkey authentication rejects expired or replayed challenges without creating a session', async () => {
+  let sessions = 0
+  const app = mountRouter({ authRequired: true, rpID: 'app.test', expectedOrigin: 'https://app.test',
+    selectPasskeyByCredentialId: { get: () => ({ user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1]), counter: 0, transports_json: '[]' }) },
+    selectWebAuthnChallenge: { get: () => ({ challenge: 'old', expires_at: '2025-12-31T23:59:59.000Z', consumed_at: null }) },
+    insertSession: { run: () => { sessions += 1 } }, now: () => new Date('2026-01-01T00:00:00.000Z') })
+  const res = createJsonResponse()
+  await app.route('POST', '/api/auth/passkeys/authentication/verify')({ body: { response: { id: 'credential-1' } } }, res)
+  assert.equal(res.statusCode, 401)
+  assert.equal(sessions, 0)
+})
+
+test('an authenticated caregiver can enroll a passkey which is persisted and can subsequently sign in', async () => {
+  const calls = { challenges: [], consumed: [], passkeys: [], sessions: [], events: [] }
+  let registrationChallenge = null
+  let persistedPasskey = null
+  const app = mountRouter({
+    authRequired: true, rpID: 'app.test', rpName: 'Feedr', expectedOrigin: 'https://app.test',
+    selectUserById: { get: () => ({ id: 'user-1', email: 'parent@example.com', display_name: 'Parent' }) },
+    generateRegistrationOptions: async (options) => ({ challenge: 'registration-challenge', user: { name: options.userName } }),
+    verifyRegistrationResponse: async ({ expectedChallenge }) => ({ verified: expectedChallenge === 'registration-challenge', registrationInfo: { credential: { id: 'credential-1', publicKey: new Uint8Array([1, 2, 3]), counter: 7, transports: ['internal'] } } }),
+    generateAuthenticationOptions: async () => ({ challenge: 'authentication-challenge', rpId: 'app.test' }),
+    verifyAuthenticationResponse: async ({ credential }) => ({ verified: credential.id === 'credential-1', authenticationInfo: { newCounter: 8 } }),
+    insertWebAuthnChallenge: { run: (row) => { calls.challenges.push(row); registrationChallenge = row; return { changes: 1 } } },
+    selectWebAuthnChallenge: { get: ({ purpose }) => purpose === 'registration' ? registrationChallenge : calls.challenges.find((row) => row.purpose === 'authentication') },
+    consumeWebAuthnChallenge: { run: (row) => { calls.consumed.push(row); return { changes: 1 } } },
+    insertPasskey: { run: (row) => { calls.passkeys.push(row); persistedPasskey = row; return { changes: 1 } } },
+    selectPasskeyByCredentialId: { get: (credentialId) => credentialId === persistedPasskey?.credential_id ? persistedPasskey : null },
+    updatePasskeyCounter: { run: () => {} },
+    insertSession: { run: (row) => calls.sessions.push(row) }, tokenFactory: () => 'passkey-token', idFactory: () => `id-${calls.challenges.length + calls.passkeys.length + calls.sessions.length}`,
+    appendEventLog: (event, payload) => calls.events.push({ event, payload }), now: () => new Date('2026-01-01T00:00:00.000Z'),
+  })
+
+  const options = createJsonResponse()
+  await app.route('POST', '/api/auth/passkeys/registration/options')({ auth: { mode: 'session', userId: 'user-1' } }, options)
+  assert.equal(options.statusCode, 200)
+  assert.equal(options.body.options.user.name, 'parent@example.com')
+  assert.equal(calls.challenges[0].purpose, 'registration')
+  assert.equal(calls.challenges[0].user_id, 'user-1')
+
+  const enrolled = createJsonResponse()
+  await app.route('POST', '/api/auth/passkeys/registration/verify')({ auth: { mode: 'session', userId: 'user-1' }, body: { response: { id: 'credential-1' } } }, enrolled)
+  assert.equal(enrolled.statusCode, 201)
+  assert.deepEqual(calls.passkeys[0], { id: 'id-1', user_id: 'user-1', credential_id: 'credential-1', public_key: Buffer.from([1, 2, 3]), counter: 7, transports_json: '["internal"]', created_at: '2026-01-01T00:00:00.000Z', last_used_at: null })
+
+  const authenticationOptions = createJsonResponse()
+  await app.route('POST', '/api/auth/passkeys/authentication/options')({ body: {} }, authenticationOptions)
+  const signedIn = createJsonResponse()
+  await app.route('POST', '/api/auth/passkeys/authentication/verify')({ body: { response: { id: 'credential-1' } } }, signedIn)
+  assert.equal(signedIn.statusCode, 200)
+  assert.equal(signedIn.body.token, 'passkey-token')
+  assert.deepEqual(calls.events, [{ event: 'auth_passkey_enrolled', payload: { userId: 'user-1' } }, { event: 'auth_passkey_login', payload: { userId: 'user-1', persistent: false } }])
+})

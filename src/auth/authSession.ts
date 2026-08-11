@@ -42,10 +42,26 @@ const stripAuthParamsFromUrl = () => {
     const url = new URL(window.location.href)
     url.searchParams.delete('auth_token')
     url.searchParams.delete('auth_error')
+    url.searchParams.delete('invite')
     url.hash = ''
     window.history.replaceState({}, '', `${url.pathname}${url.search}`)
   } catch {
     // A history failure is cosmetic; the token is already stored.
+  }
+}
+
+// New invite links use the fragment, keeping the one-time token out of proxy
+// logs. Query-string links remain redeemable during the rollout, then are
+// immediately removed from browser history.
+export const consumeInviteTokenFromUrl = (): string | null => {
+  try {
+    const url = new URL(window.location.href)
+    const hash = url.hash.startsWith('#') ? url.hash.slice(1) : url.hash
+    const token = new URLSearchParams(hash).get('invite') || url.searchParams.get('invite')
+    if (token) stripAuthParamsFromUrl()
+    return token || null
+  } catch {
+    return null
   }
 }
 

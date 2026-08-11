@@ -3,6 +3,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci
 COPY . .
+# Vite inlines VITE_* at build time, so the backup-log endpoint has to be known
+# here rather than at boot. Empty by default: a build that was not given an
+# endpoint ships with action logging disabled.
+ARG VITE_ACTION_LOG_URL=""
+ENV VITE_ACTION_LOG_URL=$VITE_ACTION_LOG_URL
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime

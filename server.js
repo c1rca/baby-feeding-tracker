@@ -4,17 +4,22 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createAuthMiddleware, createAuthRouter, createAuthSessionRouter } from './server/auth.js'
 import { buildStateAudit } from './server/auditLog.js'
-import { createDiagnosticsRouter, createHealthRouter, createHouseholdRouter, createInviteRouter, createMemberRouter, createNotificationSettingsRouter, createStateRouter, createBabyRouter } from './server/apiRoutes.js'
+import { createDiagnosticsRouter, createHealthRouter, createHouseholdRouter, createInviteRouter, createMemberRouter, createNotificationSettingsRouter, createStateRouter, createBabyRouter, createDebugLogRouter } from './server/apiRoutes.js'
+import { createActionLogForwarder } from './server/actionLogForwarder.js'
 import { openTrackerDatabase, prepareTrackerStatements, DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID } from './server/database.js'
 
 import { createSmtpSender, createTextEmailSender, createTrackerNotificationScheduler } from './server/notificationRuntime.js'
 import { normalizeMedicineReminderSettings, normalizeNotificationPreferences } from './server/notificationModels.js'
 import { createRuntimeConfig } from './server/runtimeConfig.js'
+import { createApiCompression } from './server/apiCompression.js'
 import { createSecurityHeaders } from './server/securityHeaders.js'
-import { createDeletedItemOptionsReader, createDeletedItemRecorder, serializeState } from './server/stateStore.js'
+import { createStaticAssets } from './server/staticAssets.js'
+import { createDeletedItemOptionsReader, createDeletedItemRecorder, createDeletedItemRestorer, serializeState } from './server/stateStore.js'
 import { createStateEventHub } from './server/stateEvents.js'
 import { resolveIncomingState } from './server/stateMerge.js'
 import { createStartupBackup } from './server/startup.js'
+import { createBackupTransport } from './server/backupTransport.js'
+import { createAiCareAssistantRouter } from './server/aiCareAssistant.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -23,7 +28,7 @@ const app = express()
 const config = createRuntimeConfig({ rootDir: __dirname })
 const db = openTrackerDatabase(config)
 const statements = prepareTrackerStatements(db)
-const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectHouseholdSetting, upsertHouseholdSetting, selectDeletedItems, upsertDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, renameBaby, archiveBaby, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions, revokeUserSessions } = statements
+const { selectState, upsertState, selectStateForBaby, selectAllBabyStates, upsertStateForBaby, getNotificationState, upsertNotificationState, selectSetting, upsertSetting, selectHouseholdSetting, upsertHouseholdSetting, selectDeletedItems, upsertDeletedItem, deleteDeletedItem, selectSessionContext, selectMembershipsByUser, selectMembersByHousehold, updateMemberRole, removeMember, insertHousehold, insertHouseholdMember, insertEmptyBabyState, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, selectUserById, updateUserPassword, selectBabiesByHousehold, selectBabyForHousehold, insertBaby, renameBaby, updateBabyProfile, archiveBaby, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertWebAuthnChallenge, selectWebAuthnChallenge, consumeWebAuthnChallenge, selectPasskeyByCredentialId, selectPasskeysByUser, insertPasskey, updatePasskeyCounter, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, selectActiveInvitesByHousehold, selectInviteByEmail, selectInviteByToken, insertInvite, acceptInvite, revokeInvite, revokeSession, revokeOtherUserSessions, revokeUserSessions } = statements
 // Compatibility bridge while route modules still accept an event sink. Routine
 // health and account events must not be written to a reconstructable disk log.
 const appendEventLog = () => {}
@@ -146,7 +151,8 @@ const notificationScheduler = createTrackerNotificationScheduler({
 
 const deletedItemOptions = createDeletedItemOptionsReader(selectDeletedItems)
 const recordDeletedItems = createDeletedItemRecorder(upsertDeletedItem)
-const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt) => {
+const restoreDeletedItems = createDeletedItemRestorer(deleteDeletedItem)
+const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt, restores = {}) => {
   upsertStateForBaby.run(statePayload)
   // The legacy single row keeps mirroring the default baby so pre-scoping
   // builds (and a prod rollback) still read current data. RETIREMENT: safe to
@@ -156,9 +162,11 @@ const writeStateAndDeletedItems = db.transaction((statePayload, audit, updatedAt
   // Until then it is the rollback safety net and must stay.
   if (statePayload.household_id === DEFAULT_HOUSEHOLD_ID && statePayload.baby_id === DEFAULT_BABY_ID) upsertState.run(statePayload)
   recordDeletedItems(audit, updatedAt, { householdId: statePayload.household_id, babyId: statePayload.baby_id })
+  restoreDeletedItems(restores, { householdId: statePayload.household_id, babyId: statePayload.baby_id })
 })
 const { broadcastStateChange, handleStateEvents } = createStateEventHub({ selectState, selectStateForBaby, serializeState, selectBabyForHousehold })
-const createBackupOnStart = createStartupBackup({ dbPath: config.dbPath, backupDir: config.backupDir })
+const backupTransport = createBackupTransport({ encryptionArgs: config.backupEncryptArgs, uploadArgs: config.backupUploadArgs })
+const createBackupOnStart = createStartupBackup({ dbPath: config.dbPath, backupDir: config.backupDir, transport: backupTransport })
 
 const checkDatabaseReady = () => {
   try {
@@ -176,23 +184,49 @@ if (config.trustProxy) app.set('trust proxy', /^\d+$/.test(config.trustProxy) ? 
 // if auth is required this is an exposed instance over HTTPS, so forgetting
 // NODE_ENV no longer silently drops the header.
 app.use(createSecurityHeaders({ hsts: config.isProduction || config.authRequired }))
-app.use(express.json({ limit: '1mb' }))
+// Sync is whole-state: every write carries the household's entire history, so
+// this ceiling is a hard stop on how much history the app can hold, not a
+// throttle. Measured on the live household at 1,220 records the payload is
+// ~238 KB — roughly 195 bytes a record, growing about 20 records a day. 1 MB
+// was about seven months away, and crossing it does not degrade anything: every
+// write 413s, forever, on a body the client cannot make smaller.
+//
+// 8 MB buys years rather than months. It is runway, not a fix — the real answer
+// is the per-event sync protocol, which stops sending the whole history at all.
+// Until then a rejection at least surfaces honestly (see useServerSync's
+// permanent-rejection branch) instead of reading as "Offline changes saved".
+app.use(express.json({ limit: '8mb' }))
+// The flip side of whole-state sync: that same payload was also being *sent*
+// uncompressed on every cold load. See server/apiCompression.js for why the
+// event stream is explicitly excluded rather than left to the default filter.
+app.use('/api', createApiCompression())
 const createHousehold = db.transaction(({ userId, householdId, householdName, babyId, babyName, babyDob, createdAt }) => {
   insertHousehold.run({ id: householdId, name: householdName, created_at: createdAt })
   insertHouseholdMember.run({ user_id: userId, household_id: householdId, role: 'owner', created_at: createdAt })
   insertBaby.run({ id: babyId, household_id: householdId, name: babyName, dob: babyDob, archived_at: null, created_at: createdAt })
   insertEmptyBabyState.run({ household_id: householdId, baby_id: babyId, baby_dob: babyDob || null, updated_at: createdAt })
 })
+const acceptHouseholdInvite = db.transaction(({ invite, user, newUser, acceptedAt }) => {
+  const accepted = acceptInvite.run({ id: invite.id, accepted_at: acceptedAt })
+  if (!accepted.changes) return accepted
+  if (newUser?.kind === 'phone') insertPhoneUser.run(newUser)
+  else if (newUser) insertPasswordUser.run(newUser)
+  insertHouseholdMember.run({ user_id: user.id, household_id: invite.household_id, role: invite.role, created_at: acceptedAt })
+  return accepted
+})
 createHealthRouter({ checkDatabaseReady })(app)
-createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, allowedPhones: config.allowedPhones, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectMembershipsByUser, selectInviteByToken, insertHouseholdMember, acceptInvite, selectSessionContext, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, sendEmailLogin, sendPasswordReset, textLoginAvailable: config.textLoginAvailable, emailLoginAvailable: config.emailLoginAvailable, baseUrl: config.publicBaseUrl, sessionTtlDays: config.sessionTtlDays, loginCodePepper: config.loginCodePepper })(app)
+const passkeyOrigin = (() => { try { return new URL(config.publicBaseUrl).origin } catch { return '' } })()
+const passkeyRpID = passkeyOrigin ? new URL(passkeyOrigin).hostname : ''
+createAuthRouter({ authRequired: config.authRequired, googleAuth: config.googleAuth, allowedEmails: config.allowedEmails, allowedPhones: config.allowedPhones, selectUserByEmail, selectUserByPhone, selectUserByGoogleSub, upsertGoogleUser, insertPasswordUser, insertPhoneUser, createSignupHousehold: createHousehold, selectMembershipsByUser, selectInviteByToken, insertHouseholdMember, acceptInvite, acceptInviteTransaction: acceptHouseholdInvite, selectSessionContext, insertSession, insertLoginCode, expireLoginCodesForUser, selectLoginCode, consumeLoginCode, insertPasswordResetCode, selectPasswordResetCode, consumePasswordResetCode, updateUserPassword, revokeUserSessions, selectUserById, appendEventLog, sendTextLogin, sendEmailLogin, sendPasswordReset, textLoginAvailable: config.textLoginAvailable, emailLoginAvailable: config.emailLoginAvailable, baseUrl: config.publicBaseUrl, sessionTtlDays: config.sessionTtlDays, loginCodePepper: config.loginCodePepper, rpID: passkeyRpID, expectedOrigin: passkeyOrigin, insertWebAuthnChallenge, selectWebAuthnChallenge, consumeWebAuthnChallenge, selectPasskeyByCredentialId, selectPasskeysByUser, insertPasskey, updatePasskeyCounter })(app)
 app.use('/api', createAuthMiddleware({ authRequired: config.authRequired, authBypass: config.authBypass, selectSessionContext, selectBabyForHousehold }))
 createAuthSessionRouter({ revokeSession, revokeOtherUserSessions, selectUserById, selectMembershipsByUser, updateUserPassword, appendEventLog })(app)
-createBabyRouter({ selectBabiesByHousehold, insertBaby, insertEmptyBabyState, renameBaby, archiveBaby, appendEventLog })(app)
+createBabyRouter({ selectBabiesByHousehold, selectBabyForHousehold, insertBaby, insertEmptyBabyState, renameBaby, updateBabyProfile, archiveBaby, appendEventLog })(app)
 createMemberRouter({ selectMembersByHousehold, updateMemberRole, removeMember, appendEventLog })(app)
 createInviteRouter({ selectActiveInvitesByHousehold, selectInviteByEmail, insertInvite, revokeInvite, appendEventLog, sendInvite, baseUrl: config.publicBaseUrl })(app)
 createHouseholdRouter({ selectMembershipsByUser, createHousehold, appendEventLog })(app)
 
 createDiagnosticsRouter({ config, getGotifyRemindersEnabled })(app)
+createAiCareAssistantRouter({ apiKey: config.openaiApiKey, selectStateForBaby })(app)
 createNotificationSettingsRouter({
   config,
   getGotifyRemindersEnabled,
@@ -205,6 +239,14 @@ createNotificationSettingsRouter({
   appendEventLog,
   notificationScheduler,
 })(app)
+// Off unless ACTION_LOG_URL is set, so a deployment without a backup log
+// behaves exactly as before.
+const actionLogForwarder = createActionLogForwarder({
+  url: process.env.ACTION_LOG_URL,
+  log: (message) => console.warn(message),
+})
+if (actionLogForwarder.enabled) console.log(`action log forwarding to: ${process.env.ACTION_LOG_URL}`)
+
 createStateRouter({
   selectState,
   upsertState,
@@ -219,12 +261,18 @@ createStateRouter({
   broadcastStateChange,
   handleStateEvents,
   selectBabyForHousehold,
+  forwardActionLog: actionLogForwarder.forward,
 })(app)
+
+createDebugLogRouter({ forwardActionLog: actionLogForwarder.forward })(app)
 
 const distPath = path.join(__dirname, 'dist')
 if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath))
+  app.use(createStaticAssets({ distPath }))
   app.get(/^(?!\/api).*/, (_req, res) => {
+    // The SPA fallback must revalidate for the same reason index.html does:
+    // it is the document that names the current hashed bundle.
+    res.set('Cache-Control', 'no-cache')
     res.sendFile(path.join(distPath, 'index.html'))
   })
 }

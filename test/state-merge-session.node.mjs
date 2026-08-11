@@ -27,6 +27,81 @@ test('resolveIncomingState preserves existing server session on stale null-sessi
   assert.deepEqual(resolved.entries.map((entry) => entry.id).sort(), ['local-feed', 'server-feed'])
 })
 
+test('resolveIncomingState accepts a stale pause for the same active session', () => {
+  const existingSession = { id: 'session-1', startedAt: 1000, activeSide: 'right', segmentStart: 1000, segments: [], bottleOunces: 0, note: '', diaperKinds: [] }
+  const pausedSession = { ...existingSession, activeSide: null, segmentStart: null, segments: [{ side: 'right', startedAt: 1000, endedAt: 2000 }] }
+  const existingRow = {
+    entries_json: JSON.stringify([]),
+    diapers_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([]),
+    session_json: JSON.stringify(existingSession),
+    theme: 'light',
+    updated_at: 'server-v2',
+  }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [],
+    diapers: [],
+    medicines: [],
+    session: pausedSession,
+    theme: 'light',
+    updatedAt: 'server-v1',
+  })
+
+  assert.equal(resolved.stale, true)
+  assert.deepEqual(resolved.session, pausedSession)
+})
+
+test('resolveIncomingState keeps a resumed session over an older stale pause', () => {
+  const existingSession = { id: 'session-1', startedAt: 1000, activeSide: 'left', segmentStart: 3000, segments: [{ side: 'right', startedAt: 1000, endedAt: 2000 }], bottleOunces: 0, note: '', diaperKinds: [] }
+  const olderPausedSession = { ...existingSession, activeSide: null, segmentStart: null }
+  const existingRow = {
+    entries_json: JSON.stringify([]),
+    diapers_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([]),
+    session_json: JSON.stringify(existingSession),
+    theme: 'light',
+    updated_at: 'server-v2',
+  }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [],
+    diapers: [],
+    medicines: [],
+    session: olderPausedSession,
+    theme: 'light',
+    updatedAt: 'server-v1',
+  })
+
+  assert.deepEqual(resolved.session, existingSession)
+})
+
+test('resolveIncomingState accepts a stale completion for the matching active session', () => {
+  const existingSession = { id: 'session-1', startedAt: 1000, activeSide: 'right', segmentStart: 1000, segments: [], bottleOunces: 0, note: '', diaperKinds: [] }
+  const existingRow = {
+    entries_json: JSON.stringify([]),
+    diapers_json: JSON.stringify([]),
+    medicines_json: JSON.stringify([]),
+    session_json: JSON.stringify(existingSession),
+    theme: 'light',
+    updated_at: 'server-v2',
+  }
+  const completedEntry = { id: 'feed-1', sourceSessionId: 'session-1', type: 'breast', startedAt: 1000, endedAt: 2000, leftSeconds: 0, rightSeconds: 1000, bottleOunces: null, diaperKinds: [] }
+
+  const resolved = resolveIncomingState(existingRow, {
+    entries: [completedEntry],
+    diapers: [],
+    medicines: [],
+    session: null,
+    theme: 'light',
+    updatedAt: 'server-v1',
+  })
+
+  assert.equal(resolved.stale, true)
+  assert.equal(resolved.session, null)
+  assert.deepEqual(resolved.entries, [completedEntry])
+})
+
 test('resolveIncomingState preserves existing server session on stale old-session writes', () => {
   const existingSession = { startedAt: 2000, activeSide: 'right', segmentStart: 2000, segments: [], bottleOunces: 0, note: 'server', diaperKinds: [] }
   const staleSession = { startedAt: 1000, activeSide: 'left', segmentStart: 1000, segments: [], bottleOunces: 0, note: 'stale', diaperKinds: [] }

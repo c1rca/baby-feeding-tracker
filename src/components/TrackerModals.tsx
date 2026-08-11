@@ -6,7 +6,7 @@ import { PastEventModal } from './modals/PastEventModal'
 import { SettingsModal } from './modals/SettingsModal'
 import type { TrackerModalsProps } from './modals/modalTypes'
 
-export function TrackerModals({
+export function TrackerModals({ customTrackers, setCustomTrackers,
   bottleOpen,
   manualOpen,
   pastEventOpen,
@@ -25,6 +25,8 @@ export function TrackerModals({
   growthMeasurements,
   babyDob,
   tummyGoalMinutes,
+  pumpGoalOunces,
+  pumpGoalSessions,
   feedingNotificationsEnabled,
   browserRemindersEnabled,
   liveSyncEnabled,
@@ -56,8 +58,12 @@ export function TrackerModals({
   setPumpSession,
   setTummySession,
   setGrowthMeasurements,
+  healthRecords,
+  setHealthRecords,
   setBabyDob,
   setTummyGoalMinutes,
+  setPumpGoalOunces,
+  setPumpGoalSessions,
   setSession,
   setUndoState,
   setFeedingNotificationsEnabled,
@@ -73,9 +79,9 @@ export function TrackerModals({
   setMedicineReminderSettings,
   onCreateBaby,
   onRenameBaby,
+  onUpdateBabyProfile,
   onArchiveBaby,
-  showToast,
-}: TrackerModalsProps) {
+  showToast, settingsInitialTab }: TrackerModalsProps) {
   const wasManualOpenRef = useRef(false)
 
   useEffect(() => {
@@ -94,7 +100,6 @@ export function TrackerModals({
       {bottleOpen ? <BottleModal session={session} bottleQuickOz={bottleQuickOz} setBottleOpen={setBottleOpen} setBottleQuickOz={setBottleQuickOz} logBottle={logBottle} /> : null}
       {manualOpen ? <ManualFeedModal manualDraft={manualDraft} setManualDraft={setManualDraft} setManualOpen={setManualOpen} saveManualFeed={saveManualFeed} /> : null}
       {pastEventOpen ? <PastEventModal draft={pastEventDraft} setDraft={setPastEventDraft} onClose={() => setPastEventOpen(false)} onSave={savePastEvent} /> : null}
-      {settingsOpen ? <SettingsModal entries={entries} diapers={diapers} medicines={medicines} tummyTimes={tummyTimes} pumpEvents={pumpEvents} pumpSession={pumpSession} tummySession={tummySession} growthMeasurements={growthMeasurements} session={session} babyDob={babyDob} tummyGoalMinutes={tummyGoalMinutes} feedingNotificationsEnabled={feedingNotificationsEnabled} browserRemindersEnabled={browserRemindersEnabled} notificationPermission={notificationPermission} notificationPreferences={notificationPreferences} gotifyAvailable={gotifyAvailable} gotifyRemindersEnabled={gotifyRemindersEnabled} medicineReminderSettings={medicineReminderSettings} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} profileName={profileName || 'Mom'} setProfileName={setProfileName || (() => undefined)} theme={theme} onLogout={onLogout} fileInputRef={fileInputRef} setSettingsOpen={setSettingsOpen} setEntries={setEntries} setDiapers={setDiapers} setMedicines={setMedicines} setTummyTimes={setTummyTimes} setPumpEvents={setPumpEvents} setPumpSession={setPumpSession} setTummySession={setTummySession} setGrowthMeasurements={setGrowthMeasurements} setBabyDob={setBabyDob} setTummyGoalMinutes={setTummyGoalMinutes} setSession={setSession} setUndoState={setUndoState} setFeedingNotificationsEnabled={setFeedingNotificationsEnabled} setBrowserRemindersEnabled={setBrowserRemindersEnabled} liveSyncEnabled={liveSyncEnabled} setLiveSyncEnabled={setLiveSyncEnabled} setNotificationPreferences={setNotificationPreferences} setTheme={setTheme} enableBrowserReminders={enableBrowserReminders} setGotifyReminders={setGotifyReminders} setMedicineReminderSettings={setMedicineReminderSettings} onCreateBaby={onCreateBaby} onRenameBaby={onRenameBaby} onArchiveBaby={onArchiveBaby} showToast={showToast} /> : null}
-    </>
+      {settingsOpen ? <SettingsModal customTrackers={customTrackers} setCustomTrackers={setCustomTrackers} entries={entries} diapers={diapers} medicines={medicines} tummyTimes={tummyTimes} pumpEvents={pumpEvents} pumpSession={pumpSession} tummySession={tummySession} growthMeasurements={growthMeasurements} healthRecords={healthRecords} session={session} babyDob={babyDob} tummyGoalMinutes={tummyGoalMinutes} pumpGoalOunces={pumpGoalOunces} pumpGoalSessions={pumpGoalSessions} setPumpGoalOunces={setPumpGoalOunces} setPumpGoalSessions={setPumpGoalSessions} feedingNotificationsEnabled={feedingNotificationsEnabled} browserRemindersEnabled={browserRemindersEnabled} notificationPermission={notificationPermission} notificationPreferences={notificationPreferences} gotifyAvailable={gotifyAvailable} gotifyRemindersEnabled={gotifyRemindersEnabled} medicineReminderSettings={medicineReminderSettings} babies={babies} selectedBabyId={selectedBabyId} authUser={authUser} profileName={profileName || 'Mom'} setProfileName={setProfileName || (() => undefined)} theme={theme} onLogout={onLogout} fileInputRef={fileInputRef} setSettingsOpen={setSettingsOpen} setEntries={setEntries} setDiapers={setDiapers} setMedicines={setMedicines} setTummyTimes={setTummyTimes} setPumpEvents={setPumpEvents} setPumpSession={setPumpSession} setTummySession={setTummySession} setGrowthMeasurements={setGrowthMeasurements} setHealthRecords={setHealthRecords} setBabyDob={setBabyDob} setTummyGoalMinutes={setTummyGoalMinutes} setSession={setSession} setUndoState={setUndoState} setFeedingNotificationsEnabled={setFeedingNotificationsEnabled} setBrowserRemindersEnabled={setBrowserRemindersEnabled} liveSyncEnabled={liveSyncEnabled} setLiveSyncEnabled={setLiveSyncEnabled} setNotificationPreferences={setNotificationPreferences} setTheme={setTheme} enableBrowserReminders={enableBrowserReminders} setGotifyReminders={setGotifyReminders} setMedicineReminderSettings={setMedicineReminderSettings} onCreateBaby={onCreateBaby} onRenameBaby={onRenameBaby} onUpdateBabyProfile={onUpdateBabyProfile} onArchiveBaby={onArchiveBaby} showToast={showToast} initialTab={settingsInitialTab} /> : null}    </>
   )
 }

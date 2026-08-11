@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { readdir, readFile } from 'node:fs/promises'
 import test from 'node:test'
 
-const css = await readFile(new URL('../src/styles.css', import.meta.url), 'utf8')
+// The stylesheet ships as ordered sections joined by src/styles/index.ts; this
+// reads them the same way so the assertions still see the whole cascade.
+const stylesDir = new URL('../src/styles/', import.meta.url)
+const sections = (await readdir(stylesDir)).filter((name) => name.endsWith('.css')).sort()
+const css = (await Promise.all(sections.map((name) => readFile(new URL(name, stylesDir), 'utf8')))).join('\n')
 const rule = (selector) => {
   const match = css.match(new RegExp(`${selector.replace('.', '\\.')}\\s*\\{([\\s\\S]*?)\\n\\}`, 'm'))
   assert.ok(match, `Missing ${selector} CSS rule`)

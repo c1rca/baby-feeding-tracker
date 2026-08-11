@@ -61,6 +61,18 @@ export function openTrackerDatabase({ dbDir, backupDir, dbPath, bootstrapPasswor
       FOREIGN KEY (user_id) REFERENCES users(id)
     );
 
+    CREATE TABLE IF NOT EXISTS webauthn_passkeys (
+      id TEXT PRIMARY KEY, user_id TEXT NOT NULL, credential_id TEXT NOT NULL UNIQUE,
+      public_key BLOB NOT NULL, counter INTEGER NOT NULL DEFAULT 0, transports_json TEXT NOT NULL DEFAULT '[]', created_at TEXT NOT NULL, last_used_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+    CREATE TABLE IF NOT EXISTS webauthn_challenges (
+      id TEXT PRIMARY KEY, user_id TEXT, challenge TEXT NOT NULL, purpose TEXT NOT NULL CHECK (purpose IN ('authentication', 'registration')),
+      created_at TEXT NOT NULL, expires_at TEXT NOT NULL, consumed_at TEXT,
+      FOREIGN KEY (user_id) REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_active ON webauthn_challenges(user_id, purpose, expires_at) WHERE consumed_at IS NULL;
+
     CREATE TABLE IF NOT EXISTS auth_login_codes (
       code_hash TEXT PRIMARY KEY,
       user_id TEXT NOT NULL,
@@ -101,6 +113,12 @@ export function openTrackerDatabase({ dbDir, backupDir, dbPath, bootstrapPasswor
       household_id TEXT NOT NULL,
       name TEXT NOT NULL,
       dob TEXT NOT NULL,
+      sex TEXT,
+      birth_weight_lb REAL,
+      birth_length_cm REAL,
+      pediatrician_name TEXT,
+      pediatrician_phone TEXT,
+      photo TEXT,
       archived_at TEXT,
       created_at TEXT NOT NULL,
       FOREIGN KEY (household_id) REFERENCES households(id)
@@ -120,8 +138,13 @@ export function openTrackerDatabase({ dbDir, backupDir, dbPath, bootstrapPasswor
       pump_session_json TEXT,
       tummy_session_json TEXT,
       growth_measurements_json TEXT NOT NULL DEFAULT '[]',
+      health_records_json TEXT NOT NULL DEFAULT '[]',
+      custom_trackers_json TEXT NOT NULL DEFAULT '[]',
+      custom_events_json TEXT NOT NULL DEFAULT '[]',
       baby_dob TEXT NOT NULL DEFAULT '2026-06-03',
       tummy_goal_minutes INTEGER NOT NULL DEFAULT 20,
+      pump_goal_ounces INTEGER NOT NULL DEFAULT 0,
+      pump_goal_sessions INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL
     );
 
@@ -136,7 +159,12 @@ export function openTrackerDatabase({ dbDir, backupDir, dbPath, bootstrapPasswor
       pump_session_json TEXT,
       tummy_session_json TEXT,
       tummy_goal_minutes INTEGER NOT NULL DEFAULT 20,
+      pump_goal_ounces INTEGER NOT NULL DEFAULT 0,
+      pump_goal_sessions INTEGER NOT NULL DEFAULT 0,
       growth_measurements_json TEXT NOT NULL DEFAULT '[]',
+      health_records_json TEXT NOT NULL DEFAULT '[]',
+      custom_trackers_json TEXT NOT NULL DEFAULT '[]',
+      custom_events_json TEXT NOT NULL DEFAULT '[]',
       baby_dob TEXT NOT NULL DEFAULT '2026-06-03',
       session_json TEXT,
       theme TEXT NOT NULL DEFAULT 'dark',
@@ -199,10 +227,42 @@ export function openTrackerDatabase({ dbDir, backupDir, dbPath, bootstrapPasswor
   if (!hasTummySessionColumn) db.exec("ALTER TABLE app_state ADD COLUMN tummy_session_json TEXT")
   const hasGrowthMeasurementsColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'growth_measurements_json'").get().count > 0
   if (!hasGrowthMeasurementsColumn) db.exec("ALTER TABLE app_state ADD COLUMN growth_measurements_json TEXT NOT NULL DEFAULT '[]'")
+  const hasHealthRecordsColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'health_records_json'").get().count > 0
+  if (!hasHealthRecordsColumn) db.exec("ALTER TABLE app_state ADD COLUMN health_records_json TEXT NOT NULL DEFAULT '[]'")
+  const hasBabyHealthRecordsColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('baby_state') WHERE name = 'health_records_json'").get().count > 0
+  if (!hasBabyHealthRecordsColumn) db.exec("ALTER TABLE baby_state ADD COLUMN health_records_json TEXT NOT NULL DEFAULT '[]'")
+  // Caregiver-defined trackers and their logged events. Additive and guarded,
+  // so an existing production database migrates itself on boot and a rerun
+  // changes nothing.
+  for (const table of ['app_state', 'baby_state']) {
+    for (const column of ['custom_trackers_json', 'custom_events_json']) {
+      const exists = db.prepare(`SELECT COUNT(*) AS count FROM pragma_table_info('${table}') WHERE name = '${column}'`).get().count > 0
+      if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} TEXT NOT NULL DEFAULT '[]'`)
+    }
+  }
+  const hasBabyPumpGoalOz = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('baby_state') WHERE name = 'pump_goal_ounces'").get().count > 0
+  if (!hasBabyPumpGoalOz) db.exec('ALTER TABLE baby_state ADD COLUMN pump_goal_ounces INTEGER NOT NULL DEFAULT 0')
+  const hasBabyPumpGoalSessions = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('baby_state') WHERE name = 'pump_goal_sessions'").get().count > 0
+  if (!hasBabyPumpGoalSessions) db.exec('ALTER TABLE baby_state ADD COLUMN pump_goal_sessions INTEGER NOT NULL DEFAULT 0')
+  const hasAppPumpGoalOz = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'pump_goal_ounces'").get().count > 0
+  if (!hasAppPumpGoalOz) db.exec('ALTER TABLE app_state ADD COLUMN pump_goal_ounces INTEGER NOT NULL DEFAULT 0')
+  const hasAppPumpGoalSessions = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'pump_goal_sessions'").get().count > 0
+  if (!hasAppPumpGoalSessions) db.exec('ALTER TABLE app_state ADD COLUMN pump_goal_sessions INTEGER NOT NULL DEFAULT 0')
   const hasBabyDobColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'baby_dob'").get().count > 0
   if (!hasBabyDobColumn) db.exec("ALTER TABLE app_state ADD COLUMN baby_dob TEXT NOT NULL DEFAULT '2026-06-03'")
   const hasTummyGoalColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('app_state') WHERE name = 'tummy_goal_minutes'").get().count > 0
   if (!hasTummyGoalColumn) db.exec("ALTER TABLE app_state ADD COLUMN tummy_goal_minutes INTEGER NOT NULL DEFAULT 20")
+  for (const [column, definition] of [
+    ['sex', 'TEXT'],
+    ['birth_weight_lb', 'REAL'],
+    ['birth_length_cm', 'REAL'],
+    ['pediatrician_name', 'TEXT'],
+    ['pediatrician_phone', 'TEXT'],
+    ['photo', 'TEXT'],
+  ]) {
+    const exists = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('babies') WHERE name = ?").get(column).count > 0
+    if (!exists) db.exec(`ALTER TABLE babies ADD COLUMN ${column} ${definition}`)
+  }
   const hasGoogleSubColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('users') WHERE name = 'google_sub'").get().count > 0
   if (!hasGoogleSubColumn) db.exec('ALTER TABLE users ADD COLUMN google_sub TEXT')
   const hasUserPhoneColumn = db.prepare("SELECT COUNT(*) AS count FROM pragma_table_info('users') WHERE name = 'phone'").get().count > 0
@@ -218,20 +278,35 @@ export function openTrackerDatabase({ dbDir, backupDir, dbPath, bootstrapPasswor
   if (!hasDeletedBabyColumn) db.exec("ALTER TABLE deleted_items ADD COLUMN baby_id TEXT NOT NULL DEFAULT 'default-baby'")
   const deletedPkColumns = db.prepare("SELECT name FROM pragma_table_info('deleted_items') WHERE pk > 0 ORDER BY pk").all().map((row) => row.name)
   if (deletedPkColumns.join(',') !== 'household_id,baby_id,collection,item_id') {
-    db.exec(`
-      CREATE TABLE deleted_items_scoped (
-        item_id TEXT NOT NULL,
-        collection TEXT NOT NULL,
-        household_id TEXT NOT NULL,
-        baby_id TEXT NOT NULL,
-        deleted_at TEXT NOT NULL,
-        PRIMARY KEY (household_id, baby_id, collection, item_id)
-      );
-      INSERT OR REPLACE INTO deleted_items_scoped (item_id, collection, household_id, baby_id, deleted_at)
-      SELECT item_id, collection, household_id, baby_id, deleted_at FROM deleted_items;
-      DROP TABLE deleted_items;
-      ALTER TABLE deleted_items_scoped RENAME TO deleted_items;
-    `)
+    // One transaction, so the rebuild is all-or-nothing.
+    //
+    // These ran as separate auto-committed statements. A kill between the DROP
+    // and the RENAME left no `deleted_items` at all, and the next boot's
+    // `ALTER TABLE deleted_items ADD COLUMN` above threw on a missing table —
+    // startup wedged permanently, and every tombstone was gone with it.
+    // Tombstones are the only thing stopping a deleted record being resurrected
+    // by a stale client, so losing them silently undoes deletions household-wide.
+    //
+    // DROP IF EXISTS on the scratch table lets a boot that *did* crash midway
+    // start over instead of failing on a leftover table it cannot re-create.
+    const rebuildScopedDeletedItems = db.transaction(() => {
+      db.exec(`
+        DROP TABLE IF EXISTS deleted_items_scoped;
+        CREATE TABLE deleted_items_scoped (
+          item_id TEXT NOT NULL,
+          collection TEXT NOT NULL,
+          household_id TEXT NOT NULL,
+          baby_id TEXT NOT NULL,
+          deleted_at TEXT NOT NULL,
+          PRIMARY KEY (household_id, baby_id, collection, item_id)
+        );
+        INSERT OR REPLACE INTO deleted_items_scoped (item_id, collection, household_id, baby_id, deleted_at)
+        SELECT item_id, collection, household_id, baby_id, deleted_at FROM deleted_items;
+        DROP TABLE deleted_items;
+        ALTER TABLE deleted_items_scoped RENAME TO deleted_items;
+      `)
+    })
+    rebuildScopedDeletedItems()
   }
 
   const now = new Date().toISOString()
@@ -248,8 +323,8 @@ export function openTrackerDatabase({ dbDir, backupDir, dbPath, bootstrapPasswor
   // Copy the legacy single-row state into its scoped row exactly once; later
   // writes land in baby_state directly, so an existing scoped row always wins.
   db.exec(`
-    INSERT OR IGNORE INTO baby_state (household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
-    SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at
+    INSERT OR IGNORE INTO baby_state (household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, pump_goal_ounces, pump_goal_sessions, growth_measurements_json, health_records_json, custom_trackers_json, custom_events_json, baby_dob, session_json, theme, updated_at)
+    SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, pump_goal_ounces, pump_goal_sessions, growth_measurements_json, health_records_json, custom_trackers_json, custom_events_json, baby_dob, session_json, theme, updated_at
     FROM app_state WHERE id = 1
   `)
 
@@ -258,10 +333,10 @@ export function openTrackerDatabase({ dbDir, backupDir, dbPath, bootstrapPasswor
 
 export function prepareTrackerStatements(db) {
   return {
-    selectState: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM app_state WHERE id = 1'),
+    selectState: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, pump_goal_ounces, pump_goal_sessions, growth_measurements_json, health_records_json, custom_trackers_json, custom_events_json, baby_dob, session_json, theme, updated_at FROM app_state WHERE id = 1'),
     upsertState: db.prepare(`
-      INSERT INTO app_state (id, household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
-      VALUES (1, @household_id, @baby_id, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @pump_events_json, @pump_session_json, @tummy_session_json, @tummy_goal_minutes, @growth_measurements_json, @baby_dob, @session_json, @theme, @updated_at)
+      INSERT INTO app_state (id, household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, pump_goal_ounces, pump_goal_sessions, growth_measurements_json, health_records_json, custom_trackers_json, custom_events_json, baby_dob, session_json, theme, updated_at)
+      VALUES (1, @household_id, @baby_id, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @pump_events_json, @pump_session_json, @tummy_session_json, @tummy_goal_minutes, @pump_goal_ounces, @pump_goal_sessions, @growth_measurements_json, @health_records_json, @custom_trackers_json, @custom_events_json, @baby_dob, @session_json, @theme, @updated_at)
       ON CONFLICT(id) DO UPDATE SET
         household_id = excluded.household_id,
         baby_id = excluded.baby_id,
@@ -273,17 +348,22 @@ export function prepareTrackerStatements(db) {
         pump_session_json = excluded.pump_session_json,
         tummy_session_json = excluded.tummy_session_json,
         tummy_goal_minutes = excluded.tummy_goal_minutes,
+        pump_goal_ounces = excluded.pump_goal_ounces,
+        pump_goal_sessions = excluded.pump_goal_sessions,
         growth_measurements_json = excluded.growth_measurements_json,
+        health_records_json = excluded.health_records_json,
+        custom_trackers_json = excluded.custom_trackers_json,
+        custom_events_json = excluded.custom_events_json,
         baby_dob = excluded.baby_dob,
         session_json = excluded.session_json,
         theme = excluded.theme,
         updated_at = excluded.updated_at
     `),
-    selectStateForBaby: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM baby_state WHERE household_id = ? AND baby_id = ?'),
-    selectAllBabyStates: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at FROM baby_state'),
+    selectStateForBaby: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, pump_goal_ounces, pump_goal_sessions, growth_measurements_json, health_records_json, custom_trackers_json, custom_events_json, baby_dob, session_json, theme, updated_at FROM baby_state WHERE household_id = ? AND baby_id = ?'),
+    selectAllBabyStates: db.prepare('SELECT household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, pump_goal_ounces, pump_goal_sessions, growth_measurements_json, health_records_json, custom_trackers_json, custom_events_json, baby_dob, session_json, theme, updated_at FROM baby_state'),
     upsertStateForBaby: db.prepare(`
-      INSERT INTO baby_state (household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, growth_measurements_json, baby_dob, session_json, theme, updated_at)
-      VALUES (@household_id, @baby_id, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @pump_events_json, @pump_session_json, @tummy_session_json, @tummy_goal_minutes, @growth_measurements_json, @baby_dob, @session_json, @theme, @updated_at)
+      INSERT INTO baby_state (household_id, baby_id, entries_json, diapers_json, medicines_json, tummy_times_json, pump_events_json, pump_session_json, tummy_session_json, tummy_goal_minutes, pump_goal_ounces, pump_goal_sessions, growth_measurements_json, health_records_json, custom_trackers_json, custom_events_json, baby_dob, session_json, theme, updated_at)
+      VALUES (@household_id, @baby_id, @entries_json, @diapers_json, @medicines_json, @tummy_times_json, @pump_events_json, @pump_session_json, @tummy_session_json, @tummy_goal_minutes, @pump_goal_ounces, @pump_goal_sessions, @growth_measurements_json, @health_records_json, @custom_trackers_json, @custom_events_json, @baby_dob, @session_json, @theme, @updated_at)
       ON CONFLICT(household_id, baby_id) DO UPDATE SET
         entries_json = excluded.entries_json,
         diapers_json = excluded.diapers_json,
@@ -293,7 +373,12 @@ export function prepareTrackerStatements(db) {
         pump_session_json = excluded.pump_session_json,
         tummy_session_json = excluded.tummy_session_json,
         tummy_goal_minutes = excluded.tummy_goal_minutes,
+        pump_goal_ounces = excluded.pump_goal_ounces,
+        pump_goal_sessions = excluded.pump_goal_sessions,
         growth_measurements_json = excluded.growth_measurements_json,
+        health_records_json = excluded.health_records_json,
+        custom_trackers_json = excluded.custom_trackers_json,
+        custom_events_json = excluded.custom_events_json,
         baby_dob = excluded.baby_dob,
         session_json = excluded.session_json,
         theme = excluded.theme,
@@ -338,8 +423,8 @@ export function prepareTrackerStatements(db) {
     `),
     selectUserById: db.prepare('SELECT id, email, display_name, password_hash, google_sub, phone FROM users WHERE id = ?'),
     updateUserPassword: db.prepare('UPDATE users SET password_hash = @password_hash WHERE id = @user_id'),
-    selectBabiesByHousehold: db.prepare('SELECT id, household_id, name, dob, archived_at FROM babies WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at ASC'),
-    selectBabyForHousehold: db.prepare('SELECT id, household_id, name, dob, archived_at FROM babies WHERE id = ? AND household_id = ? AND archived_at IS NULL'),
+    selectBabiesByHousehold: db.prepare('SELECT id, household_id, name, dob, sex, birth_weight_lb, birth_length_cm, pediatrician_name, pediatrician_phone, photo, archived_at FROM babies WHERE household_id = ? AND archived_at IS NULL ORDER BY created_at ASC'),
+    selectBabyForHousehold: db.prepare('SELECT id, household_id, name, dob, sex, birth_weight_lb, birth_length_cm, pediatrician_name, pediatrician_phone, photo, archived_at FROM babies WHERE id = ? AND household_id = ? AND archived_at IS NULL'),
     insertBaby: db.prepare(`
       INSERT INTO babies (id, household_id, name, dob, archived_at, created_at)
       VALUES (@id, @household_id, @name, @dob, @archived_at, @created_at)
@@ -347,6 +432,20 @@ export function prepareTrackerStatements(db) {
     renameBaby: db.prepare(`
       UPDATE babies
       SET name = @name
+      WHERE id = @id AND household_id = @household_id AND archived_at IS NULL
+    `),
+    // COALESCE keeps an omitted field at its current value, so a partial PATCH
+    // never blanks the rest of the profile.
+    updateBabyProfile: db.prepare(`
+      UPDATE babies
+      SET name = COALESCE(@name, name),
+          dob = COALESCE(@dob, dob),
+          sex = COALESCE(@sex, sex),
+          birth_weight_lb = COALESCE(@birth_weight_lb, birth_weight_lb),
+          birth_length_cm = COALESCE(@birth_length_cm, birth_length_cm),
+          pediatrician_name = COALESCE(@pediatrician_name, pediatrician_name),
+          pediatrician_phone = COALESCE(@pediatrician_phone, pediatrician_phone),
+          photo = CASE WHEN @photo IS NULL THEN photo WHEN @photo = '' THEN NULL ELSE @photo END
       WHERE id = @id AND household_id = @household_id AND archived_at IS NULL
     `),
     archiveBaby: db.prepare(`
@@ -358,6 +457,13 @@ export function prepareTrackerStatements(db) {
       INSERT INTO auth_sessions (id, user_id, token_hash, created_at, expires_at, revoked_at)
       VALUES (@id, @user_id, @token_hash, @created_at, @expires_at, @revoked_at)
     `),
+    insertWebAuthnChallenge: db.prepare(`INSERT INTO webauthn_challenges (id, user_id, challenge, purpose, created_at, expires_at, consumed_at) VALUES (@id, @user_id, @challenge, @purpose, @created_at, @expires_at, @consumed_at)`),
+    selectWebAuthnChallenge: db.prepare(`SELECT id, user_id, challenge, purpose, expires_at, consumed_at FROM webauthn_challenges WHERE user_id IS @user_id AND purpose = @purpose AND consumed_at IS NULL ORDER BY created_at DESC LIMIT 1`),
+    consumeWebAuthnChallenge: db.prepare(`UPDATE webauthn_challenges SET consumed_at = @consumed_at WHERE id = @id AND consumed_at IS NULL`),
+    selectPasskeyByCredentialId: db.prepare(`SELECT id, user_id, credential_id, public_key, counter, transports_json FROM webauthn_passkeys WHERE credential_id = ?`),
+    selectPasskeysByUser: db.prepare(`SELECT credential_id, transports_json FROM webauthn_passkeys WHERE user_id = ?`),
+    insertPasskey: db.prepare(`INSERT INTO webauthn_passkeys (id, user_id, credential_id, public_key, counter, transports_json, created_at, last_used_at) VALUES (@id, @user_id, @credential_id, @public_key, @counter, @transports_json, @created_at, @last_used_at)`),
+    updatePasskeyCounter: db.prepare(`UPDATE webauthn_passkeys SET counter = @counter, last_used_at = @last_used_at WHERE id = @id`),
     insertLoginCode: db.prepare(`
       INSERT INTO auth_login_codes (code_hash, user_id, created_at, expires_at, consumed_at)
       VALUES (@code_hash, @user_id, @created_at, @expires_at, NULL)
@@ -451,5 +557,6 @@ export function prepareTrackerStatements(db) {
       ON CONFLICT(household_id, baby_id, collection, item_id) DO UPDATE SET
         deleted_at = excluded.deleted_at
     `),
+    deleteDeletedItem: db.prepare('DELETE FROM deleted_items WHERE item_id = @item_id AND collection = @collection AND household_id = @household_id AND baby_id = @baby_id'),
   }
 }

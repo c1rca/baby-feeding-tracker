@@ -50,7 +50,7 @@ describe('saveManualFeed', () => {
   it('still rejects an empty feed with no nursing time or bottle', () => {
     const draft: ManualDraft = { ...createDefaultManualDraft(now), date: '2026-07-18', time: '09:00' }
     const { setEntries, showToast } = saveWith(draft)
-    expect(showToast).toHaveBeenCalledWith('Add nursing time or bottle ounces')
+    expect(showToast).toHaveBeenCalledWith('Add nursing time or a bottle amount')
     expect(setEntries).not.toHaveBeenCalled()
   })
 })

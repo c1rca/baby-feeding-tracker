@@ -45,3 +45,10 @@ export async function updateHouseholdMemberRole(userId: string, role: 'caregiver
   if (!response.ok) return { ok: false as const, error: data?.error || 'Could not update member' }
   return { ok: true as const }
 }
+
+export async function removeHouseholdMember(userId: string) {
+  const response = await authFetch(`/api/household-members/${encodeURIComponent(userId)}`, { method: 'DELETE' })
+  const data = await readJson<{ error?: string }>(response)
+  if (!response.ok) return { ok: false as const, error: data?.error || 'Could not remove member' }
+  return { ok: true as const }
+}

@@ -10,13 +10,14 @@ export const calculateDiaperAverages = (
   today: TodayDiaperCounts,
   wetCount: number,
   stoolCount: number,
+  rangeDays = 7,
 ) => {
   const allDiaperSignals = collectDiaperSignals(diapers, entries)
   const allTimeDays = allTimeDayCount(allDiaperSignals, dayStartMs)
   const countAllTime = (kind: DiaperKind) => allDiaperSignals.filter((signal) => signal.kind === kind).length
 
   return {
-    wet: { today: today.wet, weekly: roundTenth(wetCount / 7), allTime: roundTenth(countAllTime('wet') / allTimeDays) },
-    stool: { today: today.stool, weekly: roundTenth(stoolCount / 7), allTime: roundTenth(countAllTime('stool') / allTimeDays) },
+    wet: { today: today.wet, weekly: roundTenth(wetCount / rangeDays), allTime: roundTenth(countAllTime('wet') / allTimeDays) },
+    stool: { today: today.stool, weekly: roundTenth(stoolCount / rangeDays), allTime: roundTenth(countAllTime('stool') / allTimeDays) },
   }
 }

@@ -1,9 +1,12 @@
 import { formatDuration } from '../../domain/feedingUtils'
+import { useUnits } from '../../state/unitPreferencesContext'
+import { formatVolume } from '../../domain/units'
 import type { HeroPanelProps } from './HeroPanel.types'
 
 type LiveSplitProps = Pick<HeroPanelProps, 'session' | 'activeSplit'>
 
 export function LiveSplit({ session, activeSplit }: LiveSplitProps) {
+  const { units } = useUnits()
   if (!session) return null
 
   const hasLeft = activeSplit.left > 0
@@ -19,7 +22,7 @@ export function LiveSplit({ session, activeSplit }: LiveSplitProps) {
       <div className="split-title">Live split</div>
       <div><span>Left</span><strong>{formatDuration(activeSplit.left)}</strong></div>
       <div><span>Right</span><strong>{formatDuration(activeSplit.right)}</strong></div>
-      <div><span>Bottle</span><strong>{session.bottleOunces.toFixed(1)} oz</strong></div>
+      <div><span>Bottle</span><strong>{formatVolume(session.bottleOunces, units.volume)}</strong></div>
     </div>
   )
 }

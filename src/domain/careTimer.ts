@@ -2,6 +2,23 @@
 // pumping) that mirror the breast-feed timer's pause/resume. A session tracks
 // accumulated `elapsedSeconds` plus, while running, a `runningStartedAt` mark;
 // pausing folds the running span into elapsedSeconds and clears the mark.
+import type { CareTimerKind, CustomTracker } from '../types'
+
+/**
+ * What to call the timer that is running.
+ *
+ * A caregiver-defined timer borrows the same session slot as tummy time and
+ * sleep, so every surface that shows the running timer — the hero pill, the
+ * stop button, the care sheet — has to ask rather than assume. A tracker that
+ * has since been archived still has a name to show, so the lookup spans all
+ * definitions, not just the active ones.
+ */
+export const careTimerLabel = (session: { kind?: CareTimerKind; trackerId?: string } | null | undefined, customTrackers: CustomTracker[] = []) => {
+  if (!session) return ''
+  if (session.kind === 'custom') return customTrackers.find((tracker) => tracker.id === session.trackerId)?.name ?? 'Timer'
+  return session.kind === 'sleep' ? 'Sleep' : 'Tummy Time'
+}
+
 export type PausableSession = { startedAt: number; runningStartedAt?: number | null; elapsedSeconds?: number }
 
 // Elapsed active seconds, excluding paused spans. A legacy session that predates

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
-import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, Session, TummyTimeEvent, UndoState } from '../types'
+import type { CustomEvent, DiaperEvent, Entry, MedicineEvent, PumpEvent, Session, TummyTimeEvent, UndoState } from '../types'
 import { undoLabelFor, undoToastTextFor } from './undoToastLabels'
 
 type UndoToastOptions = {
@@ -9,10 +9,11 @@ type UndoToastOptions = {
   setMedicines: Dispatch<SetStateAction<MedicineEvent[]>>
   setTummyTimes: Dispatch<SetStateAction<TummyTimeEvent[]>>
   setPumpEvents: Dispatch<SetStateAction<PumpEvent[]>>
+  setCustomEvents: Dispatch<SetStateAction<CustomEvent[]>>
   setSession: Dispatch<SetStateAction<Session | null>>
 }
 
-export function useUndoToast({ setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setSession }: UndoToastOptions) {
+export function useUndoToast({ setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setCustomEvents, setSession }: UndoToastOptions) {
   const [toast, setToast] = useState('')
   const [undoState, setUndoState] = useState<UndoState | null>(null)
 
@@ -54,6 +55,12 @@ export function useUndoToast({ setEntries, setDiapers, setMedicines, setTummyTim
     } else if (undoState.kind === 'pump-delete') {
       setPumpEvents((prev) => [undoState.pumpEvent, ...prev].sort((a, b) => b.startedAt - a.startedAt))
       showToast('Pumping delete undone')
+    } else if (undoState.kind === 'custom-log') {
+      setCustomEvents((prev) => prev.filter((event) => event.id !== undoState.customEvent.id))
+      showToast('Log undone')
+    } else if (undoState.kind === 'custom-delete') {
+      setCustomEvents((prev) => [undoState.customEvent, ...prev].sort((a, b) => b.at - a.at))
+      showToast('Log delete undone')
     } else if ('entry' in undoState) {
       setEntries((prev) => [undoState.entry, ...prev].sort((a, b) => b.endedAt - a.endedAt))
       if (undoState.kind === 'resume') setSession(undoState.previousSession ?? null)

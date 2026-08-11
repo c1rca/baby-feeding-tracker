@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": [
+      "ES2023"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    "strict": false,
+    "noImplicitAny": false,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "server/stateValidation.js",
+    "server/stateMerge.js",
+    "server/notificationWindows.js",
+    "server/notificationModels.js",
+    "server/stateStore.js",
+    "server/authCrypto.js",
+    "server/rateLimiter.js",
+    "server/securityHeaders.js",
+    "server/runtimeConfig.js"
+  ]
+}

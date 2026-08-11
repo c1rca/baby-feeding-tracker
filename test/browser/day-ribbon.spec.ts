@@ -26,8 +26,13 @@ function fixture() {
   }
 }
 
+// Read-modify-write, so the fixture is authoritative whatever an earlier spec
+// left on the shared dev server. A bare PUT carries no updatedAt and the server
+// reads it as a stale replay, merging the fixture into existing data instead of
+// replacing it — which makes the counts below depend on run order.
 test.beforeEach(async ({ request, page }) => {
-  const response = await request.put('/api/state', { data: fixture() })
+  const current = await (await request.get('/api/state')).json()
+  const response = await request.put('/api/state', { data: { ...current, ...fixture() } })
   expect(response.ok()).toBeTruthy()
   await page.addInitScript(() => localStorage.setItem('baby-feeding-tracker:v1:live-sync-enabled', 'off'))
   await page.goto('/')

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { serializeState } from '../server/stateStore.js'
+import { createDeletedItemRestorer, serializeState } from '../server/stateStore.js'
 
 const baseRow = {
   household_id: 'h1',
@@ -37,4 +37,13 @@ test('a corrupt session blob falls back to null instead of throwing', () => {
   assert.equal(state.session, null)
   // An array where an object is expected is rejected too.
   assert.equal(state.tummySession, null)
+})
+
+test('restore clears only the exact scoped tombstone', () => {
+  const calls = []
+  createDeletedItemRestorer({ run: (params) => calls.push(params) })({ entries: ['entry-1'], customEvents: ['event-1'] }, { householdId: 'h1', babyId: 'b1' })
+  assert.deepEqual(calls, [
+    { item_id: 'entry-1', collection: 'entries', household_id: 'h1', baby_id: 'b1' },
+    { item_id: 'event-1', collection: 'customEvents', household_id: 'h1', baby_id: 'b1' },
+  ])
 })

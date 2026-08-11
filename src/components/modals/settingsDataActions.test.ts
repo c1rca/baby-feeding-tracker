@@ -10,6 +10,8 @@ const state = {
   pumpSession: { id: 'pump-session', startedAt: 1, side: 'left' as const },
   tummySession: { id: 'tummy-session', startedAt: 1, note: '', kind: 'tummy' as const },
   tummyGoalMinutes: 30,
+  pumpGoalOunces: 0,
+  pumpGoalSessions: 0,
   growthMeasurements: [{ id: 'growth', measuredAt: 1, ageMonths: 1, weightLb: 8, lengthCm: null, headCm: null }],
   babyDob: '2026-01-01',
   session: { id: 'session', startedAt: 1, activeSide: null, segmentStart: null, segments: [], bottleOunces: 0, note: '', diaperKinds: [] },
@@ -18,7 +20,7 @@ const state = {
 
 const setters = {
   setEntries: vi.fn(), setDiapers: vi.fn(), setMedicines: vi.fn(), setTummyTimes: vi.fn(), setPumpEvents: vi.fn(),
-  setPumpSession: vi.fn(), setTummySession: vi.fn(), setTummyGoalMinutes: vi.fn(), setGrowthMeasurements: vi.fn(),
+  setPumpSession: vi.fn(), setTummySession: vi.fn(), setTummyGoalMinutes: vi.fn(), setPumpGoalOunces: vi.fn(), setPumpGoalSessions: vi.fn(), setGrowthMeasurements: vi.fn(), setHealthRecords: vi.fn(),
   setBabyDob: vi.fn(), setSession: vi.fn(), setTheme: vi.fn(), setUndoState: vi.fn(), showToast: vi.fn(),
 }
 

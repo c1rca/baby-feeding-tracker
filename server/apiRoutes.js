@@ -101,14 +101,41 @@ export const createNotificationSettingsRouter = ({ config, getGotifyRemindersEna
   return router
 }
 
-export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = null, insertEmptyBabyState = null, renameBaby = null, archiveBaby = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), now = () => new Date() } = {}) => {
+export const createBabyRouter = ({ selectBabiesByHousehold = null, selectBabyForHousehold = null, insertBaby = null, insertEmptyBabyState = null, renameBaby = null, updateBabyProfile = null, archiveBaby = null, appendEventLog = () => {}, idFactory = () => globalThis.crypto.randomUUID(), now = () => new Date() } = {}) => {
   const toBabyPayload = (row) => ({
     id: row.id,
     householdId: row.household_id,
     name: row.name,
     dob: row.dob,
+    sex: row.sex ?? null,
+    birthWeightLb: row.birth_weight_lb ?? null,
+    birthLengthCm: row.birth_length_cm ?? null,
+    pediatricianName: row.pediatrician_name ?? null,
+    pediatricianPhone: row.pediatrician_phone ?? null,
+    photo: row.photo ?? null,
     archivedAt: row.archived_at ?? null,
   })
+  const BABY_SEXES = new Set(['female', 'male'])
+  // Avatars arrive already downscaled by the browser; the server re-checks the
+  // shape and ceiling rather than trusting that. '' clears the photo.
+  const MAX_PHOTO_BYTES = 64 * 1024
+  const validPhoto = (value) => {
+    if (value === '') return true
+    if (typeof value !== 'string' || !/^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(value)) return false
+    return Math.floor((value.slice(value.indexOf(',') + 1).length * 3) / 4) <= MAX_PHOTO_BYTES
+  }
+  // Absent means "leave unchanged"; an explicit empty string means "clear".
+  const optionalText = (value, max) => {
+    if (value === undefined) return undefined
+    const text = String(value).trim()
+    return text ? text.slice(0, max) : null
+  }
+  const optionalNumber = (value) => {
+    if (value === undefined) return undefined
+    if (value === null || value === '') return null
+    const numeric = Number(value)
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : Number.NaN
+  }
   const validDob = (value) => /^\d{4}-\d{2}-\d{2}$/.test(String(value || '')) && !Number.isNaN(Date.parse(`${value}T00:00:00.000Z`))
 
   const router = (app) => {
@@ -158,18 +185,54 @@ export const createBabyRouter = ({ selectBabiesByHousehold = null, insertBaby = 
       }
       const householdId = req.auth?.householdId || DEFAULT_HOUSEHOLD_ID
       const babyId = String(req.params?.id || '').trim()
-      const name = String(req.body?.name || '').trim()
+      const body = req.body ?? {}
+      // Name has always been required on PATCH and stays that way; the profile
+      // fields are all optional and only touched when present.
+      const name = String(body.name || '').trim()
       if (!name) {
         res.status(400).json({ ok: false, error: 'Baby name is required' })
         return
       }
-      const result = renameBaby?.run({ id: babyId, household_id: householdId, name }) || { changes: 0 }
+      if (body.dob !== undefined && !validDob(body.dob)) {
+        res.status(400).json({ ok: false, error: 'Baby date of birth must use YYYY-MM-DD' })
+        return
+      }
+      const sex = optionalText(body.sex, 10)
+      if (sex !== undefined && sex !== null && !BABY_SEXES.has(sex)) {
+        res.status(400).json({ ok: false, error: 'Baby sex must be female or male' })
+        return
+      }
+      if (body.photo !== undefined && !validPhoto(body.photo)) {
+        res.status(400).json({ ok: false, error: 'Baby photo must be a small JPEG, PNG, or WebP data URL' })
+        return
+      }
+      const birthWeightLb = optionalNumber(body.birthWeightLb)
+      const birthLengthCm = optionalNumber(body.birthLengthCm)
+      if (Number.isNaN(birthWeightLb) || Number.isNaN(birthLengthCm)) {
+        res.status(400).json({ ok: false, error: 'Birth measurements must be non-negative numbers' })
+        return
+      }
+
+      const patch = {
+        id: babyId,
+        household_id: householdId,
+        name,
+        dob: body.dob === undefined ? null : String(body.dob),
+        sex: sex === undefined ? null : sex,
+        birth_weight_lb: birthWeightLb === undefined ? null : birthWeightLb,
+        birth_length_cm: birthLengthCm === undefined ? null : birthLengthCm,
+        pediatrician_name: optionalText(body.pediatricianName, 200) ?? null,
+        pediatrician_phone: optionalText(body.pediatricianPhone, 40) ?? null,
+        photo: body.photo === undefined ? null : body.photo,
+      }
+      const result = (updateBabyProfile ?? renameBaby)?.run(updateBabyProfile ? patch : { id: babyId, household_id: householdId, name }) || { changes: 0 }
       if (!result.changes) {
         res.status(404).json({ ok: false, error: 'Baby not found' })
         return
       }
       appendEventLog('baby_rename', { babyId, householdId, userId: req.auth?.userId ?? null })
-      res.status(200).json({ ok: true, baby: { id: babyId, name } })
+      const updated = selectBabyForHousehold?.get(babyId, householdId)
+      res.status(200).json({ ok: true, baby: updated ? toBabyPayload(updated) : { id: babyId, name } })
     })
 
     app.delete('/api/babies/:id', (req, res) => {
@@ -307,7 +370,7 @@ export const createInviteRouter = ({ selectActiveInvitesByHousehold = null, sele
         revoked_at: null,
       }
       const linkBaseUrl = String(baseUrl || `${req.protocol || 'http'}://${req.get?.('host') || 'localhost'}`).replace(/\/$/, '')
-      const link = `${linkBaseUrl}/?invite=${encodeURIComponent(token)}`
+      const link = `${linkBaseUrl}/#invite=${encodeURIComponent(token)}`
       try {
         if (sendInvite) await sendInvite({ channel, to: email, link, role })
       } catch {
@@ -379,6 +442,75 @@ export const createHouseholdRouter = ({ selectMembershipsByUser = null, createHo
   return router
 }
 
+
+/**
+ * Receives the client's journal of writes that never reached the server.
+ *
+ * Nothing here interprets or applies the payloads — they go straight to the
+ * append-only backup log. Recovery is a deliberate act performed against that
+ * log, not something a debug upload should trigger on its own.
+ */
+export const createDebugLogRouter = ({ forwardActionLog = null } = {}) => (app) => {
+  app.post('/api/debug-logs', (req, res) => {
+    if (!canMutate(req.auth)) {
+      rejectForbidden(res)
+      return
+    }
+    const entries = Array.isArray(req.body?.entries) ? req.body.entries : null
+    const diagnostics = req.body?.diagnostics && typeof req.body.diagnostics === 'object' ? req.body.diagnostics : null
+    if (!entries && !diagnostics) {
+      res.status(400).json({ ok: false, error: 'entries must be an array' })
+      return
+    }
+    if ((entries?.length ?? 0) > 500) {
+      res.status(413).json({ ok: false, error: 'too many entries in one upload' })
+      return
+    }
+    if (!forwardActionLog) {
+      // Be honest rather than pretend: reporting success would let the client
+      // clear a journal nothing has stored.
+      res.status(503).json({ ok: false, error: 'no backup log configured' })
+      return
+    }
+
+    const householdId = req.auth?.householdId ?? null
+    const babyId = req.auth?.babyId ?? null
+
+    // The device's whole local record, kept so a missing entry can be restored
+    // from it by hand later. Stored verbatim; nothing here is applied.
+    if (diagnostics) {
+      forwardActionLog({
+        action: 'client.diagnostics',
+        at: typeof diagnostics.at === 'string' ? diagnostics.at : new Date().toISOString(),
+        householdId,
+        babyId: diagnostics.babyId ?? babyId,
+        clientId: diagnostics.clientId ?? req.headers?.['x-client-id'] ?? null,
+        counts: { errors: Array.isArray(diagnostics.errors) ? diagnostics.errors.length : 0, localStateKeys: Array.isArray(diagnostics.localStateKeys) ? diagnostics.localStateKeys.length : 0 },
+        diagnostics,
+        state: diagnostics.localState ?? null,
+      })
+    }
+
+    const accepted = []
+    for (const entry of entries ?? []) {
+      if (!entry || typeof entry !== 'object') continue
+      forwardActionLog({
+        action: 'client.send-failure',
+        at: typeof entry.at === 'string' ? entry.at : new Date().toISOString(),
+        householdId,
+        babyId: entry.babyId ?? babyId,
+        clientId: entry.clientId ?? req.headers?.['x-client-id'] ?? null,
+        counts: entry.counts ?? {},
+        reason: entry.reason ?? null,
+        httpStatus: entry.status ?? null,
+        state: entry.payload ?? null,
+      })
+      if (Number.isInteger(entry.id)) accepted.push(entry.id)
+    }
+    res.json({ ok: true, received: entries?.length ?? 0, diagnostics: Boolean(diagnostics), accepted })
+  })
+}
+
 export const createStateRouter = ({
   selectState,
   upsertState,
@@ -394,6 +526,7 @@ export const createStateRouter = ({
   broadcastStateChange,
   handleStateEvents,
   selectBabyForHousehold = null,
+  forwardActionLog = null,
 }) => {
   const isDefaultScope = (statePayload) => statePayload.household_id === DEFAULT_HOUSEHOLD_ID && statePayload.baby_id === DEFAULT_BABY_ID
   const persistStateAndDeletedItems = writeStateAndDeletedItems ?? ((statePayload, audit, updatedAt) => {
@@ -441,6 +574,12 @@ export const createStateRouter = ({
       // When the client omits babyDob on a first write, fall back to this baby's
       // real DOB from the babies row (its source of truth) — not a global constant.
       const fallbackBabyDob = existingRow?.baby_dob || selectBabyForHousehold?.get(scope.babyId, scope.householdId)?.dob || DEFAULT_BABY_DOB
+      const syncIntentOptions = req.body?.syncIntents && typeof req.body.syncIntents === 'object'
+        ? {
+            ...(req.body.syncIntents.deletes ? { deleteIntents: req.body.syncIntents.deletes } : {}),
+            ...(req.body.syncIntents.restores ? { restoreIntents: req.body.syncIntents.restores } : {}),
+          }
+        : {}
       const incoming = resolveIncomingState(existingRow, {
         entries: Array.isArray(req.body?.entries) ? req.body.entries : [],
         diapers: Array.isArray(req.body?.diapers) ? req.body.diapers : [],
@@ -450,13 +589,21 @@ export const createStateRouter = ({
         pumpSession: req.body?.pumpSession ?? null,
         tummySession: req.body?.tummySession ?? null,
         tummyGoalMinutes: normalizeTummyGoalMinutes(req.body?.tummyGoalMinutes),
+        pumpGoalOunces: Number.isInteger(req.body?.pumpGoalOunces) && req.body.pumpGoalOunces >= 0 ? Math.min(500, req.body.pumpGoalOunces) : 0,
+        pumpGoalSessions: Number.isInteger(req.body?.pumpGoalSessions) && req.body.pumpGoalSessions >= 0 ? Math.min(50, req.body.pumpGoalSessions) : 0,
         growthMeasurements: Array.isArray(req.body?.growthMeasurements) ? req.body.growthMeasurements : [],
+        healthRecords: Array.isArray(req.body?.healthRecords) ? req.body.healthRecords : [],
+        customTrackers: Array.isArray(req.body?.customTrackers) ? req.body.customTrackers : [],
+        customEvents: Array.isArray(req.body?.customEvents) ? req.body.customEvents : [],
         babyDob: typeof req.body?.babyDob === 'string' ? req.body.babyDob : fallbackBabyDob,
         session: req.body?.session ?? null,
         theme: req.body?.theme === 'dark' ? 'dark' : 'light',
         updatedAt: req.body?.updatedAt,
-      }, deletedItemOptions(scope))
-      const { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme } = incoming
+      }, {
+        ...deletedItemOptions(scope),
+        ...syncIntentOptions,
+      })
+      const { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, growthMeasurements, healthRecords, customTrackers, customEvents, babyDob, session, theme } = incoming
       if (selectBabyForHousehold && !selectBabyForHousehold.get(scope.babyId, scope.householdId)) {
         res.status(404).json({ ok: false, error: 'Baby not found' })
         return
@@ -474,7 +621,12 @@ export const createStateRouter = ({
         pump_session_json: pumpSession ? JSON.stringify(pumpSession) : null,
         tummy_session_json: tummySession ? JSON.stringify(tummySession) : null,
         tummy_goal_minutes: tummyGoalMinutes,
+        pump_goal_ounces: pumpGoalOunces,
+        pump_goal_sessions: pumpGoalSessions,
         growth_measurements_json: JSON.stringify(growthMeasurements),
+        health_records_json: JSON.stringify(healthRecords),
+        custom_trackers_json: JSON.stringify(customTrackers),
+        custom_events_json: JSON.stringify(customEvents),
         baby_dob: babyDob,
         session_json: session ? JSON.stringify(session) : null,
         theme,
@@ -486,11 +638,33 @@ export const createStateRouter = ({
         clientUpdatedAt: req.body?.updatedAt,
         nextUpdatedAt: updatedAt,
       })
-      persistStateAndDeletedItems(statePayload, audit, updatedAt)
+      persistStateAndDeletedItems(statePayload, audit, updatedAt, req.body?.syncIntents?.restores)
       notificationScheduler?.evaluate()
 
-      const responseState = { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, updatedAt }
+      const responseState = { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, growthMeasurements, healthRecords, customTrackers, customEvents, babyDob, session, theme, updatedAt }
       broadcastStateChange(responseState, scope, req.headers?.['x-client-id'] || null)
+      // Back up what actually landed, from the server, so every device is
+      // covered. Fire-and-forget by contract: this must never delay the
+      // caregiver's response or turn a log outage into a failed write.
+      forwardActionLog?.({
+        action: 'state.write',
+        at: updatedAt,
+        householdId: scope.householdId,
+        babyId: scope.babyId,
+        clientId: req.headers?.['x-client-id'] || null,
+        counts: {
+          entries: entries?.length ?? 0,
+          diapers: diapers?.length ?? 0,
+          medicines: medicines?.length ?? 0,
+          tummyTimes: tummyTimes?.length ?? 0,
+          pumpEvents: pumpEvents?.length ?? 0,
+          growthMeasurements: growthMeasurements?.length ?? 0,
+          healthRecords: healthRecords?.length ?? 0,
+          customTrackers: customTrackers?.length ?? 0,
+          customEvents: customEvents?.length ?? 0,
+        },
+        state: responseState,
+      })
       res.json({ ok: true, updatedAt, staleWriteMerged: incoming.stale, state: responseState })
     })
   }

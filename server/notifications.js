@@ -20,7 +20,7 @@ export function createNotificationScheduler({
   getMedicineReminderSettings = () => ({ tylenol: 6, motrin: 6 }),
   getNotificationPreferences = () => normalizeNotificationPreferences(),
   getHouseholdNotificationSettings = null,
-  canDeliverForHousehold = () => true,
+  canDeliverForHousehold = (/** @type {string} */ _householdId) => true,
   now = () => Date.now(),
   setTimer = setTimeout,
   clearTimer = clearTimeout,

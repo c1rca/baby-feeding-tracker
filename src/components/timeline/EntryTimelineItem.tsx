@@ -1,12 +1,15 @@
 import { MoreHorizontal, Pencil, RotateCcw, Trash2 } from 'lucide-react'
-import { diaperKindsLabel, entryDiaperKinds, formatTimelineTimestamp, timelineFeedLabel } from '../../domain/trackerDomain'
+import { diaperKindsLabel, entryDiaperKinds, formatDateInput, formatTimelineTimestamp, timelineFeedLabel } from '../../domain/trackerDomain'
 import type { Entry } from '../../types'
 import { DeleteConfirmation } from './DeleteConfirmation'
 import { EntryEditPanel, FeedMetricChips } from './EntryEditPanel'
 import type { TimelineActions } from './timelineTypes'
 import { formatTimelineAge, openMenu } from './timelineUtils'
+import { useUnits } from '../../state/unitPreferencesContext'
+import { ozToDisplayVolume } from '../../domain/units'
 
 export function EntryTimelineItem({ entry, showInlineResume, actions }: { entry: Entry; showInlineResume: boolean; actions: TimelineActions }) {
+  const { units } = useUnits()
   const isEditing = actions.editing?.id === entry.id
   const menuOpen = actions.openEntryMenuId === entry.id
   const confirmingDelete = actions.confirmingDeleteEntryId === entry.id
@@ -32,7 +35,7 @@ export function EntryTimelineItem({ entry, showInlineResume, actions }: { entry:
             <button type="button" className="entry-action-trigger" aria-label="Entry actions" aria-expanded={menuOpen} onClick={() => openMenu(entry.id, menuOpen, actions)}><MoreHorizontal size={17} /></button>
             {menuOpen ? (
               <div className="entry-menu" role="menu">
-                <button type="button" role="menuitem" aria-label="Edit entry" onClick={() => { actions.setEditing({ id: entry.id, leftMinutes: String(Math.round(entry.leftSeconds / 60)), rightMinutes: String(Math.round(entry.rightSeconds / 60)), bottleOunces: entry.bottleOunces ? String(entry.bottleOunces) : '', note: entry.note ?? '', diaperKinds: entryDiapers }); actions.setOpenEntryMenuId(null) }}><Pencil size={15} /> Edit</button>
+                <button type="button" role="menuitem" aria-label="Edit entry" onClick={() => { actions.setEditing({ id: entry.id, date: formatDateInput(entry.startedAt), leftMinutes: String(Math.round(entry.leftSeconds / 60)), rightMinutes: String(Math.round(entry.rightSeconds / 60)), bottleOunces: entry.bottleOunces ? String(ozToDisplayVolume(entry.bottleOunces, units.volume)) : '', note: entry.note ?? '', diaperKinds: entryDiapers }); actions.setOpenEntryMenuId(null) }}><Pencil size={15} /> Edit</button>
                 <button type="button" role="menuitem" aria-label="Resume session" onClick={() => actions.resumeEntry(entry)}><RotateCcw size={15} /> Resume</button>
                 <button type="button" role="menuitem" aria-label="Delete entry" className="danger-menu" onClick={() => actions.setConfirmingDeleteEntryId(entry.id)}><Trash2 size={15} /> Delete</button>
                 {confirmingDelete ? <DeleteConfirmation label="Confirm delete entry" onConfirm={() => actions.deleteEntry(entry)} /> : null}

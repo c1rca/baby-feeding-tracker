@@ -1,12 +1,13 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { makeId } from '../domain/trackerDomain'
+import { formatDateInput, formatTimeInput, makeId, parseDateAndTime } from '../domain/trackerDomain'
 import { activeElapsedSeconds, activeTimerEventRange } from '../domain/careTimer'
+import { displayVolumeToOz, ozToDisplayVolume, type VolumeUnit } from '../domain/units'
 import type { PumpEvent, PumpSession, Session, TummyTimeSession, UndoState } from '../types'
 export type { PumpSession } from '../types'
 
 type PumpSide = 'left' | 'both' | 'right'
 
-export type EditingPumpState = { id: string; leftOunces: string; rightOunces: string; note: string } | null
+export type EditingPumpState = { id: string; date: string; leftOunces: string; rightOunces: string; note: string } | null
 
 type Options = {
   pumpSession: PumpSession | null
@@ -21,16 +22,18 @@ type Options = {
   clearUndoTimeout: () => void
   setUndoState: Dispatch<SetStateAction<UndoState | null>>
   showToast: (message: string) => void
+  volumeUnit?: VolumeUnit
 }
 
 const sortPumpEvents = (events: PumpEvent[]) => [...events].sort((a, b) => b.startedAt - a.startedAt)
-const parseOutput = (value: string) => {
+// Output is typed in the caregiver's display unit and stored as canonical ounces.
+const parseOutput = (value: string, unit: VolumeUnit) => {
   if (value.trim() === '') return null
   const output = Number(value)
-  return Number.isFinite(output) && output >= 0 ? output : null
+  return Number.isFinite(output) && output >= 0 ? displayVolumeToOz(output, unit) : null
 }
 
-export function usePumpActions({ pumpSession, feedSession, tummySession, setPumpSession, setPumpEvents, setPumpCompletionOpen, editingPump, setEditingPump, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
+export function usePumpActions({ pumpSession, feedSession, tummySession, setPumpSession, setPumpEvents, setPumpCompletionOpen, editingPump, setEditingPump, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast, volumeUnit = 'oz' }: Options) {
   const blocked = () => { if (feedSession || tummySession || pumpSession) { showToast('Finish or clear the active timer before starting another session'); return true } return false }
   const startPumping = (side: PumpSide) => { if (blocked()) return; const now = Date.now(); setPumpSession({ id: makeId(), startedAt: now, side, runningStartedAt: now, elapsedSeconds: 0 }) }
   const startManualPumping = () => { if (blocked()) return; const now = Date.now(); setPumpSession({ id: makeId(), startedAt: now, side: 'both', runningStartedAt: now, elapsedSeconds: 0 }); setPumpCompletionOpen(true) }
@@ -51,7 +54,7 @@ export function usePumpActions({ pumpSession, feedSession, tummySession, setPump
     // Record the active (unpaused) duration, mirroring how the tummy/sleep
     // timers persist elapsed time rather than wall-clock span.
     const range = activeTimerEventRange(pumpSession, Date.now())
-    const pumpEvent: PumpEvent = { id: pumpSession.id, ...range, leftOunces: parseOutput(leftText), rightOunces: parseOutput(rightText), note: note.trim() || undefined }
+    const pumpEvent: PumpEvent = { id: pumpSession.id, ...range, leftOunces: parseOutput(leftText, volumeUnit), rightOunces: parseOutput(rightText, volumeUnit), note: note.trim() || undefined }
     setPumpEvents((prev) => sortPumpEvents([pumpEvent, ...prev]))
     setPumpSession(null)
     setPumpCompletionOpen(false)
@@ -60,13 +63,17 @@ export function usePumpActions({ pumpSession, feedSession, tummySession, setPump
     setUndoState({ pumpEvent, timeoutId, kind: 'pump-log' })
     showToast('Pumping saved')
   }
+  const toEditValue = (ounces: number | null) => (ounces === null ? '' : String(ozToDisplayVolume(ounces, volumeUnit)))
   const startPumpEdit = (pumpEvent: PumpEvent) => {
-    setEditingPump({ id: pumpEvent.id, leftOunces: pumpEvent.leftOunces?.toString() ?? '', rightOunces: pumpEvent.rightOunces?.toString() ?? '', note: pumpEvent.note ?? '' })
+    setEditingPump({ id: pumpEvent.id, date: formatDateInput(pumpEvent.startedAt), leftOunces: toEditValue(pumpEvent.leftOunces), rightOunces: toEditValue(pumpEvent.rightOunces), note: pumpEvent.note ?? '' })
     setOpenEntryMenuId(null)
   }
   const savePumpEdit = (pumpEvent: PumpEvent) => {
     if (!editingPump) return
-    setPumpEvents((prev) => sortPumpEvents(prev.map((event) => event.id === pumpEvent.id ? { ...event, leftOunces: parseOutput(editingPump.leftOunces), rightOunces: parseOutput(editingPump.rightOunces), note: editingPump.note.trim() || undefined } : event)))
+    const startedAt = editingPump.date === formatDateInput(pumpEvent.startedAt) ? pumpEvent.startedAt : parseDateAndTime(editingPump.date, formatTimeInput(pumpEvent.startedAt))
+    if (startedAt === null) return showToast('Enter a valid pumping date')
+    const duration = Math.max(0, pumpEvent.endedAt - pumpEvent.startedAt)
+    setPumpEvents((prev) => sortPumpEvents(prev.map((event) => event.id === pumpEvent.id ? { ...event, startedAt, endedAt: startedAt + duration, leftOunces: parseOutput(editingPump.leftOunces, volumeUnit), rightOunces: parseOutput(editingPump.rightOunces, volumeUnit), note: editingPump.note.trim() || undefined } : event)))
     setEditingPump(null)
     showToast('Pumping updated')
   }

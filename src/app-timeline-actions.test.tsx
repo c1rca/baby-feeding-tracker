@@ -22,13 +22,16 @@ describe('App interactions', () => {
     await user.click(within(firstItem).getByRole('button', { name: /Medicine actions/i }))
     await user.click(within(firstItem).getByRole('menuitem', { name: /Edit medicine/i }))
     await user.click(within(firstItem).getByRole('button', { name: /Select Vitamin D/i }))
+    await user.clear(within(firstItem).getByLabelText(/Medicine date/i))
+    await user.type(within(firstItem).getByLabelText(/Medicine date/i), '2025-01-02')
     await user.clear(within(firstItem).getByLabelText(/Medicine time/i))
     await user.type(within(firstItem).getByLabelText(/Medicine time/i), '9:15 AM')
     await user.click(within(firstItem).getByRole('button', { name: /Save medicine/i }))
 
     expect(screen.getByText(/Medicine updated/i)).toBeTruthy()
     expect(within(firstItem).getAllByText(/^Vitamin D$/i).length).toBeGreaterThan(0)
-    expect(within(firstItem).getByText(/9:15 AM/i)).toBeTruthy()
+    const medicines = JSON.parse(localStorage.getItem(STORAGE_MEDICINES_KEY) || '[]') as Array<{ at: number }>
+    expect(new Date(medicines[0].at).toLocaleDateString('en-CA')).toBe('2025-01-02')
   })
 
   it('deletes and restores an entry with undo', async () => {

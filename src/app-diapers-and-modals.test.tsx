@@ -100,6 +100,24 @@ describe('App interactions', () => {
     expect(screen.getAllByRole('listitem')).toHaveLength(1)
   })
 
+  it('changes a standalone diaper date from its timeline edit form', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /^Diapers$/i }))
+    await user.click(within(screen.getByRole('dialog', { name: /Log diaper/i })).getByRole('button', { name: /^Wet$/i }))
+    const diaperItem = screen.getAllByRole('listitem')[0]
+
+    await user.click(within(diaperItem).getByRole('button', { name: /Diaper actions/i }))
+    await user.click(within(diaperItem).getByRole('menuitem', { name: /Edit diaper/i }))
+    await user.clear(within(diaperItem).getByLabelText('Diaper date'))
+    await user.type(within(diaperItem).getByLabelText('Diaper date'), '2025-01-02')
+    await user.click(within(diaperItem).getByRole('button', { name: /Save diaper/i }))
+
+    const diapers = JSON.parse(localStorage.getItem('baby-feeding-tracker:v1:diapers') || '[]') as Array<{ at: number }>
+    expect(new Date(diapers[0].at).toLocaleDateString('en-CA')).toBe('2025-01-02')
+  })
+
   it('closes modal workflows with Escape', async () => {
     const user = userEvent.setup()
     render(<App />)

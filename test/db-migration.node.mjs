@@ -92,3 +92,47 @@ test('restore rejects invalid backup files', () => {
   assert.notEqual(result.status, 0)
   assert.match(result.stderr, /Restore failed: invalid backup/)
 })
+
+test('a migration killed midway does not wedge the next boot or lose tombstones', () => {
+  // The deleted_items rebuild ran DROP TABLE and ALTER ... RENAME as separate
+  // auto-committed statements. A kill between them left no `deleted_items` at
+  // all, and the next boot's `ALTER TABLE deleted_items ADD COLUMN` threw on a
+  // missing table — startup wedged permanently, with every tombstone gone.
+  // Tombstones are what stop a deleted record being resurrected by any stale
+  // client, so losing them silently undoes deletions across the household.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'feeding-migration-'))
+  const dbPath = path.join(dir, 'tracker.db')
+
+  // Pre-scoping shape, with a tombstone in it, plus the leftover scoped table a
+  // crash mid-rebuild would strand.
+  const seed = new Database(dbPath)
+  seed.exec(`
+    CREATE TABLE deleted_items (
+      item_id TEXT NOT NULL,
+      collection TEXT NOT NULL,
+      deleted_at TEXT NOT NULL,
+      PRIMARY KEY (collection, item_id)
+    );
+    INSERT INTO deleted_items (item_id, collection, deleted_at) VALUES ('entry-gone', 'entries', '2026-07-01T00:00:00Z');
+    CREATE TABLE deleted_items_scoped (
+      item_id TEXT NOT NULL,
+      collection TEXT NOT NULL,
+      household_id TEXT NOT NULL,
+      baby_id TEXT NOT NULL,
+      deleted_at TEXT NOT NULL,
+      PRIMARY KEY (household_id, baby_id, collection, item_id)
+    );
+  `)
+  seed.close()
+
+  const result = spawnSync(process.execPath, ['-e', `
+    const { openTrackerDatabase } = await import('${path.join(rootDir, 'server', 'database.js')}')
+    const db = openTrackerDatabase({ dbDir: '${dir}', backupDir: '${path.join(dir, 'backups')}', dbPath: '${dbPath}' })
+    const rows = db.prepare("SELECT item_id FROM deleted_items").all()
+    console.log(JSON.stringify(rows.map((r) => r.item_id)))
+    db.close()
+  `.trim()], { encoding: 'utf8', env: { ...process.env, BACKUP_ON_START: '0' } })
+
+  assert.equal(result.status, 0, `startup must recover from a partial migration, got: ${result.stderr}`)
+  assert.match(result.stdout, /entry-gone/, 'the tombstone must survive the rebuild')
+})

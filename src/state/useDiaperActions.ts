@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { diaperLabel } from '../domain/trackerDomain'
+import { diaperLabel, formatTimeInput, parseDateAndTime } from '../domain/trackerDomain'
 import type { DiaperEvent, DiaperKind, EditingDiaperState, UndoState } from '../types'
 import { createStandaloneDiaper, toggleDiaperKind } from './auxiliaryEventModels'
 
@@ -54,7 +54,9 @@ export function useDiaperActions({ sessionHasActiveFeed, selectedDiapers, setSel
 
   const saveDiaperEdit = (diaper: DiaperEvent) => {
     if (!editingDiaper || editingDiaper.kinds.length === 0) return showToast('Select wet, stool, or both')
-    setDiapers((prev) => prev.map((item) => item.id === diaper.id ? { ...item, kind: undefined, kinds: editingDiaper.kinds } : item).sort((a, b) => b.at - a.at))
+    const at = parseDateAndTime(editingDiaper.date, formatTimeInput(editingDiaper.originalAt))
+    if (at === null) return showToast('Enter a valid diaper date')
+    setDiapers((prev) => prev.map((item) => item.id === diaper.id ? { ...item, at, kind: undefined, kinds: editingDiaper.kinds } : item).sort((a, b) => b.at - a.at))
     setEditingDiaper(null)
     showToast('Diaper updated')
   }

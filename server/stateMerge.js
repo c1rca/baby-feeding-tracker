@@ -24,8 +24,9 @@ function byId(items) {
 }
 
 export function mergeByIdPreservingExisting(existingItems, incomingItems, deletedIds = []) {
-  const merged = byId(existingItems)
   const deleted = new Set(Array.isArray(deletedIds) ? deletedIds : [])
+  const merged = byId(existingItems)
+  for (const id of deleted) merged.delete(id)
   for (const item of Array.isArray(incomingItems) ? incomingItems : []) {
     if (item?.id && !deleted.has(item.id)) merged.set(item.id, item)
   }
@@ -60,8 +61,9 @@ function sameFeedSave(a, b) {
 }
 
 export function mergeEntriesPreservingExisting(existingEntries, incomingEntries, deletedIds = []) {
-  const merged = byId(existingEntries)
   const deleted = new Set(Array.isArray(deletedIds) ? deletedIds : [])
+  const merged = byId(existingEntries)
+  for (const id of deleted) merged.delete(id)
   for (const item of Array.isArray(incomingEntries) ? incomingEntries : []) {
     if (!item?.id || deleted.has(item.id)) continue
     const duplicateExisting = [...merged.values()].find((existing) => existing.id !== item.id && sameFeedSave(existing, item))
@@ -121,28 +123,48 @@ export function isStaleStateWrite(existingUpdatedAt, clientUpdatedAt) {
   return clientUpdatedAt !== existingUpdatedAt
 }
 
+function staleSessionMutation(existingSession, incomingSession, incomingEntries) {
+  if (!existingSession?.id) return false
+  const knownAt = existingSession.activeSide && Number.isFinite(existingSession.segmentStart)
+    ? existingSession.segmentStart
+    : Math.max(existingSession.startedAt || 0, ...(existingSession.segments || []).map((segment) => segment.endedAt || 0))
+  if (incomingSession?.id === existingSession.id && incomingSession.activeSide === null) {
+    return Math.max(0, ...(incomingSession.segments || []).map((segment) => segment.endedAt || 0)) >= knownAt
+  }
+  return incomingSession === null && Array.isArray(incomingEntries) && incomingEntries.some((entry) => entry?.sourceSessionId === existingSession.id && entry.endedAt >= knownAt)
+}
+
 // Sync safety contract:
-// - Current clients may replace full state intentionally.
-// - Stale clients are treated as offline replays and may only add/update ID-based entities.
-// - Stale clients must not delete server-only entities by omission.
+// - Full-state writes may add/update ID-based entities, never delete by omission.
+// - A deletion requires a separately persisted, scoped delete intent.
 // - Stale clients must not replace active server session state; session conflict handling stays server-authoritative until sessions have IDs/revisions.
 export function resolveIncomingState(existingRow, incoming, options = {}) {
   const stale = isStaleStateWrite(existingRow?.updated_at, incoming.updatedAt)
-  if (!stale || !existingRow) return { ...incoming, entries: dedupeFeedEntries(incoming.entries), stale }
+  if (!existingRow) return { ...incoming, entries: dedupeFeedEntries(incoming.entries), stale }
+  const intents = options.deleteIntents || {}
+  const restores = options.restoreIntents || {}
+  const existingSession = parseJsonValue(existingRow.session_json, null)
+  const acceptStaleSessionMutation = staleSessionMutation(existingSession, incoming.session, incoming.entries)
+  const deleted = (collection, legacyKey) => [...new Set([...(options[legacyKey] || []), ...(intents[collection] || [])].filter((id) => !(restores[collection] || []).includes(id)))]
 
   return {
     ...incoming,
-    entries: mergeEntriesPreservingExisting(parseJsonArray(existingRow.entries_json), incoming.entries, options.deletedEntryIds),
-    diapers: mergeByIdPreservingExisting(parseJsonArray(existingRow.diapers_json), incoming.diapers, options.deletedDiaperIds),
-    medicines: mergeByIdPreservingExisting(parseJsonArray(existingRow.medicines_json), incoming.medicines, options.deletedMedicineIds),
-    tummyTimes: mergeByIdPreservingExisting(parseJsonArray(existingRow.tummy_times_json), incoming.tummyTimes, options.deletedTummyTimeIds),
-    pumpEvents: mergeByIdPreservingExisting(parseJsonArray(existingRow.pump_events_json), incoming.pumpEvents, options.deletedPumpEventIds),
-    pumpSession: parseJsonValue(existingRow.pump_session_json, null),
-    tummySession: parseJsonValue(existingRow.tummy_session_json, null),
-    tummyGoalMinutes: Number.isFinite(Number(existingRow.tummy_goal_minutes)) ? Math.min(240, Math.max(1, Math.round(Number(existingRow.tummy_goal_minutes)))) : incoming.tummyGoalMinutes,
-    growthMeasurements: mergeByIdPreservingExisting(parseJsonArray(existingRow.growth_measurements_json), incoming.growthMeasurements, options.deletedGrowthMeasurementIds),
-    babyDob: existingRow.baby_dob || incoming.babyDob || '2026-06-03',
-    session: parseJsonValue(existingRow.session_json, null),
+    entries: mergeEntriesPreservingExisting(parseJsonArray(existingRow.entries_json), incoming.entries, deleted('entries', 'deletedEntryIds')),
+    diapers: mergeByIdPreservingExisting(parseJsonArray(existingRow.diapers_json), incoming.diapers, deleted('diapers', 'deletedDiaperIds')),
+    medicines: mergeByIdPreservingExisting(parseJsonArray(existingRow.medicines_json), incoming.medicines, deleted('medicines', 'deletedMedicineIds')),
+    tummyTimes: mergeByIdPreservingExisting(parseJsonArray(existingRow.tummy_times_json), incoming.tummyTimes, deleted('tummyTimes', 'deletedTummyTimeIds')),
+    pumpEvents: mergeByIdPreservingExisting(parseJsonArray(existingRow.pump_events_json), incoming.pumpEvents, deleted('pumpEvents', 'deletedPumpEventIds')),
+    growthMeasurements: mergeByIdPreservingExisting(parseJsonArray(existingRow.growth_measurements_json), incoming.growthMeasurements, deleted('growthMeasurements', 'deletedGrowthMeasurementIds')),
+    healthRecords: mergeByIdPreservingExisting(parseJsonArray(existingRow.health_records_json), incoming.healthRecords, deleted('healthRecords', 'deletedHealthRecordIds')),
+    customTrackers: mergeByIdPreservingExisting(parseJsonArray(existingRow.custom_trackers_json), incoming.customTrackers, deleted('customTrackers', 'deletedCustomTrackerIds')),
+    customEvents: mergeByIdPreservingExisting(parseJsonArray(existingRow.custom_events_json), incoming.customEvents, deleted('customEvents', 'deletedCustomEventIds')),
+    pumpSession: stale ? parseJsonValue(existingRow.pump_session_json, null) : incoming.pumpSession,
+    tummySession: stale ? parseJsonValue(existingRow.tummy_session_json, null) : incoming.tummySession,
+    tummyGoalMinutes: stale && Number.isFinite(Number(existingRow.tummy_goal_minutes)) ? Math.min(240, Math.max(1, Math.round(Number(existingRow.tummy_goal_minutes)))) : incoming.tummyGoalMinutes,
+    pumpGoalOunces: stale && Number.isFinite(Number(existingRow.pump_goal_ounces)) ? Math.min(500, Math.max(0, Math.round(Number(existingRow.pump_goal_ounces)))) : incoming.pumpGoalOunces,
+    pumpGoalSessions: stale && Number.isFinite(Number(existingRow.pump_goal_sessions)) ? Math.min(50, Math.max(0, Math.round(Number(existingRow.pump_goal_sessions)))) : incoming.pumpGoalSessions,
+    babyDob: stale ? existingRow.baby_dob || incoming.babyDob || '2026-06-03' : incoming.babyDob,
+    session: stale && !acceptStaleSessionMutation ? existingSession : incoming.session,
     stale,
   }
 }

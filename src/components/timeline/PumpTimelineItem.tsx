@@ -4,10 +4,13 @@ import type { TimelineActions } from './timelineTypes'
 import { DeleteConfirmation } from './DeleteConfirmation'
 import { formatTimelineTimestamp } from '../../domain/trackerDomain'
 import { formatTimelineAge, openMenu } from './timelineUtils'
+import { useUnits } from '../../state/unitPreferencesContext'
+import { formatVolume } from '../../domain/units'
 
 const total = (event: PumpEvent) => (event.leftOunces ?? 0) + (event.rightOunces ?? 0)
 
 export function PumpTimelineItem({ pumpEvent, actions }: { pumpEvent: PumpEvent; actions: TimelineActions }) {
+  const { units } = useUnits()
   const isEditing = actions.editingPump?.id === pumpEvent.id
   const menuOpen = actions.openEntryMenuId === pumpEvent.id
   const confirmingDelete = actions.confirmingDeleteEntryId === pumpEvent.id
@@ -18,9 +21,9 @@ export function PumpTimelineItem({ pumpEvent, actions }: { pumpEvent: PumpEvent;
         <div className="timeline-head"><strong>{formatTimelineTimestamp(pumpEvent.startedAt).primary}</strong><span className="badge badge-pump">Pumping</span></div>
         <span className="timeline-age">{formatTimelineAge(pumpEvent.startedAt)}</span>
         <div className="timeline-metrics">
-          {pumpEvent.leftOunces !== null ? <span className="metric-chip">Left {pumpEvent.leftOunces} oz</span> : null}
-          {pumpEvent.rightOunces !== null ? <span className="metric-chip">Right {pumpEvent.rightOunces} oz</span> : null}
-          <span className="metric-chip primary-metric">Total {outputTotal} oz</span>
+          {pumpEvent.leftOunces !== null ? <span className="metric-chip">Left {formatVolume(pumpEvent.leftOunces, units.volume)}</span> : null}
+          {pumpEvent.rightOunces !== null ? <span className="metric-chip">Right {formatVolume(pumpEvent.rightOunces, units.volume)}</span> : null}
+          <span className="metric-chip primary-metric">Total {formatVolume(outputTotal, units.volume)}</span>
         </div>
         {pumpEvent.note ? <p className="entry-note">{pumpEvent.note}</p> : null}
       </div>
@@ -35,8 +38,9 @@ export function PumpTimelineItem({ pumpEvent, actions }: { pumpEvent: PumpEvent;
       </div>
     </div>
     {isEditing && actions.editingPump ? <div className="edit-panel pump-edit-panel">
-      <label>Left output<input type="number" min="0" step="0.1" aria-label="Left output ounces" value={actions.editingPump.leftOunces} onChange={(event) => actions.setEditingPump({ ...actions.editingPump!, leftOunces: event.target.value })} /></label>
-      <label>Right output<input type="number" min="0" step="0.1" aria-label="Right output ounces" value={actions.editingPump.rightOunces} onChange={(event) => actions.setEditingPump({ ...actions.editingPump!, rightOunces: event.target.value })} /></label>
+      <label>Date<input type="date" aria-label="Pumping date" value={actions.editingPump.date} onChange={(event) => actions.setEditingPump({ ...actions.editingPump!, date: event.target.value })} /></label>
+      <label>Left output ({units.volume})<input type="number" min="0" step={units.volume === 'ml' ? '1' : '0.1'} aria-label="Left output ounces" value={actions.editingPump.leftOunces} onChange={(event) => actions.setEditingPump({ ...actions.editingPump!, leftOunces: event.target.value })} /></label>
+      <label>Right output ({units.volume})<input type="number" min="0" step={units.volume === 'ml' ? '1' : '0.1'} aria-label="Right output ounces" value={actions.editingPump.rightOunces} onChange={(event) => actions.setEditingPump({ ...actions.editingPump!, rightOunces: event.target.value })} /></label>
       <label>Note<input aria-label="Pumping note" value={actions.editingPump.note} onChange={(event) => actions.setEditingPump({ ...actions.editingPump!, note: event.target.value })} /></label>
       <button type="button" className="primary" aria-label="Save pumping" onClick={() => actions.savePumpEdit(pumpEvent)}><Save size={15} /> Save</button>
     </div> : null}

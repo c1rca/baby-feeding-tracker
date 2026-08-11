@@ -17,6 +17,8 @@ function setup(editingTummyTime: EditingTummyTimeState, existing: TummyTimeEvent
       pumpSession: null,
       setTummySession: noop,
       setTummyTimes,
+      customTrackers: [],
+      setCustomEvents: noop,
       editingTummyTime,
       setEditingTummyTime,
       setAdditionalOptionsOpen: noop,

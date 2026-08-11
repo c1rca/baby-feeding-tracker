@@ -1,5 +1,6 @@
 import { MoreHorizontal, Pencil, Pill, Save, Trash2 } from 'lucide-react'
 import { formatTimelineTimestamp, medicineLabel } from '../../domain/trackerDomain'
+import { medicineEventLabel } from '../../domain/labels'
 import type { MedicineEvent } from '../../types'
 import { DeleteConfirmation } from './DeleteConfirmation'
 import type { TimelineActions } from './timelineTypes'
@@ -17,7 +18,7 @@ export function MedicineTimelineItem({ medicine, actions }: { medicine: Medicine
         <div className="timeline-main">
           <div className="timeline-head">
             <strong>{timestamp.primary}</strong>
-            <span className={`badge badge-medicine badge-medicine-${medicine.kind}`}><Pill size={13} /> {medicineLabel(medicine.kind)}</span>
+            <span className={`badge badge-medicine badge-medicine-${medicine.kind}`}><Pill size={13} /> {medicineEventLabel(medicine)}</span>
           </div>
           <span className="timeline-age">{formatTimelineAge(medicine.at)}</span>
         </div>
@@ -42,6 +43,7 @@ export function MedicineTimelineItem({ medicine, actions }: { medicine: Medicine
               return <button key={kind} type="button" className={`medicine-chip ${selected ? 'selected' : ''}`} aria-label={`Select ${medicineLabel(kind)}`} aria-pressed={selected} onClick={() => actions.setEditingMedicine({ ...actions.editingMedicine!, kind })}><Pill size={14} /> {medicineLabel(kind)}</button>
             })}
           </div>
+          <label>Medicine date<input type="date" aria-label="Medicine date" value={actions.editingMedicine.date ?? ''} onChange={(event) => actions.setEditingMedicine({ ...actions.editingMedicine!, date: event.target.value })} /></label>
           <label>Medicine time<input aria-label="Medicine time" value={actions.editingMedicine.time} onChange={(event) => actions.setEditingMedicine({ ...actions.editingMedicine!, time: event.target.value })} placeholder="9:15 AM" /></label>
           <div className="row"><button className="primary" aria-label="Save medicine" onClick={() => actions.saveMedicineEdit(medicine)}><Save size={15} /> Save</button><button onClick={() => actions.setEditingMedicine(null)}>Cancel</button></div>
         </div>

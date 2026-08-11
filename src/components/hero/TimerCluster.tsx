@@ -1,11 +1,12 @@
 import { CirclePause, CirclePlay } from 'lucide-react'
 import { formatDuration } from '../../domain/feedingUtils'
 import { sideLabel } from '../../domain/trackerDomain'
+import { careTimerLabel } from '../../domain/careTimer'
 import type { HeroPanelProps } from './HeroPanel.types'
 
-type TimerClusterProps = Pick<HeroPanelProps, 'session' | 'activeSeconds' | 'activeSide' | 'suggestedSide' | 'tummySession' | 'tummyActiveSeconds' | 'pumpSession' | 'pumpActiveSeconds' | 'pause' | 'resume' | 'pauseTummyTime' | 'resumeTummyTime' | 'pausePumping' | 'resumePumping'>
+type TimerClusterProps = Pick<HeroPanelProps, 'session' | 'activeSeconds' | 'activeSide' | 'suggestedSide' | 'tummySession' | 'tummyActiveSeconds' | 'customTrackers' | 'pumpSession' | 'pumpActiveSeconds' | 'pause' | 'resume' | 'pauseTummyTime' | 'resumeTummyTime' | 'pausePumping' | 'resumePumping'>
 
-export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide, tummySession, tummyActiveSeconds, pumpSession, pumpActiveSeconds, pause, resume, pauseTummyTime, resumeTummyTime, pausePumping, resumePumping }: TimerClusterProps) {
+export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide, tummySession, tummyActiveSeconds, customTrackers, pumpSession, pumpActiveSeconds, pause, resume, pauseTummyTime, resumeTummyTime, pausePumping, resumePumping }: TimerClusterProps) {
   const displaySeconds = pumpSession ? pumpActiveSeconds : tummySession ? tummyActiveSeconds : activeSeconds
 
   // One transport control shared by every live timer. Priority matches the
@@ -14,7 +15,7 @@ export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide
   const transport = pumpSession
     ? { paused: !pumpSession.runningStartedAt, onToggle: pumpSession.runningStartedAt ? pausePumping : resumePumping, label: 'Pumping' }
     : tummySession
-      ? { paused: !tummySession.runningStartedAt, onToggle: tummySession.runningStartedAt ? pauseTummyTime : resumeTummyTime, label: tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time' }
+      ? { paused: !tummySession.runningStartedAt, onToggle: tummySession.runningStartedAt ? pauseTummyTime : resumeTummyTime, label: careTimerLabel(tummySession, customTrackers) }
       : session
         ? { paused: !activeSide, onToggle: activeSide ? pause : () => resume(suggestedSide), label: 'feed' }
         : null
@@ -30,7 +31,7 @@ export function TimerCluster({ session, activeSeconds, activeSide, suggestedSide
   return (
     <div className="timer-cluster">
       <div className={`timer-display-row ${hasCareMode ? 'timer-display-row--balanced' : 'timer-display-row--feed'}`}>
-        {hasCareMode ? <span className="timer-mode-pill">{pumpSession ? 'Pumping' : tummySession?.kind === 'sleep' ? 'Sleep' : 'Tummy Time'}</span> : null}
+        {hasCareMode ? <span className="timer-mode-pill">{pumpSession ? 'Pumping' : careTimerLabel(tummySession, customTrackers)}</span> : null}
         <div className={`timer-shell ${timerState}`}>
           <div className="timer-halo" aria-hidden="true" />
           <div className="timer timer-value">{formatDuration(displaySeconds)}</div>

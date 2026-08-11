@@ -80,3 +80,30 @@ test('resolveIncomingState dedupes legacy stale duplicate active-feed saves cons
   assert.equal(resolved.stale, true)
   assert.deepEqual(resolved.entries.map((entry) => entry.id), ['current-feed'])
 })
+
+test('resolveIncomingState preserves every ID collection on a current write unless explicitly deleted', () => {
+  const existingRow = {
+    entries_json: JSON.stringify([{ id: 'entry-1' }]),
+    diapers_json: JSON.stringify([{ id: 'diaper-1' }]),
+    medicines_json: JSON.stringify([{ id: 'medicine-1' }]),
+    tummy_times_json: JSON.stringify([{ id: 'tummy-1' }]),
+    pump_events_json: JSON.stringify([{ id: 'pump-1' }]),
+    growth_measurements_json: JSON.stringify([{ id: 'growth-1' }]),
+    health_records_json: JSON.stringify([{ id: 'health-1' }]),
+    custom_trackers_json: JSON.stringify([{ id: 'tracker-1' }]),
+    custom_events_json: JSON.stringify([{ id: 'event-1' }]),
+    updated_at: 'server-v1',
+  }
+  const incoming = { entries: [], diapers: [], medicines: [], tummyTimes: [], pumpEvents: [], growthMeasurements: [], healthRecords: [], customTrackers: [], customEvents: [], updatedAt: 'server-v1' }
+
+  const preserved = resolveIncomingState(existingRow, incoming)
+  assert.equal(preserved.stale, false)
+  for (const [collection, id] of [['entries', 'entry-1'], ['diapers', 'diaper-1'], ['medicines', 'medicine-1'], ['tummyTimes', 'tummy-1'], ['pumpEvents', 'pump-1'], ['growthMeasurements', 'growth-1'], ['healthRecords', 'health-1'], ['customTrackers', 'tracker-1'], ['customEvents', 'event-1']]) {
+    assert.deepEqual(preserved[collection].map((item) => item.id), [id])
+  }
+
+  const deleted = resolveIncomingState(existingRow, incoming, { deleteIntents: { entries: ['entry-1'], customEvents: ['event-1'] } })
+  assert.deepEqual(deleted.entries, [])
+  assert.deepEqual(deleted.customEvents, [])
+  assert.deepEqual(deleted.diapers.map((item) => item.id), ['diaper-1'])
+})

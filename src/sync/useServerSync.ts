@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ServerState } from '../types'
+import { useActionLog } from '../logging/useActionLog'
+import { recordSendFailure } from '../logging/failureJournal'
+import { CLIENT_ID } from './clientId'
 import { loadServerState, saveServerState } from './serverSyncApi'
 import { buildApiStatePayload, mergeQueuedSyncOverrides } from './serverSyncModels'
 import { clearPendingSync, hasPendingSyncForBaby, markPendingSync, type SyncStatus, type SyncToApiOverrides, type UseServerSyncOptions } from './serverSyncTypes'
@@ -8,6 +11,7 @@ import { useLatestServerPayload, useServerStateApplier } from './useServerStateA
 import { usePendingSyncRetry, usePersistLocalChanges } from './useServerSyncEffects'
 import { useLiveStateStream } from './useLiveStateStream'
 import { useBackgroundResync } from './useBackgroundResync'
+import { clearSyncIntents, readSyncIntents } from './syncIntents'
 
 // Coalesce a focus+visibilitychange burst (they fire together on tab return)
 // into a single fetch, while still letting the periodic poll through.
@@ -18,12 +22,21 @@ export type LiveSyncConflictChoice = 'theirs' | 'mine'
 export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?: boolean }) => {
   // Default OFF: the live subscription is an explicit opt-in (the app passes the
   // per-device setting). Callers that don't opt in keep pure pull/push sync.
-  const { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme, selectedBabyId, liveSyncEnabled = false } = options
+  const { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, healthRecords, customTrackers, customEvents, growthMeasurements, babyDob, session, theme, selectedBabyId, liveSyncEnabled = false } = options
   const [syncStatus, setSyncStatus] = useState<SyncStatus>(() => (hasPendingSyncForBaby(selectedBabyId) ? 'offline' : 'synced'))
   const [hasHydrated, setHasHydrated] = useState(false)
   const [liveConflict, setLiveConflict] = useState<ServerState | null>(null)
   const [liveConnected, setLiveConnected] = useState(false)
   const latestPayloadRef = useLatestServerPayload(options)
+  // Backed up from the same values the sync payload is built from, so the log
+  // captures exactly what a device would have pushed — including while the
+  // tracker's own server is unreachable and nothing is being pushed at all.
+  const actionLogState = useMemo(
+    () => ({ entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, healthRecords, customTrackers, customEvents, growthMeasurements, babyDob, session, theme }),
+    [entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, healthRecords, customTrackers, customEvents, growthMeasurements, babyDob, session, theme],
+  )
+  const actionLogContext = useMemo(() => ({ babyId: selectedBabyId }), [selectedBabyId])
+  useActionLog(actionLogState, actionLogContext)
   const { applyServerState, applyingServerStateRef, serverUpdatedAtRef, skipNextSyncRef } = useServerStateApplier(options)
   // Single-flight: never overlap PUTs. Concurrent writes could return out of
   // order, letting a stale updatedAt regress serverUpdatedAtRef so the next
@@ -47,26 +60,82 @@ export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?
     }
     inFlightRef.current = true
     const payload = latestPayloadRef.current
+    const intents = readSyncIntents(selectedBabyId)
+    const body = buildApiStatePayload(payload, serverUpdatedAtRef.current, overrides, intents)
     setSyncStatus('syncing')
     try {
-      const data = await saveServerState(buildApiStatePayload(payload, serverUpdatedAtRef.current, overrides), { babyId: selectedBabyId })
-      if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
-      if (data.state) applyServerState(data.state)
-      clearPendingSync(selectedBabyId)
-      // Our write adopted the server's merged truth, so any held remote update
-      // is now reconciled — drop the conflict prompt.
-      setLiveConflict(null)
-      setSyncStatus('synced')
-    } catch {
+      const data = await saveServerState(body, { babyId: selectedBabyId })
+      // Never adopt an acknowledgement or revision that raced a newer local
+      // mutation (or a queued rerun): that pair must stale-merge on replay.
+      const localChangedDuringWrite = latestPayloadRef.current !== payload || rerunRef.current
+      if (localChangedDuringWrite) {
+        markPendingSync(selectedBabyId)
+        // Keep the revision the server just acknowledged, but do not adopt its
+        // state: the local payload moved on mid-write, and applying the
+        // response would throw that newer edit away.
+        //
+        // Discarding the revision here instead looks more cautious and is the
+        // opposite. A write carrying no revision reads as *stale* to the
+        // server, and the stale path is only conservative for collections
+        // (which are merged additively) — for the single-valued fields it
+        // keeps its own copy and drops the client's. So the replay that exists
+        // precisely to carry the newer local change would arrive and have that
+        // change discarded: a caregiver who resumed a timer, or undid a
+        // cleared feed, while a write was in flight watched the app silently
+        // revert it a second later. Recording the acknowledged revision keeps
+        // the replay authoritative, and it can never regress — it is strictly
+        // newer than the one this write was built against.
+        if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
+        rerunRef.current = true
+      } else {
+        if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
+        if (data.state) applyServerState(data.state)
+        clearPendingSync(selectedBabyId)
+        clearSyncIntents(selectedBabyId)
+        setLiveConflict(null)
+        setSyncStatus('synced')
+      }
+    } catch (error) {
       markPendingSync(selectedBabyId)
-      setSyncStatus('offline')
+      // Separate "the network is away" from "the server refused this, and will
+      // refuse it again". Both used to read as `offline`, whose pill says
+      // "Offline changes saved" — reassuring, and true for a tunnel outage.
+      //
+      // For a rejection it is a lie that hides a permanent stop. The whole-state
+      // payload has a hard size ceiling; when a household eventually crosses it
+      // every write comes back 413 and the retry loop runs forever against a
+      // body that can never be accepted. The same goes for a validation error
+      // the client will keep reproducing. 408 and 429 are the exceptions — they
+      // are refusals about *timing*, and the same payload succeeds later.
+      const status = (error as { status?: number })?.status
+      const permanentRejection = typeof status === 'number' && status >= 400 && status < 500 && status !== 408 && status !== 429
+      setSyncStatus(permanentRejection ? 'issue' : 'offline')
+      // Keep what we tried to send. The backup log runs on the server, so a
+      // write that never arrives is invisible to it; this is the only record
+      // that it was ever attempted.
+      void recordSendFailure({
+        at: new Date().toISOString(),
+        kind: 'state-write',
+        reason: error instanceof Error ? error.message : String(error),
+        status: (error as { status?: number })?.status ?? null,
+        babyId: selectedBabyId ?? null,
+        clientId: CLIENT_ID,
+        counts: {
+          entries: Array.isArray(payload.entries) ? payload.entries.length : 0,
+          diapers: Array.isArray(payload.diapers) ? payload.diapers.length : 0,
+          medicines: Array.isArray(payload.medicines) ? payload.medicines.length : 0,
+          tummyTimes: Array.isArray(payload.tummyTimes) ? payload.tummyTimes.length : 0,
+          pumpEvents: Array.isArray(payload.pumpEvents) ? payload.pumpEvents.length : 0,
+        },
+        payload: body,
+      })
     } finally {
       inFlightRef.current = false
       if (rerunRef.current) {
         rerunRef.current = false
         const rerunOverrides = rerunOverridesRef.current ? mergeQueuedSyncOverrides(rerunOverridesRef.current, latestPayloadRef.current) : undefined
         rerunOverridesRef.current = null
-        void syncToApiRef.current(rerunOverrides)
+        window.setTimeout(() => { void syncToApiRef.current(rerunOverrides) }, 0)
       }
     }
   }, [applyServerState, latestPayloadRef, selectedBabyId, serverUpdatedAtRef])
@@ -161,7 +230,7 @@ export const useServerSync = (options: UseServerSyncOptions & { liveSyncEnabled?
   })
 
   useInitialServerSync({ latestPayloadRef, serverUpdatedAtRef, applyServerState, syncToApi, selectedBabyId, setHasHydrated, setSyncStatus })
-  usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme })
+  usePersistLocalChanges({ hasHydrated, isApplyingServerState, consumeSkipNextSync, syncToApi, selectedBabyId, entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, healthRecords, customTrackers, customEvents, growthMeasurements, babyDob, session, theme })
   usePendingSyncRetry(syncToApi, selectedBabyId)
 
   return { syncStatus, hasHydrated, liveConflict, resolveLiveConflict, liveConnected }

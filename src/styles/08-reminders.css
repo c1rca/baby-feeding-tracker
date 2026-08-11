@@ -1,0 +1,32 @@
+/* ---------- 8. Reminder banners ---------- */
+.medicine-reminder-stack { display: grid; gap: 10px; }
+.medicine-reminder-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 13px 16px;
+  border: 1px solid color-mix(in srgb, var(--hue-tylenol) 35%, transparent);
+  border-left-width: 4px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--hue-tylenol) 9%, var(--card));
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(12px);
+  animation: panel-in .3s ease;
+}
+.medicine-reminder-banner div { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.medicine-reminder-banner strong { font-weight: 850; }
+.medicine-reminder-banner span { color: var(--ink-soft); font-size: .9rem; font-weight: 650; }
+.medicine-reminder-action {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 9px 13px; min-height: 38px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--hue-tylenol) 40%, transparent);
+  background: color-mix(in srgb, var(--hue-tylenol) 14%, transparent);
+  color: var(--hue-tylenol);
+  font-size: .84rem; font-weight: 850;
+  white-space: nowrap; box-shadow: none;
+}
+.medicine-reminder-action:hover { transform: none; box-shadow: 0 8px 18px -6px color-mix(in srgb, var(--hue-tylenol) 55%, transparent); }
+.vitamin-reminder-banner { border-color: color-mix(in srgb, var(--hue-vitamin) 40%, transparent); background: color-mix(in srgb, var(--hue-vitamin) 10%, var(--card)); }
+.vitamin-reminder-banner .medicine-reminder-action { border-color: color-mix(in srgb, var(--hue-vitamin) 45%, transparent); background: color-mix(in srgb, var(--hue-vitamin) 14%, transparent); color: color-mix(in srgb, var(--hue-vitamin) 80%, var(--ink)); }
+.tummy-reminder-banner { border-color: color-mix(in srgb, var(--hue-tummy) 40%, transparent); background: color-mix(in srgb, var(--hue-tummy) 9%, var(--card)); }
+.tummy-reminder-banner .medicine-reminder-action { border-color: color-mix(in srgb, var(--hue-tummy) 45%, transparent); background: color-mix(in srgb, var(--hue-tummy) 13%, transparent); color: var(--hue-tummy); }

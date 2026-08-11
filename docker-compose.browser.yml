@@ -1,21 +1,25 @@
 # Dev-only, isolated browser acceptance target. Never use this file for production.
+name: bft-browser-acceptance
+
 services:
   feeding-tracker-browser:
     build: .
-    container_name: baby-feeding-tracker-browser
+    # Matches the acceptance helpers; this disposable loopback-only name is never used by prod/dev.
+    container_name: bft-browser-acceptance
     ports:
-      - "127.0.0.1:8081:8080"
+      - "127.0.0.1:8082:8080"
     environment:
       PORT: "8080"
       NODE_ENV: development
       DB_DIR: /data
       DB_PATH: /data/feeding-tracker-browser.db
-      # Intentionally unauthenticated only inside this loopback-only ephemeral gate.
-      AUTH_REQUIRED: "0"
+      # Default is unauthenticated for legacy acceptance; set BROWSER_AUTH_REQUIRED=1 for auth journeys.
+      AUTH_REQUIRED: "${BROWSER_AUTH_REQUIRED:-0}"
+      AUTH_ALLOWED_EMAILS: "${BROWSER_AUTH_ALLOWED_EMAILS:-}"
       AUTH_BYPASS: "0"
-      ALLOW_INSECURE_LOCAL_MODE: "1"
+      ALLOW_INSECURE_LOCAL_MODE: "${BROWSER_ALLOW_INSECURE_LOCAL_MODE:-1}"
       NOTIFICATIONS_ENABLED: "0"
-      PUBLIC_BASE_URL: http://127.0.0.1:8081
+      PUBLIC_BASE_URL: http://127.0.0.1:8082
     # Ephemeral browser-gate state: never reads or writes Dev/production records.
     tmpfs:
       - /data:mode=1777

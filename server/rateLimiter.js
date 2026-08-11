@@ -9,7 +9,14 @@
 // State is per-process and lost on restart; that is acceptable for a
 // single-container deploy and is a deliberate simplicity trade-off. If the app
 // grows to multiple instances this must move to a shared store.
-export const createRateLimiter = ({ max, windowMs, now = () => Date.now(), sweepThreshold = 1024 } = {}) => {
+/**
+ * @param {object} options
+ * @param {number} options.max - hits allowed inside the window before limiting
+ * @param {number} options.windowMs - rolling window length
+ * @param {() => number} [options.now]
+ * @param {number} [options.sweepThreshold]
+ */
+export const createRateLimiter = ({ max, windowMs, now = () => Date.now(), sweepThreshold = 1024 }) => {
   const hits = new Map()
 
   const current = (key) => {

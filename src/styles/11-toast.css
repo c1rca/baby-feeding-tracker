@@ -1,0 +1,28 @@
+/* ---------- 11. Toast ---------- */
+.toast {
+  position: fixed;
+  bottom: 14px;
+  left: 50%;
+  z-index: 950;
+  display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  width: fit-content;
+  max-width: min(calc(100vw - 28px), 420px);
+  margin: 0;
+  transform: translateX(-50%);
+  background: color-mix(in srgb, var(--ink) 94%, transparent);
+  color: var(--paper);
+  border: 1px solid rgba(255, 255, 255, .12);
+  border-radius: 999px;
+  padding: 11px 12px 11px 20px;
+  font-weight: 750;
+  box-shadow: var(--shadow-pop);
+  backdrop-filter: blur(14px);
+  animation: toast-in .38s cubic-bezier(.2, 1.2, .3, 1) both;
+}
+.toast::before { content: '✨'; margin-right: -4px; animation: sparkle-pop .7s ease both; }
+@keyframes sparkle-pop { 0% { transform: scale(0) rotate(-40deg); } 70% { transform: scale(1.35) rotate(8deg); } 100% { transform: scale(1); } }
+.toast button { min-height: 36px; border-radius: 999px; border-color: rgba(255, 255, 255, .22); background: rgba(255, 255, 255, .12); color: inherit; font-weight: 800; box-shadow: none; }
+.toast button:hover { background: rgba(255, 255, 255, .2); transform: none; }
+[data-theme='dark'] .toast { background: color-mix(in srgb, var(--card-solid) 88%, #fff 4%); color: var(--ink); border-color: var(--border-strong); }
+[data-theme='dark'] .toast button { border-color: var(--border-strong); background: var(--well); }
+@keyframes toast-in { from { transform: translate(-50%, 18px) scale(.92); opacity: 0; } to { transform: translateX(-50%); opacity: 1; } }

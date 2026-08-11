@@ -1,3 +1,4 @@
+import { startAuthentication, startRegistration } from '@simplewebauthn/browser'
 import { authFetch } from './authSession'
 
 export type AuthUser = {
@@ -32,7 +33,7 @@ export type LoginResult = { ok: true; token: string } | { ok: false; error: stri
 export type TextLoginRequestResult = { ok: true; maskedPhone: string } | { ok: false; error: string }
 export type EmailLoginRequestResult = { ok: true; maskedEmail: string } | { ok: false; error: string }
 export type MagicLoginRequestResult = { ok: true; maskedDestination: string; channel: 'text' | 'email' } | { ok: false; error: string }
-export type SignupInput = { email: string }
+export type SignupInput = { email: string; displayName: string; password: string; householdName: string; babyName: string; babyDob: string }
 
 export async function signupWithPassword(input: SignupInput): Promise<LoginResult> {
   try {
@@ -137,6 +138,21 @@ export async function confirmTextLogin(code: string): Promise<LoginResult> {
   }
 }
 
+export async function redeemHouseholdInvite(input: { token: string; email: string; password: string; displayName: string }): Promise<LoginResult> {
+  try {
+    const response = await fetch('/api/auth/invites/accept', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    })
+    const data = await response.json().catch(() => null) as { token?: string; error?: string } | null
+    if (!response.ok || !data?.token) return { ok: false, error: data?.error || 'Could not accept this invite' }
+    return { ok: true, token: data.token }
+  } catch {
+    return { ok: false, error: 'Could not reach the server' }
+  }
+}
+
 export async function loginWithPassword(email: string, password: string): Promise<LoginResult> {
   try {
     const response = await fetch('/api/auth/login', {
@@ -175,6 +191,32 @@ export async function logoutSession() {
   } catch {
     // The local token is cleared regardless, so a network failure only delays server-side revocation.
   }
+}
+
+
+
+export async function loginWithPasskey(staySignedIn: boolean): Promise<LoginResult> {
+  try {
+    const optionsResponse = await fetch('/api/auth/passkeys/authentication/options', { method: 'POST', headers: { 'Content-Type': 'application/json' } })
+    const optionsData = await optionsResponse.json() as { options?: { challenge: string; [key: string]: unknown }; error?: string }
+    if (!optionsResponse.ok || !optionsData.options) return { ok: false, error: optionsData.error || 'Passkeys are unavailable' }
+    const response = await startAuthentication({ optionsJSON: optionsData.options as never })
+    const verifyResponse = await fetch('/api/auth/passkeys/authentication/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ response, staySignedIn }) })
+    const verifyData = await verifyResponse.json() as { token?: string; error?: string }
+    return verifyResponse.ok && verifyData.token ? { ok: true, token: verifyData.token } : { ok: false, error: verifyData.error || 'Passkey sign-in failed' }
+  } catch { return { ok: false, error: 'Passkey sign-in was cancelled or unavailable' } }
+}
+
+export async function enrollPasskey(): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const optionsResponse = await authFetch('/api/auth/passkeys/registration/options', { method: 'POST' })
+    const optionsData = await optionsResponse.json() as { options?: { challenge: string; [key: string]: unknown }; error?: string }
+    if (!optionsResponse.ok || !optionsData.options) return { ok: false, error: optionsData.error || 'Passkeys are unavailable' }
+    const response = await startRegistration({ optionsJSON: optionsData.options as never })
+    const verifyResponse = await authFetch('/api/auth/passkeys/registration/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ response }) })
+    const verifyData = await verifyResponse.json() as { error?: string }
+    return verifyResponse.ok ? { ok: true } : { ok: false, error: verifyData.error || 'Passkey enrollment failed' }
+  } catch { return { ok: false, error: 'Passkey enrollment was cancelled or unavailable' } }
 }
 
 export async function fetchGoogleAuthStatus(): Promise<boolean> {

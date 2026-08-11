@@ -3,13 +3,12 @@ import { normalizeSession } from '../domain/trackerDomain'
 import { normalizeTummyTimeGoalMinutes } from '../domain/tummyTime'
 import type { ServerState } from '../types'
 import { hasPersistedThemePreference } from '../state/persistentTrackerStorage'
-import { sortDiapers, sortEntries, sortGrowthMeasurements, sortMedicines, sortPumpEvents, sortTummyTimes } from './serverSyncModels'
+import { sortDiapers, sortEntries, sortGrowthMeasurements, sortHealthRecords, sortCustomTrackers, sortCustomEvents, sortMedicines, sortPumpEvents, sortTummyTimes } from './serverSyncModels'
 import type { UseServerSyncOptions } from './serverSyncTypes'
 
 type ServerStateApplierOptions = Pick<
   UseServerSyncOptions,
-  'setEntries' | 'setDiapers' | 'setMedicines' | 'setTummyTimes' | 'setPumpEvents' | 'setPumpSession' | 'setTummySession' | 'setTummyGoalMinutes' | 'setGrowthMeasurements' | 'setBabyDob' | 'setSession' | 'setTheme'
->
+  'setEntries' | 'setDiapers' | 'setMedicines' | 'setTummyTimes' | 'setPumpEvents' | 'setPumpSession' | 'setTummySession' | 'setTummyGoalMinutes' | 'setPumpGoalOunces' | 'setPumpGoalSessions' | 'setGrowthMeasurements' | 'setHealthRecords' | 'setCustomTrackers' | 'setCustomEvents' | 'setBabyDob' | 'setSession' | 'setTheme'>
 
 export function useServerStateApplier({
   setEntries,
@@ -20,7 +19,12 @@ export function useServerStateApplier({
   setPumpSession,
   setTummySession,
   setTummyGoalMinutes,
+  setPumpGoalOunces,
+  setPumpGoalSessions,
   setGrowthMeasurements,
+  setHealthRecords,
+  setCustomTrackers,
+  setCustomEvents,
   setBabyDob,
   setSession,
   setTheme,
@@ -40,21 +44,25 @@ export function useServerStateApplier({
     if (data.pumpSession !== undefined) setPumpSession(data.pumpSession)
     if (data.tummySession !== undefined) setTummySession(data.tummySession)
     if (data.tummyGoalMinutes !== undefined) setTummyGoalMinutes(normalizeTummyTimeGoalMinutes(data.tummyGoalMinutes))
+    if (data.pumpGoalOunces !== undefined) setPumpGoalOunces(Math.min(500, Math.max(0, Math.round(Number(data.pumpGoalOunces)) || 0)))
+    if (data.pumpGoalSessions !== undefined) setPumpGoalSessions(Math.min(50, Math.max(0, Math.round(Number(data.pumpGoalSessions)) || 0)))
     if (Array.isArray(data.growthMeasurements)) setGrowthMeasurements(sortGrowthMeasurements(data.growthMeasurements))
+    if (Array.isArray(data.healthRecords)) setHealthRecords(sortHealthRecords(data.healthRecords))
+    if (Array.isArray(data.customTrackers)) setCustomTrackers(sortCustomTrackers(data.customTrackers))
+    if (Array.isArray(data.customEvents)) setCustomEvents(sortCustomEvents(data.customEvents))
     if (typeof data.babyDob === 'string') setBabyDob(data.babyDob)
     if (data.session !== undefined) setSession(normalizeSession(data.session))
     if ((data.theme === 'light' || data.theme === 'dark') && !hasPersistedThemePreference()) setTheme(data.theme)
     if (data.updatedAt) serverUpdatedAtRef.current = data.updatedAt
     window.setTimeout(() => { applyingServerStateRef.current = false }, 0)
-  }, [setBabyDob, setDiapers, setEntries, setGrowthMeasurements, setMedicines, setPumpEvents, setPumpSession, setSession, setTheme, setTummyGoalMinutes, setTummySession, setTummyTimes])
-
+  }, [setBabyDob, setDiapers, setEntries, setGrowthMeasurements, setHealthRecords, setCustomTrackers, setCustomEvents, setMedicines, setPumpEvents, setPumpSession, setSession, setTheme, setPumpGoalOunces, setPumpGoalSessions, setTummyGoalMinutes, setTummySession, setTummyTimes])
   return { applyServerState, applyingServerStateRef, serverUpdatedAtRef, skipNextSyncRef }
 }
 
-export function useLatestServerPayload({ entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme }: UseServerSyncOptions) {
-  const latestPayloadRef = useRef({ entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme })
+export function useLatestServerPayload({ entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, growthMeasurements, healthRecords, customTrackers, customEvents, babyDob, session, theme }: UseServerSyncOptions) {
+  const latestPayloadRef = useRef({ entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, growthMeasurements, healthRecords, customTrackers, customEvents, babyDob, session, theme })
   useEffect(() => {
-    latestPayloadRef.current = { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme }
-  }, [entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, growthMeasurements, babyDob, session, theme])
+    latestPayloadRef.current = { entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, growthMeasurements, healthRecords, customTrackers, customEvents, babyDob, session, theme }
+  }, [entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, growthMeasurements, healthRecords, customTrackers, customEvents, babyDob, session, theme])
   return latestPayloadRef
 }

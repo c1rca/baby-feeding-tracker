@@ -1,9 +1,9 @@
-import type { RefObject } from 'react'
-import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, PumpSession, Session, TummyTimeEvent, TummyTimeSession } from '../../types'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
+import type { BottleContent, DiaperEvent, Entry, HealthRecord, MedicineEvent, PumpEvent, PumpSession, Session, TummyTimeEvent, TummyTimeSession, CustomTracker, CustomEvent } from '../../types'
 import type { GrowthMeasurement } from '../../domain/growthTypes'
 import type { PastEventDraft } from '../../state/pastEventModels'
 import type { AuthUser } from '../../auth/authApi'
-import type { BabySummary } from '../../babies/babyApi'
+import type { BabyProfilePatch, BabySummary } from '../../babies/babyApi'
 import type { NotificationPreferences } from '../../state/notificationPreferences'
 
 export type ManualDraft = { date: string; time: string; leftMinutes: string; rightMinutes: string; bottleOunces: string; note: string }
@@ -27,8 +27,15 @@ export type TrackerModalsProps = {
   pumpSession: PumpSession | null
   tummySession: TummyTimeSession | null
   growthMeasurements: GrowthMeasurement[]
+  healthRecords: HealthRecord[]
+  customTrackers: CustomTracker[]
+  customEvents: CustomEvent[]
+  setCustomTrackers: Dispatch<SetStateAction<CustomTracker[]>>
+  setCustomEvents: Dispatch<SetStateAction<CustomEvent[]>>
   babyDob: string
   tummyGoalMinutes: number
+  pumpGoalOunces: number
+  pumpGoalSessions: number
   feedingNotificationsEnabled: boolean
   browserRemindersEnabled: boolean
   liveSyncEnabled: boolean
@@ -60,8 +67,11 @@ export type TrackerModalsProps = {
   setPumpSession: (session: PumpSession | null) => void
   setTummySession: (session: TummyTimeSession | null) => void
   setGrowthMeasurements: (measurements: GrowthMeasurement[]) => void
+  setHealthRecords: (records: HealthRecord[]) => void
   setBabyDob: (dob: string) => void
   setTummyGoalMinutes: (minutes: number) => void
+  setPumpGoalOunces: (ounces: number) => void
+  setPumpGoalSessions: (sessions: number) => void
   setSession: (session: Session | null) => void
   setUndoState: (state: null) => void
   setFeedingNotificationsEnabled: (enabled: boolean) => void
@@ -69,7 +79,7 @@ export type TrackerModalsProps = {
   setLiveSyncEnabled: (enabled: boolean) => void
   setNotificationPreferences: (prefs: Partial<NotificationPreferences>) => void | Promise<void>
   setTheme: (theme: 'light' | 'dark') => void
-  logBottle: (oz?: number) => void
+  logBottle: (oz?: number, content?: BottleContent) => void
   saveManualFeed: () => void
   savePastEvent: () => void
   enableBrowserReminders: () => void
@@ -77,6 +87,8 @@ export type TrackerModalsProps = {
   setMedicineReminderSettings: (settings: MedicineReminderSettings) => void | Promise<void>
   onCreateBaby?: (input: { name: string; dob?: string }) => Promise<boolean>
   onRenameBaby?: (babyId: string, name: string) => Promise<boolean>
+  onUpdateBabyProfile?: (babyId: string, patch: BabyProfilePatch) => Promise<boolean>
   onArchiveBaby?: (babyId: string) => Promise<boolean>
   showToast: (message: string) => void
+  settingsInitialTab?: 'profile' | 'reminders' | 'baby' | 'household' | 'appearance' | 'account' | 'data'
 }

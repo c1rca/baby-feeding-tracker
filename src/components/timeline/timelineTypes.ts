@@ -1,5 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react'
-import type { DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, EditingTummyTimeState, Entry, MedicineEvent, PumpEvent, TummyTimeEvent } from '../../types'
+import type { CustomEvent, CustomTracker, DiaperEvent, DiaperKind, EditingDiaperState, EditingMedicineState, EditingState, EditingTummyTimeState, Entry, MedicineEvent, PumpEvent, TummyTimeEvent } from '../../types'
 import type { EditingPumpState } from '../../state/usePumpActions'
 
 export type TimelineProps = {
@@ -9,6 +9,8 @@ export type TimelineProps = {
   medicines: MedicineEvent[]
   tummyTimes: TummyTimeEvent[]
   pumpEvents: PumpEvent[]
+  customTrackers: CustomTracker[]
+  customEvents: CustomEvent[]
   editing: EditingState
   editingDiaper: EditingDiaperState
   editingMedicine: EditingMedicineState
@@ -32,6 +34,7 @@ export type TimelineProps = {
   deleteMedicine: (medicine: MedicineEvent) => void
   deleteTummyTime: (tummyTime: TummyTimeEvent) => void
   deletePump: (pumpEvent: PumpEvent) => void
+  deleteCustomEvent: (customEvent: CustomEvent) => void
   startMedicineEdit: (medicine: MedicineEvent) => void
   startTummyTimeEdit: (tummyTime: TummyTimeEvent) => void
   startPumpEdit: (pumpEvent: PumpEvent) => void
@@ -51,6 +54,7 @@ export type TimelineItem =
   | { kind: 'medicine'; time: number; medicine: MedicineEvent }
   | { kind: 'tummy'; time: number; tummyTime: TummyTimeEvent }
   | { kind: 'pump'; time: number; pumpEvent: PumpEvent }
+  | { kind: 'custom'; time: number; customEvent: CustomEvent }
 
 export type TimelineActions = Pick<
   TimelineProps,
@@ -77,6 +81,7 @@ export type TimelineActions = Pick<
   | 'deleteMedicine'
   | 'deleteTummyTime'
   | 'deletePump'
+  | 'deleteCustomEvent'
   | 'startMedicineEdit'
   | 'startTummyTimeEdit'
   | 'startPumpEdit'

@@ -1,4 +1,4 @@
-import { EIGHTEEN_HOURS_MS, FOUR_HOURS_MS, MAX_CATCH_UP_MS, SIX_HOURS_MS, THREE_HOURS_MS, TWO_HOURS_MS } from './notificationConstants.js'
+import { EIGHTEEN_HOURS_MS, FOUR_HOURS_MS, MAX_CATCH_UP_MS, SIX_HOURS_MS } from './notificationConstants.js'
 
 export function getLatestEndedFeed(entries) {
   if (!Array.isArray(entries)) return null
@@ -129,12 +129,6 @@ const zonedDateKey = (timestamp, timeZone) => new Intl.DateTimeFormat('en-CA', {
   month: '2-digit',
   day: '2-digit',
 }).format(timestamp)
-
-const zonedHour = (timestamp, timeZone) => Number(new Intl.DateTimeFormat('en-US', {
-  timeZone,
-  hour: 'numeric',
-  hourCycle: 'h23',
-}).format(timestamp))
 
 export function buildVitaminDReminder(medicines, now = Date.now(), intervalHours = 18) {
   if (!Number.isFinite(intervalHours) || intervalHours <= 0) return null

@@ -57,6 +57,10 @@ export function tummyTimeDurationSeconds(event: TummyTimeEvent) {
   return Math.max(0, Math.round((event.endedAt - event.startedAt) / 1000))
 }
 
+export function tummyTimeMinutes(events: TummyTimeEvent[]) {
+  return Math.round(events.reduce((total, event) => total + tummyTimeDurationSeconds(event), 0) / 60)
+}
+
 export function tummyTimeMinutesToday(tummyTimes: TummyTimeEvent[], now: number) {
-  return tummyTimesToday(tummyTimes, now).reduce((total, event) => total + Math.round(tummyTimeDurationSeconds(event) / 60), 0)
+  return tummyTimeMinutes(tummyTimesToday(tummyTimes, now))
 }

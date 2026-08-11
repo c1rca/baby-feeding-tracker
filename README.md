@@ -2,9 +2,7 @@
 
 > A tiny, production-ready care tracker built for one-handed, low-light newborn feeding workflows.
 
-![Feedr track view with seven days of realistic demo data](docs/assets/feedr-track.png)
-
-![Feedr stats dashboard with seven days of realistic demo data](docs/assets/feedr-stats.png)
+![Feedr mobile Track view in Lullaby dark mode, using anonymized demo data and a B profile initial](docs/assets/feedr-mobile-lullaby.png)
 
 ## Why it exists
 

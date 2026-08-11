@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
 import type { GrowthMeasurement } from '../domain/growthTypes'
-import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, PumpSession, Session, Theme, TummyTimeEvent, TummyTimeSession } from '../types'
+import type { DiaperEvent, Entry, HealthRecord, MedicineEvent, PumpEvent, PumpSession, Session, Theme, TummyTimeEvent, TummyTimeSession, CustomTracker, CustomEvent } from '../types'
 
 export const KEY_PENDING_SYNC = 'baby-feeding-tracker:v1:pending-sync'
 export const KEY_PENDING_SYNC_BABY = 'baby-feeding-tracker:v1:pending-sync-baby'
@@ -73,7 +73,12 @@ export type ServerSyncPayload = {
   pumpSession: PumpSession | null
   tummySession: TummyTimeSession | null
   tummyGoalMinutes: number
+  pumpGoalOunces: number
+  pumpGoalSessions: number
   growthMeasurements: GrowthMeasurement[]
+  healthRecords: HealthRecord[]
+  customTrackers: CustomTracker[]
+  customEvents: CustomEvent[]
   babyDob: string
   session: Session | null
   theme: Theme
@@ -91,7 +96,12 @@ export type UseServerSyncOptions = ServerSyncPayload & {
   setPumpSession: Dispatch<SetStateAction<PumpSession | null>>
   setTummySession: Dispatch<SetStateAction<TummyTimeSession | null>>
   setTummyGoalMinutes: Dispatch<SetStateAction<number>>
+  setPumpGoalOunces: Dispatch<SetStateAction<number>>
+  setPumpGoalSessions: Dispatch<SetStateAction<number>>
   setGrowthMeasurements: Dispatch<SetStateAction<GrowthMeasurement[]>>
+  setHealthRecords: Dispatch<SetStateAction<HealthRecord[]>>
+  setCustomTrackers: Dispatch<SetStateAction<CustomTracker[]>>
+  setCustomEvents: Dispatch<SetStateAction<CustomEvent[]>>
   setBabyDob: Dispatch<SetStateAction<string>>
   setSession: Dispatch<SetStateAction<Session | null>>
   setTheme: Dispatch<SetStateAction<Theme>>

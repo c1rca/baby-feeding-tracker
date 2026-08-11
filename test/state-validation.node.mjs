@@ -77,7 +77,9 @@ const completeState = {
   growthMeasurements: [{ id: 'growth-1', measuredAt: 2700, ageMonths: 1, weightLb: 9, lengthCm: 54, headCm: null, note: '' }],
   session: { id: 'feed-session-2', startedAt: 2800, activeSide: 'left', segmentStart: 2800, segments: [], bottleOunces: 0, note: '', diaperKinds: [] },
   pumpSession: { id: 'pump-session-1', startedAt: 2900, side: 'both', runningStartedAt: 2900, elapsedSeconds: 0 },
-  tummySession: { id: 'tummy-session-1', startedAt: 3000, runningStartedAt: 3000, elapsedSeconds: 0, note: '', kind: 'sleep' },
+  // A running custom tracker uses the shared care-timer session shape. It must
+  // not poison every unrelated whole-state save with a 400.
+  tummySession: { id: 'tummy-session-1', startedAt: 3000, runningStartedAt: 3000, elapsedSeconds: 0, note: '', kind: 'custom', trackerId: 'tracker-1' },
   tummyGoalMinutes: 20,
   babyDob: '2026-06-03',
   theme: 'dark',
@@ -111,4 +113,86 @@ test('strict validation rejects malformed persisted domain data', () => {
   for (const [name, partial] of cases) {
     assert.equal(validateStatePayload({ ...completeState, ...partial }).ok, false, name)
   }
+})
+
+test('bottleContent is optional but constrained to known values', () => {
+  const entry = (extra) => ({ entries: [{ id: 'e1', startedAt: 1000, endedAt: 2000, type: 'bottle', bottleOunces: 3, ...extra }] })
+
+  // Records predating the field stay valid.
+  assert.deepEqual(validateStatePayload(entry({})), { ok: true })
+  assert.deepEqual(validateStatePayload(entry({ bottleContent: 'formula' })), { ok: true })
+  assert.deepEqual(validateStatePayload(entry({ bottleContent: 'breastmilk' })), { ok: true })
+
+  const rejected = validateStatePayload(entry({ bottleContent: 'juice' }))
+  assert.equal(rejected.ok, false)
+  assert.match(rejected.error, /entries contains invalid domain data/)
+})
+
+test('an active feed session rejects an unknown bottleContent', () => {
+  assert.deepEqual(validateStatePayload({ session: { startedAt: 1000, bottleOunces: 2, bottleContent: 'mixed' } }), { ok: true })
+  assert.equal(validateStatePayload({ session: { startedAt: 1000, bottleOunces: 2, bottleContent: 'soda' } }).ok, false)
+})
+
+test('a custom medicine must name itself, built-in kinds must not be invented', () => {
+  const medicine = (extra) => ({ medicines: [{ id: 'm1', at: 1000, ...extra }] })
+
+  assert.deepEqual(validateStatePayload(medicine({ kind: 'custom', name: 'Iron drops' })), { ok: true })
+  assert.deepEqual(validateStatePayload(medicine({ kind: 'vitamin_d' })), { ok: true })
+
+  // A custom dose with no name is unidentifiable.
+  assert.equal(validateStatePayload(medicine({ kind: 'custom' })).ok, false)
+  assert.equal(validateStatePayload(medicine({ kind: 'custom', name: '   ' })).ok, false)
+  assert.equal(validateStatePayload(medicine({ kind: 'antibiotics' })).ok, false)
+})
+
+// Regression: the shipped client writes `diaperKinds: []` on every feed entry.
+// Rejecting it made the whole payload invalid, so one ordinary feed could 400
+// every write from every device — 318 of 750 real production entries carried
+// it. An entry with no diaper attached is normal; a diaper with no kinds is not.
+test('an empty diaperKinds on a feed entry is accepted, but an empty kinds on a diaper is not', () => {
+  const entry = { id: 'feed-empty-kinds', startedAt: 1000, endedAt: 2000, leftSeconds: 0, rightSeconds: 30, bottleOunces: null, note: '', diaperKinds: [] }
+  assert.deepEqual(validateStatePayload({ entries: [entry] }), { ok: true })
+
+  // Still rejected: a diaper record has to say what kind it was.
+  assert.equal(validateStatePayload({ diapers: [{ id: 'd-1', at: 1000, kinds: [] }] }).ok, false)
+  // Still rejected: an unknown kind is corruption, not an empty list.
+  assert.equal(validateStatePayload({ entries: [{ ...entry, diaperKinds: ['nonsense'] }] }).ok, false)
+  // Still rejected: duplicates.
+  assert.equal(validateStatePayload({ entries: [{ ...entry, diaperKinds: ['wet', 'wet'] }] }).ok, false)
+})
+
+test('custom trackers and events validate their own shapes', () => {
+  const tracker = { id: 't1', name: 'Vitamin C', icon: 'pill', hue: 'vitamin', goal: { kind: 'count', target: 3 }, createdAt: 1 }
+  assert.deepEqual(validateStatePayload({ customTrackers: [tracker], customEvents: [{ id: 'e1', trackerId: 't1', at: 2 }] }), { ok: true })
+
+  // Icon and hue are curated keys on the client. A definition written by a
+  // newer build must not invalidate the whole payload here — one bad item
+  // rejects every other change on the device.
+  assert.equal(validateStatePayload({ customTrackers: [{ ...tracker, icon: 'unheard-of', hue: 'unheard-of' }] }).ok, true)
+
+  assert.equal(validateStatePayload({ customTrackers: [{ ...tracker, goal: { kind: 'count', target: 0 } }] }).ok, false)
+  assert.equal(validateStatePayload({ customTrackers: [{ ...tracker, goal: { kind: 'duration', targetMinutes: 15 } }] }).ok, true)
+  assert.equal(validateStatePayload({ customTrackers: [{ ...tracker, goal: undefined }] }).ok, false)
+  assert.equal(validateStatePayload({ customEvents: [{ id: 'e1', at: 2 }] }).ok, false)
+  assert.equal(validateStatePayload({ customTrackers: [tracker, tracker] }).ok, false)
+
+  // The nested-object allowance is narrow: only `goal` and `reminder` may hold
+  // an object.
+  assert.equal(validateStatePayload({ customTrackers: [{ ...tracker, extra: { deep: 1 } }] }).ok, false)
+})
+
+test('custom tracker reminder schedules validate', () => {
+  const tracker = { id: 't1', name: 'Vitamin C', icon: 'pill', hue: 'vitamin', goal: { kind: 'count', target: 3 }, createdAt: 1 }
+  const withReminder = (reminder) => validateStatePayload({ customTrackers: [{ ...tracker, reminder }] }).ok
+
+  assert.equal(withReminder({ kind: 'interval', everyHours: 4 }), true)
+  assert.equal(withReminder({ kind: 'timeOfDay', atMinutes: 540 }), true)
+  assert.equal(withReminder(null), true)
+  assert.equal(withReminder(undefined), true)
+
+  // Out of range, or a shape this build does not know.
+  assert.equal(withReminder({ kind: 'interval', everyHours: 48 }), false)
+  assert.equal(withReminder({ kind: 'timeOfDay', atMinutes: 1440 }), false)
+  assert.equal(withReminder({ kind: 'lunar' }), false)
+  assert.equal(withReminder('every 4 hours'), false)
 })

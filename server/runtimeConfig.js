@@ -6,6 +6,10 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
   const dbDir = env.DB_DIR || path.join(rootDir, 'data')
   const dbPath = env.DB_PATH || path.join(dbDir, 'feeding-tracker.db')
   const backupDir = env.BACKUP_DIR || path.join(dbDir, 'backups')
+  // Off-host backup argv, injected as JSON arrays by the deployment so no
+  // credential ever lives in the image. Both or neither — see backupTransport.
+  const backupEncryptArgs = env.BACKUP_ENCRYPT_ARGS || ''
+  const backupUploadArgs = env.BACKUP_UPLOAD_ARGS || ''
 
   const gotifyUrl = env.GOTIFY_URL || ''
   const gotifyToken = env.GOTIFY_TOKEN || ''
@@ -66,6 +70,8 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     ...textEmailPhones,
   ]))
   const bootstrapPassword = env.AUTH_BOOTSTRAP_PASSWORD || ''
+  // Kept in the server runtime only; it is never serialized to clients or stored.
+  const openaiApiKey = env.OPENAI_API_KEY || ''
   // Session lifetime. Year-long bearer tokens in localStorage are a large theft
   // window; default to 30 days and let the operator tune it. Clamped to a sane
   // 1..365 range so a typo can't create effectively-immortal sessions.
@@ -102,6 +108,8 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     dbDir,
     dbPath,
     backupDir,
+    backupEncryptArgs,
+    backupUploadArgs,
 
     gotifyUrl,
     gotifyToken,
@@ -122,6 +130,7 @@ export function createRuntimeConfig({ env = process.env, rootDir }) {
     allowedEmails,
     allowedPhones,
     bootstrapPassword,
+    openaiApiKey,
     loginCodePepper,
     sessionTtlDays,
     isProduction,

@@ -59,3 +59,45 @@ jobs:
           name: dependency-audit-${{ github.sha }}
           path: audit-reports/
           if-no-files-found: warn
+
+  # Uses only the disposable, loopback-only Compose target. This must never be
+  # pointed at Dev or production: the acceptance suite deliberately resets
+  # fixtures and pauses the server to prove offline replay.
+  browser-acceptance:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Install Chromium for browser acceptance
+        run: npx playwright install --with-deps chromium
+      - name: Start isolated browser acceptance candidate
+        run: |
+          docker compose -p bft-browser-acceptance -f docker-compose.browser.yml up -d --build
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:8082/api/health; then exit 0; fi
+            sleep 2
+          done
+          docker compose -p bft-browser-acceptance -f docker-compose.browser.yml logs
+          exit 1
+      - name: Run core browser acceptance
+        run: |
+          BROWSER_BASE_URL=http://127.0.0.1:8082 npx playwright test test/browser/acceptance-feed.spec.ts --grep "Start Left then Stop & Save"
+          BROWSER_BASE_URL=http://127.0.0.1:8082 npx playwright test test/browser/acceptance-resilience.spec.ts --project=mobile-chromium --grep "feed entry: survives"
+          BROWSER_BASE_URL=http://127.0.0.1:8082 npx playwright test test/browser/stats-density.spec.ts
+      - name: Upload browser acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-acceptance-${{ github.sha }}
+          path: |
+            test-results/browser-report/
+            test-results/browser-artifacts/
+          if-no-files-found: warn
+      - name: Tear down isolated browser acceptance candidate
+        if: always()
+        run: docker compose -p bft-browser-acceptance -f docker-compose.browser.yml down

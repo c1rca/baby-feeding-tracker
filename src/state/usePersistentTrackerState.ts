@@ -11,13 +11,19 @@ import {
   readSortedDiapers,
   readSortedEntries,
   readSortedGrowthMeasurements,
+  readSortedHealthRecords,
+  readCustomTrackers,
+  readCustomEvents,
   readSortedMedicines,
   readSortedTummyTimes,
   readSortedPumpEvents,
   readPumpSession,
   readTummySession,
   readTummyGoalMinutes,
+  readPumpGoalOunces,
+  readPumpGoalSessions,
   readTheme,
+  writeTrackerValue,
 } from './persistentTrackerStorage'
 
 export function usePersistentTrackerState(selectedBabyId?: string | null) {
@@ -31,28 +37,38 @@ export function usePersistentTrackerState(selectedBabyId?: string | null) {
   const [pumpSession, setPumpSession] = useState<PumpSession | null>(() => readPumpSession(storageKeys))
   const [tummySession, setTummySession] = useState<TummyTimeSession | null>(() => readTummySession(storageKeys))
   const [tummyGoalMinutes, setTummyGoalMinutes] = useState(() => readTummyGoalMinutes(storageKeys))
+  const [pumpGoalOunces, setPumpGoalOunces] = useState(() => readPumpGoalOunces(storageKeys))
+  const [pumpGoalSessions, setPumpGoalSessions] = useState(() => readPumpGoalSessions(storageKeys))
   const [growthMeasurements, setGrowthMeasurements] = useState(() => readSortedGrowthMeasurements(storageKeys))
+  const [healthRecords, setHealthRecords] = useState(() => readSortedHealthRecords(storageKeys))
+  const [customTrackers, setCustomTrackers] = useState(() => readCustomTrackers(storageKeys))
+  const [customEvents, setCustomEvents] = useState(() => readCustomEvents(storageKeys))
   const [babyDob, setBabyDob] = useState(() => readBabyDob(storageKeys))
   const [theme, setTheme] = useState<Theme>(readTheme)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [feedingNotificationsEnabled, setFeedingNotificationsEnabled] = useState(() => readFeedingNotificationsEnabled(storageKeys))
   const [browserRemindersEnabled, setBrowserRemindersEnabled] = useState(() => readBrowserRemindersEnabled(storageKeys))
 
-  useEffect(() => localStorage.setItem(storageKeys.entries, JSON.stringify(entries)), [entries, storageKeys.entries])
-  useEffect(() => localStorage.setItem(storageKeys.diapers, JSON.stringify(diapers)), [diapers, storageKeys.diapers])
-  useEffect(() => localStorage.setItem(storageKeys.medicines, JSON.stringify(medicines)), [medicines, storageKeys.medicines])
-  useEffect(() => localStorage.setItem(storageKeys.tummyTimes, JSON.stringify(tummyTimes)), [tummyTimes, storageKeys.tummyTimes])
-  useEffect(() => localStorage.setItem(storageKeys.pumpEvents, JSON.stringify(pumpEvents)), [pumpEvents, storageKeys.pumpEvents])
-  useEffect(() => localStorage.setItem(storageKeys.pumpSession, JSON.stringify(pumpSession)), [pumpSession, storageKeys.pumpSession])
-  useEffect(() => localStorage.setItem(storageKeys.tummySession, JSON.stringify(tummySession)), [tummySession, storageKeys.tummySession])
-  useEffect(() => localStorage.setItem(storageKeys.tummyGoalMinutes, String(tummyGoalMinutes)), [tummyGoalMinutes, storageKeys.tummyGoalMinutes])
-  useEffect(() => localStorage.setItem(storageKeys.growthMeasurements, JSON.stringify(growthMeasurements)), [growthMeasurements, storageKeys.growthMeasurements])
-  useEffect(() => localStorage.setItem(storageKeys.babyDob, babyDob), [babyDob, storageKeys.babyDob])
-  useEffect(() => localStorage.setItem(storageKeys.session, JSON.stringify(session)), [session, storageKeys.session])
-  useEffect(() => persistTheme(theme), [theme])
-  useEffect(() => localStorage.setItem(TRACKER_STORAGE_KEYS.settingsOpen, settingsOpen ? '1' : '0'), [settingsOpen])
-  useEffect(() => localStorage.setItem(storageKeys.feedingNotifications, feedingNotificationsEnabled ? '1' : '0'), [feedingNotificationsEnabled, storageKeys.feedingNotifications])
-  useEffect(() => localStorage.setItem(storageKeys.browserReminders, browserRemindersEnabled ? '1' : '0'), [browserRemindersEnabled, storageKeys.browserReminders])
+  useEffect(() => { writeTrackerValue(storageKeys.entries, JSON.stringify(entries)) }, [entries, storageKeys.entries])
+  useEffect(() => { writeTrackerValue(storageKeys.diapers, JSON.stringify(diapers)) }, [diapers, storageKeys.diapers])
+  useEffect(() => { writeTrackerValue(storageKeys.medicines, JSON.stringify(medicines)) }, [medicines, storageKeys.medicines])
+  useEffect(() => { writeTrackerValue(storageKeys.tummyTimes, JSON.stringify(tummyTimes)) }, [tummyTimes, storageKeys.tummyTimes])
+  useEffect(() => { writeTrackerValue(storageKeys.pumpEvents, JSON.stringify(pumpEvents)) }, [pumpEvents, storageKeys.pumpEvents])
+  useEffect(() => { writeTrackerValue(storageKeys.pumpSession, JSON.stringify(pumpSession)) }, [pumpSession, storageKeys.pumpSession])
+  useEffect(() => { writeTrackerValue(storageKeys.tummySession, JSON.stringify(tummySession)) }, [tummySession, storageKeys.tummySession])
+  useEffect(() => { writeTrackerValue(storageKeys.tummyGoalMinutes, String(tummyGoalMinutes)) }, [tummyGoalMinutes, storageKeys.tummyGoalMinutes])
+  useEffect(() => { writeTrackerValue(storageKeys.pumpGoalOunces, String(pumpGoalOunces)) }, [pumpGoalOunces, storageKeys.pumpGoalOunces])
+  useEffect(() => { writeTrackerValue(storageKeys.pumpGoalSessions, String(pumpGoalSessions)) }, [pumpGoalSessions, storageKeys.pumpGoalSessions])
+  useEffect(() => { writeTrackerValue(storageKeys.growthMeasurements, JSON.stringify(growthMeasurements)) }, [growthMeasurements, storageKeys.growthMeasurements])
+  useEffect(() => { writeTrackerValue(storageKeys.healthRecords, JSON.stringify(healthRecords)) }, [healthRecords, storageKeys.healthRecords])
+  useEffect(() => { writeTrackerValue(storageKeys.customTrackers, JSON.stringify(customTrackers)) }, [customTrackers, storageKeys.customTrackers])
+  useEffect(() => { writeTrackerValue(storageKeys.customEvents, JSON.stringify(customEvents)) }, [customEvents, storageKeys.customEvents])
+  useEffect(() => { writeTrackerValue(storageKeys.babyDob, babyDob) }, [babyDob, storageKeys.babyDob])
+  useEffect(() => { writeTrackerValue(storageKeys.session, JSON.stringify(session)) }, [session, storageKeys.session])
+  useEffect(() => { persistTheme(theme) }, [theme])
+  useEffect(() => { writeTrackerValue(TRACKER_STORAGE_KEYS.settingsOpen, settingsOpen ? '1' : '0') }, [settingsOpen])
+  useEffect(() => { writeTrackerValue(storageKeys.feedingNotifications, feedingNotificationsEnabled ? '1' : '0') }, [feedingNotificationsEnabled, storageKeys.feedingNotifications])
+  useEffect(() => { writeTrackerValue(storageKeys.browserReminders, browserRemindersEnabled ? '1' : '0') }, [browserRemindersEnabled, storageKeys.browserReminders])
 
   return {
     entries,
@@ -73,7 +89,17 @@ export function usePersistentTrackerState(selectedBabyId?: string | null) {
     setTummySession,
     tummyGoalMinutes,
     setTummyGoalMinutes,
+    pumpGoalOunces,
+    setPumpGoalOunces,
+    pumpGoalSessions,
+    setPumpGoalSessions,
     growthMeasurements,
+    healthRecords,
+    setHealthRecords,
+    customTrackers,
+    setCustomTrackers,
+    customEvents,
+    setCustomEvents,
     setGrowthMeasurements,
     babyDob,
     setBabyDob,

@@ -1,4 +1,4 @@
-import lullabyCss from './styles.css?inline'
+import { lullabyCss } from './styles/index'
 import classicCss from './styles-classic.css?inline'
 
 export type Skin = 'lullaby' | 'classic'

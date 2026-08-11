@@ -1,0 +1,34 @@
+/* ---------- 12. Modals ---------- */
+.modal-backdrop {
+  position: fixed; inset: 0;
+  background: color-mix(in srgb, var(--paper) 30%, rgba(12, 8, 32, .55));
+  backdrop-filter: blur(6px);
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 14px;
+  animation: backdrop-in .2s ease;
+}
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+.modal-card, .modal {
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 28px);
+  overflow: auto;
+  animation: modal-in .3s cubic-bezier(.2, 1.1, .3, 1) both;
+}
+@keyframes modal-in { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
+
+.bottle-sheet { --bottle-accent: var(--hue-bottle); border-color: color-mix(in srgb, var(--bottle-accent) 28%, var(--border)); background: linear-gradient(145deg, color-mix(in srgb, var(--bottle-accent) 8%, var(--card-solid)), var(--card-solid) 54%); }
+.bottle-sheet .care-sheet-eyebrow { color: var(--bottle-accent); }
+.bottle-quick-amounts { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; }
+.bottle-quick-amounts button { min-height:76px; display:grid; place-content:center; gap:2px; padding:8px 3px; color:var(--bottle-accent); border-color:color-mix(in srgb,var(--bottle-accent) 25%,var(--border)); background:color-mix(in srgb,var(--bottle-accent) 8%,var(--card-solid)); box-shadow:none; }
+.bottle-quick-amounts button:hover { background:color-mix(in srgb,var(--bottle-accent) 16%,var(--card-solid)); border-color:color-mix(in srgb,var(--bottle-accent) 52%,var(--border)); transform:translateY(-1px); }
+.bottle-quick-amounts strong { font-family:var(--font-numeric); font-size:1.12rem; }
+.bottle-quick-amounts span { color:var(--ink-faint); font-size:.62rem; font-weight:800; }
+.bottle-fine-tune { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:11px 12px; border:1px solid color-mix(in srgb,var(--bottle-accent) 17%,var(--border)); border-radius:15px; background:color-mix(in srgb,var(--bottle-accent) 5%,var(--well)); color:var(--ink-soft); font-size:.78rem; font-weight:850; }
+.bottle-fine-tune > div { display:flex; align-items:center; gap:9px; }.bottle-fine-tune button { width:38px; min-height:38px; padding:0; justify-content:center; color:var(--bottle-accent); background:var(--card-solid); box-shadow:none; }.bottle-fine-tune strong { min-width:72px; text-align:center; color:var(--ink); font-family:var(--font-numeric); font-size:1.08rem; }.bottle-fine-tune small { color:var(--ink-faint); font:inherit; font-size:.7rem; }.bottle-save { width:100%; justify-content:center; }
+@media (max-width: 420px) { .bottle-quick-amounts { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+
+.manual-card { display: grid; gap: 14px; }
+.manual-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.manual-grid label { display: grid; gap: 5px; color: var(--ink-soft); font-size: .84rem; font-weight: 750; }

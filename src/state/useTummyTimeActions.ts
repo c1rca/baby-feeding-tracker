@@ -1,7 +1,8 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { formatClockInput, formatDateInput, makeId, parseClockTimeAfter, parseClockTimeOnDate, parseDateAndTime } from '../domain/trackerDomain'
-import { activeElapsedSeconds, activeTimerEventRange } from '../domain/careTimer'
-import type { EditingTummyTimeState, PumpSession, Session, TummyTimeEvent, TummyTimeSession, UndoState } from '../types'
+import { activeElapsedSeconds, activeTimerEventRange, careTimerLabel } from '../domain/careTimer'
+import { createCustomEvent } from './auxiliaryEventModels'
+import type { CustomEvent, CustomTracker, EditingTummyTimeState, PumpSession, Session, TummyTimeEvent, TummyTimeSession, UndoState } from '../types'
 
 type Options = {
   tummySession: TummyTimeSession | null
@@ -9,6 +10,8 @@ type Options = {
   pumpSession: PumpSession | null
   setTummySession: Dispatch<SetStateAction<TummyTimeSession | null>>
   setTummyTimes: Dispatch<SetStateAction<TummyTimeEvent[]>>
+  customTrackers: CustomTracker[]
+  setCustomEvents: Dispatch<SetStateAction<CustomEvent[]>>
   editingTummyTime: EditingTummyTimeState
   setEditingTummyTime: Dispatch<SetStateAction<EditingTummyTimeState>>
   setAdditionalOptionsOpen: Dispatch<SetStateAction<boolean>>
@@ -18,7 +21,7 @@ type Options = {
   showToast: (message: string) => void
 }
 
-export function useTummyTimeActions({ tummySession, feedSession, pumpSession, setTummySession, setTummyTimes, editingTummyTime, setEditingTummyTime, setAdditionalOptionsOpen, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
+export function useTummyTimeActions({ tummySession, feedSession, pumpSession, setTummySession, setTummyTimes, customTrackers, setCustomEvents, editingTummyTime, setEditingTummyTime, setAdditionalOptionsOpen, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: Options) {
   const logTummyTimeMinutes = (minutes: number) => {
     const endedAt = new Date().getTime()
     const tummyTime = { id: makeId(), startedAt: endedAt - minutes * 60_000, endedAt, note: '' }
@@ -56,13 +59,30 @@ export function useTummyTimeActions({ tummySession, feedSession, pumpSession, se
     setTummySession({ id: makeId(), startedAt: now, runningStartedAt: now, elapsedSeconds, note: tummyTime.note ?? '', kind: tummyTime.kind ?? 'tummy' })
     setOpenEntryMenuId(null)
     setAdditionalOptionsOpen(false)
-    showToast(`${tummyTime.kind === 'sleep' ? 'Sleep' : 'Tummy Time'} resumed`)
+    showToast(`${careTimerLabel(tummyTime, customTrackers)} resumed`)
   }
 
   const stopCareTimer = () => {
     if (!tummySession) return
-    const label = tummySession.kind === 'sleep' ? 'Sleep' : 'Tummy Time'
+    const label = careTimerLabel(tummySession, customTrackers)
     const range = activeTimerEventRange(tummySession, Date.now())
+
+    // A caregiver-defined timer shares this slot but not this collection: it
+    // saves as a custom event carrying its duration, so the tracker's own
+    // progress reads it rather than it landing in tummy-time history.
+    if (tummySession.kind === 'custom') {
+      const tracker = customTrackers.find((item) => item.id === tummySession.trackerId)
+      setTummySession(null)
+      setAdditionalOptionsOpen(false)
+      if (!tracker) return showToast('Timer cleared')
+      const customEvent = createCustomEvent(tracker, range.endedAt, Math.max(0, Math.round((range.endedAt - range.startedAt) / 1000)))
+      setCustomEvents((prev) => [customEvent, ...prev].sort((a, b) => b.at - a.at))
+      clearUndoTimeout()
+      const customTimeoutId = window.setTimeout(() => setUndoState(null), 5000)
+      setUndoState({ customEvent, timeoutId: customTimeoutId, kind: 'custom-log' })
+      return showToast(`${label} saved`)
+    }
+
     const tummyTime = { id: tummySession.id, ...range, note: tummySession.note, kind: tummySession.kind }
     setTummyTimes((prev) => [tummyTime, ...prev].sort((a, b) => b.startedAt - a.startedAt))
     setTummySession(null)

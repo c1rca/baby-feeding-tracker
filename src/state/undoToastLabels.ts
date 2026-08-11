@@ -11,6 +11,8 @@ const UNDO_TOAST_TEXT = {
   'tummy-delete': 'Tummy Time deleted',
   'pump-log': 'Pumping saved',
   'pump-delete': 'Pumping deleted',
+  'custom-log': 'Logged',
+  'custom-delete': 'Log deleted',
   delete: 'Entry deleted',
 } as const
 
@@ -25,6 +27,8 @@ const UNDO_LABELS = {
   'tummy-delete': 'Undo Tummy Time delete',
   'pump-log': 'Undo pumping log',
   'pump-delete': 'Undo pumping delete',
+  'custom-log': 'Undo log',
+  'custom-delete': 'Undo log delete',
   delete: 'Undo delete',
 } as const
 

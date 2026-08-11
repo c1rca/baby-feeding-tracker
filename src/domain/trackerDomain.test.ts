@@ -154,6 +154,14 @@ describe('trackerDomain', () => {
     })
   })
 
+  it('uses the selected range length for diaper daily averages', () => {
+    const diapers: DiaperEvent[] = Array.from({ length: 14 }, (_, index) => ({ id: `wet-${index}`, kinds: ['wet'], at: todayAt(-index), context: 'standalone' }))
+    const trend = calculateTrend([], noon)
+    const stats = calculateStats([], diapers, [], noon, { left: 0, right: 0, wet: 1, stool: 0 }, trend.days, [], undefined, { rangeDays: 14 })
+
+    expect(stats.diaperAverages.wet.weekly).toBe(1)
+  })
+
   it('normalizes legacy single-kind diapers', () => {
     expect(diaperKinds({ id: 'd1', kind: 'wet', at: noon, context: 'standalone' })).toEqual(['wet'])
   })

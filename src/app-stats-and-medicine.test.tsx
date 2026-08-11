@@ -13,6 +13,12 @@ describe('App interactions', () => {
   setupAppTestEnvironment()
 
   it('opens a polished stats dashboard with deeper care insights', async () => {
+    // Pin the clock to the middle of the day. The fixture seeds events at
+    // now-1h and now-6h and then asserts both fall on "today"; run in the small
+    // hours against the real clock, now-6h lands on yesterday and the wet/day
+    // count is one short. The test passed all afternoon and failed overnight.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date(2026, 6, 27, 18, 0, 0))
     const now = Date.now()
     localStorage.setItem(
       STORAGE_KEY,
@@ -35,7 +41,7 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /^Insights$/i }))
 
     expect(localStorage.getItem('baby-feeding-tracker-view')).toBe('stats')
-    expect(screen.getByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
+    expect(await screen.findByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
     const jumpMenu = screen.getByRole('navigation', { name: /Jump to care insights/i })
     expect(within(jumpMenu).getByRole('link', { name: /Feeding/i }).getAttribute('href')).toBe('#feeding-stats')
     expect(within(jumpMenu).getByRole('link', { name: /Diapers/i }).getAttribute('href')).toBe('#diaper-stats')
@@ -59,15 +65,37 @@ describe('App interactions', () => {
     expect(screen.getAllByText(/Today: 1 · All-time: 1.0/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Vitamin D/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/Taken today/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/1 dose this week/i)).toBeTruthy()
+    expect(screen.getByText(/1 dose in 7 days/i)).toBeTruthy()
     expect(screen.getByRole('region', { name: /Tummy Time stats/i })).toBeTruthy()
     expect(screen.getAllByText(/12\/20 min today/i).length).toBeGreaterThan(0)
-    expect(screen.getByText(/32 minutes captured this week · 1 goal day/i)).toBeTruthy()
-    expect(screen.getByText(/Daily avg/i)).toBeTruthy()
-    expect(screen.getByText(/Best day/i)).toBeTruthy()
+    expect(screen.getByText(/32 minutes captured in 7 days · 1 goal day/i)).toBeTruthy()
+    const tummyCard = screen.getByRole('region', { name: /Tummy Time stats/i })
+    expect(within(tummyCard).getByText(/Daily avg/i)).toBeTruthy()
+    expect(within(tummyCard).getByText(/Best day/i)).toBeTruthy()
     expect(screen.getByText(/60%/i)).toBeTruthy()
     expect(screen.getAllByText(/wet/i).length).toBeGreaterThan(0)
     expect(screen.getAllByText(/stool/i).length).toBeGreaterThan(0)
+    const feedingHours = screen.getByRole('region', { name: /Daily feeding hours/i })
+    // The day bands only — the card also carries the line/bars toggle.
+    const chartDays = within(feedingHours).getAllByRole('button', { name: /^\w+ \d+: / })
+    expect(chartDays).toHaveLength(7)
+    await user.click(chartDays[0])
+    expect(chartDays[0].getAttribute('aria-pressed')).toBe('true')
+    expect(within(feedingHours).getByText(/Hover, focus, or tap to inspect/i)).toBeTruthy()
+    await user.hover(chartDays.at(-1)!)
+    expect(chartDays.at(-1)?.getAttribute('aria-pressed')).toBe('true')
+    chartDays.at(-1)?.focus()
+    expect(document.activeElement).toBe(chartDays.at(-1))
+    expect(chartDays.at(-1)?.getAttribute('aria-pressed')).toBe('true')
+
+    const tummyBars = within(tummyCard).getAllByRole('button', { name: /Jul \d+: \d+m/i })
+    expect(tummyBars).toHaveLength(7)
+    await user.hover(tummyBars[0])
+    expect(tummyBars[0].getAttribute('aria-pressed')).toBe('true')
+    expect(within(tummyCard).getByText(/Hover, focus, or tap a bar to inspect/i)).toBeTruthy()
+    tummyBars[0].focus()
+    expect(document.activeElement).toBe(tummyBars[0])
+    expect(tummyBars[0].getAttribute('aria-pressed')).toBe('true')
     expect(screen.queryByRole('heading', { name: /Timeline/i })).toBeNull()
 
     await user.click(screen.getByRole('button', { name: /^Track$/i }))
@@ -80,14 +108,14 @@ describe('App interactions', () => {
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /^Insights$/i }))
-    expect(screen.getByRole('region', { name: /Growth percentile tracker/i })).toBeTruthy()
+    expect(await screen.findByRole('region', { name: /Growth percentile tracker/i })).toBeTruthy()
     expect(screen.getByRole('tab', { name: /Weight/i }).getAttribute('aria-selected')).toBe('true')
 
     await user.click(screen.getByRole('tab', { name: /Length/i }))
     expect(screen.getByRole('tab', { name: /Length/i }).getAttribute('aria-selected')).toBe('true')
     expect(screen.getByRole('img', { name: /Length percentile chart/i })).toBeTruthy()
 
-    await user.click(screen.getByRole('button', { name: /Add measurement/i }))
+    await user.click(await screen.findByRole('button', { name: /Add measurement/i }))
     const modal = screen.getByRole('form', { name: /Add growth measurement/i })
     expect(within(modal).getByLabelText(/Calculated age in months/i)).toBeTruthy()
     await user.type(within(modal).getByLabelText(/Pounds/i), '8')
@@ -101,12 +129,13 @@ describe('App interactions', () => {
     expect(screen.getAllByText(/percentile/i).length).toBeGreaterThan(0)
   })
 
-  it('edits and deletes growth measurements with undo', async () => {
+  it('edits and deletes growth measurements with undo without render-phase state updates', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
     const user = userEvent.setup()
     render(<App />)
 
     await user.click(screen.getByRole('button', { name: /^Insights$/i }))
-    await user.click(screen.getByRole('button', { name: /Add measurement/i }))
+    await user.click(await screen.findByRole('button', { name: /Add measurement/i }))
     let modal = screen.getByRole('form', { name: /Add growth measurement/i })
     await user.type(within(modal).getByLabelText(/Pounds/i), '12')
     await user.type(within(modal).getByLabelText(/Length/i), '58')
@@ -135,14 +164,16 @@ describe('App interactions', () => {
     await user.click(screen.getByRole('button', { name: /Undo growth delete/i }))
     expect(screen.getByText(/Growth delete undone/i)).toBeTruthy()
     expect(screen.getAllByText(/12 lb/i).length).toBeGreaterThan(0)
+    expect(consoleError.mock.calls.flat().join(' ')).not.toContain('Cannot update a component')
+    consoleError.mockRestore()
   })
 
-  it('reopens the stats page from persisted view and keeps the workspace controls', () => {
+  it('reopens the stats page from persisted view and keeps the workspace controls', async () => {
     localStorage.setItem('baby-feeding-tracker-view', 'stats')
 
     render(<App />)
 
-    expect(screen.getByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
+    expect(await screen.findByRole('region', { name: /Stats dashboard/i })).toBeTruthy()
     // The workspace top bar keeps Track/Insights navigation plus settings access,
     // with Insights marked current while the stats view is open.
     const nav = screen.getByRole('navigation', { name: /^Workspace$/i })

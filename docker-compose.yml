@@ -1,3 +1,5 @@
+name: bft-prod
+
 services:
   feeding-tracker:
     build: .
@@ -36,6 +38,10 @@ services:
       - TZ=America/New_York
       # Current production baseline: make a verified local backup on each service start.
       # A separate scheduled/off-host recovery mechanism has not been selected yet.
+      # Server-side backup-log forwarding. The browser cannot reach a plain-HTTP
+      # log from an HTTPS page, so the server forwards accepted writes instead —
+      # covering every device, phones included. Unset = no forwarding.
+      - ACTION_LOG_URL=${ACTION_LOG_URL:-http://host.docker.internal:8099}
       - BACKUP_ON_START=1
       - BACKUP_DIR=/backups
     env_file:
@@ -44,6 +50,8 @@ services:
         required: false
     dns:
       - 1.1.1.1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/data
       - ./backups:/backups

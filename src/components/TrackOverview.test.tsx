@@ -10,7 +10,7 @@ describe('TrackOverview main page', () => {
       pumpCountToday={0}
       showBottleStat={false}
       showPumpStat={false}
-      rhythm={{ dayStartMs: 0, dayEndMs: 86_400_000, nowMs: 43_200_000, feeds: [], diapers: [], spans: [], summary: '0 feeds, 0 diapers' }}
+      rhythm={{ dayStartMs: 0, dayEndMs: 86_400_000, nowMs: 43_200_000, feeds: [], diapers: [], spans: [], summary: '0 feeds, 0 diapers', recap: { tummyMinutes: 0, tummyGoalMinutes: 20, tummyGoalMet: false, sleepMinutes: 0, vitaminDAtMs: null, wet: 0, stool: 0, customs: [], showSleep: true } }}
     />)
 
     expect(screen.queryByRole('heading', { name: '7-Day Trend' })).toBeNull()

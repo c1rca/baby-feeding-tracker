@@ -2,6 +2,7 @@ import { useCallback, useMemo } from 'react'
 import type { DiaperKind } from '../types'
 import type { AuxiliaryEventActionsOptions } from './auxiliaryEventActionTypes'
 import { useBottleManualActions } from './useBottleManualActions'
+import { useUnits } from './unitPreferencesContext'
 import { useDiaperActions } from './useDiaperActions'
 import { useMedicineActions } from './useMedicineActions'
 
@@ -35,7 +36,8 @@ export function useAuxiliaryEventActions({
     if (undoState) window.clearTimeout(undoState.timeoutId)
   }, [undoState])
 
-  const { logBottle, saveManualFeed } = useBottleManualActions({ now, session, setSession, setEntries, bottleQuickOz, manualDraft, setManualDraft, setManualOpen, showToast })
+  const { units } = useUnits()
+  const { logBottle, saveManualFeed } = useBottleManualActions({ now, session, setSession, setEntries, bottleQuickOz, manualDraft, setManualDraft, setManualOpen, showToast, volumeUnit: units.volume })
   const { availableSelectedDiapers, toggleDiaperSelection, logSelectedDiapers, logDiaperKinds, deleteDiaper, saveDiaperEdit } = useDiaperActions({
     sessionHasActiveFeed: Boolean(session),
     selectedDiapers,

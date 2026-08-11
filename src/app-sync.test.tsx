@@ -5,6 +5,7 @@ import App from './App'
 import {
   STORAGE_KEY,
   STORAGE_MEDICINES_KEY,
+  STORAGE_SESSION_KEY,
   setupAppTestEnvironment,
 } from './appTestSetup'
 
@@ -51,24 +52,58 @@ describe('App interactions', () => {
     })
   })
 
-  it('hydrates saved server state and opens the live authenticated fetch stream by default', async () => {
-    const streamResponse = new Response(new ReadableStream<Uint8Array>({ start() {} }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } })
+  it('keeps the current page visible while the fresh server snapshot loads', async () => {
+    let resolveState: ((response: Response) => void) | undefined
+    localStorage.setItem(STORAGE_SESSION_KEY, JSON.stringify({ startedAt: 1, activeSide: 'right', segments: [], bottleOunces: 0, note: '', diaperKinds: [] }))
+    const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input)
+      if (url === '/api/notification-settings') return Promise.resolve(new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 }))
+      if (url === '/api/state' && !init?.method) return new Promise<Response>((resolve) => { resolveState = resolve })
+      return Promise.resolve(new Response(JSON.stringify({ ok: true, updatedAt: 'server-write' }), { status: 200 }))
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<App />)
+
+    expect(screen.getByText(/On right/i)).toBeTruthy()
+    expect(document.querySelector('.startup-overlay')).toBeNull()
+
+    resolveState?.(new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: { startedAt: 1, activeSide: 'left', segments: [], bottleOunces: 0, note: '', diaperKinds: [] }, theme: 'light', updatedAt: 'server-1' }), { status: 200 }))
+
+    expect(await screen.findByText(/On left/i)).toBeTruthy()
+    expect(document.querySelector('.startup-overlay')).toBeNull()
+    expect(screen.queryByText(/On right/i)).toBeNull()
+  })
+
+  it('hydrates saved server state and opens the live event subscription by default', async () => {
+    class MockEventSource {
+      static instance: MockEventSource | null = null
+      url: string
+      addEventListener = vi.fn()
+      close = vi.fn()
+      constructor(url: string) {
+        this.url = url
+        MockEventSource.instance = this
+      }
+    }
 
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input)
       if (url === '/api/notification-settings') return new Response(JSON.stringify({ available: false, gotifyRemindersEnabled: false }), { status: 200 })
-      if (url === '/api/state/events') return streamResponse
       if (url === '/api/state' && !init?.method) return new Response(JSON.stringify({ entries: [], diapers: [], medicines: [], session: { startedAt: 1, activeSide: 'right', segments: [], bottleOunces: 0, note: '', diaperKinds: [] }, theme: 'light', updatedAt: 'server-1' }), { status: 200 })
       return new Response(JSON.stringify({ ok: true, updatedAt: 'server-write' }), { status: 200 })
     })
     vi.stubGlobal('fetch', fetchMock)
+    vi.stubGlobal('EventSource', MockEventSource)
 
     render(<App />)
 
     await new Promise((resolve) => window.setTimeout(resolve, 10))
     expect(fetchMock).toHaveBeenCalledWith('/api/state', expect.objectContaining({ cache: 'no-store' }))
     expect(screen.getByText(/On right/i)).toBeTruthy()
-    expect(fetchMock).toHaveBeenCalledWith('/api/state/events', expect.objectContaining({ cache: 'no-store' }))
+    // Live sync is ON by default, so a read-only event subscription is opened.
+    expect(MockEventSource.instance).not.toBeNull()
+    expect(MockEventSource.instance?.url).toContain('/api/state/events')
   })
 
   it('saves local changes back to the server without pending cross-browser sync banners', async () => {
@@ -190,7 +225,9 @@ describe('App interactions', () => {
     // which closes the settings panel; reopen it to manage the roster.
     await user.click(screen.getByRole('button', { name: /Open settings/i }))
     await user.click(await screen.findByRole('tab', { name: /Baby/i }))
-    await user.click(await screen.findByRole('button', { name: /Archive Riley/i }))
+    // Archiving is two-step: arm, then confirm.
+    await user.click(await screen.findByRole('button', { name: /^Archive Riley$/i }))
+    await user.click(await screen.findByRole('button', { name: /Confirm: Archive Riley/i }))
     await waitFor(() => expect(screen.queryByRole('button', { name: /Archive Riley/i })).toBeNull())
     expect(fetchMock).toHaveBeenCalledWith('/api/babies/baby-2', expect.objectContaining({ method: 'DELETE' }))
   })

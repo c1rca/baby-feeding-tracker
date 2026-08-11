@@ -1,324 +1,20 @@
-import { useEffect, useRef, useState, type ComponentType, type KeyboardEvent } from 'react'
-import { Baby, Bell, Database, Palette, ShieldCheck, Users } from 'lucide-react'
+import { useRef, useState, type ComponentType, type KeyboardEvent } from 'react'
+import { Baby, Bell, Database, Palette, ShieldCheck, Sparkles, UserRound, Users } from 'lucide-react'
 import { ModalFrame } from './ModalFrame'
-import type { TrackerModalsProps } from './modalTypes'
 import { NotificationSettings } from './notifications/NotificationSettings'
 import { SettingsDataControls } from './SettingsDataControls'
-import { applySkin, readSkin } from '../../skin'
-import { SettingToggle } from './SettingToggle'
+import { CustomTrackersSetting } from './settings/CustomTrackersTab'
 import { normalizeTummyTimeGoalMinutes } from '../../domain/tummyTime'
-import { changePassword } from '../../auth/authApi'
-import { createHouseholdInvite, fetchHouseholdAccess, revokeHouseholdInvite, updateHouseholdMemberRole, type HouseholdInvite, type HouseholdMember } from '../../household/accessApi'
+import { AppearanceSetting, UnitsSetting } from './settings/AppearanceTab'
+import { AccountSecuritySetting } from './settings/AccountTab'
+import { HouseholdAccessSetting } from './settings/HouseholdTab'
+import { BabyManagementSetting, BabyProfileSetting } from './settings/BabyTab'
+import { ProfileSetting } from './settings/ProfileTab'
+import { AiCareAssistant } from './settings/AiCareAssistant'
+import { SettingsRow, SettingsSection } from './settings/SettingsPrimitives'
+import type { SettingsModalProps } from './settings/settingsTypes'
 
-type SettingsModalProps = Pick<
-  TrackerModalsProps,
-  | 'entries'
-  | 'diapers'
-  | 'medicines'
-  | 'tummyTimes'
-  | 'pumpEvents'
-  | 'pumpSession'
-  | 'tummySession'
-  | 'growthMeasurements'
-  | 'session'
-  | 'babyDob'
-  | 'tummyGoalMinutes'
-  | 'feedingNotificationsEnabled'
-  | 'browserRemindersEnabled'
-  | 'notificationPermission'
-  | 'notificationPreferences'
-  | 'gotifyAvailable'
-  | 'gotifyRemindersEnabled'
-  | 'medicineReminderSettings'
-  | 'babies'
-  | 'selectedBabyId'
-  | 'authUser'
-  | 'profileName'
-  | 'setProfileName'
-  | 'theme'
-  | 'onLogout'
-  | 'fileInputRef'
-  | 'setSettingsOpen'
-  | 'setEntries'
-  | 'setDiapers'
-  | 'setMedicines'
-  | 'setTummyTimes'
-  | 'setPumpEvents'
-  | 'setPumpSession'
-  | 'setTummySession'
-  | 'setGrowthMeasurements'
-  | 'setBabyDob'
-  | 'setTummyGoalMinutes'
-  | 'setSession'
-  | 'setUndoState'
-  | 'setFeedingNotificationsEnabled'
-  | 'setBrowserRemindersEnabled'
-  | 'liveSyncEnabled'
-  | 'setLiveSyncEnabled'
-  | 'setNotificationPreferences'
-  | 'setTheme'
-  | 'enableBrowserReminders'
-  | 'setGotifyReminders'
-  | 'setMedicineReminderSettings'
-  | 'onCreateBaby'
-  | 'onRenameBaby'
-  | 'onArchiveBaby'
-  | 'showToast'
->
-
-function AppearanceSetting({ theme, setTheme, liveSyncEnabled = true, setLiveSyncEnabled }: { theme: 'light' | 'dark'; setTheme: (theme: 'light' | 'dark') => void; liveSyncEnabled?: boolean; setLiveSyncEnabled?: (enabled: boolean) => void }) {
-  const [skin, setSkin] = useState(readSkin)
-
-  return (
-    <div className="settings-card">
-      <div className="setting-row">
-        <span className="setting-row-text">
-          <strong>Live sync</strong>
-          <small>Show other devices' changes in real time as they happen. Turn off to fall back to sync-on-open on this device.</small>
-        </span>
-        <SettingToggle checked={liveSyncEnabled} onChange={(next) => setLiveSyncEnabled?.(next)} label="Live sync" disabled={!setLiveSyncEnabled} />
-      </div>
-      <div className="setting-row">
-        <span className="setting-row-text">
-          <strong>Dark mode</strong>
-          <small>Switch between the light and dark palette.</small>
-        </span>
-        <SettingToggle checked={theme === 'dark'} onChange={(next) => setTheme(next ? 'dark' : 'light')} label="Dark mode" />
-      </div>
-      <div className="setting-row">
-        <span className="setting-row-text">
-          <strong>Classic design</strong>
-          <small>Use the simpler classic look instead of Lullaby on this device.</small>
-        </span>
-        <SettingToggle
-          checked={skin === 'classic'}
-          onChange={(next) => {
-            const target = next ? 'classic' : 'lullaby'
-            applySkin(target)
-            setSkin(target)
-          }}
-          label="Classic design"
-        />
-      </div>
-    </div>
-  )
-}
-
-function AccountSecuritySetting({ authUser, onLogout, showToast }: { authUser: SettingsModalProps['authUser']; onLogout?: SettingsModalProps['onLogout']; showToast: (message: string) => void }) {
-  const [currentPassword, setCurrentPassword] = useState('')
-  const [newPassword, setNewPassword] = useState('')
-  const [pending, setPending] = useState(false)
-  const [message, setMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
-  const canChangePassword = authUser?.mode === 'session'
-  const identity = authUser?.email || authUser?.displayName || authUser?.id || 'Local caregiver'
-
-  const submitPassword = async () => {
-    if (!canChangePassword || pending) return
-    if (newPassword.length < 12) {
-      setMessage({ kind: 'error', text: 'Use at least 12 characters.' })
-      return
-    }
-    setPending(true)
-    setMessage(null)
-    const result = await changePassword(currentPassword, newPassword)
-    setPending(false)
-    if (result.ok) {
-      setCurrentPassword('')
-      setNewPassword('')
-      setMessage({ kind: 'success', text: 'Password updated' })
-      showToast('Password updated')
-    } else {
-      setMessage({ kind: 'error', text: result.error })
-    }
-  }
-
-  return (
-    <div className="settings-group" aria-label="Account security">
-      <p className="settings-lead">{canChangePassword ? `Signed in as ${identity}. Update the shared caregiver password without disrupting this device.` : 'Authentication is bypassed or disabled on this device — no password to manage here.'}</p>
-      {canChangePassword ? (
-        <div className="settings-card">
-          <div className="settings-form password-form">
-            <label>
-              <span>Current password</span>
-              <input type="password" autoComplete="current-password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} />
-            </label>
-            <label>
-              <span>New password</span>
-              <input type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} />
-            </label>
-            <button type="button" className="primary" onClick={submitPassword} disabled={pending || !newPassword}>{pending ? 'Updating…' : 'Update password'}</button>
-            {message ? <p className={`settings-form-msg ${message.kind === 'success' ? 'is-success' : 'is-error'}`} role={message.kind === 'error' ? 'alert' : 'status'}>{message.text}</p> : null}
-          </div>
-          {onLogout ? (
-            <div className="setting-row">
-              <span className="setting-row-text">
-                <strong>Sign out</strong>
-                <small>End this session on this device.</small>
-              </span>
-              <button type="button" className="secondary" onClick={onLogout}>Sign out</button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-function HouseholdAccessSetting({ role, showToast }: { role?: string; showToast: (message: string) => void }) {
-  const [members, setMembers] = useState<HouseholdMember[]>([])
-  const [invites, setInvites] = useState<HouseholdInvite[]>([])
-  const [email, setEmail] = useState('')
-  const [inviteRole, setInviteRole] = useState<'caregiver' | 'viewer'>('caregiver')
-  const [lastToken, setLastToken] = useState('')
-  const [message, setMessage] = useState<string | null>(null)
-  const canManage = role === 'owner'
-
-  useEffect(() => {
-    let cancelled = false
-    const loadAccess = async () => {
-      if (!role || role === 'viewer') return
-      const result = await fetchHouseholdAccess()
-      if (cancelled) return
-      if (result.ok) {
-        setMembers(result.members)
-        setInvites(result.invites)
-      } else {
-        setMessage(result.error)
-      }
-    }
-    void loadAccess()
-    return () => { cancelled = true }
-  }, [role])
-
-  const sendInvite = async () => {
-    const trimmedEmail = email.trim()
-    if (!trimmedEmail || !canManage) return
-    const result = await createHouseholdInvite(trimmedEmail, inviteRole)
-    if (result.ok) {
-      setInvites((current) => [...current, result.invite])
-      setLastToken(result.invite.token || '')
-      setEmail('')
-      showToast('Invite created')
-    } else {
-      setMessage(result.error)
-    }
-  }
-
-  const revokeInvite = async (invite: HouseholdInvite) => {
-    const result = await revokeHouseholdInvite(invite.id)
-    if (result.ok) {
-      setInvites((current) => current.filter((item) => item.id !== invite.id))
-      showToast('Invite revoked')
-    } else setMessage(result.error)
-  }
-
-  const updateRole = async (member: HouseholdMember, nextRole: 'caregiver' | 'viewer') => {
-    const result = await updateHouseholdMemberRole(member.userId, nextRole)
-    if (result.ok) {
-      setMembers((current) => current.map((item) => item.userId === member.userId ? { ...item, role: nextRole } : item))
-      showToast('Member role updated')
-    } else setMessage(result.error)
-  }
-
-  if (!role || role === 'viewer') return null
-  return (
-    <div className="settings-group" aria-label="Household access">
-      <p className="settings-lead">{canManage ? 'Invite caregivers and manage each person’s role.' : 'Caregivers and pending invites in this household.'}</p>
-      {canManage ? (
-        <div className="settings-card">
-          <div className="settings-form invite-form">
-            <label><span>Invite email or mobile</span><input aria-label="Invite email or mobile" type="text" inputMode="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="caregiver@example.com or (555) 123-4567" /></label>
-            <label><span>Role</span><select aria-label="Invite role" value={inviteRole} onChange={(event) => setInviteRole(event.target.value as 'caregiver' | 'viewer')}><option value="caregiver">Caregiver</option><option value="viewer">Viewer</option></select></label>
-            <button type="button" className="primary" onClick={sendInvite} disabled={!email.trim()}>Send invite</button>
-          </div>
-        </div>
-      ) : null}
-      {lastToken ? <p className="settings-form-msg is-success" role="status">Invite token: <code>{lastToken}</code></p> : null}
-      {message ? <p className="settings-form-msg is-error" role="alert">{message}</p> : null}
-      <div className="settings-card">
-        {members.map((member) => {
-          const label = member.email || member.displayName || member.userId
-          return (
-            <div className="setting-row settings-list-row" key={member.userId}>
-              <span><strong>{label}</strong><small>{member.role}</small></span>
-              {canManage && member.role !== 'owner' ? <span className="settings-select"><select aria-label={`Role for ${label}`} value={member.role} onChange={(event) => updateRole(member, event.target.value as 'caregiver' | 'viewer')}><option value="caregiver">Caregiver</option><option value="viewer">Viewer</option></select></span> : null}
-            </div>
-          )
-        })}
-        {invites.map((invite) => (
-          <div className="setting-row settings-list-row" key={invite.id}>
-            <span><strong>{invite.email}</strong><small>Pending · {invite.role}</small></span>
-            {canManage ? <button type="button" className="danger" aria-label={`Revoke invite for ${invite.email}`} onClick={() => revokeInvite(invite)}>Revoke</button> : null}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function BabyManagementSetting({ babies = [], selectedBabyId = '', role, onCreateBaby, onRenameBaby, onArchiveBaby, showToast }: { babies?: SettingsModalProps['babies']; selectedBabyId?: string; role?: string; onCreateBaby?: SettingsModalProps['onCreateBaby']; onRenameBaby?: SettingsModalProps['onRenameBaby']; onArchiveBaby?: SettingsModalProps['onArchiveBaby']; showToast: (message: string) => void }) {
-  const [name, setName] = useState('')
-  const [dob, setDob] = useState('')
-  const [editingBabyId, setEditingBabyId] = useState<string | null>(null)
-  const [nameDraft, setNameDraft] = useState('')
-  const canManage = role !== 'viewer' && !!onCreateBaby && !!onRenameBaby && !!onArchiveBaby
-
-  const submitBaby = async () => {
-    const trimmedName = name.trim()
-    if (!trimmedName || !canManage) return
-    const ok = await onCreateBaby({ name: trimmedName, dob: dob || undefined })
-    showToast(ok ? 'Baby added' : 'Could not add baby')
-    if (ok) {
-      setName('')
-      setDob('')
-    }
-  }
-
-  return (
-    <div className="settings-group">
-      <p className="settings-group-label">Babies</p>
-      <div className="settings-card">
-        {babies.map((baby) => {
-          const editing = editingBabyId === baby.id
-          const saveName = async () => {
-            const nextName = nameDraft.trim()
-            if (!nextName || nextName === baby.name || !onRenameBaby) { setEditingBabyId(null); return }
-            const ok = await onRenameBaby(baby.id, nextName)
-            showToast(ok ? 'Baby name saved' : 'Could not save baby name')
-            if (ok) setEditingBabyId(null)
-          }
-          return (
-            <div key={baby.id} className="setting-row settings-list-row baby-name-row">
-              <span>{editing ? <input aria-label={`Baby name for ${baby.name}`} value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') void saveName(); if (event.key === 'Escape') setEditingBabyId(null) }} autoFocus /> : <><strong>{baby.name}</strong>{baby.id === selectedBabyId ? <small>Active</small> : null}</>}</span>
-              {canManage ? <span className="baby-row-actions">{editing ? <><button type="button" className="primary" onClick={() => void saveName()} disabled={!nameDraft.trim()}>Save</button><button type="button" className="secondary" onClick={() => setEditingBabyId(null)}>Cancel</button></> : <button type="button" className="secondary" aria-label={`Edit ${baby.name} name`} onClick={() => { setNameDraft(baby.name); setEditingBabyId(baby.id) }}>Edit name</button>}{babies.length > 1 ? <button type="button" className="danger" onClick={async () => { const ok = await onArchiveBaby?.(baby.id); showToast(ok ? 'Baby archived' : 'Could not archive baby') }} disabled={baby.id === selectedBabyId} aria-label={`Archive ${baby.name}`}>Archive</button> : null}</span> : null}
-            </div>
-          )
-        })}
-        {canManage ? (
-          <div className="settings-form invite-form">
-            <label>
-              <span>New baby name</span>
-              <input aria-label="New baby name" value={name} onChange={(event) => setName(event.target.value)} placeholder="Baby name" />
-            </label>
-            <label>
-              <span>Date of birth</span>
-              <input aria-label="New baby date of birth" type="date" value={dob} onChange={(event) => setDob(event.target.value)} />
-            </label>
-            <button type="button" className="primary" onClick={submitBaby} disabled={!name.trim()}>Add baby</button>
-          </div>
-        ) : null}
-      </div>
-    </div>
-  )
-}
-
-function ProfileSetting({ profileName, setProfileName, showToast }: { profileName: string; setProfileName: (name: string) => void; showToast: (message: string) => void }) {
-  const [draft, setDraft] = useState(profileName)
-  const save = () => { const next = draft.trim() || 'Mom'; setProfileName(next); setDraft(next); showToast('Profile name saved') }
-  return <div className="settings-group" aria-label="Profile"><p className="settings-lead">Choose the name used in your greeting and profile avatar.</p><div className="settings-card"><div className="settings-form"><label><span>Your name</span><input aria-label="Your profile name" value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Mom" /></label><button type="button" className="primary" onClick={save}>Save profile</button></div></div></div>
-}
-
-type TabId = 'profile' | 'reminders' | 'baby' | 'household' | 'appearance' | 'account' | 'data'
+type TabId = 'profile' | 'reminders' | 'assistant' | 'baby' | 'household' | 'appearance' | 'account' | 'data'
 
 type TabDef = {
   id: TabId
@@ -329,18 +25,21 @@ type TabDef = {
 }
 
 const TAB_ORDER: TabDef[] = [
-  { id: 'profile', label: 'Profile', icon: Baby, title: 'Your profile', blurb: 'The name and greeting shown throughout your tracker.' },
+  { id: 'profile', label: 'Profile', icon: UserRound, title: 'Your profile', blurb: 'The name and greeting shown throughout your tracker.' },
   { id: 'reminders', label: 'Notifications', icon: Bell, title: 'Notifications', blurb: 'Premium notification control — choose which types alert you, how, and when.' },
+  { id: 'assistant', label: 'Ask Feedr AI', icon: Sparkles, title: 'Ask Feedr AI', blurb: 'Private answers grounded in your active baby’s tracker data.' },
   { id: 'baby', label: 'Baby', icon: Baby, title: 'Baby profile', blurb: 'Roster, birth date, and the daily tummy-time goal.' },
   { id: 'household', label: 'Household', icon: Users, title: 'Household access', blurb: 'Invite caregivers and manage who can do what.' },
-  { id: 'appearance', label: 'Appearance', icon: Palette, title: 'Appearance', blurb: 'Theme and layout — remembered on this device.' },
+  { id: 'appearance', label: 'Appearance', icon: Palette, title: 'Appearance', blurb: 'Theme, layout, and units — remembered on this device.' },
   { id: 'account', label: 'Account', icon: ShieldCheck, title: 'Account security', blurb: 'Your identity, password, and sign-out.' },
   { id: 'data', label: 'Data', icon: Database, title: 'Data', blurb: 'Export, import, or clear the log on this device.' },
 ]
 
-export function SettingsModal({ entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, growthMeasurements, session, babyDob, tummyGoalMinutes, browserRemindersEnabled, liveSyncEnabled = true, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setPumpSession, setTummySession, setGrowthMeasurements, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setLiveSyncEnabled, setNotificationPreferences, setTheme, enableBrowserReminders, onCreateBaby, onRenameBaby, onArchiveBaby, showToast }: SettingsModalProps) {
-  const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
-  const [activeTab, setActiveTab] = useState<TabId>('reminders')
+export function SettingsModal({ entries, diapers, medicines, tummyTimes, pumpEvents, pumpSession, tummySession, growthMeasurements, healthRecords, customTrackers, setCustomTrackers, session, babyDob, tummyGoalMinutes, pumpGoalOunces, pumpGoalSessions, setPumpGoalOunces, setPumpGoalSessions, browserRemindersEnabled, liveSyncEnabled = true, notificationPermission, notificationPreferences, gotifyAvailable, babies = [], selectedBabyId = '', authUser = null, profileName = 'Mom', setProfileName = () => undefined, theme, onLogout, fileInputRef, setSettingsOpen, setEntries, setDiapers, setMedicines, setTummyTimes, setPumpEvents, setPumpSession, setTummySession, setGrowthMeasurements, setHealthRecords, setBabyDob, setTummyGoalMinutes, setSession, setUndoState, setBrowserRemindersEnabled, setLiveSyncEnabled, setNotificationPreferences, setTheme, enableBrowserReminders, onCreateBaby, onRenameBaby, onUpdateBabyProfile, onArchiveBaby, showToast, initialTab }: SettingsModalProps) {  const [tummyGoalDraft, setTummyGoalDraft] = useState(() => String(tummyGoalMinutes))
+  const [pumpOzGoalDraft, setPumpOzGoalDraft] = useState(() => String(pumpGoalOunces))
+  const [pumpSessionsGoalDraft, setPumpSessionsGoalDraft] = useState(() => String(pumpGoalSessions))
+  const clampPumpGoalInput = (value: string, max: number) => { const n = Math.round(Number(value)); return Number.isFinite(n) && n >= 0 ? Math.min(max, n) : 0 }
+  const [activeTab, setActiveTab] = useState<TabId>(initialTab ?? 'reminders')
   const tablistRef = useRef<HTMLDivElement>(null)
   const closeSettings = () => setSettingsOpen(false)
 
@@ -390,6 +89,12 @@ export function SettingsModal({ entries, diapers, medicines, tummyTimes, pumpEve
                   aria-selected={isActive}
                   aria-controls="settings-tabpanel"
                   tabIndex={isActive ? 0 : -1}
+                  // Narrow layouts collapse the tablist to icons and only the
+                  // selected tab keeps its visible label, which left every other
+                  // tab with no accessible name at all — unreachable by a screen
+                  // reader and indistinguishable to anything driving the UI.
+                  // The label is the name whether or not it is painted.
+                  aria-label={tab.label}
                   className={`settings-tab${isActive ? ' is-active' : ''}`}
                   onClick={() => setActiveTab(tab.id)}
                 >
@@ -411,7 +116,7 @@ export function SettingsModal({ entries, diapers, medicines, tummyTimes, pumpEve
           </div>
 
           <div className="settings-panel-body" id="settings-tabpanel" role="tabpanel" aria-labelledby={`settings-tab-${active.id}`} tabIndex={0}>
-            {active.id === 'profile' ? <ProfileSetting profileName={profileName} setProfileName={setProfileName} showToast={showToast} /> : null}
+            {active.id === 'profile' ? <ProfileSetting profileName={profileName} setProfileName={setProfileName} /> : null}
             {active.id === 'reminders' ? (
               <NotificationSettings
                 notificationPreferences={notificationPreferences}
@@ -424,46 +129,91 @@ export function SettingsModal({ entries, diapers, medicines, tummyTimes, pumpEve
                 showToast={showToast}
               />
             ) : null}
+            {active.id === 'assistant' ? <AiCareAssistant /> : null}
 
             {active.id === 'baby' ? (
               <>
                 <BabyManagementSetting babies={babies} selectedBabyId={selectedBabyId} role={authUser?.role} onCreateBaby={onCreateBaby} onRenameBaby={onRenameBaby} onArchiveBaby={onArchiveBaby} showToast={showToast} />
-                <div className="settings-card">
-                  <label className="setting-row">
-                    <span className="setting-row-text">
-                      <strong>Date of birth</strong>
-                      <small>Auto-calculates growth-chart age.</small>
-                    </span>
-                    <input aria-label="Baby date of birth" type="date" value={babyDob} onChange={(event) => setBabyDob(event.target.value)} />
-                  </label>
-                  <label className="setting-row">
-                    <span className="setting-row-text">
-                      <strong>Daily tummy-time goal</strong>
-                      <small>Drives today’s progress, Stats, and reminders.</small>
-                    </span>
-                    <span className="settings-number">
-                      <input
-                        aria-label="Tummy Time daily goal"
-                        type="number"
-                        min="1"
-                        max="240"
-                        step="1"
-                        inputMode="numeric"
-                        value={tummyGoalDraft}
-                        onChange={(event) => {
-                          setTummyGoalDraft(event.target.value)
-                          if (event.target.value !== '') setTummyGoalMinutes(normalizeTummyTimeGoalMinutes(event.target.value))
-                        }}
-                        onBlur={() => {
-                          const normalized = normalizeTummyTimeGoalMinutes(tummyGoalDraft)
-                          setTummyGoalDraft(String(normalized))
-                          setTummyGoalMinutes(normalized)
-                        }}
-                      />
-                      <span className="settings-number-unit">min</span>
-                    </span>
-                  </label>
-                </div>
+                <BabyProfileSetting baby={babies.find((item) => item.id === selectedBabyId)} role={authUser?.role} onUpdateBabyProfile={onUpdateBabyProfile} showToast={showToast} />
+                <SettingsSection label="Daily goals" lead="What counts as done each day. Drives Today's needs, Insights and reminders.">
+                  <div className="settings-card">
+                    <SettingsRow
+                      title="Date of birth"
+                      hint="Auto-calculates growth-chart age."
+                      control={<input aria-label="Baby date of birth" type="date" value={babyDob} onChange={(event) => setBabyDob(event.target.value)} />}
+                    />
+                    <SettingsRow
+                      title="Tummy time"
+                      hint="Today's target for tummy and play time."
+                      control={(
+                        <span className="settings-number">
+                          <input
+                            aria-label="Tummy Time daily goal"
+                            type="number" min="1" max="240" step="1" inputMode="numeric"
+                            value={tummyGoalDraft}
+                            onChange={(event) => {
+                              setTummyGoalDraft(event.target.value)
+                              if (event.target.value !== '') setTummyGoalMinutes(normalizeTummyTimeGoalMinutes(event.target.value))
+                            }}
+                            onBlur={() => {
+                              const normalized = normalizeTummyTimeGoalMinutes(tummyGoalDraft)
+                              setTummyGoalDraft(String(normalized))
+                              setTummyGoalMinutes(normalized)
+                            }}
+                          />
+                          <span className="settings-number-unit">min</span>
+                        </span>
+                      )}
+                    />
+                    <SettingsRow
+                      title="Pumping output"
+                      hint="Shows in Today's needs when set. 0 turns it off."
+                      control={(
+                        <span className="settings-number">
+                          <input
+                            aria-label="Daily pumping ounces goal"
+                            type="number" min="0" max="500" step="1" inputMode="numeric"
+                            value={pumpOzGoalDraft}
+                            onChange={(event) => {
+                              setPumpOzGoalDraft(event.target.value)
+                              if (event.target.value !== '') setPumpGoalOunces(clampPumpGoalInput(event.target.value, 500))
+                            }}
+                            onBlur={() => {
+                              const normalized = clampPumpGoalInput(pumpOzGoalDraft, 500)
+                              setPumpOzGoalDraft(String(normalized))
+                              setPumpGoalOunces(normalized)
+                            }}
+                          />
+                          <span className="settings-number-unit">oz</span>
+                        </span>
+                      )}
+                    />
+                    <SettingsRow
+                      title="Pumping sessions"
+                      hint="Shows in Today's needs when set. 0 turns it off."
+                      control={(
+                        <span className="settings-number">
+                          <input
+                            aria-label="Daily pumping sessions goal"
+                            type="number" min="0" max="50" step="1" inputMode="numeric"
+                            value={pumpSessionsGoalDraft}
+                            onChange={(event) => {
+                              setPumpSessionsGoalDraft(event.target.value)
+                              if (event.target.value !== '') setPumpGoalSessions(clampPumpGoalInput(event.target.value, 50))
+                            }}
+                            onBlur={() => {
+                              const normalized = clampPumpGoalInput(pumpSessionsGoalDraft, 50)
+                              setPumpSessionsGoalDraft(String(normalized))
+                              setPumpGoalSessions(normalized)
+                            }}
+                          />
+                          <span className="settings-number-unit">/day</span>
+                        </span>
+                      )}
+                    />
+                  </div>
+                </SettingsSection>
+                <CustomTrackersSetting customTrackers={customTrackers} setCustomTrackers={setCustomTrackers} showToast={showToast} />
               </>
             ) : null}
 
@@ -472,7 +222,10 @@ export function SettingsModal({ entries, diapers, medicines, tummyTimes, pumpEve
             ) : null}
 
             {active.id === 'appearance' ? (
-              <AppearanceSetting theme={theme} setTheme={setTheme} liveSyncEnabled={liveSyncEnabled} setLiveSyncEnabled={setLiveSyncEnabled} />
+              <>
+                <AppearanceSetting theme={theme} setTheme={setTheme} liveSyncEnabled={liveSyncEnabled} setLiveSyncEnabled={setLiveSyncEnabled} />
+                <UnitsSetting />
+              </>
             ) : null}
 
             {active.id === 'account' ? (
@@ -481,6 +234,7 @@ export function SettingsModal({ entries, diapers, medicines, tummyTimes, pumpEve
 
             {active.id === 'data' ? (
               <SettingsDataControls
+                selectedBabyId={selectedBabyId}
                 entries={entries}
                 diapers={diapers}
                 medicines={medicines}
@@ -489,10 +243,15 @@ export function SettingsModal({ entries, diapers, medicines, tummyTimes, pumpEve
                 pumpSession={pumpSession}
                 tummySession={tummySession}
                 growthMeasurements={growthMeasurements}
+                healthRecords={healthRecords}
                 babyDob={babyDob}
                 tummyGoalMinutes={tummyGoalMinutes}
+                pumpGoalOunces={pumpGoalOunces}
+                pumpGoalSessions={pumpGoalSessions}
                 session={session}
                 theme={theme}
+                babyName={babies?.find((baby) => baby.id === selectedBabyId)?.name}
+                babyProfile={babies?.find((baby) => baby.id === selectedBabyId)}
                 fileInputRef={fileInputRef}
                 setEntries={setEntries}
                 setDiapers={setDiapers}
@@ -502,7 +261,10 @@ export function SettingsModal({ entries, diapers, medicines, tummyTimes, pumpEve
                 setPumpSession={setPumpSession}
                 setTummySession={setTummySession}
                 setGrowthMeasurements={setGrowthMeasurements}
+                setHealthRecords={setHealthRecords}
                 setTummyGoalMinutes={setTummyGoalMinutes}
+                setPumpGoalOunces={setPumpGoalOunces}
+                setPumpGoalSessions={setPumpGoalSessions}
                 setBabyDob={setBabyDob}
                 setTheme={setTheme}
                 setSession={setSession}

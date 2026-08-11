@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { DiaperEvent, Entry, MedicineEvent, Session, Side, TummyTimeEvent } from '../types'
+import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, Session, Side, TummyTimeEvent } from '../types'
 import {
   calculateAvgGapMinutes,
   calculateStats,
@@ -21,17 +21,19 @@ type TrackerPageModelOptions = {
   diapers: DiaperEvent[]
   medicines: MedicineEvent[]
   tummyTimes?: TummyTimeEvent[]
+  pumpEvents?: PumpEvent[]
   tummyGoalMinutes?: number
   session: Session | null
   now: number
   dismissedMedicineReminderIds: string[]
   medicineReminderSettings?: MedicineReminderSettings | null
+  statsRangeDays?: number
 }
 
-export function useTrackerPageModel({ entries, diapers, medicines, tummyTimes = [], tummyGoalMinutes, session, now, dismissedMedicineReminderIds, medicineReminderSettings }: TrackerPageModelOptions) {
+export function useTrackerPageModel({ entries, diapers, medicines, tummyTimes = [], pumpEvents = [], tummyGoalMinutes, session, now, dismissedMedicineReminderIds, medicineReminderSettings, statsRangeDays = 7 }: TrackerPageModelOptions) {
   const today = useMemo(() => calculateTodaySummary(entries, diapers, now), [entries, diapers, now])
-  const trend = useMemo(() => calculateTrend(entries, now), [entries, now])
-  const stats = useMemo(() => calculateStats(entries, diapers, medicines, now, today, trend.days, tummyTimes, tummyGoalMinutes), [entries, diapers, medicines, tummyTimes, tummyGoalMinutes, now, today, trend.days])
+  const trend = useMemo(() => calculateTrend(entries, now, statsRangeDays), [entries, now, statsRangeDays])
+  const stats = useMemo(() => calculateStats(entries, diapers, medicines, now, today, trend.days, tummyTimes, tummyGoalMinutes, { pumpEvents, rangeDays: statsRangeDays }), [entries, diapers, medicines, tummyTimes, pumpEvents, tummyGoalMinutes, now, today, trend.days, statsRangeDays])
   const avgGapMinutes = useMemo(() => calculateAvgGapMinutes(entries), [entries])
   const suggestedSide = useMemo<Side>(() => calculateSuggestedSide(entries, today), [entries, today])
 

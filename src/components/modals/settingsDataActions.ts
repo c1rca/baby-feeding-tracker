@@ -1,6 +1,10 @@
 import type { ChangeEvent, RefObject } from 'react'
 import type { TrackerExportState } from '../../state/trackerStateExport'
 import { decodeTrackerExport, makeTrackerExport } from '../../state/trackerStateExport'
+import { buildCareReport } from '../../domain/careReport'
+import { buildDailySummaryCsv, buildEventsCsv } from '../../state/trackerCsvExport'
+import { buildCareReportHtml } from '../../state/careReportDocument'
+import type { UnitPreferences } from '../../domain/units'
 
 type TrackerStateSetters = {
   setEntries: (value: TrackerExportState['entries']) => void
@@ -11,7 +15,10 @@ type TrackerStateSetters = {
   setPumpSession: (value: TrackerExportState['pumpSession']) => void
   setTummySession: (value: TrackerExportState['tummySession']) => void
   setTummyGoalMinutes: (value: number) => void
+  setPumpGoalOunces: (value: number) => void
+  setPumpGoalSessions: (value: number) => void
   setGrowthMeasurements: (value: TrackerExportState['growthMeasurements']) => void
+  setHealthRecords: (value: TrackerExportState['healthRecords']) => void
   setBabyDob: (value: string) => void
   setSession: (value: TrackerExportState['session']) => void
   setTheme: (value: TrackerExportState['theme']) => void
@@ -21,16 +28,61 @@ type TrackerStateSetters = {
 
 type ExportSettingsDataArgs = { state: TrackerExportState; showToast: (message: string) => void }
 
-export function exportSettingsData({ state, showToast }: ExportSettingsDataArgs) {
-  const payload = makeTrackerExport(state)
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+function downloadFile(contents: string, filename: string, mimeType: string) {
+  const blob = new Blob([contents], { type: mimeType })
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
-  link.download = `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`
+  link.download = filename
   link.click()
   URL.revokeObjectURL(url)
+}
+
+export function exportSettingsData({ state, showToast }: ExportSettingsDataArgs) {
+  const payload = makeTrackerExport(state)
+  downloadFile(JSON.stringify(payload, null, 2), `feeding-tracker-export-${new Date().toISOString().slice(0, 10)}.json`, 'application/json')
   showToast('Complete local tracker data exported')
+}
+
+type CareReportArgs = {
+  state: TrackerExportState
+  units: UnitPreferences
+  babyName?: string
+  babyProfile?: Parameters<typeof buildCareReport>[0]['babyProfile']
+  rangeDays?: number
+  now?: number
+  showToast: (message: string) => void
+}
+
+const reportFor = ({ state, babyName, babyProfile, rangeDays = 30, now = Date.now() }: Omit<CareReportArgs, 'showToast' | 'units'>) =>
+  buildCareReport({ ...state, babyName, babyProfile, now, rangeDays })
+
+export function exportEventsCsv({ state, units, showToast }: CareReportArgs) {
+  const csv = buildEventsCsv({ ...state, units })
+  downloadFile(csv, `feeding-tracker-events-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv')
+  showToast('Event history exported as CSV')
+}
+
+export function exportDailySummaryCsv({ state, units, babyName, babyProfile, rangeDays, now, showToast }: CareReportArgs) {
+  const csv = buildDailySummaryCsv(reportFor({ state, babyName, babyProfile, rangeDays, now }), units)
+  downloadFile(csv, `feeding-tracker-daily-${new Date().toISOString().slice(0, 10)}.csv`, 'text/csv')
+  showToast('Daily summary exported as CSV')
+}
+
+// Opens the printable summary in its own window so the browser's own print
+// dialog can save it as a PDF. Blocked popups fall back to a download.
+export function openCareReport({ state, units, babyName, babyProfile, rangeDays, now, showToast }: CareReportArgs) {
+  const html = buildCareReportHtml(reportFor({ state, babyName, babyProfile, rangeDays, now }), units)
+  const printWindow = typeof window === 'undefined' ? null : window.open('', '_blank')
+  if (!printWindow) {
+    downloadFile(html, `care-summary-${new Date().toISOString().slice(0, 10)}.html`, 'text/html')
+    showToast('Pop-up blocked — care summary downloaded instead')
+    return
+  }
+  printWindow.document.write(html)
+  printWindow.document.close()
+  printWindow.focus()
+  showToast('Care summary ready to print')
 }
 
 function applyState(state: TrackerExportState, setters: TrackerStateSetters) {
@@ -42,7 +94,10 @@ function applyState(state: TrackerExportState, setters: TrackerStateSetters) {
   setters.setPumpSession(state.pumpSession)
   setters.setTummySession(state.tummySession)
   setters.setTummyGoalMinutes(state.tummyGoalMinutes)
+  setters.setPumpGoalOunces(state.pumpGoalOunces)
+  setters.setPumpGoalSessions(state.pumpGoalSessions)
   setters.setGrowthMeasurements(state.growthMeasurements)
+  setters.setHealthRecords(state.healthRecords ?? [])
   setters.setBabyDob(state.babyDob)
   setters.setSession(state.session)
   setters.setTheme(state.theme)
@@ -73,6 +128,7 @@ export function clearSettingsData(setters: TrackerStateSetters) {
   setters.setTummyTimes([])
   setters.setPumpEvents([])
   setters.setGrowthMeasurements([])
+  setters.setHealthRecords([])
   setters.setSession(null)
   setters.setPumpSession(null)
   setters.setTummySession(null)

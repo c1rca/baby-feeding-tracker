@@ -1,10 +1,17 @@
-import { BOY_GROWTH_STANDARDS } from './growthStandards'
+import { growthStandardsFor, type GrowthReferenceSex } from './growthStandards'
 import type { GrowthMeasurement, GrowthMetric, GrowthMetricKey, GrowthStandardPoint } from './growthTypes'
 
 export const GROWTH_PERCENTILE_LINES = ['p3', 'p10', 'p25', 'p50', 'p75', 'p90', 'p97'] as const
-export const GROWTH_REFERENCE_SOURCE = 'WHO Child Growth Standards for boys 0–24 months via CDC LMS tables; sex-specific percentiles require a male reference selection.'
+export const GROWTH_REFERENCE_SOURCE = 'WHO Child Growth Standards, birth to 24 months — the reference US practice uses under age two.'
 const AVERAGE_DAYS_PER_MONTH = 365.2425 / 12
 
+/**
+ * Age in half-month buckets, for labelling a measurement ("1.5 months").
+ *
+ * Do NOT use this to look up a percentile. It rounds to the middle of the
+ * month, so a measurement taken on a well-visit date is scored against curves
+ * half a month too old — see `exactAgeMonths`.
+ */
 export function calculateAgeMonths(babyDob: string, measuredAt: number) {
   const dobMs = new Date(`${babyDob}T12:00:00`).getTime()
   if (!Number.isFinite(dobMs) || !Number.isFinite(measuredAt)) return 0
@@ -12,6 +19,27 @@ export function calculateAgeMonths(babyDob: string, measuredAt: number) {
   if (ageDays < 1) return 0
   const rawMonths = ageDays / AVERAGE_DAYS_PER_MONTH
   return Math.min(24, Math.floor(rawMonths) + 0.5)
+}
+
+/**
+ * Age in months as actually lived, for percentile lookup.
+ *
+ * The bucketed age above was being used for the maths, and infant growth is
+ * steep enough early on that half a month is a large, one-directional error: a
+ * boy exactly on the median read **30th** at his two-month visit, and one
+ * exactly on p3 read **"<3rd"** — off the bottom of the chart, which is the
+ * reading most likely to frighten a parent into a workup. Well visits cluster
+ * on whole months, which is precisely where the bucket is furthest from the
+ * truth, so the error landed almost every time it mattered.
+ *
+ * The standards are interpolated between monthly points anyway, so a precise
+ * age is exactly what the curve wants.
+ */
+export function exactAgeMonths(babyDob: string, measuredAt: number) {
+  const dobMs = new Date(`${babyDob}T12:00:00`).getTime()
+  if (!Number.isFinite(dobMs) || !Number.isFinite(measuredAt)) return null
+  const ageDays = Math.max(0, (measuredAt - dobMs) / 86_400_000)
+  return Math.min(24, ageDays / AVERAGE_DAYS_PER_MONTH)
 }
 
 const valueForMetric = (measurement: GrowthMeasurement, key: GrowthMetricKey) => {
@@ -55,18 +83,29 @@ export function estimatePercentile(metric: GrowthMetric, ageMonths: number, valu
   return { kind: 'percentile', percentile, label: ordinalPercentile(percentile) }
 }
 
-export function buildGrowthMetricModels(measurements: GrowthMeasurement[]) {
+// Percentiles are only meaningful against the matching sex's curves, so the
+// caller must say which set to read. `null` sex is handled above this layer.
+export function buildGrowthMetricModels(measurements: GrowthMeasurement[], sex: GrowthReferenceSex = 'boys', babyDob?: string) {
   const sortedMeasurements = [...measurements].sort((a, b) => a.measuredAt - b.measuredAt)
-  return BOY_GROWTH_STANDARDS.map((metric) => {
+  // The bucketed age was persisted onto every measurement, so correcting the
+  // calculation alone would leave all existing readings wrong. Recomputing from
+  // the birth date repairs history in place, with no migration and nothing to
+  // rewrite. Without a birth date there is nothing to recompute from, so the
+  // stored value is honoured rather than guessed at.
+  const ageOf = (measurement: GrowthMeasurement) =>
+    (babyDob ? exactAgeMonths(babyDob, measurement.measuredAt) : null) ?? measurement.ageMonths
+
+  return growthStandardsFor(sex).map((metric) => {
     const babyPoints = sortedMeasurements
       .map((measurement) => {
         const value = valueForMetric(measurement, metric.key)
         if (!Number.isFinite(value)) return null
+        const ageMonths = ageOf(measurement)
         return {
           measurement,
-          ageMonths: measurement.ageMonths,
+          ageMonths,
           value: value as number,
-          percentileEstimate: estimatePercentile(metric, measurement.ageMonths, value as number),
+          percentileEstimate: estimatePercentile(metric, ageMonths, value as number),
         }
       })
       .filter((point): point is NonNullable<typeof point> => Boolean(point))

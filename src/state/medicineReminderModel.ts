@@ -54,9 +54,12 @@ const buildReminder = (medicine: MedicineEvent, type: MedicineReminderModel['typ
 
 export function getMedicineReminders(medicines: MedicineEvent[], now: number, settings: MedicineReminderSettings | null = DEFAULT_MEDICINE_REMINDER_SETTINGS): MedicineReminderModel[] {
   const vitaminDReminder = (() => {
+    const todayStart = startOfLocalDay(now)
     const lastVitaminD = latestDoseFor(medicines, 'vitamin_d')
-    if (!lastVitaminD) return null
-    if (lastVitaminD.at >= startOfLocalDay(now)) return null
+    if (!lastVitaminD) {
+      return { id: `vitamin-d-${todayStart}`, label: 'Not logged today', recommendedKind: 'vitamin_d' as const, recommendedLabel: 'Vitamin D', at: todayStart, type: 'vitamin_d' as const, elapsedHours: 0 }
+    }
+    if (lastVitaminD.at >= todayStart) return null
     if (now - lastVitaminD.at < VITAMIN_D_REMINDER_MS) return null
     return buildReminder(lastVitaminD, 'vitamin_d', 18)
   })()

@@ -28,6 +28,12 @@ export async function saveServerState(body: unknown, scope?: ServerStateScope) {
     headers,
     body: JSON.stringify(body),
   })
-  if (!response.ok) throw new Error('sync failed')
+  if (!response.ok) {
+    // Carry the status: a 400 the server will never accept and a 503 it will
+    // are very different failures, and the journal should say which it was.
+    const error = new Error(`sync failed (${response.status})`) as Error & { status?: number }
+    error.status = response.status
+    throw error
+  }
   return await response.json() as { updatedAt?: string; staleWriteMerged?: boolean; state?: ServerState }
 }

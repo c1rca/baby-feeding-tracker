@@ -1,5 +1,5 @@
 import { MoreHorizontal, Pencil, Save, Trash2 } from 'lucide-react'
-import { diaperEventLabel, diaperKinds, diaperLabel, formatTimelineTimestamp } from '../../domain/trackerDomain'
+import { diaperEventLabel, diaperKinds, diaperLabel, formatDateInput, formatTimelineTimestamp } from '../../domain/trackerDomain'
 import type { DiaperEvent } from '../../types'
 import { DeleteConfirmation } from './DeleteConfirmation'
 import type { TimelineActions } from './timelineTypes'
@@ -24,7 +24,7 @@ export function DiaperTimelineItem({ diaper, actions }: { diaper: DiaperEvent; a
             <button type="button" className="entry-action-trigger" aria-label="Diaper actions" aria-expanded={menuOpen} onClick={() => openMenu(diaper.id, menuOpen, actions)}><MoreHorizontal size={17} /></button>
             {menuOpen ? (
               <div className="entry-menu" role="menu">
-                <button type="button" role="menuitem" aria-label="Edit diaper" onClick={() => { actions.setEditingDiaper({ id: diaper.id, kinds }); actions.setOpenEntryMenuId(null) }}><Pencil size={15} /> Edit</button>
+                <button type="button" role="menuitem" aria-label="Edit diaper" onClick={() => { actions.setEditingDiaper({ id: diaper.id, date: formatDateInput(diaper.at), kinds, originalAt: diaper.at }); actions.setOpenEntryMenuId(null) }}><Pencil size={15} /> Edit</button>
                 <button type="button" role="menuitem" aria-label="Delete diaper" className="danger-menu" onClick={() => actions.setConfirmingDeleteEntryId(diaper.id)}><Trash2 size={15} /> Delete</button>
                 {confirmingDelete ? <DeleteConfirmation label="Confirm delete diaper" onConfirm={() => actions.deleteDiaper(diaper)} /> : null}
               </div>
@@ -34,6 +34,7 @@ export function DiaperTimelineItem({ diaper, actions }: { diaper: DiaperEvent; a
       </div>
       {isEditing ? (
         <div className="edit-panel diaper-edit-panel" role="group" aria-label="Edit diaper">
+          <label>Diaper date<input type="date" aria-label="Diaper date" value={actions.editingDiaper?.date ?? ''} onChange={(event) => actions.setEditingDiaper((current) => current ? { ...current, date: event.target.value } : current)} /></label>
           {DIAPER_KINDS.map((kind) => {
             const selected = Boolean(actions.editingDiaper?.kinds.includes(kind))
             return <button key={kind} type="button" className={`diaper-chip ${selected ? 'selected' : ''}`} aria-label={`Select ${kind} diaper`} aria-pressed={selected} onClick={() => actions.toggleEditingDiaperKind(kind)}>{diaperLabel(kind)}</button>

@@ -27,7 +27,11 @@ export const collectDiaperSignals = (diapers: DiaperEvent[], entries: Entry[]) =
 
 export const allTimeDayCount = (signals: { at: number }[], fallbackStartMs: number) => {
   const allTimeStart = signals.length ? Math.min(...signals.map((signal) => signal.at)) : fallbackStartMs
-  return Math.max(1, Math.floor((fallbackStartMs - startOfDayMs(allTimeStart)) / DAY_MS) + 1)
+  const localDay = (timestamp: number) => {
+    const date = new Date(timestamp)
+    return Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / DAY_MS
+  }
+  return Math.max(1, localDay(fallbackStartMs) - localDay(allTimeStart) + 1)
 }
 
 export const averageGapSeconds = (entries: Entry[]) => {

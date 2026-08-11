@@ -95,12 +95,12 @@ test('owner sends an email or text invitation and only persists it after deliver
   const emailRes = createJsonResponse()
   await app.route('POST', '/api/household-invites')({ auth: ownerAuth(), body: { email: 'caregiver@example.com', role: 'caregiver' } }, emailRes)
   assert.equal(emailRes.statusCode, 201)
-  assert.deepEqual(calls.sent[0], { channel: 'email', to: 'caregiver@example.com', link: 'https://dev.feedr.kjw.lol/?invite=deliver-token', role: 'caregiver' })
+  assert.deepEqual(calls.sent[0], { channel: 'email', to: 'caregiver@example.com', link: 'https://dev.feedr.kjw.lol/#invite=deliver-token', role: 'caregiver' })
 
   const textRes = createJsonResponse()
   await app.route('POST', '/api/household-invites')({ auth: ownerAuth(), body: { email: '(555) 123-4567', role: 'viewer' } }, textRes)
   assert.equal(textRes.statusCode, 201)
-  assert.deepEqual(calls.sent[1], { channel: 'text', to: '+15551234567', link: 'https://dev.feedr.kjw.lol/?invite=deliver-token', role: 'viewer' })
+  assert.deepEqual(calls.sent[1], { channel: 'text', to: '+15551234567', link: 'https://dev.feedr.kjw.lol/#invite=deliver-token', role: 'viewer' })
   assert.equal(calls.inserts.length, 2)
 })
 

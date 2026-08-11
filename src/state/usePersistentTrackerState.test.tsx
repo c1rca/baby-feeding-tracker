@@ -92,3 +92,47 @@ describe('usePersistentTrackerState', () => {
     expect(result.current.theme).toBe('dark')
   })
 })
+
+describe('local cache write failures', () => {
+  // The offline cache is a convenience: the same values live in React state and
+  // sync to the server. Writing it must never be able to take the app down.
+  //
+  // Every setItem here ran unguarded inside a React effect, so a
+  // QuotaExceededError — or Safari private mode, or a user blocking site data —
+  // propagated to the ErrorBoundary and white-screened the whole tracker. The
+  // sync modules already treat their own writes as best-effort; this layer was
+  // the exception.
+  const withFailingStorage = (run: () => void) => {
+    const original = Storage.prototype.setItem
+    Storage.prototype.setItem = function failing() {
+      const error = new Error('QuotaExceededError')
+      error.name = 'QuotaExceededError'
+      throw error
+    }
+    try { run() } finally { Storage.prototype.setItem = original }
+  }
+
+  it('keeps working when local storage refuses every write', () => {
+    withFailingStorage(() => {
+      const { result } = renderHook(() => usePersistentTrackerState('baby-a'))
+
+      expect(() => act(() => result.current.setEntries([entry]))).not.toThrow()
+      expect(() => act(() => result.current.setDiapers([diaper]))).not.toThrow()
+      expect(() => act(() => result.current.setSession(session))).not.toThrow()
+      expect(() => act(() => result.current.setTummyGoalMinutes(25))).not.toThrow()
+
+      // The values a caregiver just logged must still be in memory, because
+      // that is what the server sync reads from.
+      expect(result.current.entries.map((item) => item.id)).toEqual(['entry-1'])
+      expect(result.current.diapers.map((item) => item.id)).toEqual(['diaper-1'])
+      expect(result.current.session?.id).toBe('session-1')
+      expect(result.current.tummyGoalMinutes).toBe(25)
+    })
+  })
+
+  it('still mounts at all when storage is unavailable from the first render', () => {
+    withFailingStorage(() => {
+      expect(() => renderHook(() => usePersistentTrackerState('baby-a'))).not.toThrow()
+    })
+  })
+})

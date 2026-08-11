@@ -1,0 +1,41 @@
+/* ---------- 3. Background scene (aurora + stars) ---------- */
+.bg-scene { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; background: var(--paper); transition: background .4s ease; }
+.aurora {
+  position: absolute;
+  width: 60vmax; height: 60vmax;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: var(--aurora-opacity);
+  transform: translateZ(0);
+}
+.aurora-1 { top: -22vmax; left: -18vmax; background: radial-gradient(circle at 40% 40%, var(--aurora-a), transparent 65%); animation: drift-1 34s ease-in-out infinite alternate; }
+.aurora-2 { top: -12vmax; right: -24vmax; background: radial-gradient(circle at 55% 45%, var(--aurora-b), transparent 65%); animation: drift-2 41s ease-in-out infinite alternate; }
+.aurora-3 { bottom: -28vmax; left: 22vw; background: radial-gradient(circle at 50% 55%, var(--aurora-c), transparent 65%); animation: drift-3 47s ease-in-out infinite alternate; }
+@keyframes drift-1 { to { transform: translate(9vmax, 7vmax) scale(1.12); } }
+@keyframes drift-2 { to { transform: translate(-8vmax, 9vmax) scale(1.05) rotate(12deg); } }
+@keyframes drift-3 { to { transform: translate(-10vmax, -7vmax) scale(1.15); } }
+
+.stars {
+  position: absolute; inset: 0;
+  opacity: var(--star-opacity);
+  transition: opacity .6s ease;
+  background-image:
+    radial-gradient(1.6px 1.6px at 22px 34px, rgba(255,255,255,.9), transparent 55%),
+    radial-gradient(1.2px 1.2px at 180px 90px, rgba(255,255,255,.7), transparent 55%),
+    radial-gradient(1.8px 1.8px at 300px 210px, rgba(255,244,214,.85), transparent 55%),
+    radial-gradient(1.1px 1.1px at 410px 60px, rgba(255,255,255,.6), transparent 55%),
+    radial-gradient(1.4px 1.4px at 120px 300px, rgba(255,255,255,.75), transparent 55%),
+    radial-gradient(1.2px 1.2px at 350px 340px, rgba(214,230,255,.7), transparent 55%);
+  background-size: 460px 420px;
+  animation: twinkle 5.5s ease-in-out infinite;
+}
+.stars-2 {
+  background-position: 230px 160px;
+  animation-duration: 7.5s;
+  animation-delay: -3s;
+  background-size: 520px 480px;
+}
+@keyframes twinkle {
+  0%, 100% { opacity: calc(var(--star-opacity) * .45); }
+  50% { opacity: var(--star-opacity); }
+}

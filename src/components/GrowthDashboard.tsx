@@ -1,15 +1,23 @@
 import { useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { Activity, Pencil, Plus, RotateCcw, Ruler, Scale, Trash2, X } from 'lucide-react'
 import { buildGrowthMetricModels, calculateAgeMonths, GROWTH_PERCENTILE_LINES, GROWTH_REFERENCE_SOURCE } from '../domain/growth'
+import type { GrowthReferenceSex } from '../domain/growthStandards'
+import { useUnits } from '../state/unitPreferencesContext'
+import { DialogSurface } from './modals/ModalFrame'
+import { cmToDisplayLength, displayLengthToCm, formatLength, formatMass, kgToLb, lbToKg, type UnitPreferences } from '../domain/units'
 import type { GrowthMeasurement, GrowthMetricKey } from '../domain/growthTypes'
 
 type GrowthDashboardProps = {
   growthMeasurements: GrowthMeasurement[]
   setGrowthMeasurements: Dispatch<SetStateAction<GrowthMeasurement[]>>
   babyDob: string
+  babySex?: 'female' | 'male' | null
 }
 
-type GrowthDraft = { measuredAt: string; weightPounds: string; weightOunces: string; lengthCm: string; headCm: string; note: string }
+// Draft fields hold whatever the caregiver sees. Weight is either a pounds +
+// ounces pair or a single kilogram field; length and head are in the selected
+// length unit. Everything converts back to canonical lb/cm on save.
+type GrowthDraft = { measuredAt: string; weightPounds: string; weightOunces: string; weightKg: string; length: string; head: string; note: string }
 type GrowthUndoState =
   | { kind: 'delete'; previous: GrowthMeasurement[]; timeoutId: number }
   | { kind: 'edit'; previous: GrowthMeasurement[]; timeoutId: number }
@@ -27,18 +35,11 @@ const metricCopy: Record<GrowthMetricKey, string> = {
 const todayInput = () => new Date().toISOString().slice(0, 10)
 const toDateInput = (ms: number) => new Date(ms).toISOString().slice(0, 10)
 const parseNumber = (value: string) => value.trim() === '' ? null : Number(value)
-const emptyDraft = (): GrowthDraft => ({ measuredAt: todayInput(), weightPounds: '', weightOunces: '', lengthCm: '', headCm: '', note: '' })
+const emptyDraft = (): GrowthDraft => ({ measuredAt: todayInput(), weightPounds: '', weightOunces: '', weightKg: '', length: '', head: '', note: '' })
 const splitWeight = (weightLb: number | null | undefined) => {
   if (!Number.isFinite(weightLb)) return { pounds: '', ounces: '' }
   const totalOunces = Math.round((weightLb as number) * 16)
   return { pounds: String(Math.floor(totalOunces / 16)), ounces: String(totalOunces % 16) }
-}
-const formatWeight = (weightLb: number | null | undefined) => {
-  if (!Number.isFinite(weightLb)) return null
-  const totalOunces = Math.round((weightLb as number) * 16)
-  const pounds = Math.floor(totalOunces / 16)
-  const ounces = totalOunces % 16
-  return ounces === 0 ? `${pounds} lb` : `${pounds} lb ${ounces} oz`
 }
 const parseWeightLb = (poundsValue: string, ouncesValue: string) => {
   const pounds = parseNumber(poundsValue)
@@ -47,28 +48,47 @@ const parseWeightLb = (poundsValue: string, ouncesValue: string) => {
   if ((pounds !== null && (!Number.isFinite(pounds) || pounds < 0)) || (ounces !== null && (!Number.isFinite(ounces) || ounces < 0 || ounces >= 16))) return Number.NaN
   return (pounds ?? 0) + (ounces ?? 0) / 16
 }
-const draftFromMeasurement = (measurement: GrowthMeasurement): GrowthDraft => {
+const parseWeightKg = (kilogramsValue: string) => {
+  const kilograms = parseNumber(kilogramsValue)
+  if (kilograms === null) return null
+  if (!Number.isFinite(kilograms) || kilograms < 0) return Number.NaN
+  return kgToLb(kilograms)
+}
+const draftFromMeasurement = (measurement: GrowthMeasurement, units: UnitPreferences): GrowthDraft => {
   const weight = splitWeight(measurement.weightLb)
+  const toLengthInput = (centimetres: number | null) => centimetres === null ? '' : String(cmToDisplayLength(centimetres, units.length))
   return {
     measuredAt: toDateInput(measurement.measuredAt),
     weightPounds: weight.pounds,
     weightOunces: weight.ounces,
-    lengthCm: measurement.lengthCm?.toString() ?? '',
-    headCm: measurement.headCm?.toString() ?? '',
+    weightKg: Number.isFinite(measurement.weightLb) ? lbToKg(measurement.weightLb as number).toFixed(2) : '',
+    length: toLengthInput(measurement.lengthCm),
+    head: toLengthInput(measurement.headCm),
     note: measurement.note ?? '',
   }
 }
 const sortMeasurements = (measurements: GrowthMeasurement[]) => [...measurements].sort((a, b) => b.measuredAt - a.measuredAt)
 const formatPercentileEstimate = (estimate: { label: string }) => estimate.label
+const PERCENTILE_NOT_APPLICABLE = 'n/a'
+// Chart maths stays in the reference curves' own units; only the readouts move.
+const formatMetricValue = (key: GrowthMetricKey, value: number, units: UnitPreferences) =>
+  key === 'weight' ? formatMass(value, units.mass) : formatLength(value, units.length)
+const metricUnitLabel = (key: GrowthMetricKey, units: UnitPreferences) => (key === 'weight' ? units.mass : units.length)
 
-export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, babyDob }: GrowthDashboardProps) {
+export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, babyDob, babySex = null }: GrowthDashboardProps) {
+  // Percentiles need the matching sex's curves. With no sex recorded there is
+  // no correct set, so the numbers are withheld rather than guessed — the
+  // measurements still plot against the boys' curves for shape reference.
+  const percentilesApply = babySex !== null
+  const referenceSex: GrowthReferenceSex = babySex === 'female' ? 'girls' : 'boys'
+  const { units } = useUnits()
   const [draft, setDraft] = useState<GrowthDraft>(emptyDraft)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [undoState, setUndoState] = useState<GrowthUndoState | null>(null)
   const [toast, setToast] = useState('')
   const [activeMetric, setActiveMetric] = useState<GrowthMetricKey>('weight')
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const models = useMemo(() => buildGrowthMetricModels(growthMeasurements), [growthMeasurements])
+  const models = useMemo(() => buildGrowthMetricModels(growthMeasurements, referenceSex, babyDob), [growthMeasurements, referenceSex, babyDob])
   const activeModel = models.find((model) => model.metric.key === activeMetric) ?? models[0]
   const measuredAt = new Date(`${draft.measuredAt}T12:00:00`).getTime()
   const ageMonths = calculateAgeMonths(babyDob, measuredAt)
@@ -83,7 +103,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
     setUndoState({ ...state, timeoutId } as GrowthUndoState)
   }
   const openAddModal = () => { setEditingId(null); setDraft(emptyDraft()); setIsModalOpen(true) }
-  const openEditModal = (measurement: GrowthMeasurement) => { setEditingId(measurement.id); setDraft(draftFromMeasurement(measurement)); setIsModalOpen(true) }
+  const openEditModal = (measurement: GrowthMeasurement) => { setEditingId(measurement.id); setDraft(draftFromMeasurement(measurement, units)); setIsModalOpen(true) }
   const closeModal = () => setIsModalOpen(false)
   const undoGrowthChange = () => {
     if (!undoState) return
@@ -94,21 +114,20 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
   }
   const saveMeasurement = (event: FormEvent) => {
     event.preventDefault()
-    const weightLb = parseWeightLb(draft.weightPounds, draft.weightOunces)
-    const lengthCm = parseNumber(draft.lengthCm)
-    const headCm = parseNumber(draft.headCm)
+    const weightLb = units.mass === 'kg' ? parseWeightKg(draft.weightKg) : parseWeightLb(draft.weightPounds, draft.weightOunces)
+    const toCm = (value: number | null) => (value === null ? null : displayLengthToCm(value, units.length))
+    const lengthCm = toCm(parseNumber(draft.length))
+    const headCm = toCm(parseNumber(draft.head))
     if (!Number.isFinite(ageMonths) || ageMonths < 0 || ageMonths > 24 || !Number.isFinite(measuredAt)) return
     if ([weightLb, lengthCm, headCm].some((value) => value !== null && !Number.isFinite(value))) return
     if (weightLb === null && lengthCm === null && headCm === null) return
     const nextMeasurement = { id: editingId ?? `growth-${Date.now()}`, measuredAt, ageMonths, weightLb, lengthCm, headCm, note: draft.note.trim() || undefined }
-    setGrowthMeasurements((current) => {
-      const previous = current
-      const next = editingId
-        ? sortMeasurements(current.map((item) => item.id === editingId ? nextMeasurement : item))
-        : sortMeasurements([nextMeasurement, ...current])
-      if (editingId) { setUndo({ kind: 'edit', previous }); showToast('Growth measurement updated') }
-      return next
-    })
+    const previous = growthMeasurements
+    const next = editingId
+      ? sortMeasurements(growthMeasurements.map((item) => item.id === editingId ? nextMeasurement : item))
+      : sortMeasurements([nextMeasurement, ...growthMeasurements])
+    setGrowthMeasurements(next)
+    if (editingId) { setUndo({ kind: 'edit', previous }); showToast('Growth measurement updated') }
     setDraft(emptyDraft())
     setEditingId(null)
     closeModal()
@@ -119,7 +138,9 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
       <div className="growth-hero-panel">
         <div className="growth-hero-copy">
           <h2>Growth percentiles</h2>
-          <p>Weight, length, and head circumference plotted against the loaded WHO/CDC male 0-24 month reference curves. If baby is not male, read the plotted measurements rather than the percentile bands until female standards are configured.</p>
+          <p>{percentilesApply
+            ? `Weight, length, and head circumference against the WHO ${referenceSex} 0–24 month standards.`
+            : 'Set the baby’s sex in Settings to see percentiles — they differ by sex, so there is no correct curve to read until then. Measurements are still plotted and tracked.'}</p>
           <div className="growth-hero-actions">
             <button className="primary growth-open-modal" type="button" onClick={openAddModal}><Plus size={16} /> Add measurement</button>
             <span>{GROWTH_REFERENCE_SOURCE}</span>
@@ -127,8 +148,8 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
         </div>
         <div className="growth-hero-metric" aria-label="Latest growth snapshot">
           <span>{activeModel.metric.label}</span>
-          <strong>{activeModel.latest ? formatPercentileEstimate(activeModel.latest.percentileEstimate) : 'No data'}</strong>
-          <small>{activeModel.latest ? `${activeModel.metric.key === 'weight' ? formatWeight(activeModel.latest.value) : `${activeModel.latest.value} ${activeModel.metric.unit}`} · ${activeModel.latest.ageMonths} mo` : 'No measurement yet'}</small>
+          <strong>{activeModel.latest ? (percentilesApply ? formatPercentileEstimate(activeModel.latest.percentileEstimate) : PERCENTILE_NOT_APPLICABLE) : 'No data'}</strong>
+          <small>{activeModel.latest ? `${formatMetricValue(activeModel.metric.key, activeModel.latest.value, units)} · ${activeModel.latest.ageMonths} mo` : 'No measurement yet'}</small>
         </div>
       </div>
 
@@ -140,7 +161,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
               <button key={metric.key} type="button" role="tab" aria-selected={activeMetric === metric.key} className={activeMetric === metric.key ? 'active' : ''} onClick={() => setActiveMetric(metric.key)}>
                 <Icon size={17} />
                 <span>{metric.label}</span>
-                <strong>{latest ? formatPercentileEstimate(latest.percentileEstimate) : 'No data'}</strong>
+                <strong>{latest ? (percentilesApply ? formatPercentileEstimate(latest.percentileEstimate) : PERCENTILE_NOT_APPLICABLE) : 'No data'}</strong>
               </button>
             )
           })}
@@ -151,7 +172,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
               <p className="eyebrow">{metricCopy[activeModel.metric.key]}</p>
               <h3>{activeModel.metric.label} percentile curve</h3>
             </div>
-            <span>{activeModel.metric.unit}</span>
+            <span>{metricUnitLabel(activeModel.metric.key, units)}</span>
           </div>
           <GrowthChart model={activeModel} />
         </div>
@@ -161,8 +182,8 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
         {models.map(({ metric, latest }) => (
           <article className="card growth-latest" key={metric.key}>
             <span>{metric.label}</span>
-            <strong>{latest ? `${formatPercentileEstimate(latest.percentileEstimate)} percentile` : 'No data yet'}</strong>
-            <small>{latest ? `${metric.key === 'weight' ? formatWeight(latest.value) : `${latest.value} ${metric.unit}`} at ${latest.ageMonths} mo` : 'Add a measurement to plot the baby dot.'}</small>
+            <strong>{latest ? (percentilesApply ? `${formatPercentileEstimate(latest.percentileEstimate)} percentile` : 'Percentile n/a') : 'No data yet'}</strong>
+            <small>{latest ? `${formatMetricValue(metric.key, latest.value, units)} at ${latest.ageMonths} mo` : 'Add a measurement to plot the baby dot.'}</small>
           </article>
         ))}
       </div>
@@ -172,7 +193,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
         {growthMeasurements.length === 0 ? <p className="muted">No growth measurements logged yet.</p> : growthMeasurements.map((m) => (
           <div className="growth-row" key={m.id}>
             <div><strong>{toDateInput(m.measuredAt)}</strong><small>{m.ageMonths} mo{m.note ? ` · ${m.note}` : ''}</small></div>
-            <span>{[formatWeight(m.weightLb), m.lengthCm && `${m.lengthCm} cm`, m.headCm && `${m.headCm} cm head`].filter(Boolean).join(' · ')}</span>
+            <span>{[formatMass(m.weightLb, units.mass), formatLength(m.lengthCm, units.length), m.headCm !== null ? `${formatLength(m.headCm, units.length)} head` : null].filter(Boolean).join(' · ')}</span>
             <div className="growth-row-actions">
               <button className="icon-plain" aria-label="Edit growth measurement" onClick={() => openEditModal(m)}><Pencil size={15} /></button>
               <button className="icon-plain" aria-label="Delete growth measurement" onClick={() => {
@@ -189,8 +210,8 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
       {(toast || undoState) ? <div className="toast growth-toast"><span>{toast || (undoState?.kind === 'edit' ? 'Growth measurement updated' : 'Growth measurement deleted')}</span>{undoState ? <button aria-label={undoState.kind === 'edit' ? 'Undo growth edit' : 'Undo growth delete'} onClick={undoGrowthChange}><RotateCcw size={15} /> Undo</button> : null}</div> : null}
 
       {isModalOpen ? (
-        <div className="modal-backdrop" role="presentation" onMouseDown={closeModal}>
-          <form className="modal growth-modal" aria-label={editingId ? 'Edit growth measurement' : 'Add growth measurement'} onSubmit={saveMeasurement} onMouseDown={(event) => event.stopPropagation()}>
+        <DialogSurface label={editingId ? 'Edit growth measurement' : 'Add growth measurement'} className="growth-modal-dialog" onClose={closeModal}>
+          <form className="modal growth-modal" aria-label={editingId ? 'Edit growth measurement' : 'Add growth measurement'} onSubmit={saveMeasurement}>
             <div className="growth-modal-header">
               <div><p className="eyebrow">{editingId ? 'Edit measurement' : 'New measurement'}</p><h2>{editingId ? 'Edit growth visit' : 'Add growth visit'}</h2><span>Age auto-calculates from DOB: {babyDob}</span></div>
               <button className="icon-plain" type="button" aria-label="Close growth measurement form" onClick={closeModal}><X size={18} /></button>
@@ -198,15 +219,19 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
             <div className="growth-form-grid">
               <label>Date<input type="date" value={draft.measuredAt} onChange={(e) => setDraft((d) => ({ ...d, measuredAt: e.target.value }))} /></label>
               <label>Age<input readOnly value={`${ageMonths} months`} aria-label="Calculated age in months" /></label>
-              <label>Pounds<input inputMode="numeric" placeholder="8" value={draft.weightPounds} onChange={(e) => setDraft((d) => ({ ...d, weightPounds: e.target.value }))} /></label>
-              <label>Ounces<input inputMode="decimal" placeholder="11" value={draft.weightOunces} onChange={(e) => setDraft((d) => ({ ...d, weightOunces: e.target.value }))} /></label>
-              <label>Length (cm)<input inputMode="decimal" placeholder="60.5" value={draft.lengthCm} onChange={(e) => setDraft((d) => ({ ...d, lengthCm: e.target.value }))} /></label>
-              <label>Head (cm)<input inputMode="decimal" placeholder="40.2" value={draft.headCm} onChange={(e) => setDraft((d) => ({ ...d, headCm: e.target.value }))} /></label>
+              {units.mass === 'kg'
+                ? <label className="growth-weight-kg">Kilograms<input inputMode="decimal" placeholder="3.9" value={draft.weightKg} onChange={(e) => setDraft((d) => ({ ...d, weightKg: e.target.value }))} /></label>
+                : <>
+                    <label>Pounds<input inputMode="numeric" placeholder="8" value={draft.weightPounds} onChange={(e) => setDraft((d) => ({ ...d, weightPounds: e.target.value }))} /></label>
+                    <label>Ounces<input inputMode="decimal" placeholder="11" value={draft.weightOunces} onChange={(e) => setDraft((d) => ({ ...d, weightOunces: e.target.value }))} /></label>
+                  </>}
+              <label>Length ({units.length})<input inputMode="decimal" placeholder={units.length === 'in' ? '23.8' : '60.5'} value={draft.length} onChange={(e) => setDraft((d) => ({ ...d, length: e.target.value }))} /></label>
+              <label>Head ({units.length})<input inputMode="decimal" placeholder={units.length === 'in' ? '15.8' : '40.2'} value={draft.head} onChange={(e) => setDraft((d) => ({ ...d, head: e.target.value }))} /></label>
               <label className="growth-note">Note<input placeholder="Doctor visit" value={draft.note} onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))} /></label>
             </div>
             <div className="growth-modal-actions"><button type="button" onClick={closeModal}>Cancel</button><button className="primary" type="submit"><Plus size={16} /> {editingId ? 'Save changes' : 'Save measurement'}</button></div>
           </form>
-        </div>
+        </DialogSurface>
       ) : null}
     </section>
   )
@@ -215,6 +240,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
 type GrowthChartProps = { model: ReturnType<typeof buildGrowthMetricModels>[number] }
 
 function GrowthChart({ model }: GrowthChartProps) {
+  const { units } = useUnits()
   const { metric, babyPoints } = model
   const values = metric.standards.flatMap((point) => GROWTH_PERCENTILE_LINES.map((line) => point[line]))
   const plottedValues = babyPoints.map((point) => point.value)
@@ -235,7 +261,7 @@ function GrowthChart({ model }: GrowthChartProps) {
         const last = metric.standards.at(-1)!
         return <text className="percentile-label" key={line} x="616" y={y(last[line]) + 3}>{lineLabels[line]}</text>
       })}
-      {babyPoints.map((point) => <circle key={point.measurement.id} className="baby-point" cx={x(point.ageMonths)} cy={y(point.value)} r="7"><title>{`${metric.key === 'weight' ? formatWeight(point.value) : `${point.value} ${metric.unit}`}, ${formatPercentileEstimate(point.percentileEstimate)} percentile`}</title></circle>)}
+      {babyPoints.map((point) => <circle key={point.measurement.id} className="baby-point" cx={x(point.ageMonths)} cy={y(point.value)} r="7"><title>{`${formatMetricValue(metric.key, point.value, units)}, ${formatPercentileEstimate(point.percentileEstimate)} percentile`}</title></circle>)}
     </svg>
   )
 }

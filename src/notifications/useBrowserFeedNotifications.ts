@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react'
 import type { Entry } from '../types'
+import type { CustomTrackerReminderDue } from '../domain/customTrackerReminders'
 import type { MedicineReminder } from '../components/MedicineReminderBanner'
-import type { NotificationPreferences } from '../state/notificationPreferences'
+import { medicineChannelPrefs, type NotificationPreferences } from '../state/notificationPreferences'
 import { isQuietHour, isWithinWindow } from '../domain/notificationWindows'
 
 const NOTIFICATION_APP_URL = import.meta.env.VITE_NOTIFICATION_APP_URL || window.location.origin
@@ -14,6 +15,7 @@ type BrowserRemindersOptions = {
   lastFeed?: Entry
   medicineReminders?: MedicineReminder[]
   tummyTimeReminder?: { copy: string } | null
+  customTrackerReminders?: CustomTrackerReminderDue[]
 }
 
 function scheduleNotification(title: string, body: string, tag: string, delayMs: number, requireInteraction = false, shouldNotify: () => boolean = () => true, onDelivered: () => void = () => {}): ReturnType<typeof setTimeout> {
@@ -28,7 +30,7 @@ function scheduleNotification(title: string, body: string, tag: string, delayMs:
   }, delayMs)
 }
 
-export function useBrowserFeedNotifications({ browserRemindersEnabled, notificationPermission, preferences, now, lastFeed, medicineReminders = [], tummyTimeReminder }: BrowserRemindersOptions) {
+export function useBrowserFeedNotifications({ browserRemindersEnabled, notificationPermission, preferences, now, lastFeed, medicineReminders = [], tummyTimeReminder, customTrackerReminders = [] }: BrowserRemindersOptions) {
   const deliveredDueTagsRef = useRef(new Set<string>())
   useEffect(() => {
     if (!browserRemindersEnabled || notificationPermission !== 'granted' || !now || typeof Notification === 'undefined') return
@@ -59,7 +61,7 @@ export function useBrowserFeedNotifications({ browserRemindersEnabled, notificat
     // replaces the notification rather than stacking duplicates.
     if (!isQuietNow) {
       medicineReminders.forEach((reminder) => {
-        const channel = reminder.recommendedKind === 'vitamin_d' ? preferences.vitaminD : preferences[reminder.recommendedKind]
+        const channel = medicineChannelPrefs(preferences, reminder.recommendedKind)
         if (!channel?.browser) return
         const tag = `medicine-${reminder.id}-${reminder.recommendedKind}`
         if (deliveredDueTagsRef.current.has(tag)) return
@@ -89,6 +91,24 @@ export function useBrowserFeedNotifications({ browserRemindersEnabled, notificat
       ))
     }
 
+    // Caregiver-defined trackers. `dueCustomTrackerReminders` has already
+    // applied quiet hours and dropped anything whose goal is met, so what
+    // arrives here is exactly what should be said.
+    if (!isQuietNow && preferences.customTrackers.browser) {
+      customTrackerReminders.forEach((reminder) => {
+        if (deliveredDueTagsRef.current.has(reminder.id)) return
+        timers.push(scheduleNotification(
+          `${reminder.name} reminder`,
+          reminder.copy,
+          reminder.id,
+          0,
+          false,
+          canNotifyNow,
+          () => deliveredDueTagsRef.current.add(reminder.id),
+        ))
+      })
+    }
+
     return () => timers.forEach((timer) => window.clearTimeout(timer))
-  }, [browserRemindersEnabled, notificationPermission, preferences, now, lastFeed, medicineReminders, tummyTimeReminder])
+  }, [browserRemindersEnabled, notificationPermission, preferences, now, lastFeed, medicineReminders, tummyTimeReminder, customTrackerReminders])
 }

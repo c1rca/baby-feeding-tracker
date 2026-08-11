@@ -20,8 +20,8 @@ export const calculateTodaySummary = (entries: Entry[], diapers: DiaperEvent[], 
   }
 }
 
-export const calculateTrend = (entries: Entry[], now = new Date().getTime()) => {
-  const days = localDayWindows(now, 7).map(({ startMs, endMs, label }) => {
+export const calculateTrend = (entries: Entry[], now = new Date().getTime(), rangeDays = 7) => {
+  const days = localDayWindows(now, rangeDays).map(({ startMs, endMs, label }) => {
     const dayEntries = entries.filter((entry) => entry.endedAt >= startMs && entry.endedAt < endMs)
     return { label, count: dayEntries.length, startMs, endMs }
   })

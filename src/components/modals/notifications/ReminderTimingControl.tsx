@@ -17,7 +17,7 @@ export function ReminderTimingControl({ value, onChange, label, presets = [2, 4,
         onChange(Number(event.target.value))
       }}>
         <option value="0">{zeroLabel}</option>
-        {presets.map((hours) => <option key={hours} value={hours}>{hours} hours</option>)}
+        {presets.map((hours) => <option key={hours} value={hours}>{hours === 1 ? 'Every hour' : `Every ${hours} hours`}</option>)}
         <option value="custom">Custom…</option>
       </select>
       {isCustom ? <label className="reminder-timing-custom"><span className="sr-only">Custom {label} reminder hours</span><input type="text" inputMode="decimal" pattern="[0-9.]*" value={value} onChange={(event) => onChange(normalizeHours(event.target.value))} aria-label={`Custom ${label} reminder hours`} /><span>hours</span></label> : null}

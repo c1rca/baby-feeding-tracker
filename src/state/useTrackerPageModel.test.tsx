@@ -92,21 +92,17 @@ describe('useTrackerPageModel', () => {
     ]
 
     const { result: visible } = renderHook(() => useTrackerPageModel({ entries: [], diapers: [], medicines, session: null, now, dismissedMedicineReminderIds: [] }))
-    expect(visible.current.medicineReminder).toEqual({
-      id: 'older-motrin',
-      label: 'Motrin',
-      recommendedKind: 'motrin',
-      recommendedLabel: 'Motrin',
-      at: medicines[1].at,
-      type: 'medicine',
-      elapsedHours: 6,
+    expect(visible.current.medicineReminder).toMatchObject({
+      id: `vitamin-d-${new Date(2026, 0, 3).getTime()}`,
+      type: 'vitamin_d',
+      elapsedHours: 0,
     })
-    expect(visible.current.medicineReminders.map((reminder) => reminder.id)).toEqual(['older-motrin', 'recent-tylenol'])
+    expect(visible.current.medicineReminders.map((reminder) => reminder.id)).toEqual([`vitamin-d-${new Date(2026, 0, 3).getTime()}`, 'older-motrin', 'recent-tylenol'])
     expect(visible.current.showMedicineReminder).toBe(true)
 
     const { result: dismissed } = renderHook(() => useTrackerPageModel({ entries: [], diapers: [], medicines, session: null, now, dismissedMedicineReminderIds: ['older-motrin'] }))
-    expect(dismissed.current.medicineReminder?.id).toBe('recent-tylenol')
-    expect(dismissed.current.medicineReminders.map((reminder) => reminder.id)).toEqual(['recent-tylenol'])
+    expect(dismissed.current.medicineReminder?.type).toBe('vitamin_d')
+    expect(dismissed.current.medicineReminders.map((reminder) => reminder.id)).toEqual([`vitamin-d-${new Date(2026, 0, 3).getTime()}`, 'recent-tylenol'])
     expect(dismissed.current.showMedicineReminder).toBe(true)
   })
 })

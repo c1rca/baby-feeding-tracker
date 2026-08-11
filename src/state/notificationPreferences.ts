@@ -7,6 +7,10 @@ export type NotificationPreferences = {
   motrin: ChannelPrefs
   vitaminD: ChannelPrefs
   tummyTime: ChannelPrefs
+  // One channel for every caregiver-defined tracker. The *schedule* is per
+  // tracker, because that is the axis that differs; how it is delivered is a
+  // property of the person being reminded, not of the thing being tracked.
+  customTrackers: ChannelPrefs
   tummyActiveHours: HourWindow
   quietHours: { enabled: boolean } & HourWindow
   medicineIntervals: { tylenol: 0 | number; motrin: 0 | number }
@@ -19,6 +23,7 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   motrin: { inApp: true, browser: false, gotify: true },
   vitaminD: { inApp: true, browser: false, gotify: true },
   tummyTime: { inApp: true, browser: false, gotify: false },
+  customTrackers: { inApp: false, browser: true, gotify: false },
   tummyActiveHours: { startHour: 8, startMinute: 0, endHour: 20, endMinute: 0 },
   quietHours: { enabled: false, startHour: 22, startMinute: 0, endHour: 7, endMinute: 0 },
   medicineIntervals: { tylenol: 6, motrin: 6 },
@@ -44,6 +49,14 @@ const normalizeInterval = (value?: number): number => {
   return Number.isFinite(num) && num >= 0 && num <= 72 ? num : 6
 }
 
+// Only the three scheduled medicines have preference keys; a custom medicine
+// is logged but never scheduled, so it has no channel to look up.
+export const medicineChannelPrefs = (preferences: NotificationPreferences, kind: 'tylenol' | 'motrin' | 'vitamin_d' | 'custom'): ChannelPrefs | null => {
+  if (kind === 'custom') return null
+  if (kind === 'vitamin_d') return preferences.vitaminD
+  return preferences[kind]
+}
+
 export const normalizeNotificationPreferences = (prefs?: Partial<NotificationPreferences>): NotificationPreferences => {
   const defaultReminderIntervals = DEFAULT_NOTIFICATION_PREFERENCES.reminderIntervals!
   return {
@@ -52,6 +65,7 @@ export const normalizeNotificationPreferences = (prefs?: Partial<NotificationPre
     motrin: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.motrin, ...prefs?.motrin }),
     vitaminD: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.vitaminD, ...prefs?.vitaminD }),
     tummyTime: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.tummyTime, ...prefs?.tummyTime }),
+    customTrackers: normalizeChannelPrefs({ ...DEFAULT_NOTIFICATION_PREFERENCES.customTrackers, ...prefs?.customTrackers }),
     tummyActiveHours: normalizeHourWindow({ ...DEFAULT_NOTIFICATION_PREFERENCES.tummyActiveHours, ...prefs?.tummyActiveHours }),
     quietHours: {
       enabled: Boolean(prefs?.quietHours?.enabled ?? DEFAULT_NOTIFICATION_PREFERENCES.quietHours.enabled),

@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+node_modules
 
 # Production/build output
 dist/
@@ -68,3 +69,10 @@ docker-compose.override.yml
 *.njsproj
 *.sln
 *.sw?
+
+# Action backup log data (local, and potentially large)
+tools/action-log-server/data/
+
+# Python bytecode
+__pycache__/
+*.pyc

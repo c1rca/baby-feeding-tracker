@@ -22,7 +22,7 @@ const safeParseObject = (value) => {
 }
 
 export const serializeState = (row) => {
-  if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], pumpEvents: [], pumpSession: null, growthMeasurements: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, session: null, tummySession: null, theme: 'dark', updatedAt: null }
+  if (!row) return { householdId: DEFAULT_HOUSEHOLD_ID, babyId: DEFAULT_BABY_ID, entries: [], diapers: [], medicines: [], tummyTimes: [], pumpEvents: [], pumpSession: null, growthMeasurements: [], healthRecords: [], customTrackers: [], customEvents: [], babyDob: DEFAULT_BABY_DOB, tummyGoalMinutes: 20, pumpGoalOunces: 0, pumpGoalSessions: 0, session: null, tummySession: null, theme: 'dark', updatedAt: null }
   return {
     householdId: row.household_id || DEFAULT_HOUSEHOLD_ID,
     babyId: row.baby_id || DEFAULT_BABY_ID,
@@ -33,8 +33,13 @@ export const serializeState = (row) => {
     pumpEvents: safeParseArray(row.pump_events_json),
     pumpSession: safeParseObject(row.pump_session_json),
     growthMeasurements: safeParseArray(row.growth_measurements_json),
+    healthRecords: safeParseArray(row.health_records_json),
+    customTrackers: safeParseArray(row.custom_trackers_json),
+    customEvents: safeParseArray(row.custom_events_json),
     babyDob: row.baby_dob || DEFAULT_BABY_DOB,
     tummyGoalMinutes: Number.isFinite(Number(row.tummy_goal_minutes)) ? Math.min(240, Math.max(1, Math.round(Number(row.tummy_goal_minutes)))) : 20,
+    pumpGoalOunces: Number.isFinite(Number(row.pump_goal_ounces)) ? Math.min(500, Math.max(0, Math.round(Number(row.pump_goal_ounces)))) : 0,
+    pumpGoalSessions: Number.isFinite(Number(row.pump_goal_sessions)) ? Math.min(50, Math.max(0, Math.round(Number(row.pump_goal_sessions)))) : 0,
     session: safeParseObject(row.session_json),
     tummySession: safeParseObject(row.tummy_session_json),
     theme: row.theme || 'light',
@@ -68,6 +73,9 @@ export const createDeletedItemOptionsReader = (selectDeletedItems) => (scope = {
   const deletedTummyTimeIds = []
   const deletedPumpEventIds = []
   const deletedGrowthMeasurementIds = []
+  const deletedHealthRecordIds = []
+  const deletedCustomTrackerIds = []
+  const deletedCustomEventIds = []
   for (const row of selectDeletedItems.all(householdId, babyId)) {
     if (row.collection === 'entries') deletedEntryIds.push(row.item_id)
     if (row.collection === 'diapers') deletedDiaperIds.push(row.item_id)
@@ -75,8 +83,11 @@ export const createDeletedItemOptionsReader = (selectDeletedItems) => (scope = {
     if (row.collection === 'tummyTimes') deletedTummyTimeIds.push(row.item_id)
     if (row.collection === 'pumpEvents') deletedPumpEventIds.push(row.item_id)
     if (row.collection === 'growthMeasurements') deletedGrowthMeasurementIds.push(row.item_id)
+    if (row.collection === 'healthRecords') deletedHealthRecordIds.push(row.item_id)
+    if (row.collection === 'customTrackers') deletedCustomTrackerIds.push(row.item_id)
+    if (row.collection === 'customEvents') deletedCustomEventIds.push(row.item_id)
   }
-  return { deletedEntryIds, deletedDiaperIds, deletedMedicineIds, deletedTummyTimeIds, deletedPumpEventIds, deletedGrowthMeasurementIds }
+  return { deletedEntryIds, deletedDiaperIds, deletedMedicineIds, deletedTummyTimeIds, deletedPumpEventIds, deletedGrowthMeasurementIds, deletedHealthRecordIds, deletedCustomTrackerIds, deletedCustomEventIds }
 }
 
 export const createDeletedItemRecorder = (upsertDeletedItem) => (audit, deletedAt, scope = {}) => {
@@ -89,4 +100,15 @@ export const createDeletedItemRecorder = (upsertDeletedItem) => (audit, deletedA
   for (const tummyTime of audit.tummyTimes?.removed || []) record(tummyTime.id, 'tummyTimes')
   for (const pumpEvent of audit.pumpEvents?.removed || []) record(pumpEvent.id, 'pumpEvents')
   for (const measurement of audit.growthMeasurements?.removed || []) record(measurement.id, 'growthMeasurements')
+  for (const recordItem of audit.healthRecords?.removed || []) record(recordItem.id, 'healthRecords')
+  for (const tracker of audit.customTrackers?.removed || []) record(tracker.id, 'customTrackers')
+  for (const event of audit.customEvents?.removed || []) record(event.id, 'customEvents')
+}
+
+export const createDeletedItemRestorer = (deleteDeletedItem) => (restores = {}, scope = {}) => {
+  const household_id = scope.householdId || DEFAULT_HOUSEHOLD_ID
+  const baby_id = scope.babyId || DEFAULT_BABY_ID
+  for (const [collection, ids] of Object.entries(restores)) {
+    for (const item_id of Array.isArray(ids) ? ids : []) deleteDeletedItem.run({ item_id, collection, household_id, baby_id })
+  }
 }

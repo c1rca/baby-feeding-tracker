@@ -1,21 +1,29 @@
 import { Baby, Mail, MessageCircle, ShieldCheck } from 'lucide-react'
 import { useEffect, useState, type FormEvent } from 'react'
-import { confirmPasswordReset, fetchGoogleAuthStatus, requestMagicLogin, requestPasswordReset } from './authApi'
+import { confirmPasswordReset, fetchGoogleAuthStatus, requestMagicLogin, requestPasswordReset, type SignupInput } from './authApi'
 
 type LoginScreenProps = {
   pending: boolean
   error: string | null
+  inviteToken: string | null
   onLogin: (email: string, password: string) => void
+  onSignup: (input: SignupInput) => void
+  onAcceptInvite: (email: string, password: string, displayName: string) => void
   onTextLogin: (code: string) => void
+  onPasskeyLogin: (staySignedIn: boolean) => void
 }
 
-type AuthMode = 'magic' | 'code' | 'password' | 'reset'
+type AuthMode = 'magic' | 'code' | 'password' | 'reset' | 'signup'
 
-export function LoginScreen({ pending, error, onLogin, onTextLogin }: LoginScreenProps) {
-  const [mode, setMode] = useState<AuthMode>('magic')
+export function LoginScreen({ pending, error, inviteToken, onLogin, onSignup, onAcceptInvite, onTextLogin, onPasskeyLogin }: LoginScreenProps) {
+  const [mode, setMode] = useState<AuthMode>(inviteToken ? 'password' : 'magic')
   const [destination, setDestination] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [displayName, setDisplayName] = useState('')
+  const [householdName, setHouseholdName] = useState('')
+  const [babyName, setBabyName] = useState('')
+  const [babyDob, setBabyDob] = useState('')
   const [textCode, setTextCode] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   const [localPending, setLocalPending] = useState(false)
@@ -47,7 +55,13 @@ export function LoginScreen({ pending, error, onLogin, onTextLogin }: LoginScree
 
   const passwordLogin = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    onLogin(email, password)
+    if (inviteToken) onAcceptInvite(email, password, displayName)
+    else onLogin(email, password)
+  }
+
+  const signup = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    onSignup({ email, displayName, password, householdName, babyName, babyDob })
   }
 
   const handleResetRequest = async (event: FormEvent<HTMLFormElement>) => {
@@ -76,11 +90,12 @@ export function LoginScreen({ pending, error, onLogin, onTextLogin }: LoginScree
       <div className="bg-scene" aria-hidden="true"><div className="aurora aurora-1" /><div className="aurora aurora-2" /><div className="aurora aurora-3" /><div className="stars" /><div className="stars stars-2" /></div>
       <section className="card login-card">
         <h1><span className="brand-mark"><Baby size={24} /></span> Baby Feeding Tracker</h1>
-        <h2>Sign in fast</h2>
-        <p className="login-meta">Enter your mobile number or email. We’ll send a secure link and a 6-digit code.</p>
+        <h2>{inviteToken ? 'Join your household' : 'Sign in fast'}</h2>
+        <p className="login-meta">{inviteToken ? 'Create your secure sign-in to join the shared care space.' : 'Enter your mobile number or email. We’ll send a secure link and a 6-digit code.'}</p>
         <div className="login-benefits" aria-hidden="true"><span><MessageCircle size={15} /> Text link</span><span><Mail size={15} /> Email link</span><span><ShieldCheck size={15} /> Remembered</span></div>
         {error && mode !== 'code' && mode !== 'password' ? <p className="login-error" role="alert">{error}</p> : null}
 
+        <div className="text-login-flow"><button type="button" onClick={() => onPasskeyLogin(false)} disabled={pending}>Sign in with passkey</button><label><input type="checkbox" onChange={(event) => { if (event.target.checked) onPasskeyLogin(true) }} /> Stay signed in indefinitely on this device</label></div>
         {googleAvailable ? <a className="google-sign-in-button" href="/api/auth/google/start" aria-label="Sign in with Google"><span className="google-g-mark" aria-hidden="true">G</span><span>Continue with Google</span></a> : null}
 
         {mode === 'magic' ? (
@@ -101,9 +116,23 @@ export function LoginScreen({ pending, error, onLogin, onTextLogin }: LoginScree
         {mode === 'password' ? (
           <form onSubmit={passwordLogin} className="text-login-flow">
             <label>Email<input type="email" autoComplete="username" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
-            <label>Password<input type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+            {inviteToken ? <label>Display name<input value={displayName} onChange={(event) => setDisplayName(event.target.value)} required /></label> : null}
+            <label>Password<input type="password" autoComplete={inviteToken ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
             {error ? <p className="login-error" role="alert">{error}</p> : null}
-            <button type="submit" disabled={pending}>{pending ? 'Signing in…' : 'Sign in with password'}</button>
+            <button type="submit" disabled={pending}>{pending ? 'Joining…' : inviteToken ? 'Join household' : 'Sign in with password'}</button>
+          </form>
+        ) : null}
+
+        {mode === 'signup' ? (
+          <form onSubmit={signup} className="text-login-flow">
+            <label>Email<input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required /></label>
+            <label>Display name<input autoComplete="name" value={displayName} onChange={(event) => setDisplayName(event.target.value)} required /></label>
+            <label>Password<input type="password" autoComplete="new-password" minLength={12} value={password} onChange={(event) => setPassword(event.target.value)} required /></label>
+            <label>Household name<input value={householdName} onChange={(event) => setHouseholdName(event.target.value)} required /></label>
+            <label>Baby name<input value={babyName} onChange={(event) => setBabyName(event.target.value)} required /></label>
+            <label>Baby date of birth<input type="date" value={babyDob} onChange={(event) => setBabyDob(event.target.value)} required /></label>
+            {error ? <p className="login-error" role="alert">{error}</p> : null}
+            <button type="submit" disabled={pending}>{pending ? 'Creating account…' : 'Create account'}</button>
           </form>
         ) : null}
 
@@ -117,7 +146,7 @@ export function LoginScreen({ pending, error, onLogin, onTextLogin }: LoginScree
         {status ? <p className="login-meta magic-status" role="status">{status}</p> : null}
         <div className="auth-secondary-actions">
           {mode !== 'magic' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('magic')}>Use link instead</button> : null}
-          {mode === 'magic' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('magic')}>Create account with email</button> : null}
+          {mode === 'magic' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('signup')}>Create account with email</button> : null}
           {mode !== 'password' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('password')}>Use password instead</button> : null}
           {mode === 'password' ? <button className="auth-mode-toggle" type="button" onClick={() => setMode('reset')}>Forgot password?</button> : null}
         </div>

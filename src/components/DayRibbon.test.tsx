@@ -4,6 +4,9 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { DayRibbon } from './DayRibbon'
 
 const hour = 60 * 60 * 1000
+// Render the same clock label the component shows for a timestamp, so these
+// assertions are timezone-independent (the fixture times are epoch-relative).
+const timeLabel = (ms: number) => new Date(ms).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 afterEach(() => cleanup())
 const rhythm = {
   dayStartMs: 0,
@@ -13,6 +16,7 @@ const rhythm = {
   diapers: [{ id: 'diaper-1', atMs: 9 * hour, kind: 'wet' as const }],
   spans: [{ id: 'sleep-1', startMs: 10 * hour, endMs: 11.5 * hour, kind: 'sleep' as const }],
   summary: '1 feed, 1 diaper, 1 sleep',
+  recap: { tummyMinutes: 0, tummyGoalMinutes: 20, tummyGoalMet: false, sleepMinutes: 90, vitaminDAtMs: null, wet: 1, stool: 0, customs: [], showSleep: true },
 }
 
 describe('DayRibbon details', () => {
@@ -57,6 +61,36 @@ describe('DayRibbon details', () => {
     await user.keyboard('{Escape}')
     expect(screen.queryByRole('dialog', { name: "Today's rhythm" })).toBeNull()
     expect(document.body.style.overflow).toBe('')
+  })
+
+  // Rest used to be a tile of its own beside a separate "Today so far" strip.
+  // Both said how the day went; they are one card now.
+  it('carries rest inside the day recap rather than a card of its own', async () => {
+    const user = userEvent.setup()
+    render(<DayRibbon rhythm={rhythm} />)
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+
+    const recap = screen.getByRole('region', { name: 'Today so far' })
+    const items = within(recap).getAllByRole('listitem').map((item) => item.textContent)
+    expect(items[0]).toMatch(/Rest/)
+    expect(items[0]).toMatch(/1 hr 30 min/)
+    expect(items.some((item) => item?.includes('Tummy time'))).toBe(true)
+    expect(items.some((item) => item?.includes('Vitamin D'))).toBe(true)
+
+    // Changes has its own card right beside it; repeating it here was noise.
+    expect(items.some((item) => item?.match(/changes?$/i))).toBe(false)
+    // And there is exactly one card describing the day, not two.
+    expect(screen.getAllByText(/Today so far/i)).toHaveLength(1)
+  })
+
+  it('reads an empty rest slot honestly', async () => {
+    const user = userEvent.setup()
+    render(<DayRibbon rhythm={{ ...rhythm, spans: [], recap: { ...rhythm.recap, sleepMinutes: 0 } }} />)
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+
+    const rest = within(screen.getByRole('region', { name: 'Today so far' })).getAllByRole('listitem')[0]
+    expect(rest.textContent).toMatch(/No sleep yet/i)
+    expect(rest.className).not.toMatch(/is-done/)
   })
 
   it('shows today’s nursing split under the feed total', async () => {
@@ -137,7 +171,62 @@ describe('DayRibbon details', () => {
     expect(dialog.querySelectorAll('.rhythm-stage-event > span, .rhythm-stage-diaper > span')).toHaveLength(0)
     await user.click(within(dialog).getByRole('button', { name: /Wet diaper at/i }))
     expect(within(dialog).getByRole('status').textContent).toMatch(/Wet diaper/)
-    expect(within(dialog).getByRole('status').textContent).toMatch(/4:00 AM/)
+    expect(within(dialog).getByRole('status').textContent).toContain(timeLabel(9 * hour))
+  })
+
+  it('steps the expanded rhythm back a day and returns to today from the picker', async () => {
+    const user = userEvent.setup()
+    // A real-clock "today" so the picker's day arithmetic matches the fixture.
+    const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).getTime()
+    const dayStart = (offsetDays: number) => { const day = new Date(todayStart); day.setDate(day.getDate() + offsetDays); return day.getTime() }
+    const dayRhythm = (offsetDays: number) => ({
+      ...rhythm,
+      dayStartMs: dayStart(offsetDays),
+      dayEndMs: dayStart(offsetDays + 1),
+      nowMs: dayStart(offsetDays) + 12 * hour,
+      feeds: offsetDays === 0 ? rhythm.feeds : [],
+      diapers: offsetDays === 0 ? rhythm.diapers : [{ id: 'diaper-past', atMs: dayStart(offsetDays) + 9 * hour, kind: 'stool' as const }],
+      spans: offsetDays === 0 ? rhythm.spans : [],
+    })
+    const rhythmForDay = (dayAnchorMs: number) => dayRhythm(Math.round((dayAnchorMs - todayStart) / (24 * hour)))
+    render(<DayRibbon rhythm={dayRhythm(0)} rhythmForDay={rhythmForDay} earliestDayMs={dayStart(-6)} />)
+
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
+    expect(within(dialog).getByRole('group', { name: 'Choose a day' }).textContent).toContain('Today')
+    expect((within(dialog).getByRole('button', { name: 'Next day' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(within(dialog).queryByRole('button', { name: 'Today' })).toBeNull()
+
+    await user.click(within(dialog).getByRole('button', { name: 'Previous day' }))
+    const pastDialog = screen.getByRole('dialog', { name: /Rhythm for/i })
+    expect(within(pastDialog).getByRole('group', { name: 'Choose a day' }).textContent).toContain('Yesterday')
+    // Yesterday's own events replace today's, and the live "Now" line is gone.
+    expect(within(pastDialog).getByLabelText('Changes: 1 total, 0 wet, 1 stool, 0 mixed')).toBeTruthy()
+    expect(within(pastDialog).queryByRole('button', { name: /Nursing at/i })).toBeNull()
+    expect(pastDialog.querySelector('.rhythm-stage-now')).toBeNull()
+
+    await user.click(within(pastDialog).getByRole('button', { name: 'Today' }))
+    const backDialog = screen.getByRole('dialog', { name: "Today's rhythm" })
+    expect(within(backDialog).getByRole('button', { name: /Nursing at/i })).toBeTruthy()
+    expect(backDialog.querySelector('.rhythm-stage-now')).toBeTruthy()
+  })
+
+  it('stops the picker at the oldest logged day and hides it without a day source', async () => {
+    const user = userEvent.setup()
+    const todayStart = new Date(new Date().setHours(0, 0, 0, 0)).getTime()
+    const today = { ...rhythm, dayStartMs: todayStart, dayEndMs: todayStart + 24 * hour, nowMs: todayStart + 12 * hour }
+    const { unmount } = render(<DayRibbon rhythm={today} rhythmForDay={() => today} earliestDayMs={todayStart} />)
+
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
+    expect((within(dialog).getByRole('button', { name: 'Previous day' }) as HTMLButtonElement).disabled).toBe(true)
+    const input = within(dialog).getByLabelText(/Choose a different day/i) as HTMLInputElement
+    expect(input.min).toBe(input.max)
+    unmount()
+
+    render(<DayRibbon rhythm={today} />)
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    expect(screen.queryByRole('group', { name: 'Choose a day' })).toBeNull()
   })
 
   it('stacks nearby point events into touch-safe rows so mobile does not need a wide timeline', async () => {
@@ -156,10 +245,31 @@ describe('DayRibbon details', () => {
     await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
     const dialog = screen.getByRole('dialog', { name: "Today's rhythm" })
     const rows = [
-      within(dialog).getByRole('button', { name: /Nursing at 3:00 AM/i }),
-      within(dialog).getByRole('button', { name: /Bottle at 3:20 AM/i }),
-      within(dialog).getByRole('button', { name: /Wet diaper at 3:35 AM/i }),
+      within(dialog).getByRole('button', { name: new RegExp(`Nursing at ${timeLabel(8 * hour)}`, 'i') }),
+      within(dialog).getByRole('button', { name: new RegExp(`Bottle at ${timeLabel(8 * hour + 20 * 60_000)}`, 'i') }),
+      within(dialog).getByRole('button', { name: new RegExp(`Wet diaper at ${timeLabel(8 * hour + 35 * 60_000)}`, 'i') }),
     ].map((event) => event.style.getPropertyValue('--rhythm-event-row'))
     expect(new Set(rows).size).toBe(3)
+  })
+})
+
+// A household that never logs sleep does not want a permanent "No sleep yet"
+// row; one that usually logs it wants to see the gap on a day it forgot.
+describe('rest only appears when it is relevant', () => {
+  const recapItems = () => within(screen.getByRole('region', { name: 'Today so far' })).getAllByRole('listitem').map((n) => n.textContent)
+
+  it('is hidden when sleep has never been logged', async () => {
+    const user = userEvent.setup()
+    render(<DayRibbon rhythm={{ ...rhythm, spans: [], recap: { ...rhythm.recap, sleepMinutes: 0, showSleep: false } }} />)
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    expect(recapItems().some((item) => item?.includes('Rest'))).toBe(false)
+  })
+
+  it('is shown, even empty, once sleep is something this household tracks', async () => {
+    const user = userEvent.setup()
+    render(<DayRibbon rhythm={{ ...rhythm, spans: [], recap: { ...rhythm.recap, sleepMinutes: 0, showSleep: true } }} />)
+    await user.click(screen.getByRole('group', { name: /Today's rhythm:/i }))
+    expect(recapItems()[0]).toMatch(/Rest/)
+    expect(recapItems()[0]).toMatch(/No sleep yet/)
   })
 })

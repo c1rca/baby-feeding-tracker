@@ -132,3 +132,48 @@ describe('useBrowserFeedNotifications feeding channel', () => {
     expect(MockNotification.instances[0].title).toBe('Feeding reminder')
   })
 })
+
+describe('useBrowserFeedNotifications caregiver-defined trackers', () => {
+  const trackerReminder = { id: 'custom-t1-interval-1-0', trackerId: 't1', name: 'Vitamin C', copy: 'Vitamin C: 1 of 3 today.' }
+
+  it('fires when the custom-tracker browser channel is on', () => {
+    mount({ customTrackerReminders: [trackerReminder] })
+    vi.advanceTimersByTime(1)
+    expect(MockNotification.instances).toHaveLength(1)
+    expect(MockNotification.instances[0].title).toBe('Vitamin C reminder')
+    expect(MockNotification.instances[0].options.body).toBe('Vitamin C: 1 of 3 today.')
+  })
+
+  it('stays silent when the channel is off', () => {
+    mount({ preferences: prefsWith({ customTrackers: { inApp: true, browser: false, gotify: false } }), customTrackerReminders: [trackerReminder] })
+    vi.advanceTimersByTime(1)
+    expect(MockNotification.instances).toHaveLength(0)
+  })
+
+  it('stays silent during quiet hours', () => {
+    // 10am, with quiet hours covering the whole morning.
+    const preferences = prefsWith({ quietHours: { enabled: true, startHour: 8, startMinute: 0, endHour: 12, endMinute: 0 } })
+    mount({ preferences, customTrackerReminders: [trackerReminder] })
+    vi.advanceTimersByTime(1)
+    expect(MockNotification.instances).toHaveLength(0)
+  })
+
+  it('does not re-fire every second while the same lapse is still open', () => {
+    const { rerender } = renderHook(
+      ({ tick }: { tick: number }) => useBrowserFeedNotifications({
+        browserRemindersEnabled: true,
+        notificationPermission: 'granted',
+        preferences: DEFAULT_NOTIFICATION_PREFERENCES,
+        now: now + tick * 1000,
+        customTrackerReminders: [trackerReminder],
+      }),
+      { initialProps: { tick: 0 } },
+    )
+    vi.advanceTimersByTime(1)
+    rerender({ tick: 1 })
+    vi.advanceTimersByTime(1)
+    rerender({ tick: 2 })
+    vi.advanceTimersByTime(1)
+    expect(MockNotification.instances).toHaveLength(1)
+  })
+})

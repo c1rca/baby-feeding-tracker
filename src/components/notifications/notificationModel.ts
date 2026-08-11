@@ -1,11 +1,12 @@
 import type { MedicineKind } from '../../types'
+import type { CustomTrackerReminderDue } from '../../domain/customTrackerReminders'
 import type { MedicineReminder } from '../MedicineReminderBanner'
 import type { NotificationPreferences } from '../../state/notificationPreferences'
 import { isQuietHour, isWithinWindow } from '../../domain/notificationWindows'
 
 export type CareNotification = {
   id: string
-  kind: 'medicine' | 'vitamin_d' | 'tummy_time'
+  kind: 'medicine' | 'vitamin_d' | 'tummy_time' | 'custom'
   priority: 1 | 2 | 3
   title: string
   summary: string
@@ -22,9 +23,11 @@ type BuildCareNotificationsInput = {
   medicineReminders?: MedicineReminder[]
   showMedicineReminder: boolean
   dismissMedicineReminder: (id: string) => void
-  logMedicine: (kind: MedicineKind) => void
+  logMedicine: (kind: MedicineKind, name?: string) => void
   tummyTimeReminder: { copy: string } | null
   startTummyTime: () => void
+  customTrackerReminders?: CustomTrackerReminderDue[]
+  logCustomEvent?: (trackerId: string) => void
   preferences?: NotificationPreferences
   now?: number
 }
@@ -33,7 +36,7 @@ const medicineNotification = (reminder: MedicineReminder, logMedicine: (kind: Me
   const isVitaminD = reminder.type === 'vitamin_d'
   const title = isVitaminD ? 'Vitamin D reminder' : 'Medicine reminder'
   const summary = isVitaminD
-    ? `Take Vitamin D. Last dose was ${reminder.elapsedHours}+ hours ago.`
+    ? reminder.elapsedHours === 0 ? 'Take Vitamin D. It has not been logged today.' : `Take Vitamin D. Last dose was ${reminder.elapsedHours}+ hours ago.`
     : `Take ${reminder.recommendedLabel}. Last dose was ${reminder.label} ${reminder.elapsedHours}+ hours ago.`
   return {
     id: reminder.id,
@@ -51,7 +54,7 @@ const medicineNotification = (reminder: MedicineReminder, logMedicine: (kind: Me
   }
 }
 
-export const buildCareNotifications = ({ medicineReminders = [], showMedicineReminder, dismissMedicineReminder, logMedicine, tummyTimeReminder, startTummyTime, preferences, now }: BuildCareNotificationsInput): CareNotification[] => {
+export const buildCareNotifications = ({ medicineReminders = [], showMedicineReminder, dismissMedicineReminder, logMedicine, tummyTimeReminder, startTummyTime, customTrackerReminders = [], logCustomEvent, preferences, now }: BuildCareNotificationsInput): CareNotification[] => {
   const isQuietNow = now && preferences ? isQuietHour(now, preferences.quietHours) : false
 
   const notifications: CareNotification[] = []
@@ -78,6 +81,24 @@ export const buildCareNotifications = ({ medicineReminders = [], showMedicineRem
         occurredAt: Number.MAX_SAFE_INTEGER, action: startTummyTime,
       })
     }
+  }
+
+  // Caregiver-defined trackers. Quiet hours and goal-met are already applied
+  // upstream; only the channel preference is left to check.
+  if (preferences?.customTrackers.inApp ?? false) {
+    notifications.push(...customTrackerReminders.map((reminder) => ({
+      id: reminder.id,
+      kind: 'custom' as const,
+      priority: 3 as const,
+      title: `${reminder.name} reminder`,
+      summary: reminder.copy,
+      actionLabel: `Log ${reminder.name}`,
+      ariaActionLabel: `Log ${reminder.name} from reminder`,
+      announcedRole: 'status' as const,
+      dismissible: false,
+      occurredAt: Number.MAX_SAFE_INTEGER,
+      action: () => logCustomEvent?.(reminder.trackerId),
+    })))
   }
 
   return notifications.sort((a, b) => a.priority - b.priority || a.occurredAt - b.occurredAt || a.id.localeCompare(b.id))

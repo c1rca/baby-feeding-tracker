@@ -1,4 +1,4 @@
-import type { DiaperKind, MedicineKind, Session, Side, TummyTimeSession } from '../../types'
+import type { CustomTracker, DiaperKind, MedicineEvent, MedicineKind, Session, Side, TummyTimeSession } from '../../types'
 import type { PumpSession } from '../../state/usePumpActions'
 
 export type HeroPanelProps = {
@@ -23,6 +23,10 @@ export type HeroPanelProps = {
   additionalOptionsOpen: boolean
   tummySession: TummyTimeSession | null
   tummyActiveSeconds: number
+  // Needed wherever the running timer is named: a caregiver-defined timer rides
+  // in the same slot and borrows the tracker's name.
+  customTrackers: CustomTracker[]
+  startCustomTimer: (trackerId: string) => void
   setTummySession: (updater: TummyTimeSession | ((session: TummyTimeSession | null) => TummyTimeSession | null) | null) => void
   setStartOffsetOpen: (updater: (open: boolean) => boolean) => void
   setStartInputMode: (mode: 'clock' | 'minutes') => void
@@ -42,7 +46,8 @@ export type HeroPanelProps = {
   toggleDiaperSelection: (kind: DiaperKind) => void
   logSelectedDiapers: () => void
   logDiaperKinds: (kinds: DiaperKind[]) => void
-  logMedicine: (kind: MedicineKind) => void
+  logMedicine: (kind: MedicineKind, name?: string) => void
+  medicines?: MedicineEvent[]
   logTummyTimeMinutes: (minutes: number) => void
   startTummyTime: () => void
   pauseTummyTime: () => void

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto'
+import { generateAuthenticationOptions as serverGenerateAuthenticationOptions, generateRegistrationOptions as serverGenerateRegistrationOptions, verifyAuthenticationResponse as serverVerifyAuthenticationResponse, verifyRegistrationResponse as serverVerifyRegistrationResponse } from '@simplewebauthn/server'
 import { DEFAULT_BABY_ID, DEFAULT_HOUSEHOLD_ID, DEFAULT_USER_ID } from './database.js'
 import { hashLoginCode, hashPassword, hashSessionToken, verifyPassword } from './authCrypto.js'
 import { clientIp, createRateLimiter } from './rateLimiter.js'
@@ -21,6 +22,8 @@ export const isEmailAllowed = (email, allowedEmails = []) => {
 const defaultTokenFactory = () => globalThis.crypto.randomUUID().replaceAll('-', '')
 const defaultIdFactory = () => globalThis.crypto.randomUUID()
 const addDays = (date, days) => new Date(date.getTime() + days * 24 * 60 * 60 * 1000)
+const PASSKEY_CHALLENGE_TTL_MS = 5 * 60 * 1000
+const PERSISTENT_SESSION_EXPIRY = '9999-12-31T23:59:59.999Z'
 const normalizePhone = (phone) => {
   const digits = String(phone || '').replace(/\D/g, '')
   if (digits.length === 10) return `+1${digits}`
@@ -78,7 +81,7 @@ const bearerToken = (req) => {
   return match?.[1]?.trim() || null
 }
 
-export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, selectSessionContext = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, sendEmailLogin = null, sendPasswordReset = null, baseUrl = '', textLoginAvailable = false, emailLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, loginCodePepper = '', textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)) } = {}) => {
+export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowedEmails = [], selectUserByEmail = null, selectUserByPhone = null, selectUserByGoogleSub = null, upsertGoogleUser = null, insertPasswordUser = null, insertPhoneUser = null, createSignupHousehold = null, selectMembershipsByUser = null, selectInviteByToken = null, insertHouseholdMember = null, acceptInvite = null, acceptInviteTransaction = null, selectSessionContext = null, insertSession = null, insertLoginCode = null, selectLoginCode = null, consumeLoginCode = null, insertPasswordResetCode = null, selectPasswordResetCode = null, consumePasswordResetCode = null, updateUserPassword = null, revokeUserSessions = null, selectUserById = null, appendEventLog = () => {}, sendTextLogin = null, sendEmailLogin = null, sendPasswordReset = null, baseUrl = '', textLoginAvailable = false, emailLoginAvailable = false, tokenFactory = defaultTokenFactory, idFactory = defaultIdFactory, stateFactory = null, verifyGoogleState = null, exchangeGoogleCode = defaultGoogleCodeExchange, fetchGoogleProfile = defaultGoogleProfileFetch, now = () => new Date(), maxLoginAttempts = 10, loginWindowMs = 15 * 60 * 1000, textRequestMax = 5, textRequestWindowMs = 15 * 60 * 1000, textConfirmMax = 10, textConfirmWindowMs = 15 * 60 * 1000, passwordResetMax = 5, passwordResetWindowMs = 15 * 60 * 1000, googleExchangeMax = 10, googleExchangeWindowMs = 15 * 60 * 1000, allowedPhones = [], expireLoginCodesForUser = null, loginCodeTtlMs = 60 * 1000, textLoginCodeTtlMs = 10 * 60 * 1000, sessionTtlDays = 30, passwordResetTtlMs = 15 * 60 * 1000, exposePasswordResetToken = false, loginCodePepper = '', textCodeFactory = () => String(Math.floor(100000 + Math.random() * 900000)), rpID = '', rpName = 'Baby Feeding Tracker', expectedOrigin = '', generateAuthenticationOptions = serverGenerateAuthenticationOptions, generateRegistrationOptions = serverGenerateRegistrationOptions, verifyAuthenticationResponse = serverVerifyAuthenticationResponse, verifyRegistrationResponse = serverVerifyRegistrationResponse, insertWebAuthnChallenge = null, selectWebAuthnChallenge = null, consumeWebAuthnChallenge = null, selectPasskeyByCredentialId = null, selectPasskeysByUser = null, insertPasskey = null, updatePasskeyCounter = null } = {}) => {
   const limiterNow = () => now().getTime()
   const loginLimiter = createRateLimiter({ max: maxLoginAttempts, windowMs: loginWindowMs, now: limiterNow })
   const textRequestLimiter = createRateLimiter({ max: textRequestMax, windowMs: textRequestWindowMs, now: limiterNow })
@@ -89,9 +92,15 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
   // can still request a code). This mirrors the email beta gate.
   const isPhoneAllowed = (phone) => allowedPhones.includes(phone)
 
-  const createSession = (user) => {
+  const authenticatedUserId = (req) => {
+    if (req.auth?.mode === 'session') return req.auth.userId
+    const token = bearerToken(req)
+    return token ? selectSessionContext?.get(hashSessionToken(token))?.user_id || null : null
+  }
+
+  const createSession = (user, { persistent = false } = {}) => {
     const createdAt = now()
-    const expiresAt = addDays(createdAt, sessionTtlDays)
+    const expiresAt = persistent ? new Date(PERSISTENT_SESSION_EXPIRY) : addDays(createdAt, sessionTtlDays)
     const token = tokenFactory()
     insertSession.run({
       id: idFactory(),
@@ -289,6 +298,60 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
       })
     })
 
+    app.post('/api/auth/passkeys/authentication/options', async (_req, res) => {
+      if (!authRequired || !rpID || !expectedOrigin) return res.status(404).json({ ok: false, error: 'Passkeys are not enabled' })
+      try {
+        const options = await generateAuthenticationOptions({ rpID, rpName, userVerification: 'preferred' })
+        insertWebAuthnChallenge?.run({ id: idFactory(), user_id: null, challenge: options.challenge, purpose: 'authentication', created_at: now().toISOString(), expires_at: new Date(now().getTime() + PASSKEY_CHALLENGE_TTL_MS).toISOString(), consumed_at: null })
+        res.status(200).json({ ok: true, options })
+      } catch { res.status(503).json({ ok: false, error: 'Passkeys are temporarily unavailable' }) }
+    })
+
+    app.post('/api/auth/passkeys/authentication/verify', async (req, res) => {
+      if (!authRequired || !rpID || !expectedOrigin) return res.status(404).json({ ok: false, error: 'Passkeys are not enabled' })
+      const credentialId = String(req.body?.response?.id || '')
+      const passkey = credentialId ? selectPasskeyByCredentialId?.get(credentialId) : null
+      const challenge = passkey ? selectWebAuthnChallenge?.get({ user_id: null, purpose: 'authentication' }) : null
+      if (!passkey || !challenge || challenge.consumed_at || new Date(challenge.expires_at).getTime() <= now().getTime()) return res.status(401).json({ ok: false, error: 'Invalid or expired passkey request' })
+      try {
+        const verification = await verifyAuthenticationResponse({ response: req.body.response, expectedChallenge: challenge.challenge, expectedOrigin, expectedRPID: rpID, credential: { id: passkey.credential_id, publicKey: new Uint8Array(passkey.public_key), counter: passkey.counter, transports: JSON.parse(passkey.transports_json || '[]') } })
+        if (!verification.verified) return res.status(401).json({ ok: false, error: 'Passkey verification failed' })
+        if (!(consumeWebAuthnChallenge?.run({ id: challenge.id, consumed_at: now().toISOString() })?.changes ?? 0)) return res.status(401).json({ ok: false, error: 'Invalid or expired passkey request' })
+        updatePasskeyCounter?.run({ id: passkey.id, counter: verification.authenticationInfo.newCounter, last_used_at: now().toISOString() })
+        const persistent = req.body?.staySignedIn === true
+        const token = createSession({ id: passkey.user_id }, { persistent })
+        const user = selectUserById?.get(passkey.user_id)
+        appendEventLog('auth_passkey_login', { userId: passkey.user_id, persistent })
+        res.status(200).json({ ok: true, token, persistent, user: user ? { id: user.id, email: user.email, displayName: user.display_name } : { id: passkey.user_id } })
+      } catch { res.status(401).json({ ok: false, error: 'Passkey verification failed' }) }
+    })
+
+    app.post('/api/auth/passkeys/registration/options', async (req, res) => {
+      const userId = authenticatedUserId(req)
+      const user = userId ? selectUserById?.get(userId) : null
+      if (!authRequired || !rpID || !expectedOrigin || !user) return res.status(404).json({ ok: false, error: 'Passkeys are not enabled' })
+      try {
+        const options = await generateRegistrationOptions({ rpName, rpID, userID: new Uint8Array(Buffer.from(user.id)), userName: user.email || user.id, userDisplayName: user.display_name || user.email || user.id, excludeCredentials: (selectPasskeysByUser?.all(user.id) || []).map((passkey) => ({ id: passkey.credential_id, transports: JSON.parse(passkey.transports_json || '[]') })), authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' } })
+        insertWebAuthnChallenge?.run({ id: idFactory(), user_id: user.id, challenge: options.challenge, purpose: 'registration', created_at: now().toISOString(), expires_at: new Date(now().getTime() + PASSKEY_CHALLENGE_TTL_MS).toISOString(), consumed_at: null })
+        res.status(200).json({ ok: true, options })
+      } catch { res.status(503).json({ ok: false, error: 'Passkeys are temporarily unavailable' }) }
+    })
+
+    app.post('/api/auth/passkeys/registration/verify', async (req, res) => {
+      const userId = authenticatedUserId(req)
+      const challenge = userId ? selectWebAuthnChallenge?.get({ user_id: userId, purpose: 'registration' }) : null
+      if (!authRequired || !rpID || !expectedOrigin || !challenge || challenge.consumed_at || new Date(challenge.expires_at).getTime() <= now().getTime()) return res.status(401).json({ ok: false, error: 'Invalid or expired passkey request' })
+      try {
+        const verification = await verifyRegistrationResponse({ response: req.body?.response, expectedChallenge: challenge.challenge, expectedOrigin, expectedRPID: rpID, requireUserVerification: false })
+        const credential = verification.registrationInfo?.credential
+        if (!verification.verified || !credential) return res.status(401).json({ ok: false, error: 'Passkey verification failed' })
+        if (!(consumeWebAuthnChallenge?.run({ id: challenge.id, consumed_at: now().toISOString() })?.changes ?? 0)) return res.status(401).json({ ok: false, error: 'Invalid or expired passkey request' })
+        insertPasskey?.run({ id: idFactory(), user_id: userId, credential_id: credential.id, public_key: Buffer.from(credential.publicKey), counter: credential.counter, transports_json: JSON.stringify(credential.transports || []), created_at: now().toISOString(), last_used_at: null })
+        appendEventLog('auth_passkey_enrolled', { userId })
+        res.status(201).json({ ok: true })
+      } catch { res.status(401).json({ ok: false, error: 'Passkey verification failed' }) }
+    })
+
     app.post('/api/auth/signup', (req, res) => {
       if (!authRequired) {
         res.status(404).json({ ok: false, error: 'Authentication is not enabled' })
@@ -419,7 +482,9 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
         return
       }
       const inviteToken = String(req.body?.token || '').trim()
-      const email = normalizeEmail(req.body?.email)
+      const rawDestination = String(req.body?.email || '').trim()
+      const phone = normalizePhone(rawDestination)
+      const email = phone || normalizeEmail(rawDestination)
       const password = String(req.body?.password || '')
       if (!inviteToken || !email) {
         res.status(400).json({ ok: false, error: 'Invite token and email are required' })
@@ -434,7 +499,7 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
         res.status(403).json({ ok: false, error: 'invite_email_mismatch' })
         return
       }
-      let user = selectUserByEmail?.get(email)
+      let user = phone ? selectUserByPhone?.get(phone) : selectUserByEmail?.get(email)
       // Existing accounts: the invite token alone must never mint a session, or a
       // household owner (who is handed the raw token) could POST it with the
       // victim's email and take over the account. Require proof of ownership —
@@ -452,21 +517,37 @@ export const createAuthRouter = ({ authRequired = false, googleAuth = {}, allowe
           res.status(401).json({ ok: false, error: 'Sign in to accept this invite' })
           return
         }
-      } else {
+      }
+      const acceptedAt = now().toISOString()
+      let newUser = null
+      if (!user) {
         if (password.length < 12) {
           res.status(400).json({ ok: false, error: 'Password must be at least 12 characters' })
           return
         }
-        user = { id: idFactory(), email, display_name: String(req.body?.displayName || '').trim() || email }
-        insertPasswordUser?.run({ id: user.id, email, display_name: user.display_name, password_hash: hashPassword(password), google_sub: null, created_at: now().toISOString() })
+        user = { id: idFactory(), email: phone ? `phone:${phone}` : email, display_name: String(req.body?.displayName || '').trim() || email }
+        newUser = phone
+          ? { kind: 'phone', id: user.id, email: user.email, phone, display_name: user.display_name, created_at: acceptedAt }
+          : { kind: 'password', id: user.id, email, display_name: user.display_name, password_hash: hashPassword(password), google_sub: null, created_at: acceptedAt }
       }
-      const acceptedAt = now().toISOString()
-      const result = acceptInvite?.run({ id: invite.id, accepted_at: acceptedAt }) || { changes: 0 }
-      if (!result.changes) {
-        res.status(409).json({ ok: false, error: 'invite_already_used' })
+      try {
+        const result = acceptInviteTransaction
+          ? acceptInviteTransaction({ invite, user, newUser, acceptedAt })
+          : (() => {
+              if (newUser?.kind === 'phone') insertPhoneUser?.run(newUser)
+              else if (newUser) insertPasswordUser?.run(newUser)
+              const accepted = acceptInvite?.run({ id: invite.id, accepted_at: acceptedAt }) || { changes: 0 }
+              if (accepted.changes) insertHouseholdMember?.run({ user_id: user.id, household_id: invite.household_id, role: invite.role, created_at: acceptedAt })
+              return accepted
+            })()
+        if (!result?.changes) {
+          res.status(409).json({ ok: false, error: 'invite_already_used' })
+          return
+        }
+      } catch {
+        res.status(409).json({ ok: false, error: 'Could not accept this invite. Please ask for a new one.' })
         return
       }
-      insertHouseholdMember?.run({ user_id: user.id, household_id: invite.household_id, role: invite.role, created_at: acceptedAt })
       const token = issueSession ? createSession({ id: user.id }) : null
       appendEventLog('invite_accept', { inviteId: invite.id, householdId: invite.household_id, userId: user.id })
       res.status(200).json({ ok: true, token, user: { id: user.id, email, displayName: user.display_name } })

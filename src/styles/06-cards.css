@@ -1,0 +1,15 @@
+/* ---------- 6. Cards ---------- */
+.card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  padding: 18px;
+  box-shadow: var(--shadow-card);
+  backdrop-filter: blur(14px) saturate(1.2);
+  -webkit-backdrop-filter: blur(14px) saturate(1.2);
+  transition: border-color .25s ease, box-shadow .25s ease, background .3s ease;
+}
+.section-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 12px; }
+.section-heading h2 { margin: 0; font-size: 1.15rem; }
+.section-heading .muted { font-size: .8rem; font-weight: 700; }

@@ -45,7 +45,7 @@ describe('Pumping tracker', () => {
     const right = within(pumpItem).getByRole('spinbutton', { name: /Right output ounces/i })
     await user.type(right, '1.5')
     await user.click(within(pumpItem).getByRole('button', { name: /Save pumping/i }))
-    expect(within(pumpItem).getByText(/Total.*5 oz/i)).toBeTruthy()
+    expect(within(pumpItem).getByText(/Total.*5\.0 oz/i)).toBeTruthy()
 
     await user.click(within(pumpItem).getByRole('button', { name: /Pumping actions/i }))
     await user.click(within(pumpItem).getByRole('menuitem', { name: /Delete pumping/i }))

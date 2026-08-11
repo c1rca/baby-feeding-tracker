@@ -1,13 +1,17 @@
 import { defineConfig, devices } from '@playwright/test'
 
 const baseURL = process.env.BROWSER_BASE_URL
-if (!baseURL || !/^https?:\/\/(localhost|127\.0\.0\.1):8081\/?$/.test(baseURL)) {
-  throw new Error('BROWSER_BASE_URL must be exactly http://localhost:8081 or http://127.0.0.1:8081; refusing any other target.')
+if (!baseURL || !/^https?:\/\/(localhost|127\.0\.0\.1):(8081|8082)\/?$/.test(baseURL)) {
+  throw new Error('BROWSER_BASE_URL must be local Dev (8081) or isolated acceptance (8082); refusing any other target.')
 }
 
 export default defineConfig({
   testDir: './test/browser',
   fullyParallel: false,
+  // Every spec seeds the same dev server's state, so concurrent workers race
+  // each other's fixtures — a session seeded by one project gets read by the
+  // other. One worker at a time.
+  workers: 1,
   forbidOnly: !!process.env.CI,
   retries: 0,
   reporter: [['list'], ['html', { open: 'never', outputFolder: 'test-results/browser-report' }]],

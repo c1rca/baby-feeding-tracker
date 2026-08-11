@@ -1,5 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { formatClockInput, medicineLabel, parseClockTimeOnDate } from '../domain/trackerDomain'
+import { formatClockInput, formatDateInput, parseClockTimeOnDate, parseDateAndTime } from '../domain/trackerDomain'
+import { medicineEventLabel } from '../domain/labels'
 import type { EditingMedicineState, MedicineEvent, MedicineKind, UndoState } from '../types'
 import { createMedicineDose } from './auxiliaryEventModels'
 
@@ -16,20 +17,21 @@ type MedicineActionsOptions = {
 }
 
 export function useMedicineActions({ editingMedicine, setEditingMedicine, setMedicines, setDismissedMedicineReminderIds, setAdditionalOptionsOpen, setOpenEntryMenuId, clearUndoTimeout, setUndoState, showToast }: MedicineActionsOptions) {
-  const logMedicine = (kind: MedicineKind) => {
-    const medicine = createMedicineDose(kind, new Date().getTime())
+  const logMedicine = (kind: MedicineKind, name?: string) => {
+    const medicine = createMedicineDose(kind, new Date().getTime(), name)
     setMedicines((prev) => [medicine, ...prev].sort((a, b) => b.at - a.at))
     setDismissedMedicineReminderIds([])
     setAdditionalOptionsOpen(false)
     clearUndoTimeout()
     const timeoutId = window.setTimeout(() => setUndoState(null), 5000)
     setUndoState({ medicine, timeoutId, kind: 'medicine-log' })
-    showToast(`${medicineLabel(kind)} logged`)
+    showToast(`${medicineEventLabel(medicine)} logged`)
   }
 
   const saveMedicineEdit = (medicine: MedicineEvent) => {
     if (!editingMedicine) return
-    const nextAt = parseClockTimeOnDate(editingMedicine.time, editingMedicine.originalAt)
+    const dayStart = parseDateAndTime(editingMedicine.date ?? formatDateInput(editingMedicine.originalAt), '00:00')
+    const nextAt = dayStart === null ? null : parseClockTimeOnDate(editingMedicine.time, dayStart)
     if (nextAt === null) return showToast('Enter a valid medicine time')
     setMedicines((prev) => prev.map((item) => item.id === medicine.id ? { ...item, kind: editingMedicine.kind, at: nextAt } : item).sort((a, b) => b.at - a.at))
     setDismissedMedicineReminderIds([])
@@ -38,7 +40,7 @@ export function useMedicineActions({ editingMedicine, setEditingMedicine, setMed
   }
 
   const startMedicineEdit = (medicine: MedicineEvent) => {
-    setEditingMedicine({ id: medicine.id, kind: medicine.kind, time: formatClockInput(medicine.at), originalAt: medicine.at })
+    setEditingMedicine({ id: medicine.id, date: formatDateInput(medicine.at), kind: medicine.kind, time: formatClockInput(medicine.at), originalAt: medicine.at })
     setOpenEntryMenuId(null)
   }
 

@@ -16,7 +16,7 @@ export type MedicineReminderBannerProps = {
   medicineReminders?: MedicineReminder[]
   showMedicineReminder: boolean
   dismissMedicineReminder: (id: string) => void
-  logMedicine: (kind: MedicineKind) => void
+  logMedicine: (kind: MedicineKind, name?: string) => void
 }
 
 export function MedicineReminderBanner({ medicineReminder, medicineReminders, showMedicineReminder, dismissMedicineReminder, logMedicine }: MedicineReminderBannerProps) {
@@ -29,7 +29,7 @@ export function MedicineReminderBanner({ medicineReminder, medicineReminders, sh
         const isVitaminD = reminder.type === 'vitamin_d'
         const title = isVitaminD ? 'Vitamin D reminder' : 'Medicine reminder'
         const copy = isVitaminD
-          ? `Take Vitamin D. Last dose was ${reminder.elapsedHours}+ hours ago.`
+          ? reminder.elapsedHours === 0 ? 'Take Vitamin D. It has not been logged today.' : `Take Vitamin D. Last dose was ${reminder.elapsedHours}+ hours ago.`
           : `Take ${reminder.recommendedLabel}. Last dose was ${reminder.label} ${reminder.elapsedHours}+ hours ago.`
 
         return (

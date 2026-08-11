@@ -135,6 +135,9 @@ describe('App interactions', () => {
     render(<App />)
     await user.click(screen.getByRole('button', { name: /Open settings/i }))
 
+    // Each reminder type is a disclosure now: its summary line states what it
+    // currently does, and the controls live inside.
+    await user.click(await screen.findByRole('button', { name: /^Feeding/i }))
     const gotifySwitch = await screen.findByRole('switch', { name: /Feeding via Gotify/i })
     expect(gotifySwitch.getAttribute('aria-checked')).toBe('true')
     await user.click(gotifySwitch)
@@ -165,12 +168,15 @@ describe('App interactions', () => {
     render(<App />)
     await user.click(screen.getByRole('button', { name: /Open settings/i }))
 
+    await user.click(await screen.findByRole('button', { name: /^Tylenol/i }))
     const tylenolSelect = await screen.findByLabelText(/Tylenol reminder interval/i)
-    const motrinSelect = screen.getByLabelText(/Motrin reminder interval/i)
     expect((tylenolSelect as HTMLSelectElement).value).toBe('6')
-    expect((motrinSelect as HTMLSelectElement).value).toBe('6')
-
     await user.selectOptions(tylenolSelect, '4')
+
+    // Only one type is open at a time, so Motrin opens after Tylenol closes.
+    await user.click(screen.getByRole('button', { name: /^Motrin/i }))
+    const motrinSelect = await screen.findByLabelText(/Motrin reminder interval/i)
+    expect((motrinSelect as HTMLSelectElement).value).toBe('6')
     await user.selectOptions(motrinSelect, '0')
 
     await waitFor(() => expect(screen.getByText(/Notification settings saved/i)).toBeTruthy())

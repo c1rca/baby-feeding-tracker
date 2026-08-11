@@ -1,8 +1,10 @@
 import { normalizeSession } from '../domain/trackerDomain'
 import { normalizeTummyTimeGoalMinutes } from '../domain/tummyTime'
 import { normalizeGrowthMeasurements } from '../domain/growth'
+import { normalizeHealthRecords } from '../domain/healthRecords'
+import { normalizeCustomEvents, normalizeCustomTrackers } from '../domain/customTrackers'
 import type { GrowthMeasurement } from '../domain/growthTypes'
-import type { DiaperEvent, Entry, MedicineEvent, PumpEvent, ServerState, TummyTimeEvent } from '../types'
+import type { DiaperEvent, Entry, HealthRecord, MedicineEvent, PumpEvent, ServerState, TummyTimeEvent, CustomTracker, CustomEvent } from '../types'
 import type { ServerSyncPayload } from './serverSyncTypes'
 
 export function sortEntries(entries: Entry[]) {
@@ -23,6 +25,18 @@ export function sortTummyTimes(tummyTimes: TummyTimeEvent[]) {
 
 export function sortPumpEvents(pumpEvents: PumpEvent[]) {
   return [...pumpEvents].sort((a, b) => b.startedAt - a.startedAt)
+}
+
+export function sortHealthRecords(healthRecords: HealthRecord[]) {
+  return normalizeHealthRecords(healthRecords)
+}
+
+export function sortCustomTrackers(customTrackers: CustomTracker[]) {
+  return normalizeCustomTrackers(customTrackers)
+}
+
+export function sortCustomEvents(customEvents: CustomEvent[]) {
+  return normalizeCustomEvents(customEvents)
 }
 
 export function sortGrowthMeasurements(growthMeasurements: GrowthMeasurement[]) {
@@ -48,7 +62,12 @@ export function buildPendingSyncPayload(serverState: ServerState, localPayload: 
     pumpSession: serverState.pumpSession ?? localPayload.pumpSession,
     tummySession: serverState.tummySession ?? localPayload.tummySession,
     tummyGoalMinutes: normalizeTummyTimeGoalMinutes(serverState.tummyGoalMinutes ?? localPayload.tummyGoalMinutes),
+    pumpGoalOunces: serverState.pumpGoalOunces ?? localPayload.pumpGoalOunces,
+    pumpGoalSessions: serverState.pumpGoalSessions ?? localPayload.pumpGoalSessions,
     growthMeasurements: sortGrowthMeasurements(mergeById(serverState.growthMeasurements, localPayload.growthMeasurements)),
+    healthRecords: sortHealthRecords(mergeById(serverState.healthRecords, localPayload.healthRecords)),
+    customTrackers: sortCustomTrackers(mergeById(serverState.customTrackers, localPayload.customTrackers)),
+    customEvents: sortCustomEvents(mergeById(serverState.customEvents, localPayload.customEvents)),
     babyDob: serverState.babyDob || localPayload.babyDob || '2026-06-03',
     session: serverSession ?? localPayload.session,
     theme: localPayload.theme ?? serverState.theme ?? 'light',
@@ -67,6 +86,7 @@ export function buildApiStatePayload(
   currentPayload: ServerSyncPayload,
   serverUpdatedAt: string | null,
   overrides: Partial<ServerSyncPayload> = {},
+  syncIntents?: unknown,
 ) {
   return {
     entries: overrides.entries ?? currentPayload.entries,
@@ -77,10 +97,16 @@ export function buildApiStatePayload(
     pumpSession: overrides.pumpSession ?? currentPayload.pumpSession,
     tummySession: overrides.tummySession ?? currentPayload.tummySession,
     tummyGoalMinutes: normalizeTummyTimeGoalMinutes(overrides.tummyGoalMinutes ?? currentPayload.tummyGoalMinutes),
+    pumpGoalOunces: overrides.pumpGoalOunces ?? currentPayload.pumpGoalOunces,
+    pumpGoalSessions: overrides.pumpGoalSessions ?? currentPayload.pumpGoalSessions,
     growthMeasurements: overrides.growthMeasurements ?? currentPayload.growthMeasurements,
+    healthRecords: overrides.healthRecords ?? currentPayload.healthRecords,
+    customTrackers: overrides.customTrackers ?? currentPayload.customTrackers,
+    customEvents: overrides.customEvents ?? currentPayload.customEvents,
     babyDob: overrides.babyDob ?? currentPayload.babyDob,
     session: overrides.session ?? currentPayload.session,
     theme: overrides.theme ?? currentPayload.theme,
+    syncIntents,
     updatedAt: serverUpdatedAt,
   }
 }
