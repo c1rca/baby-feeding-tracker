@@ -1,6 +1,6 @@
 import { useMemo, useState, type Dispatch, type FormEvent, type SetStateAction } from 'react'
 import { Activity, Pencil, Plus, RotateCcw, Ruler, Scale, Trash2, X } from 'lucide-react'
-import { buildGrowthMetricModels, calculateAgeMonths, GROWTH_PERCENTILE_LINES, GROWTH_REFERENCE_SOURCE } from '../domain/growth'
+import { buildGrowthMetricModels, calculateAgeMonths, GROWTH_CHART_MAX_AGE_MONTHS, GROWTH_PERCENTILE_LINES, GROWTH_REFERENCE_SOURCE } from '../domain/growth'
 import type { GrowthReferenceSex } from '../domain/growthStandards'
 import { useUnits } from '../state/unitPreferencesContext'
 import { DialogSurface } from './modals/ModalFrame'
@@ -118,7 +118,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
     const toCm = (value: number | null) => (value === null ? null : displayLengthToCm(value, units.length))
     const lengthCm = toCm(parseNumber(draft.length))
     const headCm = toCm(parseNumber(draft.head))
-    if (!Number.isFinite(ageMonths) || ageMonths < 0 || ageMonths > 24 || !Number.isFinite(measuredAt)) return
+    if (!Number.isFinite(ageMonths) || ageMonths < 0 || ageMonths > GROWTH_CHART_MAX_AGE_MONTHS || !Number.isFinite(measuredAt)) return
     if ([weightLb, lengthCm, headCm].some((value) => value !== null && !Number.isFinite(value))) return
     if (weightLb === null && lengthCm === null && headCm === null) return
     const nextMeasurement = { id: editingId ?? `growth-${Date.now()}`, measuredAt, ageMonths, weightLb, lengthCm, headCm, note: draft.note.trim() || undefined }
@@ -139,7 +139,7 @@ export function GrowthDashboard({ growthMeasurements, setGrowthMeasurements, bab
         <div className="growth-hero-copy">
           <h2>Growth percentiles</h2>
           <p>{percentilesApply
-            ? `Weight, length, and head circumference against the WHO ${referenceSex} 0–24 month standards.`
+            ? `Weight, length, and head circumference against the CDC ${referenceSex} 0–36 month standards.`
             : 'Set the baby’s sex in Settings to see percentiles — they differ by sex, so there is no correct curve to read until then. Measurements are still plotted and tracked.'}</p>
           <div className="growth-hero-actions">
             <button className="primary growth-open-modal" type="button" onClick={openAddModal}><Plus size={16} /> Add measurement</button>
@@ -246,13 +246,13 @@ function GrowthChart({ model }: GrowthChartProps) {
   const plottedValues = babyPoints.map((point) => point.value)
   const min = Math.min(...values, ...plottedValues)
   const max = Math.max(...values, ...plottedValues)
-  const x = (month: number) => 48 + (month / 24) * 560
+  const x = (month: number) => 48 + (month / GROWTH_CHART_MAX_AGE_MONTHS) * 560
   const y = (value: number) => 302 - ((value - min) / (max - min || 1)) * 230
   return (
     <svg className="growth-chart growth-chart-large" viewBox="0 0 650 340" role="img" aria-label={`${metric.label} percentile chart`}>
       <line x1="48" x2="608" y1="302" y2="302" />
       <line x1="48" x2="48" y1="54" y2="302" />
-      {[0, 6, 12, 18, 24].map((month) => <text key={month} x={x(month)} y="326">{month} mo</text>)}
+      {[0, 9, 18, 27, 36].map((month) => <text key={month} x={x(month)} y="326">{month} mo</text>)}
       {GROWTH_PERCENTILE_LINES.map((line) => {
         const path = metric.standards.map((point, index) => `${index === 0 ? 'M' : 'L'} ${x(point.month).toFixed(1)} ${y(point[line]).toFixed(1)}`).join(' ')
         return <path key={line} className={line === 'p50' ? 'p50' : ''} d={path} />

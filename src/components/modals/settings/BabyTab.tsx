@@ -90,7 +90,7 @@ export function BabyProfileSetting({ baby, role, onUpdateBabyProfile, showToast 
         />
         <SettingsRow
           title="Sex"
-          hint="Sets the growth-chart reference — percentiles use the WHO boys’ or girls’ curves to match. Until it’s set, measurements are still plotted but no percentile is shown."
+          hint="Sets the growth-chart reference — percentiles use the CDC boys’ or girls’ curves to match. Until it’s set, measurements are still plotted but no percentile is shown."
           control={(
             <div className="care-segmented settings-segmented" role="group" aria-label="Baby sex">
               {(['female', 'male'] as const).map((option) => (

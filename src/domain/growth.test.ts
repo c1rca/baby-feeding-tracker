@@ -3,13 +3,14 @@ import { buildGrowthMetricModels, calculateAgeMonths, estimatePercentile, normal
 import { BOY_GROWTH_STANDARDS } from './growthStandards'
 
 describe('growth percentile modeling', () => {
-  it('calculates CDC/WHO infant age buckets from date of birth and measurement date', () => {
+  it('calculates CDC infant age buckets from date of birth and measurement date', () => {
     expect(calculateAgeMonths('2026-06-03', new Date('2026-06-03T12:00:00').getTime())).toBe(0)
     expect(calculateAgeMonths('2026-06-03', new Date('2026-06-22T12:00:00').getTime())).toBe(0.5)
     expect(calculateAgeMonths('2026-06-03', new Date('2026-07-18T12:00:00').getTime())).toBe(1.5)
+    expect(calculateAgeMonths('2023-01-01', new Date('2026-05-01T12:00:00').getTime())).toBe(36)
   })
 
-  it('estimates a baby measurement against WHO percentile curves', () => {
+  it('estimates a baby measurement against CDC percentile curves', () => {
     const weight = BOY_GROWTH_STANDARDS.find((metric) => metric.key === 'weight')!
     const monthTwo = weight.standards.find((point) => point.month === 2)!
 

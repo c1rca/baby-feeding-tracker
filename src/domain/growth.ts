@@ -2,7 +2,8 @@ import { growthStandardsFor, type GrowthReferenceSex } from './growthStandards'
 import type { GrowthMeasurement, GrowthMetric, GrowthMetricKey, GrowthStandardPoint } from './growthTypes'
 
 export const GROWTH_PERCENTILE_LINES = ['p3', 'p10', 'p25', 'p50', 'p75', 'p90', 'p97'] as const
-export const GROWTH_REFERENCE_SOURCE = 'WHO Child Growth Standards, birth to 24 months — the reference US practice uses under age two.'
+export const GROWTH_CHART_MAX_AGE_MONTHS = 36
+export const GROWTH_REFERENCE_SOURCE = 'CDC 2000 Growth Charts, birth to 36 months.'
 const AVERAGE_DAYS_PER_MONTH = 365.2425 / 12
 
 /**
@@ -18,7 +19,7 @@ export function calculateAgeMonths(babyDob: string, measuredAt: number) {
   const ageDays = Math.max(0, (measuredAt - dobMs) / 86_400_000)
   if (ageDays < 1) return 0
   const rawMonths = ageDays / AVERAGE_DAYS_PER_MONTH
-  return Math.min(24, Math.floor(rawMonths) + 0.5)
+  return Math.min(GROWTH_CHART_MAX_AGE_MONTHS, Math.floor(rawMonths) + 0.5)
 }
 
 /**
@@ -39,7 +40,7 @@ export function exactAgeMonths(babyDob: string, measuredAt: number) {
   const dobMs = new Date(`${babyDob}T12:00:00`).getTime()
   if (!Number.isFinite(dobMs) || !Number.isFinite(measuredAt)) return null
   const ageDays = Math.max(0, (measuredAt - dobMs) / 86_400_000)
-  return Math.min(24, ageDays / AVERAGE_DAYS_PER_MONTH)
+  return Math.min(GROWTH_CHART_MAX_AGE_MONTHS, ageDays / AVERAGE_DAYS_PER_MONTH)
 }
 
 const valueForMetric = (measurement: GrowthMeasurement, key: GrowthMetricKey) => {

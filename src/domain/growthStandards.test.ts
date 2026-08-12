@@ -5,26 +5,26 @@ import type { GrowthMeasurement } from './growthTypes'
 
 const metricOf = (set: typeof BOY_GROWTH_STANDARDS, key: string) => set.find((metric) => metric.key === key)!
 
-describe('WHO reference tables', () => {
-  it('covers every month from birth to 24 for both sexes and all three metrics', () => {
+describe('CDC infant reference tables', () => {
+  it('covers the CDC birth-to-36-month range for both sexes and all three metrics', () => {
     for (const set of [BOY_GROWTH_STANDARDS, GIRL_GROWTH_STANDARDS]) {
       expect(set.map((metric) => metric.key)).toEqual(['weight', 'length', 'head'])
       for (const metric of set) {
-        expect(metric.standards).toHaveLength(25)
+        expect(metric.standards.length).toBeGreaterThanOrEqual(37)
         expect(metric.standards[0].month).toBe(0)
-        expect(metric.standards.at(-1)!.month).toBe(24)
+        expect(metric.standards.at(-1)!.month).toBeGreaterThanOrEqual(35.5)
       }
     }
   })
 
-  it('matches published WHO birth medians', () => {
-    // WHO birth p50: boys 3.3 kg / 49.9 cm / 34.5 cm, girls 3.2 kg / 49.1 / 33.9.
-    expect(metricOf(BOY_GROWTH_STANDARDS, 'weight').standards[0].p50).toBeCloseTo(3.3 / 0.45359237, 1)
-    expect(metricOf(GIRL_GROWTH_STANDARDS, 'weight').standards[0].p50).toBeCloseTo(3.2 / 0.45359237, 1)
-    expect(metricOf(BOY_GROWTH_STANDARDS, 'length').standards[0].p50).toBe(49.9)
-    expect(metricOf(GIRL_GROWTH_STANDARDS, 'length').standards[0].p50).toBe(49.1)
-    expect(metricOf(BOY_GROWTH_STANDARDS, 'head').standards[0].p50).toBe(34.5)
-    expect(metricOf(GIRL_GROWTH_STANDARDS, 'head').standards[0].p50).toBe(33.9)
+  it('matches published CDC birth medians', () => {
+    // CDC 2000 birth p50: boys 3.530 kg / 49.989 cm / 35.814 cm; girls 3.399 kg / 49.286 cm / 34.712 cm.
+    expect(metricOf(BOY_GROWTH_STANDARDS, 'weight').standards[0].p50).toBeCloseTo(3.530203168 / 0.45359237, 3)
+    expect(metricOf(GIRL_GROWTH_STANDARDS, 'weight').standards[0].p50).toBeCloseTo(3.39918645 / 0.45359237, 3)
+    expect(metricOf(BOY_GROWTH_STANDARDS, 'length').standards[0].p50).toBeCloseTo(49.98888408, 4)
+    expect(metricOf(GIRL_GROWTH_STANDARDS, 'length').standards[0].p50).toBeCloseTo(49.28639612, 4)
+    expect(metricOf(BOY_GROWTH_STANDARDS, 'head').standards[0].p50).toBeCloseTo(35.81366835, 4)
+    expect(metricOf(GIRL_GROWTH_STANDARDS, 'head').standards[0].p50).toBeCloseTo(34.7115617, 4)
   })
 
   it('keeps percentile bands monotonic at every age', () => {
@@ -70,8 +70,9 @@ describe('sex-specific percentiles', () => {
   })
 
   it('puts a girl at her own median near the 50th', () => {
-    const median = metricOf(GIRL_GROWTH_STANDARDS, 'weight').standards[12].p50
-    const estimate = estimatePercentile(metricOf(growthStandardsFor('girls'), 'weight'), 12, median)
+    const month = 11.5
+    const median = metricOf(GIRL_GROWTH_STANDARDS, 'weight').standards.find((point) => point.month === month)!.p50
+    const estimate = estimatePercentile(metricOf(growthStandardsFor('girls'), 'weight'), month, median)
     expect(estimate.percentile).toBe(50)
   })
 })

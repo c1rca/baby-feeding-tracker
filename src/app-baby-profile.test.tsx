@@ -11,13 +11,13 @@ const measurement: GrowthMeasurement = { id: 'g1', measuredAt: Date.now(), ageMo
 const renderGrowth = (babySex: 'female' | 'male' | null) =>
   render(<GrowthDashboard growthMeasurements={[measurement]} setGrowthMeasurements={() => {}} babyDob="2026-01-01" babySex={babySex} />)
 
-describe('growth percentiles use the matching WHO reference', () => {
+describe('growth percentiles use the matching CDC reference', () => {
   afterEach(cleanup)
 
   it('reads a girl against the girls standards', () => {
     renderGrowth('female')
     const section = screen.getByRole('region', { name: /Growth percentile tracker/i })
-    expect(within(section).getByText(/WHO girls 0–24 month standards/i)).toBeTruthy()
+    expect(within(section).getByText(/CDC girls 0–36 month standards/i)).toBeTruthy()
     expect(within(section).getAllByText(/percentile/i).length).toBeGreaterThan(0)
     expect(within(section).queryByText(/n\/a/i)).toBeNull()
   })
@@ -25,7 +25,7 @@ describe('growth percentiles use the matching WHO reference', () => {
   it('reads a boy against the boys standards', () => {
     renderGrowth('male')
     const section = screen.getByRole('region', { name: /Growth percentile tracker/i })
-    expect(within(section).getByText(/WHO boys 0–24 month standards/i)).toBeTruthy()
+    expect(within(section).getByText(/CDC boys 0–36 month standards/i)).toBeTruthy()
     expect(within(section).getAllByText(/percentile/i).length).toBeGreaterThan(0)
   })
 
